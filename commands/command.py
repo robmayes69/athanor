@@ -7,7 +7,7 @@ Commands describe the input the player can do to the game.
 
 from evennia import Command as BaseCommand
 from evennia import default_cmds
-
+from commands.library import AthanorError, partial_match
 
 class Command(BaseCommand):
     """
@@ -136,3 +136,74 @@ class MuxCommand(default_cmds.MuxCommand):
         # this can be removed in your child class, it's just
         # printing the ingoing variables as a demo.
         super(MuxCommand, self).func()
+
+
+class AthCommand(MuxCommand):
+    """
+    This class is an enhanced version of MuxCommand for the Athanor Command Set.
+    """
+    player_switches = []
+    admin_switches = []
+    help_category = 'Athanor'
+    system_name = 'SYSTEM'
+
+    def partial(self, partial_list, start_list, keep_unknown=True):
+        return partial_match(partial_list, start_list, keep_unknown)
+
+    def sys_msg(self, message, target=None, error=False):
+        if not target:
+            target = self.caller
+        target.em_sys_msg(message, self.sysname, error=error)
+
+    def sys_report(self, message, system_name=None, sender=None):
+        if not system_name:
+            system_name = self.sysname
+        if not sender:
+            sender = self.caller
+        #staff_report(message, system_name, sender)
+
+    def error(self, message, target=None):
+        if not target:
+            target = self.caller
+        self.sys_msg(message, target=target, error=True)
+
+    def parse(self):
+        super(AthCommand, self).parse()
+        if self.rhs:
+            self.rhs = self.rhs.strip()
+        if self.lhs:
+            self.lhs = self.lhs.strip()
+        if hasattr(self.caller, "player"):
+            self.player = self.caller.player
+            self.character = self.caller
+            self.isic = True
+        else:
+            self.player = self.caller
+            self.isic = False
+            self.character = None
+        self.is_admin = self.caller.is_admin()
+        self.parse_switches()
+
+    def parse_switches(self):
+        self.final_switches = []
+        total_switches = []
+        if self.is_admin and self.admin_switches:
+            total_switches += self.admin_switches
+        total_switches += self.player_switches
+        for switch in self.switches:
+            found_switches = partial_match(switch, total_switches)
+            for found in found_switches:
+                self.final_switches.append(found)
+
+
+    def verify(self, checkstr):
+        if checkstr in str(self.player.db.verify):
+            del self.player.db.verify
+            return True
+        else:
+            self.player.db.verify = checkstr
+            return False
+
+    def msg_lines(self, message=None):
+        for line in message:
+            self.caller.msg(unicode(line))

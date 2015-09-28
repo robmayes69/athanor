@@ -7,6 +7,8 @@ for allowing Characters to traverse the exit to its destination.
 
 """
 from evennia import DefaultExit
+from commands.library import mxp_send, MAIN_COLOR_DEFAULTS
+from evennia.utils.ansi import ANSIString
 
 class Exit(DefaultExit):
     """
@@ -31,4 +33,28 @@ class Exit(DefaultExit):
                                         not be called if the attribute `err_traverse` is
                                         defined, in which case that will simply be echoed.
     """
-    pass
+
+    def format_output(self, viewer):
+        colors = MAIN_COLOR_DEFAULTS
+        colors = colors['rooms']
+        namecolor = colors['exitnames']
+        aliascolor = colors['exitalias']
+        alias = self.aliases.all()[0] or ''
+        alias = alias.upper()
+        if alias:
+            color_alias = ANSIString('{%s%s{n' % (aliascolor, alias))
+            border_alias = ANSIString('<%s>' % color_alias).ljust(6)
+        name = ANSIString('{%s%s{n' % (namecolor, self.key))
+        length = 36
+        if alias: length -= 6
+        length -= len(self.key)
+        if length:
+            destination_text = " to %s" % self.destination.key
+            destination_text = destination_text[:length].ljust(length)
+        else:
+            destination_text = ''
+        if alias:
+            main = mxp_send(text=border_alias + name, command=self.key)
+        else:
+            main = mxp_send(text=name, command=self.key)
+        return ANSIString(main + destination_text)

@@ -22,7 +22,12 @@ several more options for customizing the Guest account system.
 
 """
 
+import pytz
+from django.conf import settings
 from evennia import DefaultPlayer, DefaultGuest
+from evennia.utils.utils import time_format
+from evennia.utils.ansi import ANSIString
+from commands.library import utcnow, AthanorError
 
 class Player(DefaultPlayer):
     """
@@ -91,8 +96,167 @@ class Player(DefaultPlayer):
      at_server_shutdown()
 
     """
-    pass
 
+    def at_player_creation(self):
+        super(Player, self).at_player_creation()
+
+        # Initialize the playable characters list.
+        if not self.db._playable_characters:
+            self.db._playable_characters = []
+
+        # All Players need an Actor entry!
+        from world.apps.communications.models import PlayerActor
+        PlayerActor.objects.create(db_player=self, db_key=self.key)
+
+    def at_post_login(self, sessid=None):
+        super(Player, self).at_post_login(sessid)
+        self.last_played(update=True)
+
+    def at_failed_login(self, sessid=None):
+        super(Player, self).at_failed_login(sessid)
+        self.sys_msg('WARNING: Detected a failed login.')
+
+    def is_admin(self):
+        return self.locks.check_lockstring(self, "dummy:perm(Wizards)")
+
+    def get_all_puppets(self):
+        """
+        Replaces the default method. Only difference is that it sorts them!
+        """
+        return sorted(super(Player, self).get_all_puppets(), key=lambda char: char.key)
+
+    def get_all_characters(self):
+        """
+        Returns a list of all valid playable characters.
+        """
+        return [char for char in self.db._playable_characters if char]
+
+    def bind_character(self, character):
+        """
+        This method is used to attach a character to a player.
+
+        Args:
+            character (objectdb): The character being bound.
+        """
+
+        #First we'll unbind any existing owner.
+        old_player = character.db._owner
+        if old_player:
+            old_player.unbind_character(character)
+
+        #Now set the new owner.
+        character.db._owner = self
+        character.reset_puppet_locks(self)
+
+        #Lastly, add the new character to our playable characters.
+        characters = self.get_all_characters()
+        characters.append(character)
+        self.db._playable_characters = sorted(characters, key=lambda char: char.key)
+
+    def unbind_character(self, character):
+        characters = self.get_all_characters()
+        characters.remove(character)
+        self.db._playable_characters = sorted(characters, key=lambda char: char.key)
+
+    def delete(self, *args, **kwargs):
+        self.actor.update_name(self.key)
+        super(Player, self).delete(*args, **kwargs)
+
+    def timezone(self, value=None):
+        if value:
+            self.db._timezone = value
+        if self.db._timezone:
+            return self.db._timezone
+        return pytz.UTC
+
+    def display_local_time(self, date=None, format=None):
+        if not format:
+            format = '%b %d %I:%M%p %Z'
+        if not date:
+            date = utcnow()
+        tz = self.timezone()
+        time = date.astimezone(tz)
+        return time.strftime(format)
+
+    def is_dark(self, value=None):
+        """
+        Dark characters appear offline except to admin.
+        """
+        if value is not None:
+            self.db._dark = value
+            self.sys_msg("You %s DARK." % ('are now' if value else 'are no longer'))
+        return self.db._dark
+
+    def is_hidden(self, value=None):
+        """
+        Hidden characters only appear on the who list to admin.
+        """
+        if value is not None:
+            self.db._hidden = value
+            self.sys_msg("You %s HIDDEN." % ('are now' if value else 'are no longer'))
+        return self.db._hidden
+
+    def last_played(self, update=False):
+        if update:
+            self.db._last_played = utcnow()
+        return self.db._last_played
+
+    def last_or_idle_time(self, viewer):
+        idle = self.idle_time
+        last = self.last_played()
+        if not idle or not viewer.can_see(self):
+            tz = viewer.timezone()
+            return viewer.display_local_time(date=last, format='%b %d')
+        return time_format(idle, style=1)
+
+    def last_or_conn_time(self, viewer):
+        conn = self.connection_time
+        last = self.last_played()
+        if not conn or not viewer.can_see(self):
+            tz = viewer.timezone()
+            return viewer.display_local_time(date=last, format='%b %d')
+        return time_format(conn, style=1)
+
+    def sys_msg(self, message, sys_name='SYSTEM', error=False):
+        alert = sys_name + '(Player)>'
+        self.msg(unicode(ANSIString(alert + message)))
+
+    def can_see(self, target):
+        if self.is_admin():
+            return True
+        if target.is_dark() or target.is_hidden():
+            return False
+        return True
+
+    def extra_character_slots(self, update=None):
+        """
+        This method is used to set and/or retrieve how many Extra Character Slots a Player has.
+
+        Args:
+            update (str or int): If provided, sets the character's available extra slots.
+
+        Raises:
+            AthanorError: If the update argument cannot be converted to a non-negative integer.
+
+        Returns:
+            int
+        """
+        if update is not None:
+            try:
+                new_value = int(update)
+            except ValueError:
+                raise AthanorError("Character slots must be non-negative integers.")
+            if new_value < 0:
+                raise AthanorError("Character slots must be non-negative integers.")
+            self.db._character_slots = new_value
+            self.sys_msg("You now have %i Extra Character Slots." % new_value)
+        return int(self.db._character_slots)
+
+    def max_character_slots(self):
+        return settings.MAX_NR_CHARACTERS + self.extra_character_slots()
+
+    def used_character_slots(self):
+        return sum([char.character_slot_value() for char in self.get_all_characters()])
 
 class Guest(DefaultGuest):
     """
