@@ -63,3 +63,6 @@ class Room(DefaultRoom):
         for exit in exits:
             exit_table.append(exit.format_output(caller))
         return tabular_table(exit_table, field_width=36, line_length=78, truncate_elements=False)
+
+    def format_roomlist(self):
+        return "{C%s{n {x%s{n" % (self.dbref.ljust(6), self.key)

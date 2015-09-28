@@ -134,7 +134,7 @@ class Group(models.Model):
             title = None
         if not message:
             return
-        group_message = self.em_group_messages.create(actor=actor, emit=emit, message=message, type=type, system=system,
+        group_message = self.messages.create(actor=actor, emit=emit, message=message, type=type, system=system,
                                              title=title)
         recipients = self.listeners(type, system=system)
 

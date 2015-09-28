@@ -316,3 +316,12 @@ def sanitize_string(input=None, length=None, strip_ansi=False, strip_mxp=True, s
     if length:
         input = input[:length]
     return unicode(input)
+
+def penn_substitutions(input=None):
+    if not input:
+        return ''
+    for bad_char in ['%r', '%R']:
+        input = input.replace(bad_char, '{/')
+    for bad_char in ['%t', '%T']:
+        input = input.replace(bad_char, '{-')
+    return input

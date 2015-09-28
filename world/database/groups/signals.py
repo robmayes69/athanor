@@ -1,11 +1,16 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from world.apps.groups.models import Group, GroupPermissions
+from world.database.groups.models import Group, GroupPermissions
 
 
 @receiver(post_save, sender=Group)
-def setup_group(sender, instance, created, raw, using, update_fields):
-    if created:
+def setup_group(sender, **kwargs):
+    """
+    This function is called whenever a new group is created. It's necessary to initialize all of the default settings!
+    """
+
+    if kwargs['created']:
+        instance = kwargs['instance']
         if not GroupPermissions.objects.all():
             for entry in ['manage', 'moderate', 'gbadmin', 'ic', 'ooc', 'titleself', 'titleother']:
                 GroupPermissions.objects.create(name=entry)

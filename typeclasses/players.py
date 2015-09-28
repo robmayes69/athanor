@@ -105,7 +105,7 @@ class Player(DefaultPlayer):
             self.db._playable_characters = []
 
         # All Players need an Actor entry!
-        from world.apps.communications.models import PlayerActor
+        from world.database.communications.models import PlayerActor
         PlayerActor.objects.create(db_player=self, db_key=self.key)
 
     def at_post_login(self, sessid=None):

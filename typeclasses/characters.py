@@ -35,7 +35,7 @@ class Character(DefaultCharacter):
 
     def at_object_creation(self):
         super(Character, self).at_object_creation()
-        from world.apps.communications.models import ObjectActor
+        from world.database.communications.models import ObjectActor
         ObjectActor.objects.create(db_object=self, db_key=self.key)
         self.last_played(update=True)
 

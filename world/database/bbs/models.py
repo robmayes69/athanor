@@ -2,7 +2,7 @@ from django.db import models
 from django.conf import settings
 from evennia.locks.lockhandler import LockHandler
 from evennia.utils.utils import lazy_property
-from commands.library import utcnow, mxp_send, connected_characters, AthanorError, header, separator
+from commands.library import utcnow, mxp_send, connected_characters, AthanorError, header, separator, make_table
 
 # Create your models here.
 class Board(models.Model):
@@ -25,13 +25,6 @@ class Board(models.Model):
     @lazy_property
     def locks(self):
         return LockHandler(self)
-
-    def setup_board(self):
-        if self.group:
-            self.locks.add("read:group(%s);write:group(%s);admin:gperm(%s,gbmanage)" % (self.group.id, self.group.id, self.group.id))
-        else:
-            self.locks.add("read:all();write:all();admin:pperm(Wizards)")
-        self.save()
 
     def display_name(self):
         if self.group:
@@ -111,6 +104,21 @@ class Board(models.Model):
                 post.order = count + 1
                 post.save()
 
+    def show_board(self, viewer):
+        """
+        Viewer is meant to be a PlayerDB instance in this case! Since it needs to pull from Player read/unread.
+        """
+        message = []
+        message.append(header(self.display_name()))
+        board_table = make_table("ID", "Subject", "Date", "Poster", width=[6, 29, 22, 21])
+        for post in self.posts.all().order_by('post_date'):
+            board_table.add_row(post.order, post.post_subject,
+                                viewer.display_local_time(date=post.date_posted, format='%X %x %Z'),
+                                post.display_poster(viewer))
+        message.append(board_table)
+        message.append(header)
+        return "\n".join([unicode(line) for line in message])
+
 class Post(models.Model):
     board = models.ForeignKey('Board', related_name='posts')
     actor = models.ForeignKey('communications.ObjectActor')
@@ -139,6 +147,12 @@ class Post(models.Model):
         self.modify_date = utcnow()
         self.post_text = self.post_text.replace(find, replace)
         self.save()
+
+    def display_poster(self, viewer):
+        anon = self.board.anonymous
+        if anon and viewer.is_admin():
+            return "(%s)" % self.actor
+        return anon or self.actor
 
     def show_post(self, viewer):
         message = []

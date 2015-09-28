@@ -114,7 +114,9 @@ PLAYER_CREATE = True
 IDLE_TIMEOUT = -1
 
 # Enabling some extra Django apps!
-INSTALLED_APPS = INSTALLED_APPS + ('world.apps.communications',
-                                   'world.apps.logins',
-                                   'world.apps.bbs',
-                                   'world.apps.groups',)
+INSTALLED_APPS = INSTALLED_APPS + ('world.database.communications',
+                                   'world.database.logins',
+                                   'world.database.info',
+                                   'world.database.bbs.apps.BBSConfig',
+                                   'world.database.groups.apps.GroupConfig',
+                                   'world.database.grid.apps.GridConfig',)
