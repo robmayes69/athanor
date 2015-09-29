@@ -23,7 +23,8 @@ class District(models.Model):
             self.save()
 
     def list_destinations(self, viewer):
-        return sorted([room for room in self.rooms.all() if room.locks.check(viewer, "teleport")], key=lambda room: room.key.lower())
+        return sorted([room for room in self.rooms.all() if room.locks.check(viewer, "teleport")],
+                      key=lambda room: room.key.lower())
 
     def display_destinations(self, viewer):
         rooms = self.list_destinations(viewer)

@@ -117,6 +117,7 @@ IDLE_TIMEOUT = -1
 INSTALLED_APPS = INSTALLED_APPS + ('world.database.communications',
                                    'world.database.logins',
                                    'world.database.info',
+                                   'world.database.experience',
                                    'world.database.bbs.apps.BBSConfig',
                                    'world.database.groups.apps.GroupConfig',
                                    'world.database.grid.apps.GridConfig',)

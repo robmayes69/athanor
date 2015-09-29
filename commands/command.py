@@ -147,13 +147,13 @@ class AthCommand(MuxCommand):
     help_category = 'Athanor'
     system_name = 'SYSTEM'
 
-    def partial(self, partial_list, start_list, keep_unknown=True):
-        return partial_match(partial_list, start_list, keep_unknown)
+    def partial(self, partial_list, start_list):
+        return partial_match(partial_list, start_list)
 
     def sys_msg(self, message, target=None, error=False):
         if not target:
             target = self.caller
-        target.em_sys_msg(message, self.sysname, error=error)
+        target.sys_msg(message, self.sysname, error=error)
 
     def sys_report(self, message, system_name=None, sender=None):
         if not system_name:

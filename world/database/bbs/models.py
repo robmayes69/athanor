@@ -1,3 +1,4 @@
+import re
 from django.db import models
 from django.conf import settings
 from evennia.locks.lockhandler import LockHandler
@@ -163,3 +164,24 @@ class Post(models.Model):
         message.append(header())
         self.read.add(viewer)
         return "\n".join([unicode(line) for line in message])
+
+def list_all_boards(group=None):
+    if group:
+        boardlist = group.boards.all().order_by('order')
+    else:
+        boardlist = Board.objects.filter(main=True).order_by('order')
+    return boardlist
+
+def list_boards(group=None, type="read", checker=None):
+    if not re.match(r'^read|write|admin$', type):
+        raise AthanorError("Invalid access type.")
+    if not checker:
+        raise AthanorError("Who is doing the checking?")
+    if group:
+        boards = group.boards.all().order_by('order')
+    else:
+        boards = Board.objects.filter(main=True).order_by('order')
+    if not boards:
+        return []
+    boardlist = [bb for bb in boards if bb.check_permission(type=type, checker=checker)]
+    return boardlist
