@@ -2,20 +2,21 @@ import re
 from django.conf import settings
 from evennia.locks.lockhandler import LockException
 from world.database.bbs.models import Board, list_all_boards, list_boards
-from commands.command import AthCommand
-from commands.library import header, subheader, separator, make_table, mxp_send
-from commands.library import AthanorError, duration_from_string, sanitize_string, penn_substitutions
 from world.database.groups.models import Group
+from commands.command import AthCommand
+from commands.library import header, make_table, mxp_send
+from commands.library import AthanorError, duration_from_string, sanitize_string, penn_substitutions
 from typeclasses.scripts import BoardTimeout
 from evennia import create_script
 from evennia.utils.utils import time_format
+
 
 class BBCommand(AthCommand):
     """
     Class for the Board System commands.
     """
     help_category = "Boards"
-    sysname = "BBS"
+    system_name = "BBS"
     locks = "cmd:all()"
     arg_rexex = r"\s+"
 
@@ -46,58 +47,52 @@ class BBCommand(AthCommand):
             return [board for board in boards if board.order == find_num][0]
 
     def func(self):
-        """
-        Here we go!
-        """
+
         rhs = self.rhs
         lhs = self.lhs
-        cstr = self.cmdstring
-
-        cstr = cstr[3:]
-
+        cstr = self.cmdstring.lower()[3:]
         self.group = None
-
         self.choose_command(lhs, rhs, cstr)
 
     def choose_command(self, lhs=None, rhs=None, cstr=None):
 
-        if 'newgroup' in cstr:
+        if 'newgroup' == cstr:
             self.board_newgroup(self.args)
             return
 
-        if 'cleargroup' in cstr:
+        if 'cleargroup' == cstr:
             self.board_cleargroup(self.args)
             return
 
-        if 'config' in cstr:
+        if 'config' == cstr:
             self.board_config(lhs, rhs)
             return
 
-        if 'timeout' in cstr:
+        if 'timeout' == cstr:
             self.board_timeout(lhs, rhs)
             return
 
-        if 'order' in cstr:
-            self.board_order(self.args)
+        if 'order' == cstr:
+            self.board_order(lhs, rhs)
             return
 
-        if 'lock' in cstr:
+        if 'lock' == cstr:
             self.board_lock(lhs, rhs)
             return
 
-        if 'leave' in cstr:
+        if 'leave' == cstr:
             self.board_leave(lhs, rhs)
             return
 
-        if 'join' in cstr:
+        if 'join' == cstr:
             self.board_join(lhs, rhs)
             return
 
-        if 'post' in cstr:
+        if 'post' == cstr:
             self.board_post(lhs, rhs)
             return
 
-        if 'list' in cstr:
+        if 'list' == cstr:
             self.board_list()
             return
 
@@ -105,47 +100,47 @@ class BBCommand(AthCommand):
             self.post_write(self.args)
             return
 
-        if 'proof' in cstr:
+        if 'proof' == cstr:
             self.post_proof()
             return
 
-        if 'toss' in cstr:
+        if 'toss' == cstr:
             self.post_toss()
             return
 
-        if 'edit' in cstr:
+        if 'edit' == cstr:
             self.post_edit(lhs, rhs)
             return
 
-        if 'remove' in cstr:
+        if 'remove' == cstr:
             self.post_remove(lhs, rhs)
             return
 
-        if 'move' in cstr:
+        if 'move' == cstr:
             self.post_move(lhs, rhs)
             return
 
-        if 'read' in cstr:
+        if 'read' == cstr:
             self.board_read(lhs, rhs)
             return
 
-        if 'new' in cstr or 'next' in cstr:
+        if 'new' in cstr or 'next' == cstr:
             self.read_next()
             return
 
-        if 'catchup' in cstr:
+        if 'catchup' == cstr:
             self.read_catchup(lhs, rhs)
             return
 
-        if 'scan' in cstr:
+        if 'scan' == cstr:
             self.read_scan()
             return
 
-        if 'search' in cstr:
+        if 'search' == cstr:
             self.board_search(lhs, rhs)
             return
 
-        if 'check' in cstr:
+        if 'check' == cstr:
             self.board_check()
             return
 
@@ -172,8 +167,10 @@ class BBCommand(AthCommand):
             if re.match("^\d+$", arg):
                 fullnums.append(int(arg))
             if re.match("^U$", arg.upper()):
+                fullnums += board.posts.exclude(read__contains=self.player)
                 fullnums += player.get_board_unread(board=board, num=True)
-        return board.posts.filter(num__in=fullnums).order_by('num')
+        return board.posts.filter(order__in=fullnums).order_by('order')
+
 
 class CmdBBList(BBCommand):
     """
@@ -191,42 +188,44 @@ class CmdBBList(BBCommand):
     aliases = ['+bbleave', '+bbjoin']
 
     def board_list(self):
-        message = []
+        message = list()
         message.append(self.board_header())
         bbtable = make_table("ID", "RWA", "Name", "Locks", "On", width=[4, 4, 23, 43, 4])
-        for board in list_boards(group=self.group, checker=self.player):
+        for board in list_boards(group=self.group, checker=self.character):
             if self.player in board.ignorelist.all():
                 member = "No"
             else:
                 member = "Yes"
-            bbtable.add_row(mxp_send(board.num,"+bbread %s" % board.num), board.rwastring(self.player), mxp_send(board,"+bbread %s" % board.num), board.lock_storage, member)
+            bbtable.add_row(mxp_send(board.order, "+bbread %s" % board.order), board.rwastring(self.character),
+                            mxp_send(board, "+bbread %s" % board.order), board.lock_storage, member)
         message.append(bbtable)
         message.append(header())
         self.msg_lines(message)
 
     def board_leave(self, lhs=None, rhs=None):
         try:
-            board = find_board(findname=lhs.strip(), group=self.group, checker=self.player)
+            board = self.find_board(find_name=lhs.strip(), group=self.group, checker=self.character)
         except AthanorError as err:
             self.error(unicode(err))
             return
-        if self.player in board.ignorelist.all():
+        if self.character in board.ignore_list.all():
             self.sys_msg("You are already ignoring that board.")
             return
-        board.ignorelist.add(self.player)
-        self.sys_msg("You will no longer receive announcements for Board %s: %s" % (board.num, board))
+        board.ignore_list.add(self.character)
+        self.sys_msg("You will no longer receive announcements for Board %s: %s" % (board.order, board))
 
     def board_join(self, lhs=None, rhs=None):
         try:
-            board = find_board(findname=lhs.strip(), group=self.group, checker=self.player)
+            board = self.find_board(find_name=lhs.strip(), group=self.group, checker=self.character)
         except AthanorError as err:
             self.error(unicode(err))
             return
-        if self.player not in board.ignorelist.all():
+        if self.character not in board.ignore_list.all():
             self.sys_msg("You are already listening to that board.")
             return
-        board.ignorelist.remove(self.player)
-        self.sys_msg("You will now receive announcements for Board %s: %s" % (board.num, board))
+        board.ignore_list.remove(self.character)
+        self.sys_msg("You will now receive announcements for Board %s: %s" % (board.order, board))
+
 
 class CmdBBAdmin(BBCommand):
     """
@@ -250,6 +249,10 @@ class CmdBBAdmin(BBCommand):
             Evennia's built-in lock features. The available access types are
             read, write, and admin. Those who pass admin implicitly pass read
             and write.
+
+            The default lock for a board is:
+                read:all();write:all();admin:pperm(wizards)
+
             Example lockstring for a staff announcement board:
                 read:all();write:pperm(wizards);admin:pperm(wizards)
 
@@ -263,7 +266,7 @@ class CmdBBAdmin(BBCommand):
     def board_newgroup(self, lhs):
         if self.group:
             try:
-                self.group.perm_check(checker=self.character, check="gbadmin")
+                self.group.check_permission(checker=self.character, check="gbadmin")
                 board = self.create_board(lhs)
             except AthanorError as err:
                 self.error(unicode(err))
@@ -285,75 +288,64 @@ class CmdBBAdmin(BBCommand):
         if not lhs:
             raise AthanorError("Board requires a name.")
         new_name = sanitize_string(lhs, strip_ansi=True)
-        blist = list_all_boards(group=self.group)
-        if not blist:
-            newnum = 1
-        else:
-            newnum = len(blist) + 1
+        try:
+            new_num = max([board.order for board in list_all_boards(group=self.group)]) + 1
+        except ValueError:
+            new_num = 1
         if self.group:
-            board = Board.objects.create(name=new_name, mainbb=False, group=self.group, num=newnum)
+            board = Board.objects.create(key=new_name, main=False, group=self.group, order=new_num)
         else:
-            board = Board.objects.create(name=new_name, mainbb=True, num=newnum)
-        board.setup_board()
+            board = Board.objects.create(key=new_name, main=True, order=new_num)
+        board.save()
         return board
 
     def board_cleargroup(self, name):
         try:
-            board = find_board(findname=name.strip(), group=self.group, checker=self.player)
+            board = self.find_board(find_name=name.strip(), group=self.group, checker=self.character)
         except AthanorError as err:
             self.error(unicode(err))
             return
-        if not self.verify("Delete Board %s" % board.num):
-            self.sys_msg("Deleting Board %s - This will clear all of its posts. Enter the command again to confirm." % board.name)
+        if not self.verify("Delete Board %s" % board.order):
+            message = "Deleting Board %s - This will clear all of its posts. Enter the command again to confirm."
+            self.sys_msg(message % board.key)
             return
         board.delete()
         self.sys_msg("Board deleted!")
-        boardlist_squish(list_all_boards(group=self.group))
 
     def board_config(self, lhs=None, rhs=None):
         pass
 
-    def board_order(self, neworder=None):
-        if not neworder:
-            self.error("No new order specified!")
-            return
-        newnums = []
-        neworder = neworder.split(' ')
-        for entry in neworder:
-            if not re.match('^\d+$', entry):
-                self.error("Order numbers must be integers.")
-                return
-            rnum = int(entry.strip())
-            if rnum <= 0:
-                self.error("Order numbers must be positive integers.")
-                return
-            if rnum in newnums:
-                self.error("Order numbers must be unique.")
-                return
-            newnums.append(rnum)
-        if len(newnums) != len(list_all_boards(group=self.group)):
-            self.error("Amount of order numbers must match amount of boards.")
-            return
-        for count, board in enumerate(list_all_boards(group=self.group)):
-            board.num = newnums[count]
-            board.save()
-        boardlist_squish(list_all_boards(group=self.group))
-        self.sys_msg("Boards re-ordered.")
-
-    def board_lock(self, lhs=None, rhs=None):
+    def board_order(self, lhs=None, rhs=None):
         try:
-            board = find_board(findname=lhs.strip(), group=self.group, checker=self.player)
+            board = self.find_board(find_name=lhs.strip(), group=self.group, checker=self.character)
+            new_order = int(rhs)
         except AthanorError as err:
             self.error(unicode(err))
             return
-        if not board.perm_check(checker=self.player, type='admin', checkadmin=False):
+        except ValueError:
+            self.error("Board order must be an integer.")
+            return
+        if new_order < 1:
+            self.error("Board orders must be positive.")
+            return
+        board.order = new_order
+        board.save()
+        self.sys_msg("Board re-ordered.")
+
+    def board_lock(self, lhs=None, rhs=None):
+        try:
+            board = self.find_board(find_name=lhs.strip(), group=self.group, checker=self.character)
+        except AthanorError as err:
+            self.error(unicode(err))
+            return
+        if not board.check_permission(checker=self.character, type='admin', checkadmin=False):
             self.error("Permission denied.")
             return
         if not rhs:
             self.error("Must enter a lockstring.")
             return
         for locksetting in rhs.split(';'):
-            access_type, lockfunc = locksetting.split(':',1)
+            access_type, lockfunc = locksetting.split(':', 1)
             if not access_type:
                 self.error("Must enter an access type: read, write, or admin.")
                 return
@@ -373,6 +365,7 @@ class CmdBBAdmin(BBCommand):
             if ok:
                 self.sys_msg("Added lock '%s' to %s." % (rhs, board))
             return
+
 
 class CmdBBWrite(BBCommand):
     """
@@ -415,7 +408,7 @@ class CmdBBWrite(BBCommand):
             self.error("You do not have a post in progress.")
             return
         curpost = dict(self.character.db.curpost)
-        curpost['text'] = curpost.get('text',"") + penn_substitutions(lhs)
+        curpost['text'] = curpost.get('text', "") + penn_substitutions(lhs)
         self.character.db.curpost = curpost
         self.sys_msg("Text added to post in progress.")
 
@@ -424,7 +417,7 @@ class CmdBBWrite(BBCommand):
             self.error("You do not have a post in progress.")
             return
         curpost = dict(self.character.db.curpost)
-        message = []
+        message = list()
         message.append(header("Post in Progress"))
         message.append('Board: %s, Group: %s' % (curpost['board'], curpost['group']))
         message.append("Subject: %s" % curpost['subject'])
@@ -451,9 +444,6 @@ class CmdBBWrite(BBCommand):
             return
 
     def board_post_finish(self, lhs=None, rhs=None):
-        if not self.isic:
-            self.error("You must be @ic to make a post!")
-            return
         if not self.character.db.curpost:
             self.error("You do not have a post in progress.")
             return
@@ -465,24 +455,22 @@ class CmdBBWrite(BBCommand):
         if not board:
             self.error("Board no longer valid.")
             return
-        if not board.perm_check(self.player, 'write'):
+        if not board.check_permission(self.character, 'write'):
             self.error("Permission denied.")
             return
-        board.make_post(actor=self.character.em_actor(), subject=curpost['subject'], text=curpost['text'])
+        board.make_post(actor=self.character.actor, subject=curpost['subject'], text=curpost['text'])
         del self.character.db.curpost
 
     def board_post_startpost(self, lhs=None, rhs=None):
-        if not self.isic:
-            self.error("You must be @ic to make a post!")
-            return
         if self.group:
-            type = '+gb'
+            bb_type = '+gb'
         else:
-            type = '+bb'
+            bb_type = '+bb'
         if self.character.db.curpost:
-            self.error("You have a post in progress. Use %sproof to view it, %spost to post it, or %stoss to erase it." % (type, type, type))
+            message = "You have a post in progress. Use %sproof to view it, %spost to post it, or %stoss to erase it."
+            self.error(message % (bb_type, bb_type, bb_type))
             return
-        findname, subject = lhs.split('/',2)
+        findname, subject = lhs.split('/', 2)
         if not findname:
             self.error("No board entered.")
             return
@@ -490,28 +478,25 @@ class CmdBBWrite(BBCommand):
             self.error("No subject entered.")
             return
         try:
-            board = find_board(findname=findname.strip(), group=self.group, checker=self.player)
+            board = self.find_board(find_name=findname.strip(), group=self.group, checker=self.character)
         except AthanorError as err:
             self.error(unicode(err))
             return
-        if not board.perm_check(self.player, 'write'):
+        if not board.perm_check(self.character, 'write'):
             self.error("Permission denied.")
             return
-        curpost = {}
+        curpost = dict()
         curpost['subject'] = sanitize_string(subject)
         curpost['board'] = board
         curpost['group'] = self.group
         self.character.db.curpost = curpost
-        self.sys_msg("You have begun writing a post. Use %s to add text." % type)
+        self.sys_msg("You have begun writing a post. Use %s to add text." % bb_type)
 
     def board_post_quickpost(self, lhs=None, rhs=None):
-        if not self.isic:
-            self.error("You must be @ic to make a post!")
-            return
         if not lhs:
             self.error("No board entered.")
             return
-        findname, subject = lhs.split('/',2)
+        findname, subject = lhs.split('/', 2)
         if not findname:
             self.error("No board entered.")
             return
@@ -522,11 +507,12 @@ class CmdBBWrite(BBCommand):
             self.error("No post text entered.")
             return
         try:
-            board = find_board(findname=findname.strip(), group=self.group, checker=self.player)
+            board = self.find_board(find_name=findname.strip(), group=self.group, checker=self.character)
         except AthanorError as err:
             self.error(unicode(err))
             return
-        board.make_post(actor=self.character.em_actor(), subject=sanitize_string(subject), text=penn_substitutions(rhs.strip()))
+        board.make_post(actor=self.character.actor, subject=sanitize_string(subject),
+                        text=penn_substitutions(rhs.strip()))
 
     def post_edit(self, lhs, rhs):
         if not lhs:
@@ -556,7 +542,7 @@ class CmdBBWrite(BBCommand):
         if not rhs:
             self.error("What will you edit?")
             return
-        find, replace = rhs.split('/',1)
+        find, replace = rhs.split('/', 1)
         if not find:
             self.error("Nothing to find.")
             return
@@ -568,9 +554,9 @@ class CmdBBWrite(BBCommand):
         if not lhs:
             self.error("No board to check!")
             return
-        boardname, postnums = lhs.split('/',1)
+        boardname, postnums = lhs.split('/', 1)
         try:
-            board = find_board(findname=boardname, exact=False, group=self.group, checker=self.player, type="read")
+            board = self.find_board(find_name=boardname, group=self.group, checker=self.character)
             posts = self.parse_postnums(check=postnums, board=board)
         except AthanorError as err:
             self.error(unicode(err))
@@ -578,12 +564,12 @@ class CmdBBWrite(BBCommand):
         if len(posts) > 1:
             self.error("Can only edit one post at a time.")
             return
-        find, replace = rhs.split('/',1)
+        find, replace = rhs.split('/', 1)
         if not find:
             self.error("Nothing to find.")
             return
         for post in posts:
-            if post.can_edit(checker=self.player):
+            if post.can_edit(checker=self.character):
                 post.edit_post(find, replace)
                 self.sys_msg("Post %s: %s edited!" % (post.num, post.post_subject))
             else:
@@ -593,14 +579,14 @@ class CmdBBWrite(BBCommand):
         if not lhs:
             self.error("No board to check!")
             return
-        boardname, postnums = lhs.split('/',1)
+        boardname, postnums = lhs.split('/', 1)
         if not rhs:
             self.error("No board to move to!")
             return
         try:
-            board = find_board(findname=boardname, exact=False, group=self.group, checker=self.player, type="read")
+            board = self.find_board(find_name=boardname, group=self.group, checker=self.character)
             posts = self.parse_postnums(check=postnums, board=board)
-            board2 = find_board(findname=rhs, exact=False, group=self.group, checker=self.player, type="read")
+            board2 = self.find_board(find_name=rhs, group=self.group, checker=self.character)
         except AthanorError as err:
             self.error(unicode(err))
             return
@@ -615,7 +601,7 @@ class CmdBBWrite(BBCommand):
             if post.can_edit(checker=self.player):
                 newnum += 1
                 self.sys_msg("%s moved!" % post)
-                post.num = newnum
+                post.order = newnum
                 post.board = board2
                 post.save()
             else:
@@ -626,15 +612,16 @@ class CmdBBWrite(BBCommand):
         if not lhs:
             self.error("No board to check!")
             return
-        boardname, postnums = lhs.split('/',1)
+        boardname, postnums = lhs.split('/', 1)
         try:
-            board = find_board(findname=boardname, exact=False, group=self.group, checker=self.player, type="read")
+            board = self.find_board(find_name=boardname, group=self.group, checker=self.character)
             posts = self.parse_postnums(check=postnums, board=board)
         except AthanorError as err:
             self.error(unicode(err))
             return
         if not self.verify("posts delete %s" % postnums):
-            self.sys_msg("WARNING: This will delete posts. They cannot be recovered. Are you sure? Enter the same command again to verify.")
+            self.sys_msg("WARNING: This will delete posts. They cannot be recovered. "
+                         "Are you sure? Enter the same command again to verify.")
             return
         postdel = []
         for post in posts:
@@ -644,7 +631,6 @@ class CmdBBWrite(BBCommand):
             else:
                 self.error("Permission denied for %s" % post)
         board.posts.filter(id__in=postdel).delete()
-        board.squish_posts()
 
     def board_timeout(self, lhs, rhs):
         if '/' in lhs:
@@ -653,33 +639,34 @@ class CmdBBWrite(BBCommand):
             self.board_timeout_board(lhs, rhs)
 
     def board_timeout_posts(self, lhs, rhs):
-        boardname, postnums = lhs.split('/',1)
+        boardname, postnums = lhs.split('/', 1)
         boardname.strip()
         postnums.strip()
         try:
-            board = find_board(findname=boardname, exact=False, group=self.group, checker=self.player, type="read")
+            board = self.find_board(find_name=boardname, group=self.group, checker=self.character)
             posts = self.parse_postnums(check=postnums, board=board)
         except AthanorError as err:
             self.error(unicode(err))
             return
-        if not board.setting_timeout:
+        if not board.timeout:
             self.error("'%s' has disabled timeouts." % board)
             return
         admin = board.perm_check(self.caller, 'admin')
-        new_timeout = float(duration_entry(rhs))
+        new_timeout = int(duration_from_string(rhs).total_seconds())
         if new_timeout == 0 and not admin:
             self.error("Only board admins may sticky a post.")
             return
-        if new_timeout > board.setting_timeout and not admin:
+        if new_timeout > board.timeout and not admin:
             self.error("Only admin may set post timeouts above the board timeout.")
             return
         for post in posts:
             if not post.can_edit(self.player):
-                self.error("Cannot Edit post '%s: %s' - Permission denied." % (post.num, post.post_subject))
+                self.error("Cannot Edit post '%s: %s' - Permission denied." % (post.order, post.post_subject))
             else:
-                post.setting_timeout = new_timeout
-                self.sys_msg("Timeout set for post '%s: %s' - now %s" % (post.num, post.post_subject, time_format(new_timeout, style=1)))
-
+                post.timeout = new_timeout
+                post.save()
+                self.sys_msg("Timeout set for post '%s: %s' - now %s" % (post.order, post.post_subject,
+                                                                         time_format(new_timeout, style=1)))
 
     def board_timeout_board(self, lhs, rhs):
         if lhs:
@@ -689,29 +676,31 @@ class CmdBBWrite(BBCommand):
 
     def board_timeout_board_set(self, lhs, rhs):
         try:
-            board = find_board(findname=lhs, exact=False, group=self.group, checker=self.player, type="read")
+            board = self.find_board(find_name=lhs, group=self.group, checker=self.character)
         except AthanorError as err:
             self.error(unicode(err))
             return
         if not board.perm_check(self.player, 'admin'):
             self.error("Permission denied.")
             return
-        new_timeout = float(duration_entry(rhs).total_seconds())
+        new_timeout = int(duration_from_string(rhs).total_seconds())
         timeout_string = time_format(new_timeout, style=1) if new_timeout else '0 - Permanent'
-        board.setting_timeout = new_timeout
+        board.timeout = new_timeout
         board.save()
         self.sys_msg("'%s' timeout set to: %s" % (board, timeout_string))
 
     def board_timeout_list(self, lhs, rhs):
-        message = []
+        message = list()
         message.append(self.board_header())
         bbtable = make_table("ID", "RWA", "Name", "Timeout", width=[4, 4, 23, 47])
         for board in list_boards(group=self.group, checker=self.player):
-            bbtable.add_row(mxp_send(board.num,"+bbread %s" % board.num), board.rwastring(self.player), mxp_send(board,"+bbread %s" % board.num),
-                            time_format(board.setting_timeout) if board.setting_timeout else '0 - Permanent')
+            bbtable.add_row(mxp_send(board.order, "+bbread %s" % board.order),
+                            board.display_permissions(self.character), mxp_send(board, "+bbread %s" % board.order),
+                            time_format(board.timeout) if board.timeout else '0 - Permanent')
         message.append(bbtable)
         message.append(header())
         self.msg_lines(message)
+
 
 class CmdBBRead(BBCommand):
     """
@@ -748,13 +737,14 @@ class CmdBBRead(BBCommand):
             self.board_read_board(lhs, rhs)
 
     def board_read_list(self):
-        message = []
+        message = list()
         message.append(self.board_header())
-        bbtable = make_table("ID", "RWA", "Name","Last Post","#","U", width=[4, 4, 36, 23, 5, 5])
+        bbtable = make_table("ID", "RWA", "Name", "Last Post", "#", "U", width=[4, 4, 36, 23, 5, 5])
         for board in list_boards(group=self.group, checker=self.player) or []:
-            bbtable.add_row(mxp_send(board.num,"+bbread %s" % board.num), board.rwastring(self.player),
-                            mxp_send(board,"+bbread %s" % board.num), board.last_post(), board.posts.all().count(),
-                            board.posts.exclude(id__in=self.player.postread.posts.all()).count())
+            bbtable.add_row(mxp_send(board.order, "+bbread %s" % board.order),
+                            board.display_permissions(self.character), mxp_send(board, "+bbread %s" % board.order),
+                            board.last_post(self.character), board.posts.all().count(),
+                            board.posts.exclude(read=self.player).count())
         message.append(bbtable)
         message.append(header())
         self.msg_lines(message)
@@ -763,9 +753,9 @@ class CmdBBRead(BBCommand):
         if not lhs:
             self.error("No board to read!")
             return
-        boardname, postnums = lhs.split('/',1)
+        boardname, postnums = lhs.split('/', 1)
         try:
-            board = find_board(findname=boardname, exact=False, group=self.group, checker=self.player, type="read")
+            board = self.find_board(find_name=boardname, group=self.group, checker=self.character)
             posts = self.parse_postnums(check=postnums, board=board)
         except AthanorError as err:
             self.error(unicode(err))
@@ -774,46 +764,24 @@ class CmdBBRead(BBCommand):
             self.error("No posts to view.")
             return
         for post in posts:
-            self.display_post(post=post)
-
-    def display_post(self, post=None):
-        if not post:
-            return False
-        message = []
-        message.append(header(post.board.display_name()))
-        message.append("Message: %s/%s - By %s on %s" % (post.board.num, post.num, post.actor.character_name, post.date_posted.strftime('%X %x %Z')))
-        message.append(separator(post.post_subject))
-        message.append(post.post_text)
-        message.append(header())
-        self.msg_lines(message)
-        self.player.postread.posts.add(post)
+            self.caller.msg(post.show_post(self.player))
 
     def board_read_board(self, lhs=None, rhs=None):
         if not lhs:
             self.error("No board to read!")
             return
         try:
-            board = find_board(findname=lhs, exact=False, group=self.group, checker=self.player, type="read")
+            board = self.find_board(find_name=lhs, group=self.group, checker=self.character)
         except AthanorError as err:
             self.error(unicode(err))
             return
-        message = []
-        if self.group:
-            message.append(header("(%s) %s Boards - %s" % (self.sysname, self.group, board)))
-        else:
-            message.append(header('(%s) %s Boards - %s' % (self.sysname, settings.SERVERNAME, board)))
-        bbtable = make_table("ID", "Subject", "Date", "Poster", width=[6, 29, 22, 21])
-        for count, post in enumerate(board.posts.all().order_by('date_posted')):
-            bbtable.add_row(count + 1, post.post_subject, post.date_posted.strftime('%X %x %Z'), post.actor.character_name)
-        message.append(bbtable)
-        message.append(header())
-        self.msg_lines(message)
+        self.caller.msg(board.show_board(self.player))
 
     def read_next(self):
-        for board in list_boards(group=self.group, checker=self.player):
-            unread = self.player.get_board_unread(board=board, first=True, num=False)
+        for board in list_boards(group=self.group, checker=self.character):
+            unread = board.posts.all().exclude(read=self.player).first()
             if unread:
-                self.display_post(unread)
+                self.caller.msg(unread.show_post(self.player))
                 return
         self.sys_msg("There are no unread posts to see.")
 
@@ -821,107 +789,85 @@ class CmdBBRead(BBCommand):
         if not lhs:
             self.error("What do you want to catch up on? Give a board or 'ALL' (case sensitive)")
             return
-        if lhs == 'ALL':
+        if lhs.upper() == 'ALL':
             for board in list_boards(group=self.group, checker=self.player):
                 for post in board.posts.all():
-                    self.player.postread.posts.add(post)
+                    post.read.add(self.player)
             self.sys_msg("All posts for all boards marked read.")
             return
         else:
             try:
-                board = find_board(findname=lhs, exact=False, group=self.group, checker=self.player, type="read")
+                board = self.find_board(find_name=lhs.strip(), group=self.group, checker=self.character)
             except AthanorError as err:
                 self.error(unicode(err))
                 return
             for post in board.posts.all():
-                self.player.postread.posts.add(post)
-            self.sys_msg("All posts for Board %s: %s marked read." % (board.num, board.name))
+                post.read.add(self.player)
+            self.sys_msg("All posts for Board %s: %s marked read." % (board.order, board.key))
         return
 
     def read_scan(self):
         if self.group:
             self.read_scan_gb()
             return
-        message = []
+        message = list()
         message.append(self.board_header())
         bbs = make_table("ID", "Board", "U", "Posts", width=[4, 30, 4, 39])
         boards = list_boards(checker=self.player)
         show = False
         if boards:
             for board in boards:
-                unread = board.get_unread(checker=self.player, num=True)
+                unread = board.posts.all().exclude(read=self.player)
                 if unread:
                     show = True
-                    bbs.add_row(board.num, board.name, len(unread), ", ".join(str(n) for n in unread))
+                    bbs.add_row(board.order, board, len(unread), ", ".join(str(n.order) for n in unread))
             message.append(bbs)
             message.append(header())
         if show:
             self.msg_lines(message)
         else:
             self.sys_msg("There are no unread posts on the BBS.")
-        for group in EveGroup.objects.all():
-            if group.is_member(self.player):
+        for group in Group.objects.all():
+            if group.is_member(self.character):
                 self.read_scan_gb(group=group, standalone=False)
 
     def read_scan_gb(self, group=None, standalone=True):
         if not group:
             group = self.group
-        message = []
+        message = list()
         message.append(self.board_header(group=group))
-        bbs = make_table("ID", "Board", "U", "Posts",width=[4, 30, 4, 39])
-        boards = list_boards(group=group, checker=self.player)
+        bbs = make_table("ID", "Board", "U", "Posts", width=[4, 30, 4, 39], viewer=self.character)
+        boards = list_boards(group=group, checker=self.character)
         show = False
         if boards:
             for board in boards:
-                unread = board.get_unread(checker=self.player, num=True)
+                unread = board.posts.all().exclude(read=self.character)
                 if unread:
                     show = True
-                    bbs.add_row(board.num, board.name, len(unread), ", ".join(str(n) for n in unread))
+                    bbs.add_row(board.order, board, len(unread), ", ".join(str(n.order) for n in unread))
             message.append(bbs)
-            message.append(header())
+            message.append(header(viewer=self.character))
         if show:
             self.msg_lines(message)
         elif standalone:
             self.sys_msg("There are no unread posts on the %s GBS." % group)
 
-    def board_check(self):
-        check = bool(self.player.db.nobbcheck)
-        if check:
-            self.player.db.nobbcheck = False
-            self.sys_msg("You will now see +bbscan on startup.")
-            return
-        else:
-            self.player.db.nobbcheck = True
-            self.sys_msg("You will no longer see +bbscan on startup.")
-            return
 
 class GBCommand(BBCommand):
     """
     This is the class template for group bb commands.
     """
     help_category = "Groups"
-    sysname = "GBS"
+    system_name = "GBS"
     locks = "cmd:all()"
 
     def func(self):
         """
         Here we go!
         """
-        caller = self.caller
-        switches = self.switches
-        isadmin = self.is_admin
         rhs = self.rhs
         lhs = self.lhs
         cstr = self.cmdstring
-
-        playswitches = []
-        admswitches = []
-
-        if isadmin:
-            callswitches = playswitches + admswitches
-        else:
-            callswitches = playswitches
-        switches = self.partial(switches, callswitches)
 
         cstr = cstr[2:]
 
@@ -933,6 +879,7 @@ class GBCommand(BBCommand):
             return
 
         self.choose_command(lhs, rhs, cstr)
+
 
 class CmdGBList(GBCommand, CmdBBList):
     """
@@ -950,6 +897,7 @@ class CmdGBList(GBCommand, CmdBBList):
 
     key = '+gblist'
     aliases = ['+gbleave', '+gbjoin']
+
 
 class CmdGBAdmin(GBCommand, CmdBBAdmin):
     """
@@ -975,6 +923,7 @@ class CmdGBAdmin(GBCommand, CmdBBAdmin):
     key = "+gbconfig"
     aliases = ['+gbnewgroup', '+gbcleargroup', '+gborder', '+gblock']
     locks = "cmd:pperm(Wizards) or gbmanage()"
+
 
 class CmdGBWrite(GBCommand, CmdBBWrite):
     """
@@ -1005,7 +954,6 @@ class CmdGBWrite(GBCommand, CmdBBWrite):
 
     key = "+gbpost"
     aliases = ['+gbwrite', '+gbedit', '+gbtoss', '+gbmove', '+gbremove', '+gbtimeout', '+gb', '+gbproof']
-
 
 
 class CmdGBRead(GBCommand, CmdBBRead):

@@ -8,10 +8,11 @@ creation commands.
 
 """
 import time, pytz
+from django.conf import settings
 from evennia import DefaultCharacter
-from evennia.utils.utils import time_format
+from evennia.utils.utils import time_format, lazy_property
 from evennia.utils.ansi import ANSIString
-from commands.library import AthanorError, utcnow, mxp_send
+from commands.library import AthanorError, utcnow, mxp_send, header
 
 class Character(DefaultCharacter):
     """
@@ -47,7 +48,7 @@ class Character(DefaultCharacter):
         super(Character, self).at_post_puppet()
         self.last_played(update=True)
 
-    def search_character(self, search_name):
+    def search_character(self, search_name=None):
         """
         Wrapper method for .search() for Characters only. Used by most Athanor code.
 
@@ -61,6 +62,9 @@ class Character(DefaultCharacter):
             AthanorError: If character cannot be found.
 
         """
+        if not search_name:
+            raise AthanorError("Character name field empty.")
+
         # First, collect all possible character candidates.
         candidates = Character.objects.filter_family()
 
@@ -133,13 +137,6 @@ class Character(DefaultCharacter):
             return False
         return True
 
-    def timezone(self, value=None):
-        owner = self.db._owner
-        if owner:
-            return owner.timezone(value=value)
-        else:
-            return pytz.UTC
-
     def last_played(self, update=False):
         if update:
             self.db._last_played = utcnow()
@@ -149,7 +146,7 @@ class Character(DefaultCharacter):
         idle = self.idle_time
         last = self.last_played()
         if not idle or not viewer.can_see(self):
-            tz = viewer.timezone()
+            tz = viewer.settings.get('system_timezone')
             return viewer.display_local_time(date=last, format='%b %d')
         return time_format(idle, style=1)
 
@@ -157,7 +154,7 @@ class Character(DefaultCharacter):
         conn = self.connection_time
         last = self.last_played()
         if not conn or not viewer.can_see(self):
-            tz = viewer.timezone()
+            tz = viewer.settings.get('system_timezone')
             return viewer.display_local_time(date=last, format='%b %d')
         return time_format(conn, style=1)
 
@@ -169,13 +166,17 @@ class Character(DefaultCharacter):
             format = '%b %d %I:%M%p %Z'
         if not date:
             date = utcnow()
-        tz = self.timezone()
+        tz = self.settings.get('system_timezone')
         time = date.astimezone(tz)
         return time.strftime(format)
 
     def sys_msg(self, message, sys_name='SYSTEM', error=False):
-        alert = sys_name + '>'
-        self.msg(unicode(ANSIString(alert + message)))
+        if error:
+            message = '{rERROR:{n %s' % message
+        alert = '{%s-=<{n{%s%s{n{%s>=-{n ' % (self.settings.get('color_msgborder'), self.settings.get('color_msgtext'),
+                                            sys_name.upper(), self.settings.get('color_msgborder'))
+        send_string = alert + message
+        self.msg(unicode(ANSIString(send_string)))
 
     def character_slot_value(self, update=None):
         if update is not None:
@@ -194,3 +195,7 @@ class Character(DefaultCharacter):
             commands = ['+finger']
         send_commands = '|'.join(['%s %s' % (command, self.key) for command in commands])
         return mxp_send(text=self.key, command=send_commands)
+
+    @lazy_property
+    def settings(self):
+        return self.db._owner.settings

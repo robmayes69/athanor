@@ -25,9 +25,10 @@ several more options for customizing the Guest account system.
 import pytz
 from django.conf import settings
 from evennia import DefaultPlayer, DefaultGuest
-from evennia.utils.utils import time_format
+from evennia.utils.utils import time_format, lazy_property
 from evennia.utils.ansi import ANSIString
-from commands.library import utcnow, AthanorError
+from commands.library import utcnow, AthanorError, header
+from world.player_settings import SettingHandler
 
 class Player(DefaultPlayer):
     """
@@ -162,19 +163,12 @@ class Player(DefaultPlayer):
         self.actor.update_name(self.key)
         super(Player, self).delete(*args, **kwargs)
 
-    def timezone(self, value=None):
-        if value:
-            self.db._timezone = value
-        if self.db._timezone:
-            return self.db._timezone
-        return pytz.UTC
-
     def display_local_time(self, date=None, format=None):
         if not format:
             format = '%b %d %I:%M%p %Z'
         if not date:
             date = utcnow()
-        tz = self.timezone()
+        tz = self.settings.get('system_timezone')
         time = date.astimezone(tz)
         return time.strftime(format)
 
@@ -205,7 +199,7 @@ class Player(DefaultPlayer):
         idle = self.idle_time
         last = self.last_played()
         if not idle or not viewer.can_see(self):
-            tz = viewer.timezone()
+            tz = viewer.settings.get('system_timezone')
             return viewer.display_local_time(date=last, format='%b %d')
         return time_format(idle, style=1)
 
@@ -213,13 +207,17 @@ class Player(DefaultPlayer):
         conn = self.connection_time
         last = self.last_played()
         if not conn or not viewer.can_see(self):
-            tz = viewer.timezone()
+            tz = viewer.settings.get('system_timezone')
             return viewer.display_local_time(date=last, format='%b %d')
         return time_format(conn, style=1)
 
     def sys_msg(self, message, sys_name='SYSTEM', error=False):
-        alert = sys_name + '(Player)>'
-        self.msg(unicode(ANSIString(alert + message)))
+        if error:
+            message = '{rERROR:{n %s' % message
+        alert = '{%s-=<{n{%s%s{n{%s>=-{n ' % (self.settings.get('color_msgborder'), self.settings.get('color_msgtext'),
+                                            sys_name.upper(), self.settings.get('color_msgborder'))
+        send_string = alert + '(Player) ' + message
+        self.msg(unicode(ANSIString(send_string)))
 
     def can_see(self, target):
         if self.is_admin():
@@ -257,6 +255,11 @@ class Player(DefaultPlayer):
 
     def used_character_slots(self):
         return sum([char.character_slot_value() for char in self.get_all_characters()])
+
+    @lazy_property
+    def settings(self):
+        return SettingHandler(self)
+
 
 class Guest(DefaultGuest):
     """

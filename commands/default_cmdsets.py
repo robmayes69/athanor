@@ -17,6 +17,9 @@ own cmdsets by inheriting from them or directly from `evennia.CmdSet`.
 from evennia import default_cmds
 from commands.community import CmdWho, CmdPWho
 from commands.info_files import CmdInfo
+from commands.bbs import CmdBBAdmin, CmdBBList, CmdBBRead, CmdBBWrite, CmdGBAdmin, CmdGBList, CmdGBRead, CmdGBWrite
+from commands.account_management import CmdPlayerConfig, CmdTz
+from commands.groups import GROUP_COMMANDS
 
 class CharacterCmdSet(default_cmds.CharacterCmdSet):
     """
@@ -36,6 +39,16 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         #
         self.add(CmdWho())
         self.add(CmdInfo())
+        self.add(CmdBBAdmin())
+        self.add(CmdBBList())
+        self.add(CmdBBRead())
+        self.add(CmdBBWrite())
+        self.add(CmdGBAdmin())
+        self.add(CmdGBList())
+        self.add(CmdGBRead())
+        self.add(CmdGBWrite())
+        for group_cmd in GROUP_COMMANDS:
+            self.add(group_cmd())
 
 class PlayerCmdSet(default_cmds.PlayerCmdSet):
     """
@@ -55,6 +68,8 @@ class PlayerCmdSet(default_cmds.PlayerCmdSet):
         # any commands you add below will overload the default ones.
         #
         self.add(CmdPWho())
+        self.add(CmdPlayerConfig())
+        self.add(CmdTz())
 
 class UnloggedinCmdSet(default_cmds.UnloggedinCmdSet):
     """

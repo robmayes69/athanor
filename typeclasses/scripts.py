@@ -89,3 +89,27 @@ class Script(DefaultScript):
 
     """
     pass
+
+class BoardTimeout(Script):
+
+    def at_script_creation(self):
+        self.key = 'Board Timeout'
+        self.desc = 'Handles BBS maintenance.'
+        self.interval = 60 * 60 * 24 # Every day.
+        self.persistent = True
+
+    def at_repeat(self):
+        boards = self.em_get_boards()
+        for board in boards:
+            board.run_timeout(self.interval)
+
+    def is_valid(self):
+        boards = self.em_get_boards()
+        if boards:
+            return True
+        return False
+
+    def em_get_boards(self):
+        from world.database.bbs.models import Board
+        boards = Board.objects.all()
+        return boards

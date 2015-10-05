@@ -14,7 +14,7 @@ class Board(models.Model):
     lock_storage = models.TextField('locks', blank=True)
     ignore_list = models.ManyToManyField('objects.ObjectDB')
     anonymous = models.CharField(max_length=40, null=True)
-    timeout = models.FloatField(default=0.0, null=True)
+    timeout = models.IntegerField(default=0, null=True)
     mandatory = models.BooleanField(default=False)
 
     def __unicode__(self):
@@ -51,23 +51,23 @@ class Board(models.Model):
         if not checker:
             return " "
         acc = ""
-        if self.perm_check(checker=checker, type="read", checkadmin=False):
+        if self.check_permission(checker=checker, type="read", checkadmin=False):
             acc += "R"
         else:
             acc += " "
-        if self.perm_check(checker=checker, type="write", checkadmin=False):
+        if self.check_permission(checker=checker, type="write", checkadmin=False):
             acc += "W"
         else:
             acc += " "
-        if self.perm_check(checker=checker, type="admin", checkadmin=False):
+        if self.check_permission(checker=checker, type="admin", checkadmin=False):
             acc += "A"
         else:
             acc += " "
         return acc
 
     def listeners(self):
-        return [char for char in connected_characters() if self.perm_check(checker=char)
-                and not self.ignore_list.filter(id=char.id)]
+        return [char for char in connected_characters() if self.check_permission(checker=char)
+                and not char in self.ignore_list.all()]
 
     def make_post(self, actor=None, subject=None, text=None, announce=True, date=utcnow()):
         if not actor:
@@ -76,11 +76,12 @@ class Board(models.Model):
             raise AthanorError("Text field empty.")
         if not subject:
             raise AthanorError("Subject field empty.")
+        order = self.posts.all().count() + 1
         post = self.posts.create(actor=actor, post_subject=subject, post_text=text, post_date=date,
-                                 modify_date=date, setting_timeout=self.setting_timeout,
-                                 remaining_timeout=self.setting_timeout)
-        self.squish_posts()
-        if announce: self.announce_post(post)
+                                 modify_date=date, timeout=self.timeout,
+                                 remaining_timeout=self.timeout, order=order)
+        if announce:
+            self.announce_post(post)
 
     def announce_post(self, post):
         postid = '%s/%s' % (self.order, post.order)
@@ -114,11 +115,18 @@ class Board(models.Model):
         board_table = make_table("ID", "Subject", "Date", "Poster", width=[6, 29, 22, 21])
         for post in self.posts.all().order_by('post_date'):
             board_table.add_row(post.order, post.post_subject,
-                                viewer.display_local_time(date=post.date_posted, format='%X %x %Z'),
+                                viewer.display_local_time(date=post.post_date, format='%X %x %Z'),
                                 post.display_poster(viewer))
         message.append(board_table)
-        message.append(header)
+        message.append(header())
         return "\n".join([unicode(line) for line in message])
+
+    def last_post(self, viewer):
+        find = self.posts.all().order_by('post_date').first()
+        if find:
+            return viewer.display_local_time(date=find.post_date, format='%X %x %Z')
+        else:
+            return "None"
 
 class Post(models.Model):
     board = models.ForeignKey('Board', related_name='posts')
@@ -127,7 +135,7 @@ class Post(models.Model):
     modify_date = models.DateTimeField()
     post_text = models.TextField()
     post_subject = models.CharField(max_length=30)
-    setting_timeout = models.FloatField(null=True)
+    timeout = models.FloatField(null=True)
     remaining_timeout = models.FloatField(null=True)
     read = models.ManyToManyField('players.PlayerDB')
     order = models.IntegerField(null=True)
@@ -158,12 +166,15 @@ class Post(models.Model):
     def show_post(self, viewer):
         message = []
         message.append(header(self.board.display_name()))
-        message.append('testing stuff here')
+        message.append("Message: %s/%s - By %s on %s" % (self.board.order, self.order, self.actor,
+                                                         viewer.display_local_time(date=self.post_date,format='%X %x %Z')))
         message.append(separator())
         message.append(self.post_text)
         message.append(header())
         self.read.add(viewer)
         return "\n".join([unicode(line) for line in message])
+
+
 
 def list_all_boards(group=None):
     if group:

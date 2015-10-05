@@ -1,8 +1,11 @@
 from django.db import models
 from commands.library import utcnow, sanitize_string, AthanorError, partial_match, connected_characters
+from commands.library import header, make_table
 from evennia.utils.ansi import ANSIString
 
 # Create your models here.
+
+
 class Group(models.Model):
     key = models.CharField(max_length=60, unique=True)
     order = models.IntegerField(default=0)
@@ -40,6 +43,7 @@ class Group(models.Model):
             setrank = self.find_rank(setrank)
         else:
             setrank = self.settings.start_rank
+        self.options.create(character_obj=target)
         return self.members.create(character_obj=target, rank=setrank)
 
     def remove_member(self, target=None):
@@ -48,16 +52,19 @@ class Group(models.Model):
         if not self.em_group_members.filter(character_obj=target):
             raise AthanorError("'%s' is not a member of '%s'" % (target.key, self.key))
         self.members.filter(character_obj=target).delete()
+        if not target.is_admin():
+            self.options.filter(character_obj=target).delete()
 
-    def check_permission(self, checker, check, bool=False, ignore_admin=False):
+    def check_permission(self, checker, check, give_bool=False, ignore_admin=False):
         if not ignore_admin and checker.is_admin():
             return True
         membership = self.members.filter(character_obj=checker).first()
-        if not membership and bool:
+        if not membership and give_bool:
             return False
-        elif not membership and not bool:
+        elif not membership and not give_bool:
             raise AthanorError("Checker is not a Group member.")
-        permissions = set([perm.name for perm in self.default_permissions.all()] + [perm.name for perm in membership.rank.perms.all()])
+        permissions = set([perm.name for perm in self.default_permissions.all()] +
+                          [perm.name for perm in membership.rank.perms.all()])
         if check.lower in permissions:
             return True
         if bool:
@@ -71,7 +78,7 @@ class Group(models.Model):
             raise AthanorError("Rank already exists.")
         if self.ranks.filter(name__iexact=name):
             raise AthanorError("Rank names must be unique per-group.")
-        return self.ranks.create(num=rank,name=name)
+        return self.ranks.create(num=rank, name=name)
 
     def remove_rank(self, rank=None):
         rank = valid_ranknum(rank)
@@ -88,6 +95,16 @@ class Group(models.Model):
         if checker.is_admin() and not ignore_admin:
             return 0
         return self.members.filter(character_obj=checker).first().rank.num
+
+    def find_rank(self, rank):
+        try:
+            rank_num = int(rank)
+        except ValueError:
+            raise AthanorError("Ranks must be targeted by number.")
+        found_rank = self.ranks.filter(num=rank_num).first()
+        if not found_rank:
+            raise AthanorError("Rank '%s' not found." % rank)
+        return found_rank
 
     def change_rank(self, target=None, rank=None):
         if not target:
@@ -108,9 +125,9 @@ class Group(models.Model):
             return True
         return self.members.filter(character_obj=target).first()
 
-    def listeners(self, type='ooc', system=False):
+    def listeners(self, channel_type='ooc', system=False):
         if system:
-            type = 'ooc'
+            channel_type = 'ooc'
         chars = [char for char in connected_characters() if self.is_member(char)]
         if system:
             rank = int(self.settings.sysalert)
@@ -118,14 +135,15 @@ class Group(models.Model):
             group_admin = [char for char in chars if char not in admin and self.is_member(char)]
             group_admin = [char for char in group_admin if self.get_rank(char) >= rank]
             chars = admin + group_admin
-        chars = [char for char in chars if char.em_group_option(self, type) and char.em_group_all_option(type)]
-        chars = [char for char in chars if not char.em_group_option(self, '%sgag' % type)]
+        chars = [char for char in chars if char.em_group_option(self, channel_type) and
+                 char.em_group_all_option(channel_type)]
+        chars = [char for char in chars if not char.em_group_option(self, '%sgag' % channel_type)]
         return chars
 
     def sys_msg(self, message, sender=None):
         self.msg(message=message, system=True, sender=sender)
 
-    def msg(self, sender=None, type='ooc', message=None, system=False, emit=False):
+    def msg(self, sender=None, channel_type='ooc', message=None, system=False, emit=False):
         if not sender:
             actor = None
             title = None
@@ -134,9 +152,9 @@ class Group(models.Model):
             title = None
         if not message:
             return
-        group_message = self.messages.create(actor=actor, emit=emit, message=message, type=type, system=system,
-                                             title=title)
-        recipients = self.listeners(type, system=system)
+        group_message = self.messages.create(actor=actor, emit=emit, message=message, channel_type=channel_type,
+                                             system=system, title=title)
+        recipients = self.listeners(channel_type, system=system)
 
         if not recipients:
             return
@@ -159,9 +177,33 @@ class Group(models.Model):
     def clear_muzzle_cache(self):
         self.ndb._group_channel_cache = {}
 
+    def display_group(self, viewer):
+        message = list()
+        message.append(header("Group: %s" % self))
+        grouptable = make_table("Name", "Rank", "Title", "Idle", width=[24, 23, 23, 8])
+        for member in self.members.order_by('rank__num'):
+            options, created = self.options.get_or_create(character_obj=member.character_obj)
+            title = options.title
+            grouptable.add_row(member, member.rank.name, title or '', member.character_obj.last_or_idle_time(viewer))
+        message.append(grouptable)
+        message.append(header(viewer=viewer))
+        return "\n".join([unicode(line) for line in message])
+
+    def display_ranks(self, viewer):
+        message = list()
+        message.append(header("Group Ranks: %s" % self, viewer=viewer))
+        ranktable = make_table("#", "Name", "Permissions", width=[5, 24, 49], viewer=viewer)
+        for rank in self.ranks.order_by('num'):
+            ranktable.add_row(rank.num, rank.name, ", ".join('%s' % perm for perm in rank.perms.all()))
+        ranktable.add_row("ALL", "", ", ".join('%s' % perm for perm in self.default_permissions.all()))
+        message.append(ranktable)
+        message.append(header(viewer=viewer))
+        return "\n".join([unicode(line) for line in message])
+
+
 class GroupRank(models.Model):
     num = models.IntegerField(default=0)
-    group = models.ForeignKey(Group,related_name='ranks')
+    group = models.ForeignKey(Group, related_name='ranks')
     name = models.CharField(max_length=35)
     perms = models.ManyToManyField('GroupPermissions')
 
@@ -181,12 +223,12 @@ class GroupRank(models.Model):
         self.name = newname
         self.save()
 
+
 class GroupMember(models.Model):
     character_obj = models.ForeignKey('objects.ObjectDB', related_name='groups')
     group = models.ForeignKey(Group, related_name='members')
     rank = models.ForeignKey('GroupRank')
     perms = models.ManyToManyField('GroupPermissions')
-    title = models.CharField(max_length=120)
 
     def __unicode__(self):
         return self.character_obj.key
@@ -194,11 +236,21 @@ class GroupMember(models.Model):
     class Meta:
         unique_together = (("character_obj", "group"),)
 
+
 class GroupPermissions(models.Model):
     name = models.CharField(max_length=12, unique=True)
 
     def __unicode__(self):
         return self.name
+
+
+class GroupOptions(models.Model):
+    group = models.ForeignKey('Group', related_name='options')
+    character_obj = models.ForeignKey('objects.ObjectDB', related_name='group_options')
+    title = models.CharField(max_length=120, blank=True)
+
+    class Meta:
+        unique_together = (("character_obj", "group"),)
 
 
 class GroupMessage(models.Model):
@@ -255,6 +307,7 @@ class GroupMessage(models.Model):
                 return ''
             return self.alt_name or self.actor.get_character_name or '<N/A>'
 
+
 def valid_groupname(newname=None):
     if not newname:
         raise AthanorError("Group Name is empty.")
@@ -263,6 +316,7 @@ def valid_groupname(newname=None):
         raise AthanorError("Group names may not exceed 35 characters in length.")
     return newname
 
+
 def valid_rankname(newname=None):
     if not newname:
         raise AthanorError("Rank Name is empty.")
@@ -270,6 +324,7 @@ def valid_rankname(newname=None):
     if len(newname) > 35:
         raise AthanorError("Rank Names may not exceed 35 characters in length.")
     return newname
+
 
 def valid_ranknum(newrank=None):
     if not newrank:
@@ -281,6 +336,7 @@ def valid_ranknum(newrank=None):
     if not rank_num > 4:
         raise AthanorError("Cannot interfere with default ranks 1-4.")
     return rank_num
+
 
 def find_group(search_name=None, exact=False, member=False, checker=None):
     if member and checker:
@@ -298,4 +354,3 @@ def find_group(search_name=None, exact=False, member=False, checker=None):
         return find
     else:
         raise AthanorError("Group '%s' not found. % search_name")
-

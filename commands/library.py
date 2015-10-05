@@ -6,6 +6,8 @@ from evennia.utils.ansi import ANSIString, ANSI_PARSER
 from evennia.utils import evtable, create
 
 def make_table(*args, **kwargs):
+    border_color = None
+    column_color = None
     if 'border' in kwargs:
         border = kwargs['border']
     else:
@@ -14,11 +16,34 @@ def make_table(*args, **kwargs):
         header = kwargs['header']
     else:
         header = True
+    if 'viewer' in kwargs:
+        viewer = kwargs['viewer']
+        try:
+            border_color = viewer.settings.get('color_border')
+            column_color = viewer.settings.get('color_columns')
+        except:
+            border_color = 'M'
+            column_color = 'G'
+    else:
+        border_color = 'M'
+        column_color = 'G'
+    if 'border_color' in kwargs:
+        border_color = kwargs['border_color']
+    if 'column_color' in kwargs:
+        column_color = kwargs['column_color']
 
-    table = evtable.EvTable(*args, border=border,pad_width=0, valign='t', header_line_char=ANSIString('{M-{n'),
-                            corner_char=ANSIString('{M+{n'), border_left_char=ANSIString('{M|{n'),
-                            border_right_char=ANSIString('{M|{n'), border_bottom_char=ANSIString('{M-{n'),
-                            border_top_char=ANSIString('{M-{n'), header=header)
+    args = ['{%s%s{n' % (column_color, name) for name in args]
+    header_line_char = ANSIString('{%s-{n' % border_color)
+    corner_char=ANSIString('{%s+{n' % border_color)
+    border_left_char=ANSIString('{%s|{n' % border_color)
+    border_right_char=ANSIString('{%s|{n' % border_color)
+    border_bottom_char=ANSIString('{%s-{n' % border_color)
+    border_top_char=ANSIString('{%s-{n' % border_color)
+
+    table = evtable.EvTable(*args, border=border,pad_width=0, valign='t', header_line_char=header_line_char,
+                            corner_char=corner_char, border_left_char=border_left_char,
+                            border_right_char=border_right_char, border_bottom_char=border_bottom_char,
+                            border_top_char=border_top_char, header=header)
 
     if "width" in kwargs:
         for count, width in enumerate(kwargs['width']):
@@ -91,6 +116,7 @@ def connected_characters(viewer=None):
     character_list = sorted(list(set(characters)), key=lambda char: char.key)
     if viewer:
         return [char for char in character_list if viewer.can_see(char)]
+    return character_list
 
 def utcnow():
     """
@@ -134,6 +160,8 @@ def duration_from_string(time_string):
             weeks =+ int(interval.lower().rstrip("w"))
         elif re.match(r'^[\d]+y$', interval):
             days =+ int(interval.lower().rstrip("y")) * 365
+        else:
+            raise AthanorError("Could not convert section '%s' to a time duration." % interval)
 
     return datetime.timedelta(days,seconds,0,0,minutes,hours,weeks)
 
@@ -163,9 +191,20 @@ MAIN_COLOR_DEFAULTS = {'borders': {'border': 'M', 'bordertext': 'w', 'borderdot'
 def header(header_text=None, width=78, width_mode='fixed', fill_character=None, edge_character=None,
            edges=False, viewer=None, mode='header', color_header=True):
     colors = {}
-    colors['border'] = MAIN_COLOR_DEFAULTS['borders']['border']
-    colors['bordertext'] = MAIN_COLOR_DEFAULTS['borders']['bordertext']
-    colors['borderdot'] = MAIN_COLOR_DEFAULTS['borders']['borderdot']
+    if viewer:
+        try:
+            colors['border'] = viewer.settings.get('color_border')
+            colors['headertext'] = viewer.settings.get('color_headertext')
+            colors['headerstar'] = viewer.settings.get('color_headerstar')
+        except:
+            colors['border'] = MAIN_COLOR_DEFAULTS['borders']['border']
+            colors['headertext'] = MAIN_COLOR_DEFAULTS['borders']['bordertext']
+            colors['headerstar'] = MAIN_COLOR_DEFAULTS['borders']['borderdot']
+    else:
+        colors['border'] = MAIN_COLOR_DEFAULTS['borders']['border']
+        colors['headertext'] = MAIN_COLOR_DEFAULTS['borders']['bordertext']
+        colors['headerstar'] = MAIN_COLOR_DEFAULTS['borders']['borderdot']
+
     if width_mode == 'variable' and viewer:
         width = 78
     if edges:
@@ -174,16 +213,15 @@ def header(header_text=None, width=78, width_mode='fixed', fill_character=None, 
     if header_text:
         if color_header:
             header_text = ANSIString(header_text).clean()
-            header_text = ANSIString('{n{%s%s{n' % (colors['bordertext'], header_text))
+            header_text = ANSIString('{n{%s%s{n' % (colors['headertext'], header_text))
         if mode == 'header':
-            begin_center = ANSIString("{n{%s<{%s* {n" % (colors['border'], colors['borderdot']))
-            end_center = ANSIString("{n {%s*{%s>{n" % (colors['borderdot'], colors['border']))
+            begin_center = ANSIString("{n{%s<{%s* {n" % (colors['border'], colors['headerstar']))
+            end_center = ANSIString("{n {%s*{%s>{n" % (colors['headerstar'], colors['border']))
             center_string = ANSIString(begin_center + header_text + end_center)
         else:
-            center_string = ANSIString('{n {%s%s {n'% (colors['bordertext'], header_text))
+            center_string = ANSIString('{n {%s%s {n'% (colors['headertext'], header_text))
     else:
         center_string = ''
-
 
     if not fill_character and mode == 'header':
         fill_character = '='

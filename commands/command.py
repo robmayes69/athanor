@@ -153,11 +153,11 @@ class AthCommand(MuxCommand):
     def sys_msg(self, message, target=None, error=False):
         if not target:
             target = self.caller
-        target.sys_msg(message, self.sysname, error=error)
+        target.sys_msg(message, self.system_name, error=error)
 
     def sys_report(self, message, system_name=None, sender=None):
         if not system_name:
-            system_name = self.sysname
+            system_name = self.system_name
         if not sender:
             sender = self.caller
         #staff_report(message, system_name, sender)
@@ -186,18 +186,19 @@ class AthCommand(MuxCommand):
 
     def parse_switches(self):
         self.final_switches = []
+        found_switches = []
         total_switches = []
         if self.is_admin and self.admin_switches:
             total_switches += self.admin_switches
         total_switches += self.player_switches
         for switch in self.switches:
             found_switches = partial_match(switch, total_switches)
-            for found in found_switches:
-                self.final_switches.append(found)
+            if found_switches:
+                self.final_switches.append(found_switches)
 
 
     def verify(self, checkstr):
-        if checkstr in str(self.player.db.verify):
+        if checkstr == str(self.player.db.verify):
             del self.player.db.verify
             return True
         else:
