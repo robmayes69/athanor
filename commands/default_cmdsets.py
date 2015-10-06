@@ -18,8 +18,9 @@ from evennia import default_cmds
 from commands.community import CmdWho, CmdPWho
 from commands.info_files import CmdInfo
 from commands.bbs import CmdBBAdmin, CmdBBList, CmdBBRead, CmdBBWrite, CmdGBAdmin, CmdGBList, CmdGBRead, CmdGBWrite
-from commands.account_management import CmdPlayerConfig, CmdTz
+from commands.account_management import CmdPlayerConfig, CmdTz, CmdWatch
 from commands.groups import GROUP_COMMANDS
+from commands.grid_management import DISTRICT_COMMANDS
 
 class CharacterCmdSet(default_cmds.CharacterCmdSet):
     """
@@ -49,6 +50,8 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         self.add(CmdGBWrite())
         for group_cmd in GROUP_COMMANDS:
             self.add(group_cmd())
+        for district_cmd in DISTRICT_COMMANDS:
+            self.add(district_cmd())
 
 class PlayerCmdSet(default_cmds.PlayerCmdSet):
     """
@@ -70,6 +73,7 @@ class PlayerCmdSet(default_cmds.PlayerCmdSet):
         self.add(CmdPWho())
         self.add(CmdPlayerConfig())
         self.add(CmdTz())
+        self.add(CmdWatch())
 
 class UnloggedinCmdSet(default_cmds.UnloggedinCmdSet):
     """

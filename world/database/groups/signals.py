@@ -1,6 +1,7 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from world.database.groups.models import Group, GroupPermissions
+from evennia.utils.create import create_channel
 
 
 @receiver(post_save, sender=Group)
@@ -29,4 +30,8 @@ def setup_group(sender, **kwargs):
         instance.default_permissions.add(*GroupPermissions.objects.filter(name__in=rank_all_perms))
         instance.start_rank = rank4
         instance.alert_rank = rank3
+        instance.ooc_channel = create_channel('group_%s_ooc' % instance.key, typeclass='typeclasses.channels.GroupOOC')
+        instance.ooc_channel.init_locks()
+        instance.ic_channel = create_channel('group_%s_ic' % instance.key, typeclass='typeclasses.channels.GroupIC')
+        instance.ic_channel.init_locks()
         instance.save()

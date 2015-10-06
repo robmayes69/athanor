@@ -1,7 +1,7 @@
 import pytz
 from commands.library import AthanorError, duration_from_string, partial_match, make_table, header, separator
 from evennia.utils.utils import lazy_property
-
+from evennia.utils.ansi import ANSIString
 
 class SettingHandler(object):
 
@@ -172,7 +172,10 @@ class PlayerSetting(object):
         return new_value
 
     def validate_color(self, new_value):
+        if not len(ANSIString('{%s' % new_value)) == 0:
+            raise AthanorError("'%s' is not a valid color." % new_value)
         return new_value
+
 
     def validate_timezone(self, new_value):
         try:

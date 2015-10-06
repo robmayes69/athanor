@@ -1,6 +1,7 @@
 import pytz
 from commands.command import AthCommand
 from commands.library import AthanorError, utcnow, header, subheader, separator, make_table
+from world.database.communications.models import WatchFor
 
 class CmdPlayerConfig(AthCommand):
     """
@@ -122,3 +123,83 @@ class CmdTz(AthCommand):
         message.append(tz_table)
         message.append(subheader(viewer=self.caller))
         self.msg_lines(message)
+
+
+class CmdWatch(AthCommand):
+    """
+    The WatchFor system maintains a friends list and alerts you when characters log on or off.
+
+    Usage:
+        +watch
+            Display all connected friends.
+        +watch/list
+            Display all friends, connected or not.
+        +watch/add <character>
+            Add a character to your friends list.
+        +watch/delete <character>
+            Remove a character from your friends list.
+        +watch/hide
+            No longer trigger other people's friends alerts. Use again to disable.
+        +watch/mute
+            No longer hear when friends connect. Use again to disable.
+    """
+    key = '+watch'
+    aliases = ['+friend', '+wf', 'wf']
+    system_name = 'WATCH'
+    help_category = 'Community'
+    player_switches = ['list', 'add', 'delete', 'hide', 'mute']
+
+    def func(self):
+        if not self.final_switches:
+            self.display_list()
+            return
+        else:
+            exec 'self.switch_%s()' % self.final_switches[0]
+            return
+
+    def find_watch(self):
+        watch, created = WatchFor.objects.get_or_create(db_player=self.player)
+        return watch
+
+    def display_list(self):
+        watch = self.find_watch()
+        self.character.msg(watch.display_list(viewer=self.character, connected_only=True))
+
+    def switch_list(self):
+        watch = self.find_watch()
+        self.character.msg(watch.display_list(viewer=self.character, connected_only=False))
+
+    def switch_add(self):
+        try:
+            found = self.character.search_character(self.args)
+        except AthanorError as err:
+            self.error(str(err))
+            return
+        watch = self.find_watch()
+        watch.watch_list.add(found)
+        self.sys_msg("Added '%s' to your Watch list." % found)
+
+    def switch_delete(self):
+        try:
+            found = self.character.search_character(self.args)
+        except AthanorError as err:
+            self.error(str(err))
+            return
+        watch = self.find_watch()
+        if found not in watch.watch_list.all():
+            self.error("They are not a friend!")
+            return
+        watch.watch_list.remove(found)
+        self.sys_msg("Removed '%s' from your Watch list." % found)
+
+    def switch_hide(self):
+        toggle = bool(self.player.db._watch_hide)
+        self.sys_msg("Your connections will %s alert others." % ('now' if toggle else 'no longer'))
+        self.player.db._watch_hide = toggle
+
+    def switch_mute(self):
+        toggle = bool(self.player.db._watch_mute)
+        self.sys_msg("You will %s hear friends connecting." % ('now' if toggle else 'no longer'))
+        self.player.db._watch_mute = toggle
+
+ACCOUNT_COMMANDS = [CmdPlayerConfig, CmdTz, CmdWatch]

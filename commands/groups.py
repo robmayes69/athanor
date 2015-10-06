@@ -640,7 +640,7 @@ class CmdGroupChan(GroupCommand):
             if not check_partial:
                 self.error("Entered type invalid. Choices are: OOC, IC")
                 return
-            type = check_partial[0]
+            type = check_partial
             message = rhs
 
         elif cstr == '=' or cstr == '-':
@@ -684,6 +684,31 @@ class CmdGroupChan(GroupCommand):
         self.character.db.group = group
         message.strip()
 
+        if type == 'ic':
+            channel = group.ic_channel
+        else:
+            channel = group.ooc_channel
+
+        if 'on' in switches:
+            if channel.has_connection(self.character):
+                self.error("You are already listening to the %s channel!" % type)
+                return
+            if not channel.connect(self.character):
+                self.error("Could not connect. Do you have permission?")
+                return
+            self.sys_msg("%s %s channel enabled." % (group.key, type))
+            return
+
+        if 'off' in switches:
+            if not channel.has_connection(self.character):
+                self.error("You are not listening to the %s channel!" % type)
+                return
+            if not channel.disconnect(self.character):
+                self.error("Could not disconnect.")
+                return
+            self.sys_msg("%s %s channel enabled." % (group.key, type))
+            return
+
         if 'recall' in switches:
             if not message or not int(message):
                 lines = 10
@@ -704,19 +729,20 @@ class CmdGroupChan(GroupCommand):
             self.msg_lines(recall_buffer)
             return
 
+        if not channel.has_connection(self.character):
+            self.error("You are not listening to %s %s!" % (group.key, type))
+            return
+
         if not len(message):
             self.error("What will you say?")
             return
-        muzzle_date = group.check_muzzle(self.character)
-        if muzzle_date:
-            if muzzle_date > utcnow():
-                self.error("You have been muzzled!")
-                return
+
         try:
-            group.msg(sender=self.character, type=type, message=message)
+
+            channel.msg(message, senders=self.character)
         except AthanorError as err:
             self.error(unicode(err))
             return
 
 GROUP_COMMANDS = [CmdGroupAdd, CmdGroupCreate, CmdGroupDescribe, CmdGroupDisplay, CmdGroupDisband, CmdGroupFocus,
-                  CmdGroupKick, CmdGroupList, CmdGroupPerm, CmdGroupRank, CmdGroupRename, CmdGroupTitle]
+                  CmdGroupKick, CmdGroupList, CmdGroupPerm, CmdGroupRank, CmdGroupRename, CmdGroupTitle, CmdGroupChan]

@@ -123,3 +123,7 @@ INSTALLED_APPS = INSTALLED_APPS + ('world.database.communications',
                                    'world.database.grid.apps.GridConfig',)
 
 LOCK_FUNC_MODULES = LOCK_FUNC_MODULES + ("world.database.groups.locks",)
+
+
+# TYPECLASS STUFF
+BASE_CHANNEL_TYPECLASS = "typeclasses.channels.PublicChannel"

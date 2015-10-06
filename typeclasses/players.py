@@ -105,9 +105,10 @@ class Player(DefaultPlayer):
         if not self.db._playable_characters:
             self.db._playable_characters = []
 
-        # All Players need an Actor entry!
-        from world.database.communications.models import PlayerActor
-        PlayerActor.objects.create(db_player=self, db_key=self.key)
+        # All Players need an Actor and WatchFor entry!
+        from world.database.communications.models import PlayerActor, WatchFor
+        PlayerActor.objects.get_or_create(db_player=self, db_key=self.key)
+        WatchFor.objects.get_or_create(db_player=self)
 
     def at_post_login(self, sessid=None):
         super(Player, self).at_post_login(sessid)
@@ -199,7 +200,6 @@ class Player(DefaultPlayer):
         idle = self.idle_time
         last = self.last_played()
         if not idle or not viewer.can_see(self):
-            tz = viewer.settings.get('system_timezone')
             return viewer.display_local_time(date=last, format='%b %d')
         return time_format(idle, style=1)
 
@@ -207,7 +207,6 @@ class Player(DefaultPlayer):
         conn = self.connection_time
         last = self.last_played()
         if not conn or not viewer.can_see(self):
-            tz = viewer.settings.get('system_timezone')
             return viewer.display_local_time(date=last, format='%b %d')
         return time_format(conn, style=1)
 
@@ -216,7 +215,7 @@ class Player(DefaultPlayer):
             message = '{rERROR:{n %s' % message
         alert = '{%s-=<{n{%s%s{n{%s>=-{n ' % (self.settings.get('color_msgborder'), self.settings.get('color_msgtext'),
                                             sys_name.upper(), self.settings.get('color_msgborder'))
-        send_string = alert + '(Player) ' + message
+        send_string = alert + '(Account) ' + message
         self.msg(unicode(ANSIString(send_string)))
 
     def can_see(self, target):

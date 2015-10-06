@@ -16,6 +16,8 @@ class Group(models.Model):
     start_rank = models.ForeignKey('GroupRank', null=True)
     alert_rank = models.ForeignKey('GroupRank', null=True)
     description = models.TextField(null=True)
+    ic_channel = models.ForeignKey('comms.ChannelDB', null=True, related_name='group_ic')
+    ooc_channel = models.ForeignKey('comms.ChannelDB', null=True, related_name='group_ooc')
 
     def __unicode__(self):
         return self.key
@@ -33,6 +35,11 @@ class Group(models.Model):
         if Group.objects.filter(key__iexact=new_name).exclude(id=self.id):
             raise AthanorError("That name is already in use.")
         self.key = new_name
+        if self.ic_channel:
+            self.ic_channel.key = 'group_%s_ic' % self.key
+        if self.ooc_channel:
+            self.ooc_channel.key = 'group_%s_ooc' % self.key
+        self.save()
 
     def add_member(self, target=None, setrank=None):
         if not target:
@@ -44,6 +51,10 @@ class Group(models.Model):
         else:
             setrank = self.settings.start_rank
         self.options.create(character_obj=target)
+        if self.check_permission(target, 'ic'):
+            self.ic_channel.connect(target)
+        if self.check_permission(target, 'ooc'):
+            self.ooc_channel.connect(target)
         return self.members.create(character_obj=target, rank=setrank)
 
     def remove_member(self, target=None):
@@ -125,58 +136,6 @@ class Group(models.Model):
             return True
         return self.members.filter(character_obj=target).first()
 
-    def listeners(self, channel_type='ooc', system=False):
-        if system:
-            channel_type = 'ooc'
-        chars = [char for char in connected_characters() if self.is_member(char)]
-        if system:
-            rank = int(self.settings.sysalert)
-            admin = [char for char in chars if char.is_admin()]
-            group_admin = [char for char in chars if char not in admin and self.is_member(char)]
-            group_admin = [char for char in group_admin if self.get_rank(char) >= rank]
-            chars = admin + group_admin
-        chars = [char for char in chars if char.em_group_option(self, channel_type) and
-                 char.em_group_all_option(channel_type)]
-        chars = [char for char in chars if not char.em_group_option(self, '%sgag' % channel_type)]
-        return chars
-
-    def sys_msg(self, message, sender=None):
-        self.msg(message=message, system=True, sender=sender)
-
-    def msg(self, sender=None, channel_type='ooc', message=None, system=False, emit=False):
-        if not sender:
-            actor = None
-            title = None
-        else:
-            actor = sender.em_actor()
-            title = None
-        if not message:
-            return
-        group_message = self.messages.create(actor=actor, emit=emit, message=message, channel_type=channel_type,
-                                             system=system, title=title)
-        recipients = self.listeners(channel_type, system=system)
-
-        if not recipients:
-            return
-        for character in recipients:
-            character.msg(group_message.format_msg(character))
-
-    def check_muzzle(self, sender):
-        cache = self.ndb._group_channel_cache or {}
-        if sender in cache:
-            return cache[sender]
-        group_muzzle = self.em_muzzles.filter(character_obj=sender, date_expire__lt=utcnow()).first()
-        if group_muzzle:
-            cache[sender] = group_muzzle.date_expire
-            self.ndb._group_channel_cache = cache
-            return group_muzzle.date_expire
-        cache[sender] = False
-        self.ndb._group_channel_cache = cache
-        return False
-
-    def clear_muzzle_cache(self):
-        self.ndb._group_channel_cache = {}
-
     def display_group(self, viewer):
         message = list()
         message.append(header("Group: %s" % self))
@@ -200,6 +159,19 @@ class Group(models.Model):
         message.append(header(viewer=viewer))
         return "\n".join([unicode(line) for line in message])
 
+    def delete(self, *args, **kwargs):
+        if self.ic_channel:
+            self.ic_channel.delete()
+        if self.ooc_channel:
+            self.ooc_channel.delete()
+        super(Group, self).delete(*args, **kwargs)
+
+    def sys_msg(self, text, *args, **kwargs):
+        members = [char for char in connected_characters() if self.is_member(char)]
+        listeners = [char for char in members if self.get_rank(char) <= self.alert_rank.num]
+        message = '{C<{n{x%s{n{C-{n{rSYS{n{C>{n %s' % (self.key, text)
+        for char in listeners:
+            char.msg(message)
 
 class GroupRank(models.Model):
     num = models.IntegerField(default=0)
@@ -251,61 +223,6 @@ class GroupOptions(models.Model):
 
     class Meta:
         unique_together = (("character_obj", "group"),)
-
-
-class GroupMessage(models.Model):
-    group = models.ForeignKey(Group, related_name='messages')
-    actor = models.ForeignKey('communications.ObjectActor', null=True)
-    date_sent = models.DateTimeField(default=utcnow())
-    emit = models.BooleanField(default=False)
-    message = models.TextField()
-    type = models.CharField(max_length=10)
-    alt_name = models.CharField(max_length=40, null=True)
-    system = models.BooleanField(default=False)
-    title = models.CharField(max_length=100, null=True)
-
-    def format_msg(self, viewer, date_prefix=False):
-        color = self.group.color or 'x'
-        show_date = '[%s] ' % viewer.display_local_time(date=self.date_sent) if date_prefix else ''
-        if self.system:
-            channel_prefix = ANSIString('{c<{n{%s%s{n{c>{n ' % (color, self.group.key))
-        else:
-            channel_prefix = ANSIString('{c<{n{%s%s{n{c-{n{R%s{n{c>{n ' % (color, self.group.key, self.type.upper()))
-        sys_tag = ANSIString('{rSYSTEM:{n ') if self.system else ''
-        if not (self.emit or self.system) and self.title:
-            title = self.title
-            title.strip()
-            title += ' '
-        else:
-            title = ''
-        display_prefix = self.display_name(viewer)
-        if self.emit or self.system:
-            if display_prefix:
-                display_message = display_prefix + ' ' + unicode(self.message)
-            else:
-                display_message = self.message
-        else:
-            display_message = format_speech(display_prefix, self.message, viewer)
-        return unicode(show_date + channel_prefix + sys_tag + title + display_message)
-
-    def display_name(self, viewer):
-        if viewer.is_admin():
-            if self.emit and (self.alt_name or self.actor):
-                return '(EMIT: %s)' % self.actor.get_character_name()
-            if self.emit and not (self.alt_name or self.actor):
-                return ''
-            if self.system and self.actor:
-                return '(%s)' % self.actor.get_character_name()
-            if self.system and not self.actor:
-                return ''
-            if self.alt_name:
-                return '(%s) %s' % (self.actor.get_character_name(), self.alt_name)
-            else:
-                return self.actor.get_character_name() or '<N/A>'
-        else:
-            if self.emit or self.system:
-                return ''
-            return self.alt_name or self.actor.get_character_name or '<N/A>'
 
 
 def valid_groupname(newname=None):

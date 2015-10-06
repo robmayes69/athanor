@@ -14,6 +14,7 @@ from evennia.utils.utils import time_format, lazy_property
 from evennia.utils.ansi import ANSIString
 from commands.library import AthanorError, utcnow, mxp_send, header
 
+
 class Character(DefaultCharacter):
     """
     The Character defaults to implementing some of its hook methods with the
@@ -36,17 +37,29 @@ class Character(DefaultCharacter):
 
     def at_object_creation(self):
         super(Character, self).at_object_creation()
-        from world.database.communications.models import ObjectActor
-        ObjectActor.objects.create(db_object=self, db_key=self.key)
+        from world.database.communications.models import ObjectActor, Gag
+        ObjectActor.objects.get_or_create(db_object=self, db_key=self.key)
+        Gag.objects.get_or_create(db_object=self)
         self.last_played(update=True)
 
     def at_post_unpuppet(self, player, sessid=None):
-        super(Character, self).at_pre_puppet(player, sessid)
+        super(Character, self).at_post_unpuppet(player, sessid)
         self.last_played(update=True)
+        if self.sessions:
+            return
+        self.channel_gags.db_channel.clear()
+        if self.db._owner.db._watch_mute:
+            return
+        for player in [play.db_player for play in self.on_watch.all() if not play.db_player.db._watch_mute]:
+            player.sys_msg('%s has disconnected.' % self, sys_name='WATCH')
 
     def at_post_puppet(self):
         super(Character, self).at_post_puppet()
         self.last_played(update=True)
+        if len(self.sessions) != 1 and not self.db._owner.db._watch_hide:
+            for player in [play.db_player for play in self.on_watch.all() if not play.db_player.db._watch_mute]:
+                player.sys_msg('%s has connected.' % self, sys_name='WATCH')
+
 
     def search_character(self, search_name=None):
         """
@@ -146,7 +159,6 @@ class Character(DefaultCharacter):
         idle = self.idle_time
         last = self.last_played()
         if not idle or not viewer.can_see(self):
-            tz = viewer.settings.get('system_timezone')
             return viewer.display_local_time(date=last, format='%b %d')
         return time_format(idle, style=1)
 
@@ -154,7 +166,6 @@ class Character(DefaultCharacter):
         conn = self.connection_time
         last = self.last_played()
         if not conn or not viewer.can_see(self):
-            tz = viewer.settings.get('system_timezone')
             return viewer.display_local_time(date=last, format='%b %d')
         return time_format(conn, style=1)
 

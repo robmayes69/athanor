@@ -263,13 +263,14 @@ class Speech():
 
     """
 
-    def __init__(self, speaker, speech_text, alternate_name=None, title=None):
+    def __init__(self, speaker, speech_text, alternate_name=None, title=None, codename=None):
         self.speaker = speaker
         if alternate_name:
             self.display_name = alternate_name
         else:
             self.display_name = speaker.key
         self.title = title
+        self.codename = codename
 
         speech_text = ANSIString(speech_text)
 
@@ -287,22 +288,40 @@ class Speech():
             speech_string = speech_text[1:]
         else:
             special_format = 0
+            speech_string = speech_text
 
         self.special_format = special_format
-        self.speech_string = ANSIString(speech_string.strip('"'))
+        self.speech_string = ANSIString(speech_string)
 
     def __str__(self):
-        str(self.__unicode__())
+        str(unicode(self))
 
     def __unicode__(self):
         if self.special_format == 0:
-            return_string = '%s says, "%s"' % (self.display_name, self.speech_string)
+            return_string = '%s says, "%s{n"' % (self.display_name, self.speech_string)
         elif self.special_format == 1:
             return_string = '%s %s' % (self.display_name, self.speech_string)
         elif self.special_format == 2:
             return_string = '%s%s' % (self.display_name, self.speech_string)
         elif self.special_format == 3:
             return_string = self.speech_string
+
+        if self.title:
+            return_string = '%s %s' % (self.title, return_string)
+
+        return ANSIString(return_string)
+
+    def monitor_display(self):
+        if not self.codename:
+            return unicode(self)
+        if self.special_format == 0:
+            return_string = '(%s)%s says, "%s"' % (self.display_name, self.codename, self.speech_string)
+        elif self.special_format == 1:
+            return_string = '(%s)%s %s' % (self.display_name, self.codename, self.speech_string)
+        elif self.special_format == 2:
+            return_string = '(%s)%s%s' % (self.display_name, self.codename, self.speech_string)
+        elif self.special_format == 3:
+            return_string = '(%s)%s' % (self.display_name, self.speech_string)
 
         if self.title:
             return_string = '%s %s' % (self.title, return_string)

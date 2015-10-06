@@ -190,7 +190,7 @@ class CmdBBList(BBCommand):
     def board_list(self):
         message = list()
         message.append(self.board_header())
-        bbtable = make_table("ID", "RWA", "Name", "Locks", "On", width=[4, 4, 23, 43, 4])
+        bbtable = make_table("ID", "RWA", "Name", "Locks", "On", width=[4, 4, 23, 43, 4], viewer=self.character)
         for board in list_boards(group=self.group, checker=self.character):
             if self.player in board.ignorelist.all():
                 member = "No"
@@ -199,7 +199,7 @@ class CmdBBList(BBCommand):
             bbtable.add_row(mxp_send(board.order, "+bbread %s" % board.order), board.rwastring(self.character),
                             mxp_send(board, "+bbread %s" % board.order), board.lock_storage, member)
         message.append(bbtable)
-        message.append(header())
+        message.append(header(viewer=self.character))
         self.msg_lines(message)
 
     def board_leave(self, lhs=None, rhs=None):
@@ -418,11 +418,11 @@ class CmdBBWrite(BBCommand):
             return
         curpost = dict(self.character.db.curpost)
         message = list()
-        message.append(header("Post in Progress"))
+        message.append(header("Post in Progress"), viewer=self.character)
         message.append('Board: %s, Group: %s' % (curpost['board'], curpost['group']))
         message.append("Subject: %s" % curpost['subject'])
         message.append(curpost['text'])
-        message.append(header())
+        message.append(header(viewer=self.character))
         self.msg_lines(message)
 
     def post_toss(self):
@@ -692,13 +692,13 @@ class CmdBBWrite(BBCommand):
     def board_timeout_list(self, lhs, rhs):
         message = list()
         message.append(self.board_header())
-        bbtable = make_table("ID", "RWA", "Name", "Timeout", width=[4, 4, 23, 47])
+        bbtable = make_table("ID", "RWA", "Name", "Timeout", width=[4, 4, 23, 47], viewer=self.character)
         for board in list_boards(group=self.group, checker=self.player):
             bbtable.add_row(mxp_send(board.order, "+bbread %s" % board.order),
                             board.display_permissions(self.character), mxp_send(board, "+bbread %s" % board.order),
                             time_format(board.timeout) if board.timeout else '0 - Permanent')
         message.append(bbtable)
-        message.append(header())
+        message.append(header(viewer=self.character))
         self.msg_lines(message)
 
 
@@ -726,7 +726,7 @@ class CmdBBRead(BBCommand):
         +bbsearch <board>=<player> - Search for posts by a specific person.
     """
     key = '+bbread'
-    aliases = ['+bbnext', '+bbcatchup', '+bbnew', '+bbscan', '+bbcheck', '+bbsearch']
+    aliases = ['+bbnext', '+bbcatchup', '+bbnew', '+bbscan', '+bbsearch']
 
     def board_read(self, lhs=None, rhs=None):
         if not lhs:
@@ -739,14 +739,15 @@ class CmdBBRead(BBCommand):
     def board_read_list(self):
         message = list()
         message.append(self.board_header())
-        bbtable = make_table("ID", "RWA", "Name", "Last Post", "#", "U", width=[4, 4, 36, 23, 5, 5])
-        for board in list_boards(group=self.group, checker=self.player) or []:
+        bbtable = make_table("ID", "RWA", "Name", "Last Post", "#", "U", width=[4, 4, 37, 23, 5, 5],
+                             viewer=self.character)
+        for board in list_boards(group=self.group, checker=self.character) or []:
             bbtable.add_row(mxp_send(board.order, "+bbread %s" % board.order),
                             board.display_permissions(self.character), mxp_send(board, "+bbread %s" % board.order),
                             board.last_post(self.character), board.posts.all().count(),
                             board.posts.exclude(read=self.player).count())
         message.append(bbtable)
-        message.append(header())
+        message.append(header(viewer=self.character))
         self.msg_lines(message)
 
     def board_read_post(self, lhs=None, rhs=None):
@@ -764,7 +765,7 @@ class CmdBBRead(BBCommand):
             self.error("No posts to view.")
             return
         for post in posts:
-            self.caller.msg(post.show_post(self.player))
+            self.caller.msg(post.show_post(self.character))
 
     def board_read_board(self, lhs=None, rhs=None):
         if not lhs:
@@ -812,7 +813,7 @@ class CmdBBRead(BBCommand):
             return
         message = list()
         message.append(self.board_header())
-        bbs = make_table("ID", "Board", "U", "Posts", width=[4, 30, 4, 39])
+        bbs = make_table("ID", "Board", "U", "Posts", width=[4, 30, 4, 39], viewer=self.character)
         boards = list_boards(checker=self.player)
         show = False
         if boards:
@@ -822,7 +823,7 @@ class CmdBBRead(BBCommand):
                     show = True
                     bbs.add_row(board.order, board, len(unread), ", ".join(str(n.order) for n in unread))
             message.append(bbs)
-            message.append(header())
+            message.append(header(viewer=self.character))
         if show:
             self.msg_lines(message)
         else:
