@@ -21,6 +21,7 @@ from commands.bbs import CmdBBAdmin, CmdBBList, CmdBBRead, CmdBBWrite, CmdGBAdmi
 from commands.account_management import CmdPlayerConfig, CmdTz, CmdWatch
 from commands.groups import GROUP_COMMANDS
 from commands.grid_management import DISTRICT_COMMANDS
+from commands.mush_import import CmdImport
 
 class CharacterCmdSet(default_cmds.CharacterCmdSet):
     """
@@ -52,6 +53,7 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
             self.add(group_cmd())
         for district_cmd in DISTRICT_COMMANDS:
             self.add(district_cmd())
+        self.add(CmdImport())
 
 class PlayerCmdSet(default_cmds.PlayerCmdSet):
     """

@@ -15,9 +15,13 @@ class Group(models.Model):
     default_permissions = models.ManyToManyField('GroupPermissions')
     start_rank = models.ForeignKey('GroupRank', null=True)
     alert_rank = models.ForeignKey('GroupRank', null=True)
-    description = models.TextField(null=True)
+    description = models.TextField(blank=True)
     ic_channel = models.ForeignKey('comms.ChannelDB', null=True, related_name='group_ic')
     ooc_channel = models.ForeignKey('comms.ChannelDB', null=True, related_name='group_ooc')
+    invites = models.ManyToManyField('objects.ObjectDB', related_name='group_invites')
+    ic_enabled = models.BooleanField(default=True)
+    ooc_enabled = models.BooleanField(default=True)
+    display_type = models.SmallIntegerField(default=0)
 
     def __unicode__(self):
         return self.key
@@ -41,7 +45,7 @@ class Group(models.Model):
             self.ooc_channel.key = 'group_%s_ooc' % self.key
         self.save()
 
-    def add_member(self, target=None, setrank=None):
+    def add_member(self, target=None, setrank=None, reason='accepted invite'):
         if not target:
             raise AthanorError("No target to add.")
         if self.members.filter(character_obj=target):
@@ -55,14 +59,16 @@ class Group(models.Model):
             self.ic_channel.connect(target)
         if self.check_permission(target, 'ooc'):
             self.ooc_channel.connect(target)
+        self.sys_msg('%s joined the group. Method: %s' % (target, reason))
         return self.members.create(character_obj=target, rank=setrank)
 
-    def remove_member(self, target=None):
+    def remove_member(self, target=None, reason='left'):
         if not target:
             raise AthanorError("No target to remove.")
         if not self.em_group_members.filter(character_obj=target):
             raise AthanorError("'%s' is not a member of '%s'" % (target.key, self.key))
         self.members.filter(character_obj=target).delete()
+        self.sys_msg("%s is no longer a group member. Reason: %s" % (target, reason))
         if not target.is_admin():
             self.options.filter(character_obj=target).delete()
 
@@ -172,6 +178,7 @@ class Group(models.Model):
         message = '{C<{n{x%s{n{C-{n{rSYS{n{C>{n %s' % (self.key, text)
         for char in listeners:
             char.msg(message)
+
 
 class GroupRank(models.Model):
     num = models.IntegerField(default=0)

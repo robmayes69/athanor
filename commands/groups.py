@@ -3,7 +3,7 @@ from world.database.groups.models import Group, valid_groupname, find_group, Gro
 from commands.command import AthCommand
 from commands.library import header, make_table, partial_match, sanitize_string, duration_from_string, utcnow, \
     AthanorError
-
+from evennia.utils.ansi import ANSIString
 
 class GroupCommand(AthCommand):
     """
@@ -463,6 +463,137 @@ class CmdGroupTitle(GroupCommand):
             option.title = new_title
         option.save()
 
+class CmdGroupSet(GroupCommand):
+    """
+    Used to configure per-Group options. Only the group leader or admin can change settings.
+
+    Usage:
+        +gset
+            Show options and current values.
+        +gset <option>=<value>
+            Change options.
+
+    Leader Options:
+        start - the rank new members begin at. <value> must be an existing rank number.
+        alert - the rank members must be at or exceed to hear Group System alerts.
+        ic - Whether the IC group channel is enabled or not. 1 (true) or 0 (false.)
+        ooc - Whether the OOC group channel is enabled or not.
+        color - What color the group's name should appear in. Use an Evennia color code!
+
+    Admin Options:
+        faction - Whether the group is considered a 'faction.' Factions are listed
+                before groups and appear in various commands like +finger or +fclist.
+        abbreviation - A short (Preferably 3 letters) code to represent the Group.
+        order - Display order. Integer. Affects listing order in +groups and determines
+                primacy for displays.
+        display - Alternate display modes. Not currently implemented.
+
+    """
+    key = '+gset'
+
+    def func(self):
+        try:
+            group = self.get_focus()
+        except AthanorError as err:
+            self.error(str(err))
+            return
+        if not self.args:
+            self.display_settings(group)
+            return
+        else:
+            self.change_settings(group)
+
+    def display_settings(self, group):
+        message = []
+        message.append(header('%s Settings' % group, viewer=self.character))
+        message.append('Start: %s' % group.start_rank.num)
+        message.append('Alert: %s' % group.alert_rank.num)
+        message.append('Order: %s' % group.order)
+        message.append('Color: %s' % group.color)
+        message.append('IC: %s' % group.ic_enabled)
+        message.append('OOC: %s' % group.ooc_enabled)
+        message.append('Faction: %s' % group.faction)
+        message.append('Abbreviation: %s' % group.abbreviation)
+        message.append('Display: %s' % group.display_type)
+        message.append(header(viewer=self.character))
+        self.msg("\n".join([unicode(line) for line in message]))
+
+
+    def change_settings(self, group):
+        options = ['start', 'alert', 'ic', 'ooc', 'color']
+        if self.is_admin:
+            options = options + ['faction', 'abbreviation', 'order', 'display']
+        if not self.lhs:
+            self.error("Nothing entered to set!")
+            return
+        choice = self.partial(self.lhs, options)
+        if not self.rhs:
+            self.error("Nothing entered to set it to!")
+            return
+        new_value = None
+        try:
+            exec 'new_value = self.setting_%s(group)' % choice
+            group.save()
+        except AthanorError as err:
+            self.error(str(err))
+            return
+        except ValueError as err:
+            self.error("That option must be an integer.")
+            return
+        self.sys_msg("Setting changed.")
+        group.sys_msg("Setting '%s' changed to: %s" % (choice, new_value))
+
+    def setting_start(self, group):
+        validate = group.find_rank(self.rhs)
+        group.start_rank = validate
+        return validate.num
+
+    def setting_alert(self, group):
+        validate = group.find_rank(self.rhs)
+        group.alert_rank = validate
+        return validate.num
+
+    def setting_ic(self, group):
+        if self.rhs not in ['0', '1']:
+            raise AthanorError("'IC' Must be 0 or 1.")
+        validate = int(self.rhs)
+        group.ic_enabled = validate
+        return validate
+
+    def setting_ooc(self, group):
+        if self.rhs not in ['0', '1']:
+            raise AthanorError("'OOC' Must be 0 or 1.")
+        validate = int(self.rhs)
+        group.ooc_enabled = validate
+        return validate
+
+    def setting_color(self, group):
+        if not len(ANSIString('{%s' % self.rhs)) == 0:
+            raise AthanorError("Invalid color code!")
+        group.color = self.rhs
+        return self.rhs
+
+    def setting_order(self, group):
+        validate = int(self.rhs)
+        group.order = validate
+        return validate
+
+    def setting_display(self, group):
+        validate = int(self.rhs)
+        group.display = validate
+        return validate
+
+    def setting_faction(self, group):
+        if self.rhs not in ['0', '1']:
+            raise AthanorError("'Faction' Must be 0 or 1.")
+        validate = bool(int(self.rhs))
+        group.faction = validate
+        return validate
+
+    def setting_abbreviation(self, group):
+        validate = sanitize_string(self.rhs, strip_ansi=True)
+        group.abbreviation = validate
+        return validate
 
 class CmdGroupMuzzle(GroupCommand):
     """
@@ -555,10 +686,6 @@ class CmdGroupAdd(GroupCommand):
     key = "+gadd"
     locks = "cmd:perm(Wizards)"
 
-
-    key = "+gjoin"
-    aliases = ['+gadd', '+ginvite', '+guninvite', '+gleave']
-
     def func(self):
         rhs = self.rhs
         lhs = self.lhs
@@ -611,6 +738,118 @@ class CmdGroupKick(GroupCommand):
             self.sys_msg("%s kicked from the %s!" % (target.key, group))
         self.sys_msg("You have been kicked from the %s Group by %s" % (group, self.character.key), target)
 
+
+class CmdGroupInvite(GroupCommand):
+    """
+    Used to send invites to prospective group members.
+
+    Inviting members requires the manage permission.
+
+    Usage:
+        +ginvite <character>
+
+    Switches:
+        +ginvite/withdraw <Character>
+            Cancel a pending invitation.
+    """
+    key = '+ginvite'
+    player_switches = ['withdraw']
+
+    def func(self):
+        lhs = self.lhs
+        try:
+            group = self.get_focus()
+            group.check_permission(self.character, "manage")
+            target = self.character.search_character(lhs)
+        except AthanorError as err:
+            self.error(str(err))
+            return
+        if group.is_member(target, ignore_admin=True):
+            self.error("They are already a member!")
+            return
+        if 'withdraw' in self.final_switches:
+            self.remove_invite(group, target)
+        else:
+            self.grant_invite(group, target)
+
+    def remove_invite(self, group, target):
+        if target not in group.invites.all():
+            self.error("They have no outstanding invite!")
+            return
+        group.invites.remove(target)
+        self.sys_msg("Invite withdrawn from %s." % target)
+        self.sys_msg("Your invite to the %s was withdrawn." % group, target=target)
+
+    def grant_invite(self, group, target):
+        if target in group.invites.all():
+            self.error("They already have an invite!")
+            return
+        group.invites.add(target)
+        self.sys_msg("Invite sent to %s." % target)
+        self.sys_msg("Your received an invite to the %s. Use +gjoin %s to accept!" % (group, group), target=target)
+
+
+class CmdGroupJoin(GroupCommand):
+    """
+    Used to answer a Group invite and join a group!
+
+    Usage:
+        +gjoin <group>
+    """
+    key = '+gjoin'
+
+    def func(self):
+        invites = self.character.group_invites.all()
+        if not invites:
+            self.error("You have no pending invites!")
+            return
+        if not self.args:
+            self.sys_msg("You have invites pending for the following Groups: %s"
+                         % ", ".join([group.key for group in invites]))
+            return
+        found = self.partial(self.args, invites)
+        if not found:
+            self.error("Group '%s' not found!" % self.args)
+            return
+        try:
+            found.add_member(self.character, reason='accepted invite')
+            found.invites.remove(self.character)
+        except AthanorError as err:
+            self.error(str(err))
+            return
+        self.sys_msg('Welcome to the %s!' % found)
+
+class CmdGroupLeave(GroupCommand):
+    """
+    Used to leave your currently focused Group. Be careful!
+
+    Usage:
+        +gleave
+            Will ask for confirmation...
+    """
+    key = '+gleave'
+
+    def func(self):
+        try:
+            group = self.get_focus()
+        except AthanorError as err:
+            self.error(str(err))
+            return
+        if group.is_member(self.character, ignore_admin=True):
+            self.error("You are not a member!")
+            return
+        if group.get_rank(self.character, ignore_admin=True) < 2:
+            self.error('Group leaders cannot leave. Contact admin to do this for you.')
+            return
+        if not self.verify('group leave %s' % group.id):
+            self.sys_msg("Leaving the %s. Are you sure? Use the command again to confirm!" % group)
+            return
+        try:
+            group.remove_member(self.character)
+        except AthanorError as err:
+            self.error(str(err))
+            return
+        self.sys_msg("You have left the group!")
 
 class CmdGroupChan(GroupCommand):
     """
@@ -745,4 +984,5 @@ class CmdGroupChan(GroupCommand):
             return
 
 GROUP_COMMANDS = [CmdGroupAdd, CmdGroupCreate, CmdGroupDescribe, CmdGroupDisplay, CmdGroupDisband, CmdGroupFocus,
-                  CmdGroupKick, CmdGroupList, CmdGroupPerm, CmdGroupRank, CmdGroupRename, CmdGroupTitle, CmdGroupChan]
+                  CmdGroupKick, CmdGroupList, CmdGroupPerm, CmdGroupRank, CmdGroupRename, CmdGroupTitle, CmdGroupChan,
+                  CmdGroupJoin, CmdGroupLeave, CmdGroupInvite, CmdGroupSet]

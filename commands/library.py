@@ -21,7 +21,7 @@ def make_table(*args, **kwargs):
         try:
             border_color = viewer.settings.get('color_border')
             column_color = viewer.settings.get('color_columns')
-        except:
+        except AttributeError:
             border_color = 'M'
             column_color = 'G'
     else:
@@ -34,13 +34,13 @@ def make_table(*args, **kwargs):
 
     args = ['{%s%s{n' % (column_color, name) for name in args]
     header_line_char = ANSIString('{%s-{n' % border_color)
-    corner_char=ANSIString('{%s+{n' % border_color)
-    border_left_char=ANSIString('{%s|{n' % border_color)
-    border_right_char=ANSIString('{%s|{n' % border_color)
-    border_bottom_char=ANSIString('{%s-{n' % border_color)
-    border_top_char=ANSIString('{%s-{n' % border_color)
+    corner_char = ANSIString('{%s+{n' % border_color)
+    border_left_char = ANSIString('{%s|{n' % border_color)
+    border_right_char = ANSIString('{%s|{n' % border_color)
+    border_bottom_char = ANSIString('{%s-{n' % border_color)
+    border_top_char = ANSIString('{%s-{n' % border_color)
 
-    table = evtable.EvTable(*args, border=border,pad_width=0, valign='t', header_line_char=header_line_char,
+    table = evtable.EvTable(*args, border=border, pad_width=0, valign='t', header_line_char=header_line_char,
                             corner_char=corner_char, border_left_char=border_left_char,
                             border_right_char=border_right_char, border_bottom_char=border_bottom_char,
                             border_top_char=border_top_char, header=header)
@@ -49,6 +49,7 @@ def make_table(*args, **kwargs):
         for count, width in enumerate(kwargs['width']):
             table.reformat_column(count, width=width)
     return table
+
 
 def make_column_table(*args, **kwargs):
     if 'border' in kwargs:
@@ -70,6 +71,7 @@ def make_column_table(*args, **kwargs):
 class AthanorError(Exception):
     pass
 
+
 def connected_sessions():
     """
     Simple shortcut to retrieving all connected sessions.
@@ -78,6 +80,7 @@ def connected_sessions():
         list
     """
     return evennia.SESSION_HANDLER.sessions.values()
+
 
 def connected_players(viewer=None):
     """
@@ -98,6 +101,7 @@ def connected_players(viewer=None):
         return [player for player in player_list if viewer.can_see(player)]
     return player_list
 
+
 def connected_characters(viewer=None):
     """
     Uses the current online sessions to derive a list of connected characters.
@@ -117,6 +121,7 @@ def connected_characters(viewer=None):
     if viewer:
         return [char for char in character_list if viewer.can_see(char)]
     return character_list
+
 
 def utcnow():
     """
@@ -163,13 +168,15 @@ def duration_from_string(time_string):
         else:
             raise AthanorError("Could not convert section '%s' to a time duration." % interval)
 
-    return datetime.timedelta(days,seconds,0,0,minutes,hours,weeks)
+    return datetime.timedelta(days, seconds, 0, 0, minutes, hours, weeks)
+
 
 def mxp_send(text="", command="", hints=""):
     if text:
         return ANSIString("{lc%s{lt%s{le" % (command, text))
     else:
         return ANSIString("{lc%s{lt%s{le" % (command, command))
+
 
 def partial_match(match_text, candidates):
     candidate_list = sorted(candidates, key=lambda item: len(str(item)))
@@ -188,6 +195,7 @@ MAIN_COLOR_DEFAULTS = {'borders': {'border': 'M', 'bordertext': 'w', 'borderdot'
                        'alerts': {'text': 'w', 'border': 'M', 'roomdot': 'm', 'error': 'r'},
                        'rooms': {'players': 'n', 'exitnames': 'n', 'exitalias': 'x', 'border': 'M', 'bordertext': 'w', 'borderdot': 'm'},}
 
+
 def header(header_text=None, width=78, width_mode='fixed', fill_character=None, edge_character=None,
            edges=False, viewer=None, mode='header', color_header=True):
     colors = {}
@@ -196,7 +204,7 @@ def header(header_text=None, width=78, width_mode='fixed', fill_character=None, 
             colors['border'] = viewer.settings.get('color_border')
             colors['headertext'] = viewer.settings.get('color_headertext')
             colors['headerstar'] = viewer.settings.get('color_headerstar')
-        except:
+        except AttributeError:
             colors['border'] = MAIN_COLOR_DEFAULTS['borders']['border']
             colors['headertext'] = MAIN_COLOR_DEFAULTS['borders']['bordertext']
             colors['headerstar'] = MAIN_COLOR_DEFAULTS['borders']['borderdot']
@@ -219,7 +227,7 @@ def header(header_text=None, width=78, width_mode='fixed', fill_character=None, 
             end_center = ANSIString("{n {%s*{%s>{n" % (colors['headerstar'], colors['border']))
             center_string = ANSIString(begin_center + header_text + end_center)
         else:
-            center_string = ANSIString('{n {%s%s {n'% (colors['headertext'], header_text))
+            center_string = ANSIString('{n {%s%s {n' % (colors['headertext'], header_text))
     else:
         center_string = ''
 
@@ -240,17 +248,20 @@ def header(header_text=None, width=78, width_mode='fixed', fill_character=None, 
     else:
         return ANSIString(center_string).center(width, fill)
 
+
 def subheader(*args, **kwargs):
-    if not 'mode' in kwargs:
+    if 'mode' not in kwargs:
         kwargs['mode'] = 'subheader'
     return header(*args, **kwargs)
 
+
 def separator(*args, **kwargs):
-    if not 'mode' in kwargs:
+    if 'mode' not in kwargs:
         kwargs['mode'] = 'separator'
     return header(*args, **kwargs)
 
-class Speech():
+
+class Speech(object):
     """
     This class is similar to the Evennia Msg in that it represents an entity speaking.
     It is meant to render speech from a player or character. The output replicates MUSH-style
@@ -262,6 +273,8 @@ class Speech():
     If input = 'blah.', output = 'Character says, "Blah,"'
 
     """
+
+    __slots__ = ['speaker', 'display_name', 'title', 'codename', 'special_format', 'speech_string']
 
     def __init__(self, speaker, speech_text, alternate_name=None, title=None, codename=None):
         self.speaker = speaker
@@ -283,7 +296,7 @@ class Speech():
         elif speech_text[:1] == '|':
             special_format = 3
             speech_string = speech_text[1:]
-        elif speech_text[:1] in ['"',"'"]:
+        elif speech_text[:1] in ['"', "'"]:
             special_format = 0
             speech_string = speech_text[1:]
         else:
@@ -297,6 +310,7 @@ class Speech():
         str(unicode(self))
 
     def __unicode__(self):
+        return_string = None
         if self.special_format == 0:
             return_string = '%s says, "%s{n"' % (self.display_name, self.speech_string)
         elif self.special_format == 1:
@@ -312,6 +326,7 @@ class Speech():
         return ANSIString(return_string)
 
     def monitor_display(self):
+        return_string = None
         if not self.codename:
             return unicode(self)
         if self.special_format == 0:
@@ -328,12 +343,14 @@ class Speech():
 
         return ANSIString(return_string)
 
+
 def tabular_table(word_list=[], field_width=26, line_length=78, output_separator=" ", truncate_elements=True):
     """
     This function returns a tabulated string composed of a basic list of words.
     """
     elements = [ANSIString(entry) for entry in word_list]
-    if truncate_elements: elements = [entry[:field_width] for entry in elements]
+    if truncate_elements:
+        elements = [entry[:field_width] for entry in elements]
     elements = [entry.ljust(field_width) for entry in elements]
     separator_length = len(output_separator)
     per_line = line_length / (field_width + separator_length)
@@ -355,6 +372,7 @@ def tabular_table(word_list=[], field_width=26, line_length=78, output_separator
             result_string += element
     return unicode(result_string)
 
+
 def sanitize_string(input=None, length=None, strip_ansi=False, strip_mxp=True, strip_newlines=True, strip_indents=True):
     if not input:
         return ''
@@ -373,6 +391,7 @@ def sanitize_string(input=None, length=None, strip_ansi=False, strip_mxp=True, s
     if length:
         input = input[:length]
     return unicode(input)
+
 
 def penn_substitutions(input=None):
     if not input:

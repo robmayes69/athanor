@@ -87,6 +87,14 @@ class Gag(models.Model):
     db_object = models.OneToOneField('objects.ObjectDB', related_name='channel_gags')
     db_channel = models.ManyToManyField('comms.ChannelDB', related_name='gagging')
 
+class Muzzle(models.Model):
+    channel = models.ForeignKey('comms.ChannelDB', related_name='muzzles', null=True)
+    object = models.ForeignKey('objects.ObjectDB', related_name='muzzles', null=True)
+    player = models.ForeignKey('players.PlayerDB', related_name='muzzles', null=True)
+    setby = models.ForeignKey('ObjectActor', null=True, on_delete=models.SET_NULL)
+    is_global = models.BooleanField(default=False)
+    expires = models.DateTimeField()
+
 class Message(models.Model):
     db_player = models.ForeignKey(PlayerActor, null=True)
     db_object = models.ForeignKey(ObjectActor, null=True)

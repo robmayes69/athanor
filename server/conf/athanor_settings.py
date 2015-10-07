@@ -120,7 +120,8 @@ INSTALLED_APPS = INSTALLED_APPS + ('world.database.communications',
                                    'world.database.experience',
                                    'world.database.bbs.apps.BBSConfig',
                                    'world.database.groups.apps.GroupConfig',
-                                   'world.database.grid.apps.GridConfig',)
+                                   'world.database.grid.apps.GridConfig',
+                                   'world.database.mushimport',)
 
 LOCK_FUNC_MODULES = LOCK_FUNC_MODULES + ("world.database.groups.locks",)
 
