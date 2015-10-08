@@ -1,4 +1,4 @@
-import re
+import re, hashlib
 from django.db import models
 from commands.library import AthanorError
 
@@ -29,7 +29,7 @@ class MushObject(models.Model):
             return False
         attr = self.attrs.filter(name__iexact=attrname).first()
         if attr:
-            return attr.value
+            return attr.value.replace('%r', '%R').replace('%t', '%T')
         if self.parent:
             return self.parent.mushget(attrname)
         else:
@@ -53,6 +53,31 @@ class MushObject(models.Model):
             attrset += self.parent.lattrp(attrpattern, attrset)
         else:
             return set(attrset)
+
+    def getstat(self, attrname, stat):
+        pass
+
+    @property
+    def exits(self):
+        return self.contents.filter(type=4)
+
+    def check_password(self, password):
+        old_hash = self.mushget('XYXXY')
+        if not old_hash:
+            return False
+        if old_hash.startswith('1:'):
+            hash_against = old_hash.split(':')[2]
+            check = hashlib.new('sha1')
+            check.update(password)
+            return check.hexdigest() == hash_against
+        elif old_hash.startswith('2:'):
+            hash_against = old_hash.split(':')[2]
+            salt = hash_against[0:2]
+            hash_against = hash_against[2:]
+            check = hashlib.new('sha1')
+            check.update('%s%s' % (salt, password))
+            return check.hexdigest() == hash_against
+
 
 
 def cobj(abbr=None):
@@ -108,15 +133,16 @@ class MushAttribute(models.Model):
         unique_together = (("dbref", "name"),)
 
 
-class PennAccounts(models.Model):
-    player = models.OneToOneField('players.PlayerDB',null=True,related_name='mush_account')
+class MushAccount(models.Model):
+    player = models.OneToOneField('players.PlayerDB', null=True, related_name='mush_account')
+    dbref = models.OneToOneField(MushObject, null=True, related_name='mush_account')
     objids = models.CharField(max_length=400)
     characters = models.ManyToManyField(MushObject)
 
     def setup_account(self):
         if not self.id:
             return False
-        charids = MushAttribute.objects.filter(name='D`ACCOUNT',value=str(self.id)).values_list('dbref',flat=True).distinct()
+        charids = MushAttribute.objects.filter(name='D`ACCOUNT', value=str(self.id)).values_list('dbref', flat=True).distinct()
         charlist = MushObject.objects.filter(id__in=charids)
         if not charlist:
             return False

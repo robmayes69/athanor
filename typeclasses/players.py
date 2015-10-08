@@ -97,6 +97,8 @@ class Player(DefaultPlayer):
      at_server_shutdown()
 
     """
+    def _send_to_connect_channel(self, message):
+        return
 
     def at_player_creation(self):
         super(Player, self).at_player_creation()

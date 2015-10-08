@@ -22,6 +22,7 @@ from commands.account_management import CmdPlayerConfig, CmdTz, CmdWatch
 from commands.groups import GROUP_COMMANDS
 from commands.grid_management import DISTRICT_COMMANDS
 from commands.mush_import import CmdImport
+from commands.login import CmdMushConnect
 
 class CharacterCmdSet(default_cmds.CharacterCmdSet):
     """
@@ -92,7 +93,7 @@ class UnloggedinCmdSet(default_cmds.UnloggedinCmdSet):
         #
         # any commands you add below will overload the default ones.
         #
-
+        self.add(CmdMushConnect())
 
 class SessionCmdSet(default_cmds.SessionCmdSet):
     """
