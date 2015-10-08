@@ -9,7 +9,18 @@ from evennia.utils import create
 
 
 def from_unixtimestring(secs):
-    return datetime.datetime.fromtimestamp(int(secs)).replace(tzinfo=pytz.utc)
+    try:
+        convert = datetime.datetime.fromtimestamp(int(secs)).replace(tzinfo=pytz.utc)
+    except ValueError:
+        return None
+    return convert
+
+def from_mushtimestring(timestring):
+    try:
+        convert = datetime.datetime.strptime(timestring, '%c').replace(tzinfo=pytz.utc)
+    except ValueError:
+        return None
+    return convert
 
 class CmdImport(AthCommand):
     key = '+import'
