@@ -13,6 +13,14 @@ from evennia import DefaultCharacter
 from evennia.utils.utils import time_format, lazy_property
 from evennia.utils.ansi import ANSIString
 from commands.library import AthanorError, utcnow, mxp_send, header
+from world.storyteller.templates import TemplateHandler
+from world.storyteller.stats import StatHandler, CustomHandler
+from world.storyteller.pools import PoolHandler
+from world.storyteller.merits import MeritHandler
+from world.storyteller.advantages import AdvantageHandler
+
+from world.storyteller.exalted2.templates import TEMPLATES_LIST as EX2_TEMPLATES
+from world.storyteller.exalted2.stats import STATS_LIST as EX2_STATS
 
 
 class Character(DefaultCharacter):
@@ -59,7 +67,6 @@ class Character(DefaultCharacter):
         if len(self.sessions) != 1 and not self.db._owner.db._watch_hide:
             for player in [play.db_player for play in self.on_watch.all() if not play.db_player.db._watch_mute]:
                 player.sys_msg('%s has connected.' % self, sys_name='WATCH')
-
 
     def search_character(self, search_name=None):
         """
@@ -178,8 +185,8 @@ class Character(DefaultCharacter):
         if not date:
             date = utcnow()
         tz = self.settings.get('system_timezone')
-        time = date.astimezone(tz)
-        return time.strftime(format)
+        my_time = date.astimezone(tz)
+        return my_time.strftime(format)
 
     def sys_msg(self, message, sys_name='SYSTEM', error=False):
         if error:
@@ -210,3 +217,65 @@ class Character(DefaultCharacter):
     @lazy_property
     def settings(self):
         return self.db._owner.settings
+
+
+class StorytellerCharacter(Character):
+    """
+    Base template for Storyteller characters. It's not meant to be used literally.
+    """
+    valid_templates = []
+    storage_locations = {}
+
+    def at_init(self):
+        super(StorytellerCharacter, self).at_init()
+        template = self.storyteller_template
+        stats = self.storyteller_stats
+        customs = self.storyteller_customs
+        merits = self.storyteller_merits
+        advantages = self.storyteller_advantages
+        pools = self.storyteller_pools
+
+    @lazy_property
+    def storyteller_template(self):
+        return TemplateHandler(self)
+
+    @lazy_property
+    def storyteller_stats(self):
+        return StatHandler(self)
+
+    @lazy_property
+    def storyteller_customs(self):
+        return CustomHandler(self)
+
+    @lazy_property
+    def storyteller_merits(self):
+        return MeritHandler(self)
+
+    @lazy_property
+    def storyteller_advantages(self):
+        return AdvantageHandler(self)
+
+    @lazy_property
+    def storyteller_pools(self):
+        return PoolHandler(self)
+
+    def storyteller_save(self):
+        self.storyteller_template.save()
+        self.storyteller_stats.save()
+        self.storyteller_customs.save()
+        self.storyteller_merits.save()
+        self.storyteller_advantages.save()
+        self.storyteller_pools.save()
+
+
+
+
+class Ex2Character(StorytellerCharacter):
+    """
+    For use with Exalted 2nd Edition characters.
+    """
+    valid_templates = EX2_TEMPLATES
+    storage_locations = {'power': '_ex2_power', 'stats': '_ex2_stats', 'custom_stats': '_ex2_custom_stats',
+                         'pools': '_ex2_pools', 'merits': '_ex2_merits', 'advantages': '_ex2_advantages',
+                         'template': '_ex2_template'}
+    valid_stats = EX2_STATS
