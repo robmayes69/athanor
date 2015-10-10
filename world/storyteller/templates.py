@@ -46,7 +46,12 @@ class TemplateHandler(object):
         if not new_find:
             raise AthanorError("Template '%s' not found." % new_template)
         self.template = new_find
+        self.save()
 
     @property
     def power(self):
         return self.template.power_stat
+
+    @property
+    def pools(self):
+        return self.template.default_pools

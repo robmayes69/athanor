@@ -50,6 +50,12 @@ class Stat(object):
     def __eq__(self, other):
         return type(self) == type(other)
 
+    def __add__(self, other):
+        return int(self) + int(other)
+
+    def __radd__(self, other):
+        return int(self) + int(other)
+
     @property
     def current_value(self):
         return self._value
@@ -185,6 +191,15 @@ class CustomStat(object):
     def __eq__(self, other):
         return type(self) == type(other)
 
+    def __hash__(self):
+        return str(self).__hash__()
+
+    def __add__(self, other):
+        return int(self) + int(other)
+
+    def __radd__(self, other):
+        return int(self) + int(other)
+
     @property
     def full_name(self):
         return self.custom_name or self.base_name
@@ -264,36 +279,34 @@ class StatHandler(object):
 
     def load(self):
         load_db = self.owner.storage_locations['stats']
-        load_stats = list(self.owner.attributes.get(load_db, []))
+        load_stats = set(self.owner.attributes.get(load_db, []))
         expected_power = self.owner.storyteller_template.power
         self.valid_classes = list(self.owner.valid_stats)
         self.valid_classes.append(expected_power)
-        for stat in load_stats:
-            if stat.__class__ not in self.valid_classes:
-                load_stats.remove(stat)
-        used_classes = [stat.__class__ for stat in load_stats]
-        for stat_class in self.valid_classes:
-            if stat_class not in used_classes:
-                load_stats.append(stat_class())
-        self.cache_stats = load_stats
+        new_stats = set([stat() for stat in self.valid_classes])
+        if not load_stats == new_stats:
+            for stat in load_stats:
+                if stat not in new_stats:
+                    load_stats.pop(stat)
+            for stat in new_stats:
+                if stat not in load_stats:
+                    load_stats.add(stat)
+        self.cache_stats = sorted(list(load_stats),key=lambda stat: stat.list_order)
         for stat in self.cache_stats:
             self.stats_dict[stat.base_name] = stat
-        self.attribute_stats = sorted([stat for stat in self.cache_stats if stat.main_category == 'Attribute'],
-                                      key=lambda stat2: stat2.list_order)
-        self.attributes_physical = [stat for stat in self.attribute_stats if stat.sub_category == 'Physical']
-        self.attributes_social = [stat for stat in self.attribute_stats if stat.sub_category == 'Social']
-        self.attributes_mental = [stat for stat in self.attribute_stats if stat.sub_category == 'Mental']
-        self.skill_stats = sorted([stat for stat in self.cache_stats if stat.main_category == 'Skill'],
-                                  key=lambda stat2: stat2.list_order)
-        self.skills_physical = [stat for stat in self.skill_stats if stat.sub_category == 'Physical']
-        self.skills_social = [stat for stat in self.skill_stats if stat.sub_category == 'Social']
-        self.skills_mental = [stat for stat in self.skill_stats if stat.sub_category == 'Mental']
-        self.virtue_stats = sorted([stat for stat in self.cache_stats if stat.main_category == 'Virtue'],
-                                   key=lambda stat2: stat2.list_order)
-        self.favorable_stats = [stat for stat in self.cache_stats if stat.can_favor]
-        self.supernable_stats = [stat for stat in self.cache_stats if stat.can_supernal]
-        self.specialize_stats = [stat for stat in self.cache_stats if stat.can_specialize]
-        self.specialized_stats = [stat for stat in self.cache_stats if stat.specialties]
+        self.attribute_stats = tuple([stat for stat in self.cache_stats if stat.main_category == 'Attribute'])
+        self.attributes_physical = tuple([stat for stat in self.attribute_stats if stat.sub_category == 'Physical'])
+        self.attributes_social = tuple([stat for stat in self.attribute_stats if stat.sub_category == 'Social'])
+        self.attributes_mental = tuple([stat for stat in self.attribute_stats if stat.sub_category == 'Mental'])
+        self.skill_stats = tuple([stat for stat in self.cache_stats if stat.main_category == 'Skill'])
+        self.skills_physical = tuple([stat for stat in self.skill_stats if stat.sub_category == 'Physical'])
+        self.skills_social = tuple([stat for stat in self.skill_stats if stat.sub_category == 'Social'])
+        self.skills_mental = tuple([stat for stat in self.skill_stats if stat.sub_category == 'Mental'])
+        self.virtue_stats = tuple([stat for stat in self.cache_stats if stat.main_category == 'Virtue'])
+        self.favorable_stats = tuple([stat for stat in self.cache_stats if stat.can_favor])
+        self.supernable_stats = tuple([stat for stat in self.cache_stats if stat.can_supernal])
+        self.specialize_stats = tuple([stat for stat in self.cache_stats if stat.can_specialize])
+        self.specialized_stats = tuple([stat for stat in self.cache_stats if stat.specialties])
 
     def save(self, no_load=False):
         load_db = self.owner.storage_locations['stats']
@@ -321,6 +334,7 @@ class StatHandler(object):
             caller.sys_msg(message='Your %s stat is now: %s' % (find_stat, find_stat.current_value),
                            sys_name='EDITCHAR')
             self.save()
+            return True
 
     def specialize(self, stat=None, name=None, value=None, caller=None):
         if not caller:
@@ -337,12 +351,23 @@ class StatHandler(object):
             raise AthanorError("Specialties must be positive integers.")
         if new_value < 0:
             raise AthanorError("Specialties must be positive integers.")
+        found_stat = partial_match(stat, self.specialize_stats)
+        if not found_stat:
+            raise AthanorError("Stat '%s' not found." % stat)
         new_name = sanitize_string(name, strip_ansi=True, strip_indents=True, strip_newlines=True, strip_mxp=True)
-        if new_value == 0 and new_name.lower() in stat.specialties:
-            stat.specialties.pop(new_name.lower())
+        if '-' in new_name or '+' in new_name:
+            raise AthanorError("Specialties cannot contain the - or + characters.")
+        if new_value == 0 and new_name.lower() in found_stat.specialties:
+            found_stat.specialties.pop(new_name.lower())
             caller.sys_msg(message="Your '%s/%s' specialty was removed." % (stat, new_name))
-            self.save()
-            return True
+        elif new_value == 0:
+            raise AthanorError("Specialties cannot be zero dots!")
+        else:
+            found_stat.specialties[new_name.lower()] = new_value
+            caller.sys_msg(message="Your '%s/%s' specialty is now: %s" % (found_stat, new_name, new_value),
+                           sys_name='EDITCHAR')
+        self.save()
+        return True
 
 
 class CustomHandler(object):

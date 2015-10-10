@@ -21,23 +21,29 @@ class EssencePool(Pool):
     component_plural = 'Motes'
     value_name = 'Essence'
 
+    def retrieve_stats(self, owner):
+        return int(owner.storyteller_stats.stats_dict['Power']), int(owner.storyteller_stats.stats_dict['Willpower'])
 
 class PersonalPool(EssencePool):
+    base_name = 'Personal'
     value_name = 'Personal Essence'
     list_order = 0
 
 
 class PeripheralPool(EssencePool):
+    base_name = 'Peripheral'
     value_name = 'Peripheral Essence'
     list_order = 5
 
 
 class ExtendedPool(PeripheralPool):
+    base_name = 'Extended'
     value_name = 'Extended Peripheral Essence'
     list_order = 10
 
 
 class OverdrivePool(EssencePool):
+    base_name = 'Overdrive'
     value_name = 'Overdrive Peripheral Essence'
     list_order = 15
 
@@ -62,13 +68,15 @@ class Limit(Pool):
 class SolarPersonal(PersonalPool):
 
     def initialize_max(self, owner):
-        return 0
-
+        power, willpower = self.retrieve_stats(owner)
+        return power*3 + willpower
 
 class SolarPeripheral(PeripheralPool):
 
     def initialize_max(self, owner):
-        return 0
+        power, willpower = self.retrieve_stats(owner)
+        virtues = sum(owner.storyteller_stats.virtue_stats)
+        return power*7 + willpower + virtues
 
 
 class SolarExtended(ExtendedPool):
@@ -121,3 +129,10 @@ class InfernalExtended(ExtendedPool):
 
 class InfernalOverdrive(OverdrivePool):
     pass
+
+
+# LISTS
+
+SOLAR_POOLS = [SolarPersonal, SolarPeripheral, SolarExtended, SolarOverdrive]
+
+POOL_LIST = SOLAR_POOLS

@@ -20,7 +20,8 @@ from world.storyteller.merits import MeritHandler
 from world.storyteller.advantages import AdvantageHandler
 
 from world.storyteller.exalted2.templates import TEMPLATES_LIST as EX2_TEMPLATES
-from world.storyteller.exalted2.stats import STATS_LIST as EX2_STATS, CUSTOM_LIST as EX2_CUSTOM
+from world.storyteller.exalted2.stats import STATS_LIST as EX2_STATS
+from world.storyteller.exalted2.pools import POOL_LIST as EX2_POOLS
 
 
 class Character(DefaultCharacter):
@@ -223,8 +224,10 @@ class StorytellerCharacter(Character):
     """
     Base template for Storyteller characters. It's not meant to be used literally.
     """
-    valid_templates = []
-    storage_locations = {}
+    valid_templates = list()
+    storage_locations = dict()
+    valid_custom = list()
+    valid_pools = list()
 
     def at_init(self):
         super(StorytellerCharacter, self).at_init()
@@ -268,8 +271,6 @@ class StorytellerCharacter(Character):
         self.storyteller_pools.save()
 
 
-
-
 class Ex2Character(StorytellerCharacter):
     """
     For use with Exalted 2nd Edition characters.
@@ -279,4 +280,4 @@ class Ex2Character(StorytellerCharacter):
                          'pools': '_ex2_pools', 'merits': '_ex2_merits', 'advantages': '_ex2_advantages',
                          'template': '_ex2_template'}
     valid_stats = EX2_STATS
-    valid_custom = EX2_CUSTOM
+    valid_pools = EX2_POOLS

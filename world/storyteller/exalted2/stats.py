@@ -1,5 +1,5 @@
 from world.storyteller.stats import Stat as OldStat, Willpower as OldWillpower, \
-    Power as OldPower, Skill as OldSkill, Attribute as OldAttribute, CustomStat as OldCustom, Specialty as OldSpecialty
+    Power as OldPower, Skill as OldSkill, Attribute as OldAttribute
 
 # Define some main categories!
 
@@ -245,11 +245,6 @@ class Conviction(Virtue):
     list_order = 15
 
 
-# CUSTOMS
-
-class Specialty(OldSpecialty):
-    game_category = 'Exalted2'
-
 # LISTS
 
 ATTRIBUTES_LIST = [Strength, Dexterity, Stamina, Charisma, Manipulation, Appearance, Perception, Intelligence, Wits]
@@ -261,7 +256,5 @@ SKILLS_LIST = [Archery, MartialArts, Melee, Thrown, War, Bureaucracy, Linguistic
 VIRTUES_LIST = [Valor, Compassion, Temperance, Conviction]
 
 MAIN_LIST = [Willpower]
-
-CUSTOM_LIST = [Specialty]
 
 STATS_LIST = MAIN_LIST + ATTRIBUTES_LIST + SKILLS_LIST + VIRTUES_LIST

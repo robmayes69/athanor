@@ -37,6 +37,9 @@ class Pool(object):
     def __eq__(self, other):
         return type(self) == type(other)
 
+    def __hash__(self):
+        return str(self).__hash__()
+
     @property
     def total_commit(self):
         return sum(self.commitments.values())
@@ -116,14 +119,47 @@ class WillpowerPool(Pool):
 
 
 class PoolHandler(object):
+    __slots__ = ['owner', 'valid_classes', 'cache_pools', 'pools_dict', 'pools', 'channels', 'tracks', 'new_pools',
+                 'expected_pools']
 
     def __init__(self, owner):
         self.owner = owner
+        self.valid_classes = list()
+        self.pools_dict = dict()
+        self.cache_pools = None
+        self.pools = None
+        self.channels = None
+        self.tracks = None
         self.load()
         self.save(no_load=True)
 
     def load(self):
-        pass
+        load_db = self.owner.storage_locations['pools']
+        load_pools = list(self.owner.attributes.get(load_db, []))
+        self.expected_pools = [pool() for pool in self.owner.storyteller_template.pools]
+        self.valid_classes = list(self.owner.valid_pools)
+        self.new_pools = [pool() for pool in self.valid_classes]
+
+
+        for pool in load_pools:
+            if pool.__class__ not in self.valid_classes or not \
+                    (pool.__class__ in expected_pools or pool.check_has(self.owner)):
+                load_pools.remove(pool)
+        used_classes = [stat.__class__ for stat in load_pools]
+        for pool_class in [new_pool() for new_pool in self.valid_classes]:
+            if pool_class not in used_classes and (pool_class in expected_pools or pool_class.check_has(self.owner)):
+                load_pools.append(pool_class)
+        self.cache_pools = sorted(load_pools, key=lambda pool2: pool2.list_order)
+        for pool in self.cache_pools:
+            self.pools_dict[pool.base_name] = pool
+            pool.initialize_max(self.owner)
+        self.pools = [pool for pool in self.cache_pools if pool.main_category == 'Pool']
+        self.tracks = [pool for pool in self.cache_pools if pool.main_category == 'Track']
+        self.channels = [pool for pool in self.cache_pools if pool.main_category == 'Channel']
 
     def save(self, no_load=False):
-        pass
+        load_db = self.owner.storage_locations['pools']
+        self.owner.attributes.add(load_db, self.cache_pools)
+        if no_load:
+            return
+        self.load()

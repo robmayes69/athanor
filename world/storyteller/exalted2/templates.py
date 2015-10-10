@@ -2,9 +2,11 @@ from world.storyteller.templates import Template as OldTemplate
 
 from world.storyteller.exalted2.stats import Power
 from world.storyteller.exalted2.pools import WillpowerPool, Limit, Resonance
-from world.storyteller.exalted2.pools import SolarPersonal, SolarPeripheral, SolarExtended, SolarOverdrive
+from world.storyteller.exalted2.pools import SOLAR_POOLS
 from world.storyteller.exalted2.pools import AbyssalPersonal, AbyssalPeripheral, AbyssalExtended, AbyssalOverdrive
 from world.storyteller.exalted2.pools import InfernalPersonal, InfernalPeripheral, InfernalExtended, InfernalOverdrive
+
+UNIVERSAL_POOLS = [WillpowerPool]
 
 class ExaltedTemplate(OldTemplate):
     game_category = 'Exalted2'
@@ -15,12 +17,12 @@ class ExaltedTemplate(OldTemplate):
 
 class Mortal(ExaltedTemplate):
     base_name = 'Mortal'
-    default_pools = [WillpowerPool]
+    default_pools = UNIVERSAL_POOLS
 
 
 class Solar(ExaltedTemplate):
     base_name = 'Solar'
-    default_pools = [WillpowerPool, Limit, SolarPeripheral, SolarPersonal, SolarExtended, SolarOverdrive]
+    default_pools = UNIVERSAL_POOLS + SOLAR_POOLS
     native_charms = 'Solar'
     sub_class_list = ['Dawn', 'Zenith', 'Eclipse', 'Twilight', 'Night']
 
