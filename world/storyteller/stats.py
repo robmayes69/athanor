@@ -50,6 +50,9 @@ class Stat(object):
     def __eq__(self, other):
         return type(self) == type(other)
 
+    def __hash__(self):
+        return self.base_name.__hash__()
+
     def __add__(self, other):
         return int(self) + int(other)
 
@@ -261,19 +264,19 @@ class StatHandler(object):
         self.valid_classes = list()
         self.stats_dict = dict()
         self.cache_stats = None
-        self.attribute_stats = None
-        self.attributes_physical = None
-        self.attributes_social = None
-        self.attributes_mental = None
-        self.skill_stats = None
-        self.skills_physical = None
-        self.skills_social = None
-        self.skills_mental = None
-        self.virtue_stats = None
-        self.favorable_stats = None
-        self.supernable_stats = None
-        self.specialize_stats = None
-        self.specialized_stats = None
+        self.attribute_stats = list()
+        self.attributes_physical = list()
+        self.attributes_social = list()
+        self.attributes_mental = list()
+        self.skill_stats = list()
+        self.skills_physical = list()
+        self.skills_social = list()
+        self.skills_mental = list()
+        self.virtue_stats = list()
+        self.favorable_stats = list()
+        self.supernable_stats = list()
+        self.specialize_stats = list()
+        self.specialized_stats = list()
         self.load()
         self.save(no_load=True)
 
@@ -285,28 +288,41 @@ class StatHandler(object):
         self.valid_classes.append(expected_power)
         new_stats = set([stat() for stat in self.valid_classes])
         if not load_stats == new_stats:
-            for stat in load_stats:
-                if stat not in new_stats:
-                    load_stats.pop(stat)
-            for stat in new_stats:
-                if stat not in load_stats:
-                    load_stats.add(stat)
+            load_stats.update(new_stats)
+            load_stats = new_stats.intersection(load_stats)
         self.cache_stats = sorted(list(load_stats),key=lambda stat: stat.list_order)
         for stat in self.cache_stats:
             self.stats_dict[stat.base_name] = stat
-        self.attribute_stats = tuple([stat for stat in self.cache_stats if stat.main_category == 'Attribute'])
-        self.attributes_physical = tuple([stat for stat in self.attribute_stats if stat.sub_category == 'Physical'])
-        self.attributes_social = tuple([stat for stat in self.attribute_stats if stat.sub_category == 'Social'])
-        self.attributes_mental = tuple([stat for stat in self.attribute_stats if stat.sub_category == 'Mental'])
-        self.skill_stats = tuple([stat for stat in self.cache_stats if stat.main_category == 'Skill'])
-        self.skills_physical = tuple([stat for stat in self.skill_stats if stat.sub_category == 'Physical'])
-        self.skills_social = tuple([stat for stat in self.skill_stats if stat.sub_category == 'Social'])
-        self.skills_mental = tuple([stat for stat in self.skill_stats if stat.sub_category == 'Mental'])
-        self.virtue_stats = tuple([stat for stat in self.cache_stats if stat.main_category == 'Virtue'])
-        self.favorable_stats = tuple([stat for stat in self.cache_stats if stat.can_favor])
-        self.supernable_stats = tuple([stat for stat in self.cache_stats if stat.can_supernal])
-        self.specialize_stats = tuple([stat for stat in self.cache_stats if stat.can_specialize])
-        self.specialized_stats = tuple([stat for stat in self.cache_stats if stat.specialties])
+            if stat.main_category == 'Attribute':
+                self.attribute_stats.append(stat)
+                if stat.sub_category == 'Physical':
+                    self.attributes_physical.append(stat)
+                if stat.sub_category == 'Social':
+                    self.attributes_social.append(stat)
+                if stat.sub_category == 'Mental':
+                    self.attributes_mental.append(stat)
+
+            if stat.main_category == 'Skill':
+                self.skill_stats.append(stat)
+                if stat.sub_category == 'Physical':
+                    self.skills_physical.append(stat)
+                if stat.sub_category == 'Social':
+                    self.skills_social.append(stat)
+                if stat.skills_mental == 'Mental':
+                    self.attributes_mental.append(stat)
+
+            if stat.main_category == 'Virtue':
+                self.virtue_stats.append(stat)
+
+            if stat.can_favor:
+                self.favorable_stats.append(stat)
+            if stat.can_supernal:
+                self.supernable_stats.append(stat)
+            if stat.can_specialize:
+                self.supernable_stats.append(stat)
+            if stat.specialties:
+                self.specialized_stats.append(stat)
+
 
     def save(self, no_load=False):
         load_db = self.owner.storage_locations['stats']
