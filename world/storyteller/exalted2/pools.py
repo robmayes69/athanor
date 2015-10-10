@@ -12,13 +12,15 @@ class WillpowerPool(OldWillpowerPool):
     list_order = 20
 
     def retrieve_max(self, owner):
-        return int(owner.storyteller.stats.stats_dict['Willpower'])
+        return int(owner.stats.stats_dict['Willpower'])
+
 
 class Virtue(Pool):
     main_category = 'Channel'
 
     def retrieve_max(self, owner):
-        return int(owner.storyteller.stats.stats_dict[self.base_name])
+        return int(owner.stats.stats_dict[self.base_name])
+
 
 class EssencePool(Pool):
     component_name = 'Mote'
@@ -26,7 +28,8 @@ class EssencePool(Pool):
     value_name = 'Essence'
 
     def retrieve_stats(self, owner):
-        return int(owner.storyteller.stats.stats_dict['Power']), int(owner.storyteller.stats.stats_dict['Willpower'])
+        return int(owner.stats.stats_dict['Power']), int(owner.stats.stats_dict['Willpower'])
+
 
 class PersonalPool(EssencePool):
     base_name = 'Personal'
@@ -70,14 +73,18 @@ class Limit(Pool):
 class ValorPool(Virtue):
     base_name = 'Valor'
 
+
 class CompassionPool(Virtue):
     base_name = 'Compassion'
+
 
 class TemperancePool(Virtue):
     base_name = 'Temperance'
 
+
 class ConvictionPool(Virtue):
     base_name = 'Conviction'
+
 
 # Solars
 
@@ -92,7 +99,7 @@ class SolarPeripheral(PeripheralPool):
 
     def retrieve_max(self, owner):
         power, willpower = self.retrieve_stats(owner)
-        virtues = sum(owner.storyteller.stats.virtue_stats)
+        virtues = sum(owner.stats.virtue_stats)
         return power*7 + willpower + virtues
 
 
@@ -148,6 +155,129 @@ class InfernalOverdrive(OverdrivePool):
     pass
 
 
+# Lunars
+
+
+class LunarPersonal(PersonalPool):
+    pass
+
+
+class LunarPeripheral(PeripheralPool):
+    pass
+
+
+class LunarExtended(ExtendedPool):
+    pass
+
+
+class LunarOverdrive(OverdrivePool):
+    pass
+
+
+# Sidereals
+
+
+class SiderealPersonal(PersonalPool):
+    pass
+
+
+class SiderealPeripheral(PeripheralPool):
+    pass
+
+
+class SiderealExtended(ExtendedPool):
+    pass
+
+
+class SiderealOverdrive(OverdrivePool):
+    pass
+
+
+class Paradox(Limit):
+    value_name = 'Paradox'
+
+# Terrestrial
+
+
+class TerrestrialPersonal(PersonalPool):
+    pass
+
+
+class TerrestrialPeripheral(PeripheralPool):
+    pass
+
+
+# Alchemical
+
+
+class AlchemicalPersonal(PersonalPool):
+    pass
+
+
+class AlchemicalPeripheral(PeripheralPool):
+    pass
+
+
+class AlchemicalExtended(ExtendedPool):
+    pass
+
+
+class AlchemicalOverdrive(OverdrivePool):
+    pass
+
+
+class Clarity(Limit):
+    value_name = 'Clarity'
+
+
+class Dissonance(Limit):
+    value_name = 'Dissonance'
+
+# Raksha
+
+
+class RakshaPersonal(PersonalPool):
+    pass
+
+
+class RakshaExtended(ExtendedPool):
+    pass
+
+
+class Stasis(Limit):
+    value_name = 'Stasis'
+
+
+# Spirit
+
+
+class SpiritPersonal(PersonalPool):
+
+    def retrieve_max(self, owner):
+        power = int(owner.stats.stats_dict['Power'])
+        return power*10
+
+
+# Ghost
+
+
+class GhostPersonal(SpiritPersonal):
+    pass
+
+
+# DragonKing
+
+
+class DragonKingPersonal(PersonalPool):
+    pass
+
+
+# Jadeborn
+
+
+class JadebornPersonal(PersonalPool):
+    pass
+
 # LISTS
 
 UNIVERSAL_POOLS = [WillpowerPool, ConvictionPool, CompassionPool, ValorPool, TemperancePool]
@@ -156,4 +286,16 @@ SOLAR_POOLS = [SolarPersonal, SolarPeripheral, SolarExtended, SolarOverdrive, Li
 ABYSSAL_POOLS = [AbyssalPersonal, AbyssalPeripheral, AbyssalExtended, AbyssalOverdrive, Resonance]
 INFERNAL_POOLS = [InfernalPersonal, InfernalPeripheral, InfernalExtended, InfernalOverdrive, Limit]
 
-POOL_LIST = UNIVERSAL_POOLS + SOLAR_POOLS + ABYSSAL_POOLS + INFERNAL_POOLS
+LUNAR_POOLS = [LunarPersonal, LunarPeripheral, LunarExtended, LunarOverdrive, Limit]
+SIDEREAL_POOLS = [SiderealPersonal, SiderealPeripheral, SiderealExtended, SiderealOverdrive, Limit, Paradox]
+TERRESTRIAL_POOLS = [TerrestrialPersonal, TerrestrialPeripheral, Limit]
+ALCHEMICAL_POOLS = [AlchemicalPersonal, AlchemicalPeripheral, AlchemicalExtended, AlchemicalOverdrive, Clarity]
+RAKSHA_POOLS = [RakshaPersonal, RakshaExtended, Stasis]
+SPIRIT_POOLS = [SpiritPersonal]
+GHOST_POOLS = [GhostPersonal]
+DRAGONKING_POOLS = [DragonKingPersonal]
+JADEBORN_POOLS = [JadebornPersonal]
+
+POOL_LIST = set(UNIVERSAL_POOLS + SOLAR_POOLS + ABYSSAL_POOLS + INFERNAL_POOLS + LUNAR_POOLS + SIDEREAL_POOLS + \
+            TERRESTRIAL_POOLS + ALCHEMICAL_POOLS + RAKSHA_POOLS + SPIRIT_POOLS + GHOST_POOLS + DRAGONKING_POOLS +
+                JADEBORN_POOLS)

@@ -138,7 +138,7 @@ class PoolHandler(object):
     def load(self):
         load_db = self.owner.storage_locations['pools']
         load_pools = set(self.owner.attributes.get(load_db, []))
-        expected_pools = set(pool() for pool in self.owner.storyteller.template.pools)
+        expected_pools = set(pool() for pool in self.owner.template.pools)
         self.valid_classes = list(self.owner.valid_pools)
         new_pools = [pool() for pool in self.valid_classes]
         new_pools = set(pool for pool in new_pools if pool.check_has(self.owner))

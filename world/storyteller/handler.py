@@ -1,10 +1,6 @@
 from evennia.utils.utils import lazy_property
 
-from world.storyteller.templates import TemplateHandler
-from world.storyteller.stats import StatHandler, CustomHandler
-from world.storyteller.pools import PoolHandler
-from world.storyteller.merits import MeritHandler
-from world.storyteller.advantages import AdvantageHandler
+
 
 class StorytellerHandler(object):
 
@@ -21,27 +17,27 @@ class StorytellerHandler(object):
 
     @lazy_property
     def template(self):
-        return TemplateHandler(self.owner)
+        return TemplateHandler(self)
 
     @lazy_property
     def stats(self):
-        return StatHandler(self.owner)
+        return StatHandler(self)
 
     @lazy_property
     def customs(self):
-        return CustomHandler(self.owner)
+        return CustomHandler(self)
 
     @lazy_property
     def merits(self):
-        return MeritHandler(self.owner)
+        return MeritHandler(self)
 
     @lazy_property
     def advantages(self):
-        return AdvantageHandler(self.owner)
+        return AdvantageHandler(self)
 
     @lazy_property
     def pools(self):
-        return PoolHandler(self.owner)
+        return PoolHandler(self)
 
     def save(self):
         for topic in [self.template, self.stats, self.customs, self.merits, self.advantages, self.pools]:

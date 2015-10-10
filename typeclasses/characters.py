@@ -13,7 +13,12 @@ from evennia import DefaultCharacter
 from evennia.utils.utils import time_format, lazy_property
 from evennia.utils.ansi import ANSIString
 from commands.library import AthanorError, utcnow, mxp_send, header
-from world.storyteller.handler import StorytellerHandler
+
+from world.storyteller.templates import TemplateHandler
+from world.storyteller.stats import StatHandler, CustomHandler
+from world.storyteller.pools import PoolHandler
+from world.storyteller.merits import MeritHandler
+from world.storyteller.advantages import AdvantageHandler
 
 from world.storyteller.exalted2.templates import TEMPLATES_LIST as EX2_TEMPLATES
 from world.storyteller.exalted2.stats import STATS_LIST as EX2_STATS
@@ -228,8 +233,28 @@ class StorytellerCharacter(Character):
     valid_merits = list()
 
     @lazy_property
-    def storyteller(self):
-        return StorytellerHandler(self)
+    def template(self):
+        return TemplateHandler(self)
+
+    @lazy_property
+    def stats(self):
+        return StatHandler(self)
+
+    @lazy_property
+    def customs(self):
+        return CustomHandler(self)
+
+    @lazy_property
+    def merits(self):
+        return MeritHandler(self)
+
+    @lazy_property
+    def advantages(self):
+        return AdvantageHandler(self)
+
+    @lazy_property
+    def pools(self):
+        return PoolHandler(self)
 
 class Ex2Character(StorytellerCharacter):
     """
