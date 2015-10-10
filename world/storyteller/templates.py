@@ -23,22 +23,24 @@ class TemplateHandler(object):
 
     def __init__(self, owner):
         self.owner = owner
-        self.load()
-        self.save()
+        if self.load():
+            self.save()
 
     def load(self):
+        save = False
         load_db = self.owner.storage_locations['template']
         load_template = self.owner.attributes.get(load_db)
         if not load_template:
-            self.swap('Mortal')
+            self.swap('Mortal', no_save=True)
         else:
             self.template = load_template
+        return save
 
     def save(self):
         load_db = self.owner.storage_locations['template']
         self.owner.attributes.add(load_db, self.template)
 
-    def swap(self, new_template=None):
+    def swap(self, new_template=None, no_save=False):
         if not new_template:
             raise AthanorError("New Template field empty!")
         new_templates = [template() for template in self.owner.valid_templates]
@@ -46,7 +48,8 @@ class TemplateHandler(object):
         if not new_find:
             raise AthanorError("Template '%s' not found." % new_template)
         self.template = new_find
-        self.save()
+        if not no_save:
+            self.save()
 
     @property
     def power(self):

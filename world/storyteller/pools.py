@@ -20,7 +20,7 @@ class Pool(object):
     bonus = 0
 
     def __repr__(self):
-        return '<Pool: %s (%s/%s)>' % (self.base_name, self.current_value, self.max_capacity)
+        return '<%s: %s (%s/%s)>' % (self.main_category, self.base_name, self.current_value, self.max_capacity)
 
     def __str__(self):
         return self.base_name
@@ -38,7 +38,7 @@ class Pool(object):
         return type(self) == type(other)
 
     def __hash__(self):
-        return str(self).__hash__()
+        return str(type(self)).__hash__()
 
     @property
     def total_commit(self):
@@ -71,7 +71,10 @@ class Pool(object):
         return True
 
     def initialize_max(self, owner):
-        pass
+        self.max_value = self.retrieve_max(owner)
+
+    def retrieve_max(self, owner):
+        return 0
 
     def check_has(self, checker):
         return False
@@ -127,35 +130,32 @@ class PoolHandler(object):
         self.valid_classes = list()
         self.pools_dict = dict()
         self.cache_pools = None
-        self.pools = None
-        self.channels = None
-        self.tracks = None
+        self.pools = list()
+        self.channels = list()
+        self.tracks = list()
         self.load()
-        self.save(no_load=True)
 
     def load(self):
         load_db = self.owner.storage_locations['pools']
-        load_pools = list(self.owner.attributes.get(load_db, []))
-        self.expected_pools = [pool() for pool in self.owner.storyteller_template.pools]
+        load_pools = set(self.owner.attributes.get(load_db, []))
+        expected_pools = set(pool() for pool in self.owner.storyteller.template.pools)
         self.valid_classes = list(self.owner.valid_pools)
-        self.new_pools = [pool() for pool in self.valid_classes]
-
-
-        for pool in load_pools:
-            if pool.__class__ not in self.valid_classes or not \
-                    (pool.__class__ in expected_pools or pool.check_has(self.owner)):
-                load_pools.remove(pool)
-        used_classes = [stat.__class__ for stat in load_pools]
-        for pool_class in [new_pool() for new_pool in self.valid_classes]:
-            if pool_class not in used_classes and (pool_class in expected_pools or pool_class.check_has(self.owner)):
-                load_pools.append(pool_class)
+        new_pools = [pool() for pool in self.valid_classes]
+        new_pools = set(pool for pool in new_pools if pool.check_has(self.owner))
+        expected_pools.update(new_pools)
+        if not load_pools == expected_pools:
+            load_pools.update(expected_pools)
+            load_pools = expected_pools.intersection(load_pools)
         self.cache_pools = sorted(load_pools, key=lambda pool2: pool2.list_order)
         for pool in self.cache_pools:
             self.pools_dict[pool.base_name] = pool
             pool.initialize_max(self.owner)
-        self.pools = [pool for pool in self.cache_pools if pool.main_category == 'Pool']
-        self.tracks = [pool for pool in self.cache_pools if pool.main_category == 'Track']
-        self.channels = [pool for pool in self.cache_pools if pool.main_category == 'Channel']
+            if pool.main_category == 'Pool':
+                self.pools.append(pool)
+            if pool.main_category == 'Track':
+                self.tracks.append(pool)
+            if pool.main_category == 'Channel':
+                self.channels.append(pool)
 
     def save(self, no_load=False):
         load_db = self.owner.storage_locations['pools']

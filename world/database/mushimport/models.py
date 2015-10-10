@@ -1,6 +1,6 @@
 import re, hashlib
 from django.db import models
-from commands.library import AthanorError
+from commands.library import AthanorError, partial_match
 
 # Create your models here.
 
@@ -55,7 +55,17 @@ class MushObject(models.Model):
             return set(attrset)
 
     def getstat(self, attrname, stat):
-        pass
+        attr = self.mushget(attrname)
+        if not attr:
+            return
+        attr_dict = dict()
+        for element in attr.split('|'):
+            name, value = element.split('~', 1)
+            attr_dict[name] = value
+        find_stat = partial_match(stat, attr_dict)
+        if not find_stat:
+            return
+        return attr_dict[find_stat]
 
     @property
     def exits(self):

@@ -255,6 +255,6 @@ SKILLS_LIST = [Archery, MartialArts, Melee, Thrown, War, Bureaucracy, Linguistic
 
 VIRTUES_LIST = [Valor, Compassion, Temperance, Conviction]
 
-MAIN_LIST = []
+MAIN_LIST = [Willpower]
 
 STATS_LIST = MAIN_LIST + ATTRIBUTES_LIST + SKILLS_LIST + VIRTUES_LIST

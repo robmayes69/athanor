@@ -11,10 +11,14 @@ class WillpowerPool(OldWillpowerPool):
     game_category = 'Exalted2'
     list_order = 20
 
+    def retrieve_max(self, owner):
+        return int(owner.storyteller.stats.stats_dict['Willpower'])
 
 class Virtue(Pool):
     main_category = 'Channel'
 
+    def retrieve_max(self, owner):
+        return int(owner.storyteller.stats.stats_dict[self.base_name])
 
 class EssencePool(Pool):
     component_name = 'Mote'
@@ -22,7 +26,7 @@ class EssencePool(Pool):
     value_name = 'Essence'
 
     def retrieve_stats(self, owner):
-        return int(owner.storyteller_stats.stats_dict['Power']), int(owner.storyteller_stats.stats_dict['Willpower'])
+        return int(owner.storyteller.stats.stats_dict['Power']), int(owner.storyteller.stats.stats_dict['Willpower'])
 
 class PersonalPool(EssencePool):
     base_name = 'Personal'
@@ -50,44 +54,57 @@ class OverdrivePool(EssencePool):
     def calculate_overdrive(self, owner):
         pass
 
-    def initialize_max(self, owner):
+    def retrieve_max(self, owner):
         pool_calc = self.calculate_overdrive(owner)
         return sorted([0,pool_calc,25])[1]
 
 
 class Limit(Pool):
+    base_name = 'Limit'
     value_name = 'Limit'
     main_category = 'Track'
 
-    def initialize_max(self, owner):
+    def retrieve_max(self, owner):
         return 10
+
+class ValorPool(Virtue):
+    base_name = 'Valor'
+
+class CompassionPool(Virtue):
+    base_name = 'Compassion'
+
+class TemperancePool(Virtue):
+    base_name = 'Temperance'
+
+class ConvictionPool(Virtue):
+    base_name = 'Conviction'
 
 # Solars
 
 
 class SolarPersonal(PersonalPool):
 
-    def initialize_max(self, owner):
+    def retrieve_max(self, owner):
         power, willpower = self.retrieve_stats(owner)
         return power*3 + willpower
 
 class SolarPeripheral(PeripheralPool):
 
-    def initialize_max(self, owner):
+    def retrieve_max(self, owner):
         power, willpower = self.retrieve_stats(owner)
-        virtues = sum(owner.storyteller_stats.virtue_stats)
+        virtues = sum(owner.storyteller.stats.virtue_stats)
         return power*7 + willpower + virtues
 
 
 class SolarExtended(ExtendedPool):
 
-    def initialize_max(self, owner):
+    def retrieve_max(self, owner):
         return 0
 
 
 class SolarOverdrive(OverdrivePool):
 
-    def initialize_max(self, owner):
+    def retrieve_max(self, owner):
         return 0
 
 # Abyssals
@@ -133,6 +150,10 @@ class InfernalOverdrive(OverdrivePool):
 
 # LISTS
 
-SOLAR_POOLS = [SolarPersonal, SolarPeripheral, SolarExtended, SolarOverdrive]
+UNIVERSAL_POOLS = [WillpowerPool, ConvictionPool, CompassionPool, ValorPool, TemperancePool]
 
-POOL_LIST = SOLAR_POOLS
+SOLAR_POOLS = [SolarPersonal, SolarPeripheral, SolarExtended, SolarOverdrive, Limit]
+ABYSSAL_POOLS = [AbyssalPersonal, AbyssalPeripheral, AbyssalExtended, AbyssalOverdrive, Resonance]
+INFERNAL_POOLS = [InfernalPersonal, InfernalPeripheral, InfernalExtended, InfernalOverdrive, Limit]
+
+POOL_LIST = UNIVERSAL_POOLS + SOLAR_POOLS + ABYSSAL_POOLS + INFERNAL_POOLS

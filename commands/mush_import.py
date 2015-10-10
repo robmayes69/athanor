@@ -1,11 +1,12 @@
 import datetime, pytz, random
 from django.conf import settings
 from commands.command import AthCommand
-from commands.library import AthanorError
+from commands.library import AthanorError, partial_match
 from world.database.mushimport.models import MushObject, MushAttribute, cobj, MushAccount
 from world.database.mushimport.convpenn import read_penn
 from world.database.grid.models import District
 from evennia.utils import create
+from typeclasses.characters import Ex2Character
 
 
 def from_unixtimestring(secs):
@@ -26,7 +27,7 @@ class CmdImport(AthCommand):
     key = '+import'
     system_name = 'IMPORT'
     locks = 'cmd:perm(Immortals)'
-    admin_switches = ['initialize', 'grid', 'accounts', 'groups', 'boards']
+    admin_switches = ['initialize', 'grid', 'accounts', 'groups', 'boards', 'ex2']
 
     def func(self):
         if not self.final_switches:
@@ -183,3 +184,53 @@ class CmdImport(AthCommand):
                 char.save()
                 new_player.bind_character(new_char)
         self.sys_msg("Finished importing characters!")
+
+
+    def switch_ex2(self):
+        characters = [char for char in Ex2Character.objects.filter_family() if hasattr(char, 'mush')]
+        for char in characters:
+            self.convert_ex2(char)
+
+    def convert_ex2(self, character):
+        template = character.mush.getstat('D`INFO', 'Class') or 'Mortal'
+        sub_class = character.mush.getstat('D`INFO', 'Caste') or None
+        attribute_string = character.mush.mushget('D`ATTRIBUTES') or ''
+        skill_string = character.mush.mushget('D`ABILITIES') or ''
+        paths_string = character.mush.mushget('D`PATHS') or ''
+        colleges_string = character.mush.mushget('D`COLLEGES') or ''
+        virtues_string = character.mush.mushget('D`VIRTUES') or ''
+        graces_string = character.mush.mushget('D`GRACES') or ''
+        slots_string = character.mush.mushget('D`SLOTS') or ''
+        specialties_string = character.mush.mushget('D`SPECIALTIES')
+        power = character.mush.getstat('D`INFO', 'POWER') or 1
+        power_string = 'POWER~%s' % power
+        willpower = character.mush.getstat('D`INFO', 'WILLPOWER')
+        if willpower:
+            willpower_string = 'WILLPOWER~%s' % willpower
+        else:
+            willpower_string = ''
+        stat_string = "|".join([attribute_string, skill_string, paths_string, colleges_string, virtues_string,
+                                graces_string, slots_string, willpower_string, power_string])
+        stat_list = [element for element in stat_string.split('|') if len(element)]
+        stats_dict = dict()
+        for stat in stat_list:
+            name, value = stat.split('~', 1)
+            try:
+                int_value = int(value)
+            except ValueError:
+                int_value = 0
+            stats_dict[name] = int(int_value)
+
+        cache_stats = character.storyteller.stats.cache_stats
+
+        character.storyteller.template.swap(template)
+        character.storyteller.template.template.sub_class = sub_class
+        character.storyteller.template.save()
+
+        for stat in stats_dict.keys():
+            find_stat = partial_match(stat, cache_stats)
+            if not find_stat:
+                continue
+            find_stat.current_value = stats_dict[stat]
+        character.storyteller.stats.save()
+

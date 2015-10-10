@@ -278,12 +278,11 @@ class StatHandler(object):
         self.specialize_stats = list()
         self.specialized_stats = list()
         self.load()
-        self.save(no_load=True)
 
     def load(self):
         load_db = self.owner.storage_locations['stats']
         load_stats = set(self.owner.attributes.get(load_db, []))
-        expected_power = self.owner.storyteller_template.power
+        expected_power = self.owner.storyteller.template.power
         self.valid_classes = list(self.owner.valid_stats)
         self.valid_classes.append(expected_power)
         new_stats = set([stat() for stat in self.valid_classes])
@@ -308,7 +307,7 @@ class StatHandler(object):
                     self.skills_physical.append(stat)
                 if stat.sub_category == 'Social':
                     self.skills_social.append(stat)
-                if stat.skills_mental == 'Mental':
+                if stat.main_category == 'Mental':
                     self.attributes_mental.append(stat)
 
             if stat.main_category == 'Virtue':
@@ -400,7 +399,6 @@ class CustomHandler(object):
         self.style_stats = None
         self.craft_stats = None
         self.load()
-        self.save(no_load=True)
 
     def load(self):
         load_db = self.owner.storage_locations['custom_stats']
@@ -426,7 +424,7 @@ class CustomHandler(object):
                     stat_search = stat.default_stat
                 else:
                     stat_search = stat._stat_name
-                stat.linked_stat = self.owner.storyteller_stats.stats_dict[stat_search]
+                stat.linked_stat = self.owner.storyteller.stats.stats_dict[stat_search]
             except AthanorError:
                 self.owner.sys_msg(message="You have a corruption error with Custom Stat '%s/%s'. "
                                            "Please contact staff." % (stat.base_name, stat.custom_name), error=True,
@@ -442,7 +440,7 @@ class CustomHandler(object):
             raise AthanorError("Custom Stat '%s' not found." % custom_type)
         found_custom = self.valid_classes_dict[found_name]
         if found_custom.default_stat:
-            found_stat = self.owner.storyteller_stats.stats_dict[found_custom.default_stat]
+            found_stat = self.owner.storyteller.stats.stats_dict[found_custom.default_stat]
         else:
             if not stat:
                 raise AthanorError("A %s requires a Stat." % found_custom.base_name)

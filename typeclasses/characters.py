@@ -13,15 +13,12 @@ from evennia import DefaultCharacter
 from evennia.utils.utils import time_format, lazy_property
 from evennia.utils.ansi import ANSIString
 from commands.library import AthanorError, utcnow, mxp_send, header
-from world.storyteller.templates import TemplateHandler
-from world.storyteller.stats import StatHandler, CustomHandler
-from world.storyteller.pools import PoolHandler
-from world.storyteller.merits import MeritHandler
-from world.storyteller.advantages import AdvantageHandler
+from world.storyteller.handler import StorytellerHandler
 
 from world.storyteller.exalted2.templates import TEMPLATES_LIST as EX2_TEMPLATES
 from world.storyteller.exalted2.stats import STATS_LIST as EX2_STATS
 from world.storyteller.exalted2.pools import POOL_LIST as EX2_POOLS
+from world.storyteller.exalted2.merits import MERITS_LIST as EX2_MERITS
 
 
 class Character(DefaultCharacter):
@@ -228,48 +225,11 @@ class StorytellerCharacter(Character):
     storage_locations = dict()
     valid_custom = list()
     valid_pools = list()
-
-    def at_init(self):
-        super(StorytellerCharacter, self).at_init()
-        template = self.storyteller_template
-        stats = self.storyteller_stats
-        customs = self.storyteller_customs
-        merits = self.storyteller_merits
-        advantages = self.storyteller_advantages
-        pools = self.storyteller_pools
+    valid_merits = list()
 
     @lazy_property
-    def storyteller_template(self):
-        return TemplateHandler(self)
-
-    @lazy_property
-    def storyteller_stats(self):
-        return StatHandler(self)
-
-    @lazy_property
-    def storyteller_customs(self):
-        return CustomHandler(self)
-
-    @lazy_property
-    def storyteller_merits(self):
-        return MeritHandler(self)
-
-    @lazy_property
-    def storyteller_advantages(self):
-        return AdvantageHandler(self)
-
-    @lazy_property
-    def storyteller_pools(self):
-        return PoolHandler(self)
-
-    def storyteller_save(self):
-        self.storyteller_template.save()
-        self.storyteller_stats.save()
-        self.storyteller_customs.save()
-        self.storyteller_merits.save()
-        self.storyteller_advantages.save()
-        self.storyteller_pools.save()
-
+    def storyteller(self):
+        return StorytellerHandler(self)
 
 class Ex2Character(StorytellerCharacter):
     """
@@ -281,3 +241,4 @@ class Ex2Character(StorytellerCharacter):
                          'template': '_ex2_template'}
     valid_stats = EX2_STATS
     valid_pools = EX2_POOLS
+    valid_merits = EX2_MERITS
