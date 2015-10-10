@@ -20,7 +20,7 @@ from world.storyteller.merits import MeritHandler
 from world.storyteller.advantages import AdvantageHandler
 
 from world.storyteller.exalted2.templates import TEMPLATES_LIST as EX2_TEMPLATES
-from world.storyteller.exalted2.stats import STATS_LIST as EX2_STATS
+from world.storyteller.exalted2.stats import STATS_LIST as EX2_STATS, CUSTOM_LIST as EX2_CUSTOM
 
 
 class Character(DefaultCharacter):
@@ -279,3 +279,4 @@ class Ex2Character(StorytellerCharacter):
                          'pools': '_ex2_pools', 'merits': '_ex2_merits', 'advantages': '_ex2_advantages',
                          'template': '_ex2_template'}
     valid_stats = EX2_STATS
+    valid_custom = EX2_CUSTOM
