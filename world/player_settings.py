@@ -73,8 +73,8 @@ class SettingHandler(object):
         set_value = target_setting.value
         self.cache_settings()
         self.save_settings()
-        self.owner.sys_msg("Setting '%s/%s' changed to %s!" % (target_setting.category, target_setting.key,
-                            set_value), sys_name='CONFIG')
+        self.owner.sys_msg("Setting '%s/%s' changed to %s!" % (target_setting.category, target_setting.key, set_value),
+                           sys_name='CONFIG')
 
     def find_setting(self, category, setting, exact=True):
         search_tuple = (category, setting)
@@ -176,7 +176,6 @@ class PlayerSetting(object):
             raise AthanorError("'%s' is not a valid color." % new_value)
         return new_value
 
-
     def validate_timezone(self, new_value):
         try:
             tz = partial_match(new_value, pytz.common_timezones)
@@ -185,8 +184,9 @@ class PlayerSetting(object):
             raise AthanorError("Could not find Timezone '%s'. Use @timezones to see a list." % new_value)
         return tz
 
-
 # Category prototypes.
+
+
 class AlertSetting(PlayerSetting):
     category = 'Alerts'
     type = 'Bool'

@@ -1,11 +1,11 @@
-from commands.library import AthanorError
+from commands.library import AthanorError, partial_match
 from evennia.utils.utils import make_iter
 
 class Stat(object):
 
     __slots__ = ['base_name', 'game_category', 'sub_category', 'can_favor', 'can_supernal', 'can_specialize',
-                 'can_roll', 'can_bonus', 'current_bonus', 'current_value', 'current_favored', 'current_supernal',
-                 'initial_value', 'custom_name', 'main_category', 'list_order']
+                 'can_roll', 'can_bonus', 'current_bonus', 'initial_value', 'custom_name', 'main_category',
+                 'list_order', '_value', '_supernal', '_favored', 'can_set']
 
     base_name = 'DefaultStat'
     custom_name = None
@@ -14,18 +14,22 @@ class Stat(object):
     sub_category = None
     can_favor = False
     can_supernal = False
+    can_set = True
     can_specialize = False
     can_roll = False
     can_bonus = False
     current_bonus = 0
-    current_value = None
-    current_favored = False
-    current_supernal = False
     initial_value = None
     list_order = 0
+    _value = None
+    _supernal = None
+    _favored = None
 
     def __init__(self):
-        self.current_value = self.initial_value
+        try:
+            self.current_value = self.initial_value
+        except AthanorError:
+            self._value = self.initial_value
 
     def __unicode__(self):
         return unicode(self.full_name)
@@ -44,6 +48,53 @@ class Stat(object):
 
     def __eq__(self, other):
         return type(self) == type(other)
+
+    @property
+    def current_value(self):
+        return self._value
+
+    @current_value.setter
+    def current_value(self, value):
+        try:
+            new_value = int(value)
+        except ValueError:
+            raise AthanorError("'%s' must be set to a positive integer." % self)
+        if not new_value >= 0:
+            raise AthanorError("'%s' must be set to a positive integer." % self)
+        self._value = new_value
+
+    @property
+    def current_favored(self):
+        return self._favored
+
+    @current_favored.setter
+    def current_favored(self, value):
+        if not self.can_favor:
+            raise AthanorError("'%s' cannot be set Favored." % self)
+        try:
+            new_value = int(value)
+        except ValueError:
+            raise AthanorError("'%s' Favored must be set to 0 or 1." % self)
+        if new_value not in [0, 1]:
+            raise AthanorError("'%s' Favored must be set to 0 or 1." % self)
+        self._favored = new_value
+
+    @property
+    def current_supernal(self):
+        return self._favored
+
+    @current_supernal.setter
+    def current_supernal(self, value):
+        if not self.can_supernal:
+            raise AthanorError("'%s' cannot be set Supernal." % self)
+        try:
+            new_value = int(value)
+        except ValueError:
+            raise AthanorError("'%s' Supernal must be set to 0 or 1." % self)
+        if new_value not in [0, 1]:
+            raise AthanorError("'%s' Supernal must be set to 0 or 1." % self)
+        self._supernal = new_value
+
 
     @property
     def full_name(self):
@@ -192,6 +243,25 @@ class StatHandler(object):
             return
         self.load()
 
+    def set(self, stat=None, value=None, caller=None):
+        if not caller:
+            caller = self.owner
+        if not stat:
+            raise AthanorError("No stat entered to set.")
+        if not value:
+            raise AthanorError("Nothing entered to set it to.")
+        find_stat = partial_match(stat, self.cache_stats)
+        if not find_stat:
+            raise AthanorError("Stat '%s' not found." % stat)
+        try:
+            find_stat.current_value = value
+        except AthanorError as err:
+            caller.sys_msg(message=str(err), error=True, sys_name='EDITCHAR')
+            return
+        else:
+            caller.sys_msg(message='Your %s stat is now: %s' % (find_stat, find_stat.current_value),
+                           sys_name='EDITCHAR')
+            self.save()
 
 class CustomHandler(object):
 
