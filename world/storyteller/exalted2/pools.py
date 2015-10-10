@@ -59,7 +59,7 @@ class OverdrivePool(EssencePool):
 
     def retrieve_max(self, owner):
         pool_calc = self.calculate_overdrive(owner)
-        return sorted([0,pool_calc,25])[1]
+        return sorted([0, pool_calc, 25])[1]
 
 
 class Limit(Pool):
@@ -69,6 +69,7 @@ class Limit(Pool):
 
     def retrieve_max(self, owner):
         return 10
+
 
 class ValorPool(Virtue):
     base_name = 'Valor'
@@ -94,6 +95,7 @@ class SolarPersonal(PersonalPool):
     def retrieve_max(self, owner):
         power, willpower = self.retrieve_stats(owner)
         return power*3 + willpower
+
 
 class SolarPeripheral(PeripheralPool):
 
@@ -159,11 +161,18 @@ class InfernalOverdrive(OverdrivePool):
 
 
 class LunarPersonal(PersonalPool):
-    pass
+
+    def retrieve_max(self, owner):
+        power, willpower = self.retrieve_stats(owner)
+        return power + willpower*2
 
 
 class LunarPeripheral(PeripheralPool):
-    pass
+
+    def retrieve_max(self, owner):
+        power, willpower = self.retrieve_stats(owner)
+        virtue = max(owner.stats.virtue_stats)
+        return power*4 + willpower*2 + virtue*4
 
 
 class LunarExtended(ExtendedPool):
@@ -178,11 +187,18 @@ class LunarOverdrive(OverdrivePool):
 
 
 class SiderealPersonal(PersonalPool):
-    pass
+
+    def retrieve_max(self, owner):
+        power, willpower = self.retrieve_stats(owner)
+        return power*2 + willpower
 
 
 class SiderealPeripheral(PeripheralPool):
-    pass
+
+    def retrieve_max(self, owner):
+        power, willpower = self.retrieve_stats(owner)
+        virtues = sum(owner.stats.virtue_stats)
+        return power*6 + willpower + virtues
 
 
 class SiderealExtended(ExtendedPool):
@@ -233,20 +249,6 @@ class Clarity(Limit):
 class Dissonance(Limit):
     value_name = 'Dissonance'
 
-# Raksha
-
-
-class RakshaPersonal(PersonalPool):
-    pass
-
-
-class RakshaExtended(ExtendedPool):
-    pass
-
-
-class Stasis(Limit):
-    value_name = 'Stasis'
-
 
 # Spirit
 
@@ -256,6 +258,21 @@ class SpiritPersonal(PersonalPool):
     def retrieve_max(self, owner):
         power = int(owner.stats.stats_dict['Power'])
         return power*10
+
+
+# Raksha
+
+
+class RakshaPersonal(SpiritPersonal):
+    pass
+
+
+class RakshaExtended(ExtendedPool):
+    pass
+
+
+class Stasis(Limit):
+    value_name = 'Stasis'
 
 
 # Ghost
@@ -269,14 +286,26 @@ class GhostPersonal(SpiritPersonal):
 
 
 class DragonKingPersonal(PersonalPool):
-    pass
+
+    def retrieve_max(self, owner):
+        power, willpower = self.retrieve_stats(owner)
+        virtues = sum(owner.stats.stats_dict['Conviction'], owner.stats.stats_dict['Valor'])
+        return power*4 + willpower*2 + virtues
 
 
 # Jadeborn
 
 
-class JadebornPersonal(PersonalPool):
+class JadebornPersonal(RakshaPersonal):
     pass
+
+
+# Mortal
+
+
+class MortalPersonal(SpiritPersonal):
+    pass
+
 
 # LISTS
 
@@ -295,7 +324,8 @@ SPIRIT_POOLS = [SpiritPersonal]
 GHOST_POOLS = [GhostPersonal]
 DRAGONKING_POOLS = [DragonKingPersonal]
 JADEBORN_POOLS = [JadebornPersonal]
+MORTAL_POOLS = [MortalPersonal]
 
-POOL_LIST = set(UNIVERSAL_POOLS + SOLAR_POOLS + ABYSSAL_POOLS + INFERNAL_POOLS + LUNAR_POOLS + SIDEREAL_POOLS + \
-            TERRESTRIAL_POOLS + ALCHEMICAL_POOLS + RAKSHA_POOLS + SPIRIT_POOLS + GHOST_POOLS + DRAGONKING_POOLS +
-                JADEBORN_POOLS)
+POOL_LIST = list(set(UNIVERSAL_POOLS + SOLAR_POOLS + ABYSSAL_POOLS + INFERNAL_POOLS + LUNAR_POOLS + SIDEREAL_POOLS + \
+            TERRESTRIAL_POOLS + ALCHEMICAL_POOLS + RAKSHA_POOLS + SPIRIT_POOLS + GHOST_POOLS + DRAGONKING_POOLS + \
+                JADEBORN_POOLS + MORTAL_POOLS))
