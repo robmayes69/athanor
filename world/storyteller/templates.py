@@ -23,22 +23,22 @@ class TemplateHandler(object):
 
     def __init__(self, owner):
         self.owner = owner
-        if self.load():
-            self.save()
+        self.load()
+        self.save(no_load=True)
 
     def load(self):
-        save = False
         load_db = self.owner.storage_locations['template']
         load_template = self.owner.attributes.get(load_db)
         if not load_template:
             self.swap('Mortal', no_save=True)
         else:
             self.template = load_template
-        return save
 
-    def save(self):
+    def save(self, no_load=False):
         load_db = self.owner.storage_locations['template']
         self.owner.attributes.add(load_db, self.template)
+        if not no_load:
+            self.load()
 
     def swap(self, new_template=None, no_save=False):
         if not new_template:
@@ -50,6 +50,11 @@ class TemplateHandler(object):
         self.template = new_find
         if not no_save:
             self.save()
+            self.owner.stats.load()
+            self.owner.merits.load()
+            self.owner.customs.load()
+            self.owner.advantages.load()
+            self.owner.pools.load()
 
     @property
     def power(self):

@@ -1,11 +1,13 @@
 from commands.library import AthanorError, partial_match, sanitize_string
 from evennia.utils.utils import make_iter
 
+
 class Stat(object):
 
     __slots__ = ['base_name', 'game_category', 'sub_category', 'can_favor', 'can_supernal', 'can_specialize',
                  'can_roll', 'can_bonus', 'current_bonus', 'initial_value', 'custom_name', 'main_category',
-                 'list_order', '_value', '_supernal', '_favored', 'can_set', 'specialties']
+                 'list_order', '_value', '_supernal', '_favored', 'can_set', 'specialties', 'always_display', '_epic',
+                 'can_epic']
 
     base_name = 'DefaultStat'
     custom_name = None
@@ -18,13 +20,16 @@ class Stat(object):
     can_specialize = False
     can_roll = False
     can_bonus = False
+    can_epic = False
     current_bonus = 0
     initial_value = None
     list_order = 0
     specialties = dict()
+    always_display = False
     _value = 0
     _supernal = False
     _favored = False
+    _epic = 0
 
     def __init__(self):
         try:
@@ -105,7 +110,6 @@ class Stat(object):
             raise AthanorError("'%s' Supernal must be set to 0 or 1." % self)
         self._supernal = new_value
 
-
     @property
     def full_name(self):
         return self.custom_name or self.base_name
@@ -153,6 +157,7 @@ class Willpower(Stat):
     main_category = 'Advantage'
     can_roll = True
     initial_value = 5
+
 
 class CustomStat(object):
 
@@ -282,7 +287,7 @@ class StatHandler(object):
     def load(self):
         load_db = self.owner.storage_locations['stats']
         load_stats = set(self.owner.attributes.get(load_db, []))
-        expected_power = self.owner.storyteller.template.power
+        expected_power = self.owner.template.power
         self.valid_classes = list(self.owner.valid_stats)
         self.valid_classes.append(expected_power)
         new_stats = set([stat() for stat in self.valid_classes])

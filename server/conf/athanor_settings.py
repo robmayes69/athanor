@@ -14,6 +14,7 @@ unnecessarily.
 # Use the defaults from Evennia unless explicitly overridden
 import os
 from evennia.settings_default import *
+from server.conf.storyteller_settings import *
 
 ######################################################################
 # Evennia base server config

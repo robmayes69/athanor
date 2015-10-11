@@ -1,3 +1,5 @@
+
+from django.conf import settings
 from world.storyteller.pools import Pool as OldPool, WillpowerPool as OldWillpowerPool
 
 # Define main types.
@@ -28,7 +30,16 @@ class EssencePool(Pool):
     value_name = 'Essence'
 
     def retrieve_stats(self, owner):
-        return int(owner.stats.stats_dict['Power']), int(owner.stats.stats_dict['Willpower'])
+        if settings.EX2_POOL_MAX_VIRTUES:
+            virtues = [5, 5, 5, 5]
+        else:
+            virtues = owner.stats.virtue_stats
+        if settings.EX2_POOL_MAX_WILLPOWER:
+            willpower = 10
+        else:
+            willpower = int(owner.stats.stats_dict['Willpower'])
+        power = int(owner.stats.stats_dict['Power'])
+        return power, willpower, virtues
 
 
 class PersonalPool(EssencePool):
@@ -93,16 +104,15 @@ class ConvictionPool(Virtue):
 class SolarPersonal(PersonalPool):
 
     def retrieve_max(self, owner):
-        power, willpower = self.retrieve_stats(owner)
+        power, willpower, virtues = self.retrieve_stats(owner)
         return power*3 + willpower
 
 
 class SolarPeripheral(PeripheralPool):
 
     def retrieve_max(self, owner):
-        power, willpower = self.retrieve_stats(owner)
-        virtues = sum(owner.stats.virtue_stats)
-        return power*7 + willpower + virtues
+        power, willpower, virtues, = self.retrieve_stats(owner)
+        return power*7 + willpower + sum(virtues)
 
 
 class SolarExtended(ExtendedPool):
@@ -163,15 +173,15 @@ class InfernalOverdrive(OverdrivePool):
 class LunarPersonal(PersonalPool):
 
     def retrieve_max(self, owner):
-        power, willpower = self.retrieve_stats(owner)
+        power, willpower, virtues = self.retrieve_stats(owner)
         return power + willpower*2
 
 
 class LunarPeripheral(PeripheralPool):
 
     def retrieve_max(self, owner):
-        power, willpower = self.retrieve_stats(owner)
-        virtue = max(owner.stats.virtue_stats)
+        power, willpower, virtues = self.retrieve_stats(owner)
+        virtue = int(max(virtues))
         return power*4 + willpower*2 + virtue*4
 
 
@@ -189,15 +199,15 @@ class LunarOverdrive(OverdrivePool):
 class SiderealPersonal(PersonalPool):
 
     def retrieve_max(self, owner):
-        power, willpower = self.retrieve_stats(owner)
+        power, willpower, virtues = self.retrieve_stats(owner)
         return power*2 + willpower
 
 
 class SiderealPeripheral(PeripheralPool):
 
     def retrieve_max(self, owner):
-        power, willpower = self.retrieve_stats(owner)
-        virtues = sum(owner.stats.virtue_stats)
+        power, willpower, virtues = self.retrieve_stats(owner)
+        virtues = sum(virtues)
         return power*6 + willpower + virtues
 
 
@@ -288,9 +298,12 @@ class GhostPersonal(SpiritPersonal):
 class DragonKingPersonal(PersonalPool):
 
     def retrieve_max(self, owner):
-        power, willpower = self.retrieve_stats(owner)
-        virtues = sum(owner.stats.stats_dict['Conviction'], owner.stats.stats_dict['Valor'])
-        return power*4 + willpower*2 + virtues
+        power, willpower, virtues = self.retrieve_stats(owner)
+        if settings.EX2_POOL_MAX_VIRTUES:
+            virtues2 = 10
+        else:
+            virtues2 = sum(owner.stats.stats_dict['Conviction'], owner.stats.stats_dict['Valor'])
+        return power*4 + willpower*2 + virtues2
 
 
 # Jadeborn
