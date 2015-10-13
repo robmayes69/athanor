@@ -6,7 +6,7 @@ class StatPower(object):
 
     __slots__ = ['base_name', 'game_category', 'sub_category', 'can_roll', '_value', '_supernal', '_favored',
                  'default_add', 'initial_value', 'custom_name', 'main_category', 'list_order', 'linked_stat',
-                 '_stat', '_stat_name', 'default_stat', 'can_stat', 'custom_category']
+                 '_stat', '_stat_name', 'default_stat', 'can_stat', 'custom_category', 'available_subcategories']
 
     base_name = 'StatPower'
     custom_name = None
@@ -19,6 +19,7 @@ class StatPower(object):
     initial_value = None
     list_order = 0
     default_stat = None
+    available_subcategories = list()
     _value = 0
     _favored = False
     _supernal = False
@@ -114,7 +115,7 @@ class WordPower(StatPower):
     base_name = 'WordPower'
 
 
-    def __init__(self, name=None, category=None):
+    def __init__(self, name=None, sub_category=None, custom_category=None):
         if not name:
             raise AthanorError("A '%s' needs a name!")
         if '#' in name:
@@ -125,10 +126,15 @@ class WordPower(StatPower):
                 raise AthanorError("Invalid multiple purchase entry for '%s'!" % name)
         else:
             value = 1
-        self.custom_name = dramatic_capitalize(sanitize_string(name))
+        self.custom_name = dramatic_capitalize(sanitize_string(name, strip_ansi=True))
         self._value = value
-        if category:
-            self.custom_category = dramatic_capitalize(sanitize_string(category))
+        if sub_category:
+            found_sub = partial_match(sub_category, self.available_subcategories)
+            if not found_sub:
+                raise AthanorError("Sub-category '%s' is not available!" % sub_category)
+            self.sub_category = found_sub
+        if custom_category:
+            self.custom_category = dramatic_capitalize(sanitize_string(custom_category, strip_ansi=True))
 
 
 
