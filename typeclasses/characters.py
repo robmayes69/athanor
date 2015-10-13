@@ -15,7 +15,7 @@ from evennia.utils.ansi import ANSIString
 from commands.library import AthanorError, utcnow, mxp_send, header
 
 from world.storyteller.templates import TemplateHandler
-from world.storyteller.stats import StatHandler, CustomHandler
+from world.storyteller.stats import StatHandler
 from world.storyteller.pools import PoolHandler
 from world.storyteller.merits import MeritHandler
 from world.storyteller.advantages import AdvantageHandler
@@ -24,6 +24,7 @@ from world.storyteller.exalted2.templates import TEMPLATES_LIST as EX2_TEMPLATES
 from world.storyteller.exalted2.stats import STATS_LIST as EX2_STATS
 from world.storyteller.exalted2.pools import POOL_LIST as EX2_POOLS
 from world.storyteller.exalted2.merits import MERITS_LIST as EX2_MERITS
+from world.storyteller.exalted2.advantages import ALL_WORDPOWERS as EX2_WORDPOWERS
 
 
 class Character(DefaultCharacter):
@@ -228,9 +229,9 @@ class StorytellerCharacter(Character):
     """
     valid_templates = list()
     storage_locations = dict()
-    valid_custom = list()
     valid_pools = list()
     valid_merits = list()
+    valid_advantages = list()
 
     @lazy_property
     def template(self):
@@ -239,10 +240,6 @@ class StorytellerCharacter(Character):
     @lazy_property
     def stats(self):
         return StatHandler(self)
-
-    @lazy_property
-    def customs(self):
-        return CustomHandler(self)
 
     @lazy_property
     def merits(self):
@@ -261,9 +258,10 @@ class Ex2Character(StorytellerCharacter):
     For use with Exalted 2nd Edition characters.
     """
     valid_templates = EX2_TEMPLATES
-    storage_locations = {'power': '_ex2_power', 'stats': '_ex2_stats', 'custom_stats': '_ex2_custom_stats',
-                         'pools': '_ex2_pools', 'merits': '_ex2_merits', 'advantages': '_ex2_advantages',
-                         'template': '_ex2_template'}
+    storage_locations = {'power': '_ex2_power', 'stats': '_ex2_stats', 'pools': '_ex2_pools', 'merits': '_ex2_merits',
+                         'advantages': '_ex2_advantages', 'template': '_ex2_template'}
+
     valid_stats = EX2_STATS
     valid_pools = EX2_POOLS
     valid_merits = EX2_MERITS
+    valid_advantages = EX2_WORDPOWERS

@@ -393,6 +393,14 @@ def sanitize_string(input=None, length=None, strip_ansi=False, strip_mxp=True, s
     return unicode(input)
 
 
+def dramatic_capitalize(capitalize_string=''):
+    capitalize_string = re.sub(r"(?i)(?:^|(?<=[_\/\-\|\s()\+]))(?P<name1>[a-z]+)",
+                               lambda find: find.group('name1').capitalize(), capitalize_string.lower())
+    capitalize_string = re.sub(r"(?i)\b(of|the|a|and|in)\b", lambda find: find.group(1).lower(), capitalize_string)
+    capitalize_string = re.sub(r"(?i)(^|(?<=[(\|\/]))(of|the|a|and|in)",
+                               lambda find: find.group(1) + find.group(2).capitalize(), capitalize_string)
+    return capitalize_string
+
 def penn_substitutions(input=None):
     if not input:
         return ''

@@ -1,4 +1,4 @@
-from commands.library import AthanorError, sanitize_string, partial_match
+from commands.library import AthanorError, sanitize_string, partial_match, dramatic_capitalize
 
 class Merit(object):
 
@@ -15,6 +15,7 @@ class Merit(object):
     def __init__(self, name=None, context=None, value=None):
         if not name:
             raise AthanorError("A %s requires a name!" % self.base_name)
+        self.current_name = name
         if context:
             self.current_context = context
         if value:
@@ -27,7 +28,7 @@ class Merit(object):
         return self.full_name
 
     def __repr__(self):
-        return '<%s: %s - (%s)>' % (self.main_category, self.full_name, self.display_rank)
+        return '<%s: %s - (%s)>' % (self.main_category, self.full_name, self.current_value)
 
     def __nonzero__(self):
         return True
@@ -76,7 +77,7 @@ class Merit(object):
         if value == '' or value == None:
             self._name = None
         else:
-            self._name = sanitize_string(str(value), strip_mxp=True, strip_ansi=True)
+            self._name = dramatic_capitalize(sanitize_string(str(value), strip_mxp=True, strip_ansi=True))
 
     @property
     def current_description(self):
@@ -98,7 +99,7 @@ class Merit(object):
         if value == '' or value == None:
             self._context = None
         else:
-            self._context = sanitize_string(str(value), strip_mxp=True)
+            self._context = dramatic_capitalize(sanitize_string(str(value), strip_mxp=True))
 
 class MeritHandler(object):
 
@@ -131,7 +132,7 @@ class MeritHandler(object):
             return
         self.load()
 
-    def add(self, merit_type=None, name=None, value=None,caller=None):
+    def add(self, merit_type=None, name=None, value=None, caller=None):
         if not caller:
             caller = self.owner
         if not merit_type:
@@ -170,4 +171,9 @@ class MeritHandler(object):
         if not found_type:
                 raise AthanorError('Type not found.')
         search_merits = self.merits_dict[found_type]
-        search_names = [merit.current_name for merit in search_merits]
+        found_merit = partial_match(name, search_merits)
+        if not found_merit:
+            raise AthanorError("No %s called '%s' could be found." % (found_type.base_name, name))
+        found_merit.current_description = value
+        self.save()
+        return True

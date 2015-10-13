@@ -52,7 +52,6 @@ class TemplateHandler(object):
             self.save()
             self.owner.stats.load()
             self.owner.merits.load()
-            self.owner.customs.load()
             self.owner.advantages.load()
             self.owner.pools.load()
 
