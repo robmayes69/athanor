@@ -115,6 +115,14 @@ class Pool(object):
         self.current_value = self.max_capacity
         return True
 
+    def sheet_format(self, rjust=None, zfill=2):
+        val_string = '%s/%s' % (str(self.current_value).zfill(zfill), str(self.max_value).zfill(zfill))
+        display_name = self.base_name
+        if rjust:
+            return '%s: %s' % (self.base_name.rjust(rjust), val_string)
+        else:
+            return '%s: %s' % (self.base_name, val_string)
+
 class WillpowerPool(Pool):
     base_name = 'Willpower'
     main_category = 'Pool'

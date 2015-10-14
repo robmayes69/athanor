@@ -295,6 +295,14 @@ class CmdImport(AthCommand):
                 from world.storyteller.exalted2.advantages import Necromancy
                 self.ex2_spells(character, spell_attr, Necromancy)
 
+        languages = character.mush.mushget('D`LANGUAGES')
+        if languages:
+            from world.storyteller.exalted2.advantages import Language
+            language_list = languages.split('|')
+            for language in language_list:
+                new_lang = Language(name=language)
+                character.advantages.cache_advantages.add(new_lang)
+
         character.advantages.save()
 
     def ex2_merits(self, character, merit_type, merit_class):

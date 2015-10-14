@@ -59,6 +59,17 @@ class ExtendedPool(PeripheralPool):
     value_name = 'Extended Peripheral Essence'
     list_order = 10
 
+    def retrieve_max(self, owner):
+        extended_charms = owner.template.template.extended_charms
+        if not extended_charms:
+            return 0
+        total_extended = list()
+        for worth, charm_names in extended_charms.items():
+            found_values = sum([charm.current_value for charm in owner.advantages.cache_advantages
+                                if charm.base_name == 'Charm' and charm.full_name in charm_names])
+            if found_values:
+                total_extended.append(found_values * worth)
+        return sum(total_extended)
 
 class OverdrivePool(EssencePool):
     base_name = 'Overdrive'
@@ -66,7 +77,16 @@ class OverdrivePool(EssencePool):
     list_order = 15
 
     def calculate_overdrive(self, owner):
-        pass
+        overdrive_charms = owner.template.template.overdrive_charms
+        if not overdrive_charms:
+            return 0
+        total_overdrive = list()
+        for worth, charm_names in overdrive_charms.items():
+            found_values = sum([charm.current_value for charm in owner.advantages.cache_advantages
+                                if charm.base_name == 'Charm' and charm.full_name in charm_names])
+            if found_values:
+                total_overdrive.append(found_values * worth)
+        return sum(total_overdrive)
 
     def retrieve_max(self, owner):
         pool_calc = self.calculate_overdrive(owner)
@@ -116,15 +136,11 @@ class SolarPeripheral(PeripheralPool):
 
 
 class SolarExtended(ExtendedPool):
-
-    def retrieve_max(self, owner):
-        return 0
+    pass
 
 
 class SolarOverdrive(OverdrivePool):
-
-    def retrieve_max(self, owner):
-        return 0
+    pass
 
 # Abyssals
 

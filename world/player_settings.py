@@ -14,21 +14,16 @@ class SettingHandler(object):
         self.sorted_cache = dict()
         self.search_cache = dict()
         self.values_cache = dict()
-        if not self.owner.db._settings:
-            self.owner.db._settings = []
-        self.settings_cache = list(self.owner.db._settings)
-        current_classes = [setting.__class__ for setting in self.settings_cache]
-        for item in [setting for setting in ALL_SETTINGS if setting not in current_classes]:
-            self.settings_cache.append(item())
-            save = True
-        for item in [setting for setting in self.settings_cache if setting.__class__ not in ALL_SETTINGS]:
-            self.settings_cache.remove(item)
-            save = True
-        self.cache_settings()
-        if save:
-            self.save_settings()
+        self.load()
+        self.save()
 
-    def cache_settings(self):
+    def load(self):
+        load_settings = set(self.owner.attributes.get('_settings', []))
+        valid_settings = set([setting() for setting in ALL_SETTINGS])
+        if not load_settings == valid_settings:
+            load_settings.update(valid_settings)
+            load_settings = valid_settings.intersection(load_settings)
+        self.settings_cache = load_settings
         self.categories_cache = sorted(list(set([item.category for item in self.settings_cache])))
         for category in self.categories_cache:
             self.sorted_cache[category] = sorted([item for item in self.settings_cache if item.category == category],
@@ -37,7 +32,7 @@ class SettingHandler(object):
         for setting in self.settings_cache:
             self.values_cache[setting.id] = setting.value
 
-    def save_settings(self):
+    def save(self):
         self.owner.db._settings = self.settings_cache
 
     def restore_defaults(self):
@@ -71,8 +66,8 @@ class SettingHandler(object):
         target_setting = self.find_setting(category, setting, exact=exact)
         target_setting.value = new_value
         set_value = target_setting.value
-        self.cache_settings()
-        self.save_settings()
+        self.load()
+        self.save()
         self.owner.sys_msg("Setting '%s/%s' changed to %s!" % (target_setting.category, target_setting.key, set_value),
                            sys_name='CONFIG')
 
@@ -140,6 +135,12 @@ class PlayerSetting(object):
 
     def __repr__(self):
         return '<Setting: %s>' % self.id
+
+    def __hash__(self):
+        return self.id.__hash__()
+
+    def __eq__(self, other):
+        return self.id == other.id
 
     @property
     def value(self):

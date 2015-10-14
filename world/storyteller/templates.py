@@ -19,7 +19,6 @@ class Template(object):
                          'danagetotal': 'n', 'damagetotalnum': 'n'}
     extra_sheet_colors = dict()
 
-
     def __str__(self):
         return self.base_name
 
@@ -66,13 +65,12 @@ class Template(object):
 
     def sheet_triple_header(self, display_text = ['', '', ''], width=78):
         colors = self.sheet_colors
-        col_widths = self.calculate_widths(width-1)
+        col_widths = self.calculate_widths(width-2)
         fill = ANSIString('{%s-{n' % colors['border'])
         sections = list()
         for count, header in enumerate(display_text):
             center_text = ANSIString('{%s/{n{%s%s{n{%s/{n' % (colors['slash'], colors['section_name'], header,
                                                               colors['slash'])).center(col_widths[count], fill)
-            print center_text
             sections.append(center_text)
 
         start_char = ANSIString('{%s}{n' % colors['border'])
@@ -82,15 +80,15 @@ class Template(object):
     def sheet_border(self, display_text=None, width=78):
         colors = self.sheet_colors
         ev_table = EvTable(border='cols', pad_width=0, valign='t',
-                           border_left_char=ANSIString('{%s|{n ' % colors['border']),
+                           border_left_char=ANSIString('{%s|{n' % colors['border']),
                            border_right_char=ANSIString('{%s|{n' % colors['border']), header=False)
-        ev_table.add_row(display_text, width=width - 1)
+        ev_table.add_row(display_text, width=width)
         return ev_table
 
     def sheet_columns(self, display_text=['', '', ''], width=78):
         colors = self.sheet_colors
         ev_table = EvTable(border='cols', pad_width=0, valign='t',
-                           border_left_char=ANSIString('{%s|{n ' % colors['border']),
+                           border_left_char=ANSIString('{%s|{n' % colors['border']),
                            border_right_char=ANSIString('{%s|{n' % colors['border']), header=False)
         ev_table.add_row(display_text[0], display_text[1], display_text[2])
 
@@ -103,7 +101,7 @@ class Template(object):
         line1 = '  {%s.%s.{n' % (colors['border'], '-' * (width-6))
         line2_start = ' {%s/{n' % colors['border']
         line2_end = ' {%s\\{n' % colors['border']
-        line2 = line2_start + '%s' % settings.SERVERNAME.center(width-4, ' ') + line2_end
+        line2 = line2_start + '%s' % settings.SERVERNAME.center(width-5, ' ') + line2_end
         return [line1, line2]
 
     def sheet_attributes(self, owner, width=78):
@@ -166,7 +164,7 @@ class Template(object):
                 calculate = int(math.ceil(col_calc))
                 column_widths.append(calculate)
             if num == 2:
-                calculate = int(width - 1 - column_widths[0] - column_widths[1])
+                calculate = int(width - 0 - column_widths[0] - column_widths[1])
                 column_widths.append(calculate)
         return column_widths
 

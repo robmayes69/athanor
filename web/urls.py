@@ -2,6 +2,8 @@ from django.conf.urls import url, include
 
 from evennia.web.urls import urlpatterns
 
+from web import sheet
+
 #
 # File that determines what each URL points to. This uses _Python_ regular
 # expressions, not Perl's.
@@ -20,6 +22,7 @@ from evennia.web.urls import urlpatterns
 
 patterns = [
     # url(r'/desired/url/', view, name='example'),
+    url(r'^sheet/(?P<sheet_id>\d+)/(?P<width>\d+)$', sheet.display_sheet, name='ex2_sheet')
 ]
 
 urlpatterns = patterns + urlpatterns
