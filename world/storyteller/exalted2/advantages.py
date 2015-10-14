@@ -15,7 +15,7 @@ class SolarCharm(Charm):
     available_subcategories = ['Archery', 'Martial Arts', 'Melee', 'Thrown', 'War', 'Linguistics', 'Ride', 'Sail',
                                'Socialize', 'Athletics', 'Awareness', 'Dodge', 'Larceny', 'Stealth', 'Craft',
                                'Investigation', 'Lore', 'Medicine', 'Occult', 'Integrity', 'Performance', 'Presence',
-                               'Resistance', 'Survival']
+                               'Resistance', 'Survival', 'Bureaucracy']
 
 
 class AbyssalCharm(SolarCharm):
@@ -38,7 +38,7 @@ class LunarCharm(Charm):
 
 class InfernalCharm(Charm):
     main_category = 'Infernal Charms'
-    available_subcategories = ['Malfeas', 'Cecelyne', 'SWLiHN', 'Adorjan', 'The Ebon Dragon', 'Kimbery', 'Theion',
+    available_subcategories = ['Malfeas', 'Cecelyne', 'SWLiHN', 'Adorjan', 'Ebon Dragon', 'Kimbery', 'Theion',
                                'Heretical', 'Martial Arts', 'Hegra']
 
 
@@ -47,7 +47,6 @@ class AlchemicalCharm(Charm):
     available_subcategories = ['Combat', 'Survival', 'Speed and Mobility', 'Social', 'Stealth and Disguise',
                                'Analytic and Cognitive', 'Labor and Utility', 'Submodules', 'General', 'Mass Combat',
                                'Spiritual']
-
 
 
 class RakshaCharm(Charm):
@@ -72,12 +71,18 @@ class JadebornCharm(Charm):
 
 
 class Spell(WordPower):
-    base_name = 'DefaultSpell'
+    base_name = 'Spell'
+
+
+class Protocol(Spell):
+    main_category = 'Protocols'
+    available_subcategories = ['Man-Machine Protocols', 'God-Machine Protocols']
 
 
 class Sorcery(Spell):
     main_category = 'Sorcery'
     available_subcategories = ['Terrestrial Circle Spells', 'Celestial Circle Spells', 'Solar Circle Spells']
+
 
 class Necromancy(Spell):
     main_category = 'Necromancy'
@@ -90,10 +95,16 @@ class Thaumaturgy(WordPower):
 
 
 class MartialCharm(Charm):
+    base_name = 'Martial Arts Charm'
     main_category = 'Martial Arts'
     available_subcategories = ['Terrestrial Martial Arts', 'Celestial Martial Arts', 'Sidereal Martial Arts']
 
 
-ALL_WORDPOWERS = SolarCharm + LunarCharm + AbyssalCharm + InfernalCharm + SiderealCharm + TerrestrialCharm + \
-                 AlchemicalCharm + RakshaCharm + SpiritCharm + GhostCharm + JadebornCharm + Sorcery + Necromancy + \
-                 Thaumaturgy + MartialCharm
+class Language(WordPower):
+    base_name = 'Language'
+    main_category = 'Language'
+
+
+ALL_WORDPOWERS = [SolarCharm, LunarCharm, AbyssalCharm, InfernalCharm, SiderealCharm, TerrestrialCharm, AlchemicalCharm,
+                  RakshaCharm, SpiritCharm, GhostCharm, JadebornCharm, Sorcery, Necromancy, Thaumaturgy, MartialCharm,
+                  Protocol, Language]

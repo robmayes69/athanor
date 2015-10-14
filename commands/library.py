@@ -214,7 +214,7 @@ def header(header_text=None, width=78, width_mode='fixed', fill_character=None, 
         colors['headerstar'] = MAIN_COLOR_DEFAULTS['borders']['borderdot']
 
     if width_mode == 'variable' and viewer:
-        width = 78
+        width = viewer.screen_width
     if edges:
         width -= 2
 

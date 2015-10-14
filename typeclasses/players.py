@@ -261,6 +261,12 @@ class Player(DefaultPlayer):
     def settings(self):
         return SettingHandler(self)
 
+    @property
+    def screen_width(self):
+        width_list = list()
+        for session in self.sessions:
+            width_list += session.protocol_flags['SCREENWIDTH'].values()
+        return min(width_list) or 78
 
 class Guest(DefaultGuest):
     """

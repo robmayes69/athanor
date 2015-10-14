@@ -1,5 +1,6 @@
 from commands.library import AthanorError, partial_match, sanitize_string
 from evennia.utils.utils import make_iter
+from evennia.utils.ansi import ANSIString
 
 
 class Stat(object):
@@ -97,7 +98,7 @@ class Stat(object):
 
     @property
     def current_supernal(self):
-        return self._favored
+        return self._supernal
 
     @current_supernal.setter
     def current_supernal(self, value):
@@ -139,6 +140,25 @@ class Stat(object):
         if self.current_supernal or self.current_favored or self.current_value:
             return True
         return False
+
+    def sheet_format(self, width=23, no_favored=False, fill_char='.',
+                     colors={'statname': 'n', 'statfill': 'n', 'statdot': 'n'}):
+        display_name = ANSIString('{%s%s{n' % (colors['statname'], self.full_name))
+        if self.current_supernal:
+            fav_dot = ANSIString('{r*{n')
+        elif self.current_favored:
+            fav_dot = ANSIString('{r+{n')
+        else:
+            fav_dot = ANSIString(' ')
+        if not no_favored:
+            display_name = fav_dot + display_name
+        if self.current_value > width - len(display_name) - 1:
+            dot_display = ANSIString('{%s%s{n' % (colors['statdot'], self.current_value))
+        else:
+            dot_display = ANSIString('{%s%s{n' % (colors['statdot'], '*' * self.current_value))
+        fill_length = width - len(display_name) - len(dot_display)
+        fill = ANSIString('{%s%s{n' % (colors['statfill'], fill_char * fill_length))
+        return display_name + fill + dot_display
 
 class Attribute(Stat):
     base_name = 'Attribute'

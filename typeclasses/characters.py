@@ -222,6 +222,12 @@ class Character(DefaultCharacter):
     def settings(self):
         return self.db._owner.settings
 
+    @property
+    def screen_width(self):
+        width_list = list()
+        for session in self.sessions:
+            width_list += session.protocol_flags['SCREENWIDTH'].values()
+        return min(width_list) or 78
 
 class StorytellerCharacter(Character):
     """
@@ -252,6 +258,11 @@ class StorytellerCharacter(Character):
     @lazy_property
     def pools(self):
         return PoolHandler(self)
+
+    def return_sheet(self, viewer):
+        pass
+
+
 
 class Ex2Character(StorytellerCharacter):
     """

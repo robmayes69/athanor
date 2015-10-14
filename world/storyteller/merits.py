@@ -1,4 +1,5 @@
 from commands.library import AthanorError, sanitize_string, partial_match, dramatic_capitalize
+from evennia.utils.ansi import ANSIString
 
 class Merit(object):
 
@@ -100,6 +101,16 @@ class Merit(object):
             self._context = None
         else:
             self._context = dramatic_capitalize(sanitize_string(str(value), strip_mxp=True))
+
+    def sheet_format(self, width=36, fill_char='.', colors={'statname': 'n', 'statfill': 'n', 'statdot': 'n'}):
+        display_name = ANSIString('{%s%s{n' % (colors['statname'], self.full_name))
+        if self.current_value > width - len(display_name) - 1:
+            dot_display = ANSIString('{%s%s{n' % (colors['statdot'], self.current_value))
+        else:
+            dot_display = ANSIString('{%s%s{n' % (colors['statdot'], '*' * self.current_value))
+        fill_length = width - len(display_name) - len(dot_display)
+        fill = ANSIString('{%s%s{n' % (colors['statfill'], fill_char * fill_length))
+        return display_name + fill + dot_display
 
 class MeritHandler(object):
 

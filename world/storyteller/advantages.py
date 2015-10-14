@@ -110,6 +110,8 @@ class StatPower(object):
             raise AthanorError("A %s can only be linked to Stat instances." % self.base_name)
         self._stat = value
 
+    def sheet_format(self):
+        return self.full_name
 
 class WordPower(StatPower):
     base_name = 'WordPower'
@@ -136,7 +138,11 @@ class WordPower(StatPower):
         if custom_category:
             self.custom_category = dramatic_capitalize(sanitize_string(custom_category, strip_ansi=True))
 
-
+    def sheet_format(self):
+        if self.current_value > 1:
+            return '%s (%s)' % (self.full_name, self.current_value)
+        else:
+            return self.full_name
 
 class AdvantageHandler(object):
 
