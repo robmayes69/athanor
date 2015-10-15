@@ -19,12 +19,14 @@ from world.storyteller.stats import StatHandler
 from world.storyteller.pools import PoolHandler
 from world.storyteller.merits import MeritHandler
 from world.storyteller.advantages import AdvantageHandler
+from world.storyteller.manager import StorytellerHandler
 
 from world.storyteller.exalted2.templates import TEMPLATES_LIST as EX2_TEMPLATES
 from world.storyteller.exalted2.stats import STATS_LIST as EX2_STATS
 from world.storyteller.exalted2.pools import POOL_LIST as EX2_POOLS
 from world.storyteller.exalted2.merits import MERITS_LIST as EX2_MERITS
 from world.storyteller.exalted2.advantages import ALL_WORDPOWERS as EX2_WORDPOWERS
+from world.storyteller.exalted2.manager import ALL_SECTIONS as EX2_SECTIONS
 
 
 class Character(DefaultCharacter):
@@ -238,6 +240,7 @@ class StorytellerCharacter(Character):
     valid_pools = list()
     valid_merits = list()
     valid_advantages = list()
+    valid_sections = list()
 
     @lazy_property
     def template(self):
@@ -259,6 +262,10 @@ class StorytellerCharacter(Character):
     def pools(self):
         return PoolHandler(self)
 
+    @lazy_property
+    def storyteller(self):
+        return StorytellerHandler(self)
+
     def return_sheet(self, viewer):
         pass
 
@@ -276,3 +283,4 @@ class Ex2Character(StorytellerCharacter):
     valid_pools = EX2_POOLS
     valid_merits = EX2_MERITS
     valid_advantages = EX2_WORDPOWERS
+    valid_sections = EX2_SECTIONS

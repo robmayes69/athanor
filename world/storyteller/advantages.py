@@ -198,7 +198,8 @@ class AdvantageHandler(object):
         if not found_stat:
             raise AthanorError("Cannot set %s. No stat found." % found_custom.base_name)
 
-
+    def all(self):
+        return self.cache_advantages
 
     def save(self, no_load=False):
         load_db = self.owner.storage_locations['advantages']

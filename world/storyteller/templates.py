@@ -110,8 +110,8 @@ class Template(object):
                                                 width=width))
         col_widths = self.calculate_widths(width)
         physical = '\n'.join([stat.sheet_format(width=col_widths[0]-2) for stat in owner.stats.attributes_physical])
-        social = '\n'.join([stat.sheet_format(width=col_widths[1]-2) for stat in owner.stats.attributes_social])
-        mental = '\n'.join([stat.sheet_format(width=col_widths[2]-2) for stat in owner.stats.attributes_mental])
+        social = '\n'.join([stat.sheet_format(width=col_widths[1]-1) for stat in owner.stats.attributes_social])
+        mental = '\n'.join([stat.sheet_format(width=col_widths[2]-1) for stat in owner.stats.attributes_mental])
         section.append(self.sheet_columns([physical, social, mental], width=width))
         return section
 

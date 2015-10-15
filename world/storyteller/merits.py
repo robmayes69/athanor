@@ -143,6 +143,9 @@ class MeritHandler(object):
             return
         self.load()
 
+    def all(self):
+        return self.cache_merits
+
     def add(self, merit_type=None, name=None, value=None, caller=None):
         if not caller:
             caller = self.owner

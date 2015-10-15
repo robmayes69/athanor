@@ -97,7 +97,18 @@ class Thaumaturgy(WordPower):
 class MartialCharm(Charm):
     base_name = 'Martial Arts Charm'
     main_category = 'Martial Arts'
-    available_subcategories = ['Terrestrial Martial Arts', 'Celestial Martial Arts', 'Sidereal Martial Arts']
+
+
+class TerrestrialMartialCharm(MartialCharm):
+    sub_category = 'Terrestrial Martial Arts'
+
+
+class CelestialMartialCharm(MartialCharm):
+    sub_category = 'Celestial Martial Arts'
+
+
+class SiderealMartialCharm(MartialCharm):
+    sub_category = 'Sidereal Martial Arts'
 
 
 class Language(WordPower):
@@ -106,5 +117,5 @@ class Language(WordPower):
 
 
 ALL_WORDPOWERS = [SolarCharm, LunarCharm, AbyssalCharm, InfernalCharm, SiderealCharm, TerrestrialCharm, AlchemicalCharm,
-                  RakshaCharm, SpiritCharm, GhostCharm, JadebornCharm, Sorcery, Necromancy, Thaumaturgy, MartialCharm,
-                  Protocol, Language]
+                  RakshaCharm, SpiritCharm, GhostCharm, JadebornCharm, Sorcery, Necromancy, Thaumaturgy, Protocol,
+                  TerrestrialMartialCharm, CelestialMartialCharm, SiderealMartialCharm, Language]
