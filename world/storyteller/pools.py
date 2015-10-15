@@ -155,15 +155,9 @@ class PoolHandler(object):
             load_pools.update(expected_pools)
             load_pools = expected_pools.intersection(load_pools)
         self.cache_pools = sorted(load_pools, key=lambda pool2: pool2.list_order)
-        for pool in self.cache_pools:
-            self.pools_dict[pool.base_name] = pool
-            pool.initialize_max(self.owner)
-            if pool.main_category == 'Pool':
-                self.pools.append(pool)
-            if pool.main_category == 'Track':
-                self.tracks.append(pool)
-            if pool.main_category == 'Channel':
-                self.channels.append(pool)
+
+    def all(self):
+        return self.cache_pools
 
     def save(self, no_load=False):
         load_db = self.owner.storage_locations['pools']

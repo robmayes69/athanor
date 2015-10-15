@@ -1,4 +1,5 @@
 import math
+from django.conf import settings
 from evennia.utils.evtable import EvTable
 from evennia.utils.ansi import ANSIString
 from commands.library import AthanorError, partial_match, sanitize_string, tabular_table
@@ -256,6 +257,18 @@ class AdvantageWordSection(SheetSection):
 
     def all(self):
         return self.existing
+
+class FirstSection(SheetSection):
+    use_editchar = False
+    list_order = 0
+
+    def sheet_render(self, width=78):
+        colors = self.sheet_colors
+        line1 = '  {%s.%s.{n' % (colors['border'], '-' * (width-6))
+        line2_start = ' {%s/{n' % colors['border']
+        line2_end = ' {%s\\{n' % colors['border']
+        line2 = line2_start + '%s' % settings.SERVERNAME.center(width-5, ' ') + line2_end
+        return '\n'.join(unicode(line) for line in [line1, line2])
 
 class StorytellerHandler(object):
 

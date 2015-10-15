@@ -91,7 +91,15 @@ class Necromancy(Spell):
 
 class Thaumaturgy(WordPower):
     main_category = 'Thaumaturgy'
-    available_subcategories = ['Arts Degrees', 'Arts Procedures', 'Sciences Degrees', 'Sciences Procedures']
+    available_subcategories = ['Degrees', 'Procedures']
+
+
+class Arts(Thaumaturgy):
+    main_category = 'Arts'
+
+
+class Sciences(Thaumaturgy):
+    main_category = 'Sciences'
 
 
 class MartialCharm(Charm):

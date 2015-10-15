@@ -17,7 +17,7 @@ def display_sheet(request, sheet_id, width=78):
 
     #character_sheet = ANSIString(find_character.template.sheet(width=width)).clean()
 
-    character_sheet = text2html.parse_html(find_character.template.sheet(width=width))
+    character_sheet = text2html.parse_html(find_character.storyteller.render_sheet(width=width))
     pagevars = {'character_sheet': character_sheet}
 
     return render(request, 'evennia_general/sheet.html', pagevars)

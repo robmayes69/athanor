@@ -162,9 +162,6 @@ class AdvantageHandler(object):
 
         for custom in self.valid_classes:
             self.valid_classes_dict[custom.base_name] = custom
-        for stat in load_advantages:
-            if stat.__class__ not in self.valid_classes:
-                load_advantages.remove(stat)
         search_advantages = sorted([stat for stat in list(load_advantages)], key=lambda stat2: str(stat2))
         self.cache_advantages = set(search_advantages)
 
