@@ -1,4 +1,4 @@
-from commands.library import AthanorError, partial_match, sanitize_string
+from commands.library import AthanorError, partial_match, sanitize_string, dramatic_capitalize
 from evennia.utils.utils import make_iter
 from evennia.utils.ansi import ANSIString
 
@@ -94,7 +94,7 @@ class Stat(object):
             raise AthanorError("'%s' Favored must be set to 0 or 1." % self)
         if new_value not in [0, 1]:
             raise AthanorError("'%s' Favored must be set to 0 or 1." % self)
-        self._favored = new_value
+        self._favored = bool(new_value)
 
     @property
     def current_supernal(self):
@@ -110,7 +110,7 @@ class Stat(object):
             raise AthanorError("'%s' Supernal must be set to 0 or 1." % self)
         if new_value not in [0, 1]:
             raise AthanorError("'%s' Supernal must be set to 0 or 1." % self)
-        self._supernal = new_value
+        self._supernal = bool(new_value)
 
     @property
     def full_name(self):
@@ -159,6 +159,22 @@ class Stat(object):
         fill_length = width - len(display_name) - len(dot_display)
         fill = ANSIString('{%s%s{n' % (colors['statfill'], fill_char * fill_length))
         return display_name + fill + dot_display
+
+    def sheet_specialties(self, width=35, fill_char='.', colors={'statname': 'n', 'statfill': 'n', 'statdot': 'n'}):
+        specialty_list = list()
+        for specialty, value in self.specialties.items():
+            display_name = ANSIString('{%s%s/%s{n' % (colors['statname'], self.full_name,
+                                                      dramatic_capitalize(specialty)))
+            if value > width - len(display_name) - 1:
+                dot_display = ANSIString('{%s%s{n' % (colors['statdot'], self.current_value))
+            else:
+                dot_display = ANSIString('{%s%s{n' % (colors['statdot'], '*' * self.current_value))
+            fill_length = width - len(display_name) - len(dot_display)
+            fill = ANSIString('{%s%s{n' % (colors['statfill'], fill_char * fill_length))
+            specialty_display = display_name + fill + dot_display
+            specialty_list.append(specialty_display)
+        return specialty_list
+
 
 class Attribute(Stat):
     base_name = 'Attribute'
@@ -321,35 +337,3 @@ class StatHandler(object):
             self.save()
             return True
 
-    def specialize(self, stat=None, name=None, value=None, caller=None):
-        if not caller:
-            caller = self.owner
-        if not stat:
-            raise AthanorError("No stat entered to specialize.")
-        if not name:
-            raise AthanorError("No specialty name entered.")
-        if not value:
-            raise AthanorError("Nothing entered to set it to.")
-        try:
-            new_value = int(value)
-        except ValueError:
-            raise AthanorError("Specialties must be positive integers.")
-        if new_value < 0:
-            raise AthanorError("Specialties must be positive integers.")
-        found_stat = partial_match(stat, self.specialize_stats)
-        if not found_stat:
-            raise AthanorError("Stat '%s' not found." % stat)
-        new_name = sanitize_string(name, strip_ansi=True, strip_indents=True, strip_newlines=True, strip_mxp=True)
-        if '-' in new_name or '+' in new_name:
-            raise AthanorError("Specialties cannot contain the - or + characters.")
-        if new_value == 0 and new_name.lower() in found_stat.specialties:
-            found_stat.specialties.pop(new_name.lower())
-            caller.sys_msg(message="Your '%s/%s' specialty was removed." % (stat, new_name))
-        elif new_value == 0:
-            raise AthanorError("Specialties cannot be zero dots!")
-        else:
-            found_stat.specialties[new_name.lower()] = new_value
-            caller.sys_msg(message="Your '%s/%s' specialty is now: %s" % (found_stat, new_name, new_value),
-                           sys_name='EDITCHAR')
-        self.save()
-        return True

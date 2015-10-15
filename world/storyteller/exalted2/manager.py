@@ -3,7 +3,7 @@ from evennia.utils.ansi import ANSIString
 from commands.library import AthanorError, partial_match, sanitize_string, tabular_table
 
 from world.storyteller.manager import Attributes as OldAttributes, SheetSection, StatSection, Skills as OldSkills, \
-    MeritSection, AdvantageStatSection, AdvantageWordSection, FirstSection
+    MeritSection, AdvantageStatSection, AdvantageWordSection, FirstSection, Specialties, Favored
 from world.storyteller.exalted2.advantages import Charm, Sorcery as SorcerySpell, Necromancy as NecroSpell, \
     Protocol as WeaveSpell, Arts as ThaumArts, Sciences as ThaumSciences, TerrestrialMartialCharm, \
     CelestialMartialCharm, SiderealMartialCharm, SolarCharm, LunarCharm, AbyssalCharm, InfernalCharm, AlchemicalCharm, \
@@ -358,4 +358,4 @@ ALL_SECTIONS = [Attributes, Abilities, Backgrounds, Merits, Flaws, PositiveMutat
                 NeutralMutations, RageMutations, WarformMutations, GodBloodMutations, SolarCharms, LunarCharms,
                 AbyssalCharms, InfernalCharms, SiderealCharms, RakshaCharms, JadebornCharms, GhostCharms, SpiritCharms,
                 Sorcery, Necromancy, Protocols, Languages, TerrestrialMartialArts, CelestialMartialArts,
-                SiderealMartialArts, PoolSection, FirstSection]
+                SiderealMartialArts, PoolSection, FirstSection, Specialties, Favored]

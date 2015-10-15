@@ -6,6 +6,7 @@ from commands.library import AthanorError, partial_match, sanitize_string, tabul
 from world.storyteller.merits import Merit
 from world.storyteller.advantages import WordPower, StatPower
 
+
 class SheetSection(object):
 
     base_name = 'DefaultSection'
@@ -157,13 +158,14 @@ class Attributes(StatSection):
             setattr(self, stat_type.lower(), [stat for stat in self.choices if stat.sub_category == stat_type])
 
     def sheet_render(self, width=78):
+        colors = self.sheet_colors
         section = list()
         section.append(self.sheet_triple_header(['Physical Attributes', 'Social Attributes', 'Mental Attributes'],
                                                 width=width))
         col_widths = self.calculate_widths(width)
-        physical = '\n'.join([stat.sheet_format(width=col_widths[0]-2) for stat in self.physical])
-        social = '\n'.join([stat.sheet_format(width=col_widths[1]-1) for stat in self.social])
-        mental = '\n'.join([stat.sheet_format(width=col_widths[2]-1) for stat in self.mental])
+        physical = '\n'.join([stat.sheet_format(width=col_widths[0]-2, colors=colors) for stat in self.physical])
+        social = '\n'.join([stat.sheet_format(width=col_widths[1]-1, colors=colors) for stat in self.social])
+        mental = '\n'.join([stat.sheet_format(width=col_widths[2]-1, colors=colors) for stat in self.mental])
         section.append(self.sheet_columns([physical, social, mental], width=width))
         return '\n'.join(unicode(line) for line in section)
 
@@ -177,16 +179,107 @@ class Skills(StatSection):
         self.choices = [stat for stat in self.owner.stats.all() if stat.main_category == 'Skill']
 
     def sheet_render(self, width=78):
+        colors = self.sheet_colors
         skills = [stat for stat in self.choices if stat.should_display()]
         if not skills:
             return
         section = list()
         section.append(self.sheet_header(self.base_name, width=width))
-        skill_display = [stat.sheet_format(width=23) for stat in skills]
+        skill_display = [stat.sheet_format(width=23, colors=colors) for stat in skills]
         skill_table = tabular_table(skill_display, field_width=23, line_length=width-2)
         section.append(self.sheet_border(skill_table, width=width))
         return '\n'.join(unicode(line) for line in section)
 
+
+class Specialties(StatSection):
+    base_name = 'Specialties'
+    section_type = 'Specialty'
+    list_order = 16
+
+    def load(self):
+        self.choices = [stat for stat in self.owner.stats.all() if stat.can_specialize]
+        self.specialized = [stat for stat in self.owner.stats.all() if stat.specialties]
+
+    def set(self, stat=None, name=None, value=None):
+        if not stat:
+            raise AthanorError("No stat entered to specialize.")
+        if not name:
+            raise AthanorError("No specialty name entered.")
+        if not value:
+            raise AthanorError("Nothing entered to set it to.")
+        try:
+            new_value = int(value)
+        except ValueError:
+            raise AthanorError("Specialties must be positive integers.")
+        if new_value < 0:
+            raise AthanorError("Specialties must be positive integers.")
+        found_stat = partial_match(stat, self.choices)
+        if not found_stat:
+            raise AthanorError("Stat '%s' not found." % stat)
+        new_name = sanitize_string(name, strip_ansi=True, strip_indents=True, strip_newlines=True, strip_mxp=True)
+        if '-' in new_name or '+' in new_name:
+            raise AthanorError("Specialties cannot contain the - or + characters.")
+        if new_value == 0 and new_name.lower() in found_stat.specialties:
+            found_stat.specialties.pop(new_name.lower())
+        elif new_value == 0:
+            raise AthanorError("Specialties cannot be zero dots!")
+        else:
+            found_stat.specialties[new_name.lower()] = new_value
+        self.save()
+        return True
+
+    def sheet_render(self, width=78):
+        colors = self.sheet_colors
+        specialized = self.specialized
+        if not specialized:
+            return
+        section = list()
+        skill_display = list()
+        section.append(self.sheet_header(self.base_name, width=width))
+        for stat in specialized:
+            skill_display += stat.sheet_specialties(colors=colors)
+        skill_table = tabular_table(skill_display, field_width=23, line_length=width-2)
+        section.append(self.sheet_border(skill_table, width=width))
+        return '\n'.join(unicode(line) for line in section)
+
+
+class Favored(StatSection):
+    base_name = 'Favored'
+    section_type = 'Favored Stat'
+    sheet_display = False
+
+    def load(self):
+        self.choices = [stat for stat in self.owner.stats.all() if stat.can_favor]
+        self.existing = [stat for stat in self.owner.stats.all() if stat.current_favored]
+
+    def add(self, stat=None, no_save=False):
+        if not stat:
+            raise AthanorError("Stat to tag is empty!")
+        found_stat = partial_match(stat, self.choices)
+        if not found_stat:
+            raise AthanorError("Stat not found.")
+        found_stat.current_favored = True
+        if not no_save:
+            self.save()
+        return found_stat
+
+    def remove(self, stat=None, no_save=False):
+        if not stat:
+            raise AthanorError("Stat to tag is empty!")
+        found_stat = partial_match(stat, self.existing)
+        if not found_stat:
+            raise AthanorError("'%s' is not a %s" % (stat, self.section_type))
+        found_stat.current_favored = False
+        if not no_save:
+            self.save()
+        return found_stat
+
+    def all(self):
+        return self.existing
+
+    def save(self):
+        super(Favored, self).save()
+        self.load()
 
 class MeritSection(SheetSection):
     base_name = 'DefaultMerit'
@@ -199,13 +292,14 @@ class MeritSection(SheetSection):
     def sheet_render(self, width=78):
         if not self.existing:
             return
+        colors = self.sheet_colors
         section = list()
         merit_section = list()
         section.append(self.sheet_header(self.base_name, width=width))
         short_list = [merit for merit in self.existing if len(merit.full_name) <= 30]
         long_list = [merit for merit in self.existing if len(merit.full_name) > 30]
-        short_format = [merit.sheet_format() for merit in short_list]
-        long_format = [merit.sheet_format(width=width-4) for merit in long_list]
+        short_format = [merit.sheet_format(colors=colors) for merit in short_list]
+        long_format = [merit.sheet_format(width=width-4, colors=colors) for merit in long_list]
         if short_list:
             merit_section.append(tabular_table(short_format, field_width=36, line_length=width-4))
         if long_list:
@@ -227,14 +321,16 @@ class AdvantageStatSection(SheetSection):
         if not powers:
             return
         section = list()
+        colors = self.sheet_colors
         section.append(self.sheet_header(self.base_name, width=width))
-        skill_display = [power.sheet_format(width=23) for power in powers]
+        skill_display = [power.sheet_format(width=23, colors=colors) for power in powers]
         skill_table = tabular_table(skill_display, field_width=23, line_length=width-2)
         section.append(self.sheet_border(skill_table, width=width))
         return '\n'.join(unicode(line) for line in section)
 
     def all(self):
         return self.existing
+
 
 class AdvantageWordSection(SheetSection):
     base_name = 'DefaultAdvPower'
@@ -249,8 +345,9 @@ class AdvantageWordSection(SheetSection):
         if not powers:
             return
         section = list()
+        colors = self.sheet_colors
         section.append(self.sheet_header(self.base_name, width=width))
-        skill_display = [power.sheet_format(width=23) for power in powers]
+        skill_display = [power.sheet_format(width=23, colors=colors) for power in powers]
         skill_table = tabular_table(skill_display, field_width=23, line_length=width-2)
         section.append(self.sheet_border(skill_table, width=width))
         return '\n'.join(unicode(line) for line in section)
