@@ -14,6 +14,8 @@ class Template(object):
                          'slash': 'n', 'statdot': 'n', 'statfill': 'n', 'statname': 'n', 'damagename': 'n',
                          'danagetotal': 'n', 'damagetotalnum': 'n'}
     extra_sheet_colors = dict()
+    sheet_column_1 = list()
+    sheet_column_2 = list()
 
     def __str__(self):
         return self.base_name

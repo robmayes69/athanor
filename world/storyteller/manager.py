@@ -78,6 +78,17 @@ class SheetSection(object):
             ev_table.reformat_column(count, width=col_width)
         return ev_table
 
+    def sheet_two_columns(self, display_text=['', ''], width=78):
+        colors = self.sheet_colors
+        ev_table = EvTable(border='cols', pad_width=0, valign='t',
+                           border_left_char=ANSIString('{%s|{n' % colors['border']),
+                           border_right_char=ANSIString('{%s|{n' % colors['border']), header=False)
+        ev_table.add_row(display_text[0], display_text[1])
+
+        for count, col_width in enumerate(self.calculate_double(width=width)):
+            ev_table.reformat_column(count, width=col_width)
+        return ev_table
+
     def calculate_widths(self, width=78):
         column_widths = list()
         col_calc = width / float(3)
@@ -93,6 +104,18 @@ class SheetSection(object):
                 column_widths.append(calculate)
         return column_widths
 
+
+    def calculate_double(self, width=78):
+        column_widths = list()
+        col_calc = width / float(2)
+        for num in [0, 1]:
+            if num == 0:
+                calculate = int(math.floor(col_calc))
+                column_widths.append(calculate)
+            if num == 1:
+                calculate = int(math.ceil(col_calc))
+                column_widths.append(calculate)
+        return column_widths
 
 class StatSection(SheetSection):
 
@@ -285,6 +308,7 @@ class MeritSection(SheetSection):
     base_name = 'DefaultMerit'
     list_order = 20
     custom_type = Merit
+    sheet_name = 'Default Merits'
 
     def load(self):
         self.existing = [merit for merit in self.owner.merits.all() if isinstance(merit, self.custom_type)]
@@ -295,7 +319,7 @@ class MeritSection(SheetSection):
         colors = self.sheet_colors
         section = list()
         merit_section = list()
-        section.append(self.sheet_header(self.base_name, width=width))
+        section.append(self.sheet_header(self.sheet_name, width=width))
         short_list = [merit for merit in self.existing if len(merit.full_name) <= 30]
         long_list = [merit for merit in self.existing if len(merit.full_name) > 30]
         short_format = [merit.sheet_format(colors=colors) for merit in short_list]
@@ -360,12 +384,36 @@ class FirstSection(SheetSection):
     list_order = 0
 
     def sheet_render(self, width=78):
+        servername = settings.SERVERNAME
         colors = self.sheet_colors
         line1 = '  {%s.%s.{n' % (colors['border'], '-' * (width-6))
-        line2_start = ' {%s/{n' % colors['border']
-        line2_end = ' {%s\\{n' % colors['border']
-        line2 = line2_start + '%s' % settings.SERVERNAME.center(width-5, ' ') + line2_end
-        return '\n'.join(unicode(line) for line in [line1, line2])
+        line2 = ' {%s/{n%s{n{%s\\{n' % (colors['border'], servername.center(width-4, ' '), colors['border'])
+        line3 = self.sheet_header(width=width)
+        name = self.owner.key
+        power = self.owner.stats.get('Power')
+        powername = str(power)
+        column_1 = ['Name']
+        column_1 += self.owner.template.template.sheet_column_1
+        column_2 = [powername]
+        column_2 += self.owner.template.template.sheet_column_2
+        column_1_len = max([len(entry) for entry in column_1])
+        column_2_len = max([len(entry) for entry in column_2])
+        column_1_prep = list()
+        column_2_prep = list()
+        for entry in column_1:
+            if entry == 'Name':
+                display = '%s: %s' % ('Name'.rjust(column_1_len), name)
+            else:
+                display = '%s: %s' % (entry.rjust(column_1_len), self.owner.template.template.get(entry))
+            column_1_prep.append(display)
+        for entry in column_2:
+            if entry == powername:
+                display = '%s: %s' % (powername.rjust(column_2_len), int(power))
+            else:
+                display = '%s: %s' % (entry.rjust(column_2_len), self.owner.template.template.get(entry))
+            column_2_prep.append(display)
+        line4 = self.sheet_two_columns(['\n'.join(column_1_prep), '\n'.join(column_2_prep)], width=width)
+        return '\n'.join(unicode(line) for line in [line1, line2, line3, line4])
 
 class StorytellerHandler(object):
 
