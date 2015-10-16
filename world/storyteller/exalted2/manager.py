@@ -1,3 +1,4 @@
+from django.conf import settings
 from evennia.utils.evtable import EvTable
 from evennia.utils.ansi import ANSIString
 from commands.library import AthanorError, partial_match, sanitize_string, tabular_table
@@ -244,6 +245,7 @@ class TerrestrialMartialArts(MartialCharms):
     sheet_name = 'Terrestrial Martial Arts'
     list_order = 50
     custom_type = TerrestrialMartialCharm
+    style_names = settings.EX2_TERRESTRIAL_STYLES
 
 
 class CelestialMartialArts(MartialCharms):
@@ -252,6 +254,7 @@ class CelestialMartialArts(MartialCharms):
     sheet_name = 'Celestial Martial Arts'
     list_order = 51
     custom_type = CelestialMartialCharm
+    style_names = settings.EX2_CELESTIAL_STYLES
 
 
 class SiderealMartialArts(MartialCharms):
@@ -260,6 +263,7 @@ class SiderealMartialArts(MartialCharms):
     sheet_name = 'Sidereal Martial Arts'
     list_order = 52
     custom_type = SiderealMartialCharm
+    style_names = settings.EX2_SIDEREAL_STYLES
 
 
 class SpellSection(AdvantageWordSection):

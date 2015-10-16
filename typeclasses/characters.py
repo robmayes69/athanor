@@ -231,11 +231,11 @@ class Character(DefaultCharacter):
             width_list += session.protocol_flags['SCREENWIDTH'].values()
         return min(width_list) or 78
 
+
 class StorytellerCharacter(Character):
     """
     Base template for Storyteller characters. It's not meant to be used literally.
     """
-    storage_prefix = '_st_'
     valid_templates = list()
     storage_locations = dict()
     valid_pools = list()
@@ -271,12 +271,10 @@ class StorytellerCharacter(Character):
         pass
 
 
-
 class Ex2Character(StorytellerCharacter):
     """
     For use with Exalted 2nd Edition characters.
     """
-    storage_prefix = '_ex2_'
     valid_templates = EX2_TEMPLATES
     storage_locations = {'power': '_ex2_power', 'stats': '_ex2_stats', 'pools': '_ex2_pools', 'merits': '_ex2_merits',
                          'advantages': '_ex2_advantages', 'template': '_ex2_template'}

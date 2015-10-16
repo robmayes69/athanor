@@ -5,7 +5,7 @@ from evennia.utils.ansi import ANSIString
 from commands.library import AthanorError, partial_match, sanitize_string, tabular_table
 from world.storyteller.merits import Merit
 from world.storyteller.advantages import WordPower, StatPower
-
+from evennia.utils.utils import make_iter
 
 class SheetSection(object):
 
@@ -13,10 +13,18 @@ class SheetSection(object):
     list_order = 0
     sheet_display = True
     use_editchar = True
+    editchar_options = list()
+    editchar_default = None
 
     def __init__(self, owner):
         self.owner = owner
         self.load()
+
+    def __str__(self):
+        return self.base_name
+
+    def __unicode__(self):
+        return unicode(self.base_name)
 
     def load(self):
         pass
@@ -120,33 +128,44 @@ class SheetSection(object):
 class StatSection(SheetSection):
 
     section_type = 'Stat'
+    editchar_default = 'set'
+    editchar_options = ['set']
+    favorable = list()
+    supernable = list()
+    favored = list()
+    supernal = list()
 
-    def set_multiple(self, choice_string=None):
-        should_save = False
-        if not choice_string:
+    def editchar_set(self, extra_args=[], single_arg=None, list_arg=[], caller=None):
+        if not list_arg:
             raise AthanorError("No %s entered to set!" % self.section_type)
-        choice_string = sanitize_string(choice_string, strip_ansi=True, strip_mxp=True, strip_newlines=True,
-                                        strip_indents=True)
         valid_entries = dict()
-        for entry in choice_string.split(','):
-            entry = entry.strip()
+        error_list = list()
+        succeed_list = list()
+        for entry in list_arg:
             try:
                 choice, value = entry.split('=', 1)
                 choice = choice.strip().lower()
                 value = value.strip()
             except ValueError:
-                raise AthanorError("'%s' was not an accepted %s entry." % (entry, self.section_type))
-            valid_entries[choice] = value
+                error_list.append("'%s' was not an accepted %s entry. Accepted Format: <Stat>=<Value>" %
+                                   (entry, self.section_type))
+            else:
+                valid_entries[choice] = value
 
         for choice, value in valid_entries.items():
+            find_stat = partial_match(choice, self.choices)
+            if not find_stat:
+                error_list.append("Could not find %s: '%s'" % (self.section_type, choice))
+                continue
             try:
-                self.set(choice, value, no_save=True)
-                should_save = True
-            except AthanorError:
-                raise
-            finally:
-                if should_save:
-                    self.save()
+                find_stat.current_value = value
+                succeed_list.append(find_stat)
+            except AthanorError as err:
+                error_list.append(str(err))
+                continue
+        if succeed_list:
+            self.save()
+        return succeed_list, error_list
 
     def set(self, choice=None, value=None, no_save=False):
         if not choice:
@@ -169,6 +188,74 @@ class StatSection(SheetSection):
     def all(self):
         return self.choices
 
+    def editchar_favor(self, stat_list=None, caller=None):
+        if not stat_list:
+            raise AthanorError("Nothing entered to favor!")
+        save = False
+        stats_ok = list()
+        for stat in make_iter(stat_list):
+            find_stat = partial_match(stat, self.favorable)
+            if not find_stat:
+                continue
+            stats_ok.append(find_stat)
+        if not stats_ok:
+            raise AthanorError("No stat from the provided list could be found.")
+        for stat in stats_ok:
+            stat.current_favored = True
+        self.save()
+        return stats_ok
+
+
+    def editchar_unfavor(self, stat_list=None, caller=None):
+        if not stat_list:
+            raise AthanorError("Nothing entered to unfavor!")
+        save = False
+        stats_ok = list()
+        for stat in make_iter(stat_list):
+            find_stat = partial_match(stat, self.favored)
+            if not find_stat:
+                continue
+            stats_ok.append(find_stat)
+        if not stats_ok:
+            raise AthanorError("No stat from the provided list could be found.")
+        for stat in stats_ok:
+            stat.current_favored = False
+        self.save()
+        return stats_ok
+
+    def editchar_supernal(self, stat_list=None, caller=None):
+        if not stat_list:
+            raise AthanorError("Nothing entered to supernal!")
+        save = False
+        stats_ok = list()
+        for stat in make_iter(stat_list):
+            find_stat = partial_match(stat, self.supernable)
+            if not find_stat:
+                continue
+            stats_ok.append(find_stat)
+        if not stats_ok:
+            raise AthanorError("No stat from the provided list could be found.")
+        for stat in stats_ok:
+            stat.current_supernal = True
+        self.save()
+        return stats_ok
+
+    def editchar_unsupernal(self, stat_list=None, caller=None):
+        if not stat_list:
+            raise AthanorError("Nothing entered to unsupernal!")
+        save = False
+        stats_ok = list()
+        for stat in make_iter(stat_list):
+            find_stat = partial_match(stat, self.supernal)
+            if not find_stat:
+                continue
+            stats_ok.append(find_stat)
+        if not stats_ok:
+            raise AthanorError("No stat from the provided list could be found.")
+        for stat in stats_ok:
+            stat.current_supernal = False
+        self.save()
+        return stats_ok
 
 class Attributes(StatSection):
     base_name = 'Attributes'
@@ -177,6 +264,9 @@ class Attributes(StatSection):
 
     def load(self):
         self.choices = self.owner.stats.category('Attribute')
+        self.favorable = [stat for stat in self.choices if stat.can_favor]
+        self.favored = [stat for stat in self.choices if stat.current_favored]
+        self.supernal = [stat for stat in self.choices if stat.current_supernal]
         for stat_type in ['Physical', 'Social', 'Mental']:
             setattr(self, stat_type.lower(), [stat for stat in self.choices if stat.sub_category == stat_type])
 
@@ -218,12 +308,13 @@ class Specialties(StatSection):
     base_name = 'Specialties'
     section_type = 'Specialty'
     list_order = 16
+    editchar_default = 'set'
 
     def load(self):
         self.choices = [stat for stat in self.owner.stats.all() if stat.can_specialize]
         self.specialized = [stat for stat in self.owner.stats.all() if stat.specialties]
 
-    def set(self, stat=None, name=None, value=None):
+    def editchar_set(self, stat=None, name=None, value=None):
         if not stat:
             raise AthanorError("No stat entered to specialize.")
         if not name:
