@@ -192,7 +192,10 @@ class CmdImport(AthCommand):
             self.convert_ex2(char)
 
     def convert_ex2(self, character):
+        # First, let's convert templates.
         template = character.mush.getstat('D`INFO', 'Class') or 'Mortal'
+
+
         sub_class = character.mush.getstat('D`INFO', 'Caste') or None
         attribute_string = character.mush.mushget('D`ATTRIBUTES') or ''
         skill_string = character.mush.mushget('D`ABILITIES') or ''
@@ -234,12 +237,12 @@ class CmdImport(AthCommand):
             find_stat.current_value = stats_dict[stat]
         character.stats.save()
 
-        merits_dict = {'D`MERITS`*': character.valid_merits[0], 'D`FLAWS`*': character.valid_merits[1],
-                       'D`POSITIVE_MUTATIONS`*': character.valid_merits[2],
-                       'D`NEGATIVE_MUTATIONS`*': character.valid_merits[3],
-                       'D`RAGE_MUTATIONS`*': character.valid_merits[4],
-                       'D`WARFORM_MUTATIONS`*': character.valid_merits[5],
-                       'D`BACKGROUNDS`*': character.valid_merits[6]}
+        merits_dict = {'D`MERITS`*': character.storyteller.merits, 'D`FLAWS`*': character.storyteller.flaws,
+                       'D`POSITIVE_MUTATIONS`*': character.storyteller.positivemutations,
+                       'D`NEGATIVE_MUTATIONS`*': character.storyteller.negativemutations,
+                       'D`RAGE_MUTATIONS`*': character.storyteller.ragemutations,
+                       'D`WARFORM_MUTATIONS`*': character.storyteller.warmutations,
+                       'D`BACKGROUNDS`*': character.storyteller.backgrounds}
 
         for merit_type in merits_dict.keys():
             self.ex2_merits(character, merit_type, merits_dict[merit_type])
@@ -249,55 +252,49 @@ class CmdImport(AthCommand):
         for charm_attr in character.mush.lattr('D`CHARMS`*'):
             root, charm_name, charm_type = charm_attr.split('`')
             if charm_type == 'SOLAR':
-                from world.storyteller.exalted2.advantages import SolarCharm
-                self.ex2_charms(character, charm_attr, SolarCharm)
+                self.ex2_charms(character, charm_attr, character.storyteller.solarcharms)
             if charm_type == 'LUNAR':
-                from world.storyteller.exalted2.advantages import LunarCharm
-                self.ex2_charms(character, charm_attr, LunarCharm)
+                self.ex2_charms(character, charm_attr, character.storyteller.lunarcharms)
             if charm_type == 'ABYSSAL':
-                from world.storyteller.exalted2.advantages import AbyssalCharm
-                self.ex2_charms(character, charm_attr, AbyssalCharm)
+                self.ex2_charms(character, charm_attr, character.storyteller.abyssalcharms)
             if charm_type == 'INFERNAL':
-                from world.storyteller.exalted2.advantages import InfernalCharm
-                self.ex2_charms(character, charm_attr, InfernalCharm)
+                self.ex2_charms(character, charm_attr, character.storyteller.infernalcharms)
             if charm_type == 'SIDEREAL':
-                from world.storyteller.exalted2.advantages import SiderealCharm
-                self.ex2_charms(character, charm_attr, SiderealCharm)
+                self.ex2_charms(character, charm_attr, character.storyteller.siderealcharms)
             if charm_type == 'TERRESTRIAL':
-                from world.storyteller.exalted2.advantages import TerrestrialCharm
-                self.ex2_charms(character, charm_attr, TerrestrialCharm)
+                self.ex2_charms(character, charm_attr, character.storyteller.terrestrialcharms)
             if charm_type == 'ALCHEMICAL':
-                from world.storyteller.exalted2.advantages import AlchemicalCharm
-                self.ex2_charms(character, charm_attr, AlchemicalCharm)
+                self.ex2_charms(character, charm_attr, character.storyteller.alchemicalcharms)
             if charm_type == 'RAKSHA':
-                from world.storyteller.exalted2.advantages import RakshaCharm
-                self.ex2_charms(character, charm_attr, RakshaCharm)
+                self.ex2_charms(character, charm_attr, character.storyteller.rakshacharms)
             if charm_type == 'SPIRIT':
-                from world.storyteller.exalted2.advantages import SpiritCharm
-                self.ex2_charms(character, charm_attr, SpiritCharm)
+                self.ex2_charms(character, charm_attr, character.storyteller.spiritcharms)
             if charm_type == 'GHOST':
-                from world.storyteller.exalted2.advantages import GhostCharm
-                self.ex2_charms(character, charm_attr, GhostCharm)
+                self.ex2_charms(character, charm_attr, character.storyteller.ghostcharms)
             if charm_type == 'JADEBORN':
-                from world.storyteller.exalted2.advantages import JadebornCharm
-                self.ex2_charms(character, charm_attr, JadebornCharm)
-            if '_MARTIAL_ARTS' in charm_type:
-                from world.storyteller.exalted2.advantages import MartialCharm
-                self.ex2_martial(character, charm_attr, MartialCharm)
+                self.ex2_charms(character, charm_attr, character.storyteller.jadeborncharms)
+            if charm_type == 'TERRESTRIAL_MARTIAL_ARTS':
+                self.ex2_martial(character, charm_attr, character.storyteller.terrestrialmartialarts)
+            if charm_type == 'CELESTIAL_MARTIAL_ARTS':
+                self.ex2_martial(character, charm_attr, character.storyteller.celestialmartialarts)
+            if charm_type == 'SIDEREAL_MARTIAL_ARTS':
+                self.ex2_martial(character, charm_attr, character.storyteller.siderealmartialarts)
 
 
         for spell_attr in character.mush.lattr('D`SPELLS`*'):
             root, charm_name, charm_type = spell_attr.split('`')
             if charm_type in ['TERRESTRIAL', 'CELESTIAL', 'SOLAR']:
-                from world.storyteller.exalted2.advantages import Sorcery
-                self.ex2_spells(character, spell_attr, Sorcery)
+                self.ex2_spells(character, spell_attr, character.storyteller.sorcery)
             if charm_type in ['SHADOWLANDS', 'LABYRINTH', 'VOID']:
-                from world.storyteller.exalted2.advantages import Necromancy
-                self.ex2_spells(character, spell_attr, Necromancy)
+                self.ex2_spells(character, spell_attr, character.storyteller.necromancy)
+
+        for spell_attr in character.mush.lattr('D`PROTOCOLS`*'):
+            root, charm_name, charm_type = spell_attr.split('`')
+            self.ex2_spells(character, spell_attr, character.storyteller.protocols)
 
         languages = character.mush.mushget('D`LANGUAGES')
         if languages:
-            from world.storyteller.exalted2.advantages import Language
+            Language = character.storyteller.languages.custom_type
             language_list = languages.split('|')
             for language in language_list:
                 new_lang = Language(name=language)
@@ -310,7 +307,8 @@ class CmdImport(AthCommand):
             old_name = character.mush.mushget(old_attrs)
             old_rank = character.mush.mushget(old_attrs + '`RANK')
             old_context = character.mush.mushget(old_attrs + '`CONTEXT')
-            new_merit = merit_class(name=old_name, context=old_context, value=old_rank)
+            make_class = merit_class.custom_type
+            new_merit = make_class(name=old_name, context=old_context, value=old_rank)
             character.merits.cache_merits.add(new_merit)
 
 
@@ -331,13 +329,7 @@ class CmdImport(AthCommand):
 
 
     def ex2_martial(self, character, attribute, martial_class):
-        sub_cat = ''
-        if 'TERRESTRIAL' in attribute:
-            sub_cat = 'Terrestrial'
-        elif 'CELESTIAL' in attribute:
-            sub_cat = 'Celestial'
-        elif 'SIDEREAL' in attribute:
-            sub_cat = 'Sidereal'
+        martial_class = martial_class.custom_type
         for count, charm_attr in enumerate(character.mush.lattr(attribute + '`*')):
             style_name = character.mush.mushget(charm_attr + '`NAME') or 'Unknown Style %s' % str(count+1)
             charm_dict = dict()
@@ -347,7 +339,7 @@ class CmdImport(AthCommand):
                     charm_purchases = int(charm_purchases)
                     charm_dict[charm_name] = charm_purchases
                     for prep_charm in charm_dict.keys():
-                        new_charm = martial_class(name=prep_charm, sub_category=sub_cat, custom_category=style_name)
+                        new_charm = martial_class(name=prep_charm, custom_category=style_name)
                         new_charm.current_value = charm_dict[prep_charm]
                         character.advantages.cache_advantages.add(new_charm)
 
@@ -355,6 +347,7 @@ class CmdImport(AthCommand):
     def ex2_spells(self, character, attribute, spell_class):
         attr_root, attr_spell, spell_type = attribute.split('`')
         charm_dict = dict()
+        spell_class = spell_class.custom_type
         for charm in character.mush.mushget(attribute).split('|'):
             charm_name, charm_purchases = charm.split('~', 1)
             charm_purchases = int(charm_purchases)

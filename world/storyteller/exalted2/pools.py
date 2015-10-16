@@ -14,14 +14,14 @@ class WillpowerPool(OldWillpowerPool):
     list_order = 20
 
     def retrieve_max(self, owner):
-        return int(owner.stats.stats_dict['Willpower'])
+        return int(owner.stats.get('Willpower'))
 
 
 class Virtue(Pool):
     main_category = 'Channel'
 
     def retrieve_max(self, owner):
-        return int(owner.stats.stats_dict[self.base_name])
+        return int(owner.stats.get(self.base_name))
 
 
 class EssencePool(Pool):
@@ -33,12 +33,12 @@ class EssencePool(Pool):
         if settings.EX2_POOL_MAX_VIRTUES:
             virtues = [5, 5, 5, 5]
         else:
-            virtues = owner.stats.virtue_stats
+            virtues = owner.stats.category('Virtue')
         if settings.EX2_POOL_MAX_WILLPOWER:
             willpower = 10
         else:
-            willpower = int(owner.stats.stats_dict['Willpower'])
-        power = int(owner.stats.stats_dict['Power'])
+            willpower = int(owner.stats.get('Willpower'))
+        power = int(owner.stats.get('Power'))
         return power, willpower, virtues
 
 
@@ -282,7 +282,7 @@ class Dissonance(Limit):
 class SpiritPersonal(PersonalPool):
 
     def retrieve_max(self, owner):
-        power = int(owner.stats.stats_dict['Power'])
+        power = int(owner.stats.get('Power'))
         return power*10
 
 
@@ -318,7 +318,7 @@ class DragonKingPersonal(PersonalPool):
         if settings.EX2_POOL_MAX_VIRTUES:
             virtues2 = 10
         else:
-            virtues2 = sum(owner.stats.stats_dict['Conviction'], owner.stats.stats_dict['Valor'])
+            virtues2 = sum(owner.stats.get('Conviction'), owner.stats.get('Valor'))
         return power*4 + willpower*2 + virtues2
 
 

@@ -114,27 +114,18 @@ class Merit(object):
 
 class MeritHandler(object):
 
-    __slots__ = ['owner', 'valid_classes', 'cache_merits', 'merits_dict', 'types_dict']
+    __slots__ = ['owner', 'cache_merits']
 
     def __init__(self, owner):
         self.owner = owner
-        self.valid_classes = list(self.owner.valid_merits)
-        self.types_dict = dict()
-        for merit_type in self.valid_classes:
-            self.types_dict[merit_type.base_name] = merit_type
         self.cache_merits = list()
-        self.merits_dict = dict()
         self.load()
 
     def load(self):
         load_db = self.owner.storage_locations['merits']
-        load_merits = set(self.owner.attributes.get(load_db, []))
-        for merit in load_merits:
-            if merit.__class__ not in self.valid_classes:
-                load_merits.pop(merit)
+        load_merits = list(set(self.owner.attributes.get(load_db, [])))
+        load_merits = [merit for merit in load_merits if isinstance(merit, Merit)]
         self.cache_merits = load_merits
-        for name in set([merit.base_name for merit in self.cache_merits]):
-            self.merits_dict[name] = set(merit for merit in self.cache_merits if merit.base_name == name)
 
     def save(self, no_load=False):
         load_db = self.owner.storage_locations['merits']

@@ -2,6 +2,7 @@ from evennia.utils.evtable import EvTable
 from evennia.utils.ansi import ANSIString
 from commands.library import AthanorError, partial_match, sanitize_string, tabular_table
 
+
 from world.storyteller.manager import Attributes as OldAttributes, SheetSection, StatSection, Skills as OldSkills, \
     MeritSection, AdvantageStatSection, AdvantageWordSection, FirstSection, Specialties, Favored
 from world.storyteller.exalted2.advantages import Charm, Sorcery as SorcerySpell, Necromancy as NecroSpell, \
@@ -24,6 +25,7 @@ class Abilities(OldSkills):
 class Backgrounds(MeritSection):
     base_name = 'Backgrounds'
     section_type = 'Background'
+    sheet_name = 'Backgrounds'
     custom_type = Background
 
 
@@ -31,6 +33,7 @@ class Merits(MeritSection):
     base_name = 'Merits'
     section_type = 'Merit'
     custom_type = Merit
+    sheet_name = 'Merits'
     list_order = 21
 
 
@@ -38,12 +41,14 @@ class Flaws(MeritSection):
     base_name = 'Flaws'
     section_type = 'Flaw'
     custom_type = Flaw
+    sheet_name = 'Flaws'
     list_order = 22
 
 
 class PositiveMutations(MeritSection):
     base_name = 'PositiveMutations'
     section_type = 'Positive Mutation'
+    sheet_name = 'Positive Mutations'
     custom_type = PositiveMutation
     list_order = 23
 
@@ -51,6 +56,7 @@ class PositiveMutations(MeritSection):
 class NegativeMutations(MeritSection):
     base_name = 'NegativeMutations'
     section_type = 'Negative Mutation'
+    sheet_name = 'Negative Mutations'
     custom_type = NegativeMutation
     list_order = 24
 
@@ -58,6 +64,7 @@ class NegativeMutations(MeritSection):
 class NeutralMutations(MeritSection):
     base_name = 'NeutralMutations'
     section_type = 'Neutral Mutation'
+    sheet_name = 'Neutral Mutations'
     custom_type = NeutralMutation
     list_order = 25
 
@@ -65,6 +72,7 @@ class NeutralMutations(MeritSection):
 class RageMutations(MeritSection):
     base_name = 'RageMutations'
     section_type = 'Rage Mutation'
+    sheet_name = 'By Rage Recast Mutations'
     custom_type = RageMutation
     list_order = 26
 
@@ -72,6 +80,7 @@ class RageMutations(MeritSection):
 class WarformMutations(MeritSection):
     base_name = 'WarformMutations'
     section_type = 'Warform Mutation'
+    sheet_name = 'Warform Mutations'
     custom_type = WarformMutation
     list_order = 27
 
@@ -80,6 +89,7 @@ class GodBloodMutations(MeritSection):
     base_name = 'GodBloodMutations'
     section_type = 'God-Blooded Mutation'
     custom_type = GodBloodMutation
+    sheet_name = 'God-Blooded Mutations'
     list_order = 28
 
 

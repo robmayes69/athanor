@@ -154,7 +154,9 @@ class PoolHandler(object):
         if not load_pools == expected_pools:
             load_pools.update(expected_pools)
             load_pools = expected_pools.intersection(load_pools)
-        self.cache_pools = sorted(load_pools, key=lambda pool2: pool2.list_order)
+        for pool in load_pools:
+            pool.initialize_max(self.owner)
+        self.cache_pools = sorted(list(load_pools), key=lambda x: x.list_order)
 
     def all(self):
         return self.cache_pools

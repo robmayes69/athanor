@@ -208,93 +208,31 @@ class Willpower(Stat):
 
 class StatHandler(object):
 
-    __slots__ = ['owner', 'valid_classes', 'cache_stats', 'stats_dict', 'attribute_stats', 'attributes_physical',
-                 'attributes_social', 'attributes_mental', 'skill_stats', 'skills_physical', 'skills_social',
-                 'skills_mental', 'virtue_stats', 'favorable_stats', 'supernable_stats', 'specialize_stats',
-                 'specialized_stats']
+    __slots__ = ['owner', 'cache_stats', 'stats_dict', 'categories_dict']
 
     def __init__(self, owner):
         self.owner = owner
-        self.valid_classes = list()
+        self.cache_stats = set()
         self.stats_dict = dict()
-        self.cache_stats = None
-        self.attribute_stats = list()
-        self.attributes_physical = list()
-        self.attributes_social = list()
-        self.attributes_mental = list()
-        self.skill_stats = list()
-        self.skills_physical = list()
-        self.skills_social = list()
-        self.skills_mental = list()
-        self.virtue_stats = list()
-        self.favorable_stats = list()
-        self.supernable_stats = list()
-        self.specialize_stats = list()
-        self.specialized_stats = list()
+        self.categories_dict = dict()
         self.load()
 
     def load(self):
         load_db = self.owner.storage_locations['stats']
         load_stats = set(self.owner.attributes.get(load_db, []))
         expected_power = self.owner.template.power
-        self.valid_classes = list(self.owner.valid_stats)
-        self.valid_classes.append(expected_power)
-        new_stats = set([stat() for stat in self.valid_classes])
+        valid_classes = list(self.owner.valid_stats)
+        valid_classes.append(expected_power)
+        new_stats = set([stat() for stat in valid_classes])
         if not load_stats == new_stats:
             load_stats.update(new_stats)
             load_stats = new_stats.intersection(load_stats)
-        self.cache_stats = sorted(list(load_stats), key=lambda stat: stat.list_order)
-        attribute_stats, attributes_physical, attributes_social, attributes_mental = [list(), list(), list(), list()]
-        skill_stats, skills_physical, skills_social, skills_mental = [list(), list(), list(), list()]
-        virtue_stats, favorable_stats, supernable_stats, specialize_stats, specialized_stats = [list(), list(), list(),
-                                                                                                list(), list()]
-
+        self.cache_stats = set(sorted(list(load_stats), key=lambda stat: stat.list_order))
         for stat in self.cache_stats:
             self.stats_dict[stat.base_name] = stat
-            if stat.main_category == 'Attribute':
-                attribute_stats.append(stat)
-                if stat.sub_category == 'Physical':
-                    attributes_physical.append(stat)
-                if stat.sub_category == 'Social':
-                    attributes_social.append(stat)
-                if stat.sub_category == 'Mental':
-                    attributes_mental.append(stat)
-
-            if stat.main_category == 'Skill':
-                skill_stats.append(stat)
-                if stat.sub_category == 'Physical':
-                    skills_physical.append(stat)
-                if stat.sub_category == 'Social':
-                    skills_social.append(stat)
-                if stat.main_category == 'Mental':
-                    attributes_mental.append(stat)
-
-            if stat.main_category == 'Virtue':
-                virtue_stats.append(stat)
-
-            if stat.can_favor:
-                favorable_stats.append(stat)
-            if stat.can_supernal:
-                supernable_stats.append(stat)
-            if stat.can_specialize:
-                specialize_stats.append(stat)
-            if stat.specialties:
-                specialized_stats.append(stat)
-
-        self.attribute_stats = tuple(attribute_stats)
-        self.attributes_physical = tuple(attributes_physical)
-        self.attributes_social = tuple(attributes_social)
-        self.attributes_mental = tuple(attributes_mental)
-
-        self.skill_stats = tuple(skill_stats)
-        self.skills_physical = tuple(skills_physical)
-        self.skills_social = tuple(skills_social)
-        self.skills_mental = tuple(skills_mental)
-
-        self.favorable_stats = tuple(favorable_stats)
-        self.supernable_stats = tuple(supernable_stats)
-        self.specialize_stats = tuple(specialize_stats)
-        self.specialized_stats = tuple(specialized_stats)
+        categories = set([stat.main_category for stat in self.cache_stats])
+        for category in categories:
+            self.categories_dict[category] = [stat for stat in self.cache_stats if stat.main_category == category]
 
     def all(self):
         return self.cache_stats
@@ -309,31 +247,27 @@ class StatHandler(object):
             self.cache_stats.add(stat)
         self.save()
 
+    def get(self, stat=None):
+        if not stat:
+            return
+        try:
+            response = self.stats_dict[stat]
+        except KeyError, AttributeError:
+            return
+        return response
+
+    def category(self, category=None):
+        if not category:
+            return
+        try:
+            response = self.categories_dict[category]
+        except KeyError, AttributeError:
+            return
+        return response
+
     def save(self, no_load=False):
         load_db = self.owner.storage_locations['stats']
         self.owner.attributes.add(load_db, self.cache_stats)
         if no_load:
             return
         self.load()
-
-    def set(self, stat=None, value=None, caller=None):
-        if not caller:
-            caller = self.owner
-        if not stat:
-            raise AthanorError("No stat entered to set.")
-        if not value:
-            raise AthanorError("Nothing entered to set it to.")
-        find_stat = partial_match(stat, self.cache_stats)
-        if not find_stat:
-            raise AthanorError("Stat '%s' not found." % stat)
-        try:
-            find_stat.current_value = value
-        except AthanorError as err:
-            caller.sys_msg(message=str(err), error=True, sys_name='EDITCHAR')
-            return
-        else:
-            caller.sys_msg(message='Your %s stat is now: %s' % (find_stat, find_stat.current_value),
-                           sys_name='EDITCHAR')
-            self.save()
-            return True
-

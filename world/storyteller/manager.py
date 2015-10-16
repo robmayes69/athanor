@@ -153,7 +153,7 @@ class Attributes(StatSection):
     list_order = 10
 
     def load(self):
-        self.choices = [stat for stat in self.owner.stats.all() if stat.main_category == 'Attribute']
+        self.choices = self.owner.stats.category('Attribute')
         for stat_type in ['Physical', 'Social', 'Mental']:
             setattr(self, stat_type.lower(), [stat for stat in self.choices if stat.sub_category == stat_type])
 
@@ -176,7 +176,7 @@ class Skills(StatSection):
     list_order = 15
 
     def load(self):
-        self.choices = [stat for stat in self.owner.stats.all() if stat.main_category == 'Skill']
+        self.choices = self.owner.stats.category('Skill')
 
     def sheet_render(self, width=78):
         colors = self.sheet_colors

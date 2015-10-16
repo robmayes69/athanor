@@ -144,56 +144,31 @@ class WordPower(StatPower):
         else:
             return self.full_name
 
+
 class AdvantageHandler(object):
 
-    __slots__ = ['owner', 'valid_classes', 'valid_classes_dict', 'cache_advantages']
+    __slots__ = ['owner', 'cache_advantages']
 
     def __init__(self, owner):
         self.owner = owner
-        self.valid_classes = None
-        self.valid_classes_dict = dict()
         self.cache_advantages = None
         self.load()
 
     def load(self):
         load_db = self.owner.storage_locations['advantages']
         load_advantages = set(self.owner.attributes.get(load_db, []))
-        self.valid_classes = set(self.owner.valid_advantages)
-
-        for custom in self.valid_classes:
-            self.valid_classes_dict[custom.base_name] = custom
-        search_advantages = sorted([stat for stat in list(load_advantages)], key=lambda stat2: str(stat2))
+        search_advantages = [stat for stat in list(load_advantages) if isinstance(stat, StatPower)]
         self.cache_advantages = set(search_advantages)
 
-        for stat in [adv for adv in self.cache_advantages if adv.can_stat]:
-            try:
-                if stat.default_stat:
-                    stat_search = stat.default_stat
-                else:
-                    stat_search = stat._stat_name
-                stat.linked_stat = self.owner.stats.stats_dict[stat_search]
-            except AthanorError:
-                self.owner.sys_msg(message="You have a corruption error with Custom Stat '%s/%s'. "
-                                           "Please contact staff." % (stat.base_name, stat.custom_name), error=True,
-                                   sys_name='EDITCHAR')
-
-    def add(self, custom_type=None, stat=None, name=None, value=None, caller=None):
-        if not caller:
-            caller = self.owner
-        if not custom_type:
-            raise AthanorError("What kind of Custom Stat are you setting?")
-        found_name = partial_match(custom_type, self.valid_classes_dict.keys())
-        if not found_name:
-            raise AthanorError("Custom Stat '%s' not found." % custom_type)
-        found_custom = self.valid_classes_dict[found_name]
-        if found_custom.default_stat:
-            found_stat = self.owner.stats.stats_dict[found_custom.default_stat]
-        else:
-            if not stat:
-                raise AthanorError("A %s requires a Stat." % found_custom.base_name)
-            found_stat = partial_match(stat, found_custom.valid_stats(self.owner))
-        if not found_stat:
-            raise AthanorError("Cannot set %s. No stat found." % found_custom.base_name)
+    def add(self, new_advantage=None):
+        if not new_advantage:
+            return
+        stat_list = make_iter(new_advantage)
+        for stat in stat_list:
+            if not isinstance(stat, StatPower):
+                raise AthanorError("AdvantageHandler expects a Power-type object, received %s" % type(stat))
+            self.cache_advantages.add(stat)
+        self.save()
 
     def all(self):
         return self.cache_advantages
