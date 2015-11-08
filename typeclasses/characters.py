@@ -228,7 +228,7 @@ class Character(DefaultCharacter):
     def screen_width(self):
         width_list = list()
         for session in self.sessions:
-            width_list += session.protocol_flags['SCREENWIDTH'].values()
+            width_list.append(session.get_client_size()[0])
         return min(width_list) or 78
 
 
@@ -268,7 +268,7 @@ class StorytellerCharacter(Character):
         return StorytellerHandler(self)
 
     def return_sheet(self, viewer):
-        pass
+        return self.storyteller.render_sheet(viewer=viewer)
 
 
 class Ex2Character(StorytellerCharacter):

@@ -23,7 +23,7 @@ from commands.groups import GROUP_COMMANDS
 from commands.grid_management import DISTRICT_COMMANDS
 from commands.mush_import import CmdImport
 from commands.login import CmdMushConnect
-from commands.storyteller import CmdEditChar
+from commands.storyteller import CmdEditChar, CmdSheet
 
 class CharacterCmdSet(default_cmds.CharacterCmdSet):
     """
@@ -57,6 +57,7 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
             self.add(district_cmd())
         self.add(CmdImport())
         self.add(CmdEditChar())
+        self.add(CmdSheet())
 
 class PlayerCmdSet(default_cmds.PlayerCmdSet):
     """
