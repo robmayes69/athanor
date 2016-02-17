@@ -1,6 +1,6 @@
 from world.database.info.models import valid_name
 from commands.command import AthCommand
-from commands.library import header, make_table, AthanorError
+from commands.library import AthanorError
 
 class CmdInfo(AthCommand):
     """
@@ -32,9 +32,6 @@ class CmdInfo(AthCommand):
     +info/get [<character>/]<list|of|files>
     Shows an unformatted text for easy editing of an +info file.
 
-    +info/published
-    Shows all characters who have published Info files.
-
     MANAGING INFOS:
     +info [<character>/]<list|of|files>=<contents>
     Creates a new file, or overwrites an existing one with new contents.
@@ -60,6 +57,7 @@ class CmdInfo(AthCommand):
     admin_switches = ['lock', 'unlock']
     info_category = 'INFO'
 
+
     def func(self):
         rhs = self.rhs
         lhs = self.lhs
@@ -78,6 +76,9 @@ class CmdInfo(AthCommand):
         if str(type(self.target)) == 'Player':
             self.error("Targets must be Characters.")
             return
+
+        self.category, created = self.target.infotypes.get_or_create(category_name=self.info_category)
+        self.files = self.category.files.all()
 
         if "lock" in switches:
             self.switch_approve(self.target, self.filelist)
@@ -125,10 +126,6 @@ class CmdInfo(AthCommand):
         filelist = [entry.strip() for entry in filelist]
         return target, filelist
 
-    def info_list(self, target):
-        # This function returns a queryset of Info files self.caller can see.
-        return target.infofiles.filter(info_category=self.info_category)
-
     def switch_set(self, target, filelist, rhs):
         if target is not self.caller and not self.is_admin:
             self.error("Permission denied.")
@@ -139,7 +136,7 @@ class CmdInfo(AthCommand):
         for info in filelist:
             try:
                 infoname = valid_name(info)
-                file, created = target.infofiles.get_or_create(title__iexact=infoname)
+                file, created = self.category.get_or_create(title__iexact=infoname)
                 file.title = infoname
                 file.set_contents(rhs, self.character.actor)
             except AthanorError as err:
@@ -153,7 +150,7 @@ class CmdInfo(AthCommand):
             self.error("Permission denied.")
             return
         for info in filelist:
-            entry = self.info_list(target).filter(title__iexact=info).first()
+            entry = self.files.filter(title__iexact=info).first()
             if not entry:
                 self.error("File '%s' not found. Rename requires exact names." % entry)
             else:
@@ -171,7 +168,7 @@ class CmdInfo(AthCommand):
             self.error("No files entered to approve.")
             return
         for info in filelist:
-            entry = self.info_list(target).filter(title__istartswith=info).first()
+            entry = self.files.filter(title__istartswith=info).first()
             if not entry:
                 self.error("File '%s' not found." % info)
             else:
@@ -188,7 +185,7 @@ class CmdInfo(AthCommand):
             self.error("No files entered to unapprove.")
             return
         for info in filelist:
-            entry = self.info_list(target).filter(title__istartswith=info).first()
+            entry = self.files.filter(title__istartswith=info).first()
             if not entry:
                 self.error("File '%s' not found." % info)
             else:
@@ -205,7 +202,7 @@ class CmdInfo(AthCommand):
             self.error("Permission denied.")
             return
         for info in filelist:
-            file = self.info_list(target).filter(title__iexact=info).first()
+            file = self.files.filter(title__iexact=info).first()
             if not file:
                 self.error("File '%s' not found. Rename requires exact names." % info)
             else:
@@ -219,23 +216,16 @@ class CmdInfo(AthCommand):
                     self.sys_msg("File '%s' renamed to: '%s'" % (oldname, file.title))
 
     def switch_list(self, target):
-        files = self.info_list(target)
-        message = []
-        message.append(header("%s's Info Files" % target.key))
-        latesttable = make_table("Name", "Set On", "Set By", "Approved", width=[20, 29, 19, 9])
-        for info in files:
-            latesttable.add_row(info.title, self.caller.display_local_time(info.date_modified), info.set_by, info.approved)
-        message.append(latesttable)
-        message.append(header())
-        self.msg_lines(message)
+        self.caller.msg(self.category.show_files(self.character))
+
 
     def switch_view(self, target, filelist):
         if not filelist:
             self.error("No files entered to retrieve.")
             return
         for info in filelist:
-            file = self.info_list(target).filter(title__istartswith=info).first()
+            file = self.files.filter(title__istartswith=info).first()
             if not file:
                 self.error("File '%s' not found!" % info)
             else:
-                self.caller.msg(file.display_info(self.caller))
+                self.caller.msg(file.show_info(viewer=self.caller))

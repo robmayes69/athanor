@@ -1,12 +1,29 @@
 import re
 from django.db import models
-from commands.library import utcnow, sanitize_string, penn_substitutions, AthanorError, header, separator
+from commands.library import utcnow, sanitize_string, penn_substitutions, AthanorError, header, separator, make_table
 
 # Create your models here.
+
+
+class InfoType(models.Model):
+    character_obj = models.ForeignKey('objects.ObjectDB', related_name='infotypes')
+    category_name = models.CharField(max_length=30, default='INFO', db_index=True)
+
+    def show_files(self, viewer):
+        files = self.files.all()
+        message = []
+        message.append(header("%s's %s Files" % (self.character_obj.key, self.category_name), viewer=viewer))
+        info_table = make_table("Name", "Set On", "Set By", "Approved", width=[20, 29, 19, 9])
+        for info in files:
+            info_table.add_row(info.title, self.caller.display_local_time(info.date_modified), info.set_by, info.approved)
+        message.append(info_table)
+        message.append(header(viewer=viewer))
+        return "\n".join([unicode(line) for line in message])
+
+
 class InfoFile(models.Model):
-    character_obj = models.ForeignKey('objects.ObjectDB', related_name='infofiles')
-    info_category = models.CharField(max_length=30, default='INFO')
-    title = models.CharField(max_length=20)
+    info_type = models.ForeignKey('info.InfoType', related_name='files')
+    title = models.CharField(max_length=30, db_index=True)
     date_created = models.DateTimeField(default=utcnow())
     date_modified = models.DateTimeField(default=utcnow())
     text = models.TextField()
@@ -71,9 +88,10 @@ class InfoFile(models.Model):
         self.character_obj.sys_msg("File '%s' deleted." % self.title, sys_name=self.info_category)
         self.delete()
 
-    def display_info(self, viewer):
+    def show_info(self, viewer):
         message = []
-        message.append(header("%s's Info File: %s" % (self.character_obj, self.title)))
+        message.append(header("%s's %s File: %s" % (self.info_type.character_obj, self.info_type.category_name,
+                                                    self.title)))
         message.append(self.text)
         message.append(separator())
         message.append("{wLast set by:{n %s {wOn:{n %s" % (self.set_by,

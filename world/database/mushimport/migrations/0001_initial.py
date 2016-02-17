@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from django.db import models, migrations
+from django.db import migrations, models
 from django.conf import settings
 
 
@@ -10,10 +10,17 @@ class Migration(migrations.Migration):
     dependencies = [
         ('objects', '0005_auto_20150403_2339'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('groups', '0002_auto_20151007_0310'),
+        ('groups', '0001_initial'),
     ]
 
     operations = [
+        migrations.CreateModel(
+            name='MushAccount',
+            fields=[
+                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
+                ('objids', models.CharField(max_length=400)),
+            ],
+        ),
         migrations.CreateModel(
             name='MushAttribute',
             fields=[
@@ -46,13 +53,7 @@ class Migration(migrations.Migration):
                 ('type', models.PositiveSmallIntegerField()),
                 ('name', models.CharField(max_length=80)),
                 ('created', models.DateTimeField()),
-            ],
-        ),
-        migrations.CreateModel(
-            name='PennAccounts',
-            fields=[
-                ('id', models.AutoField(verbose_name='ID', serialize=False, auto_created=True, primary_key=True)),
-                ('objids', models.CharField(max_length=400)),
+                ('flags', models.TextField(blank=True)),
             ],
         ),
         migrations.CreateModel(
@@ -63,19 +64,9 @@ class Migration(migrations.Migration):
             ],
         ),
         migrations.AddField(
-            model_name='pennaccounts',
-            name='characters',
-            field=models.ManyToManyField(to='mushimport.MushObject'),
-        ),
-        migrations.AddField(
-            model_name='pennaccounts',
-            name='player',
-            field=models.OneToOneField(related_name='mush_account', null=True, to=settings.AUTH_USER_MODEL),
-        ),
-        migrations.AddField(
             model_name='mushobject',
-            name='exits',
-            field=models.ManyToManyField(to='mushimport.MushObject'),
+            name='destination',
+            field=models.ForeignKey(related_name='exits_to', to='mushimport.MushObject', null=True),
         ),
         migrations.AddField(
             model_name='mushobject',
@@ -85,7 +76,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='mushobject',
             name='obj',
-            field=models.OneToOneField(related_name='penn', null=True, to='objects.ObjectDB'),
+            field=models.OneToOneField(related_name='mush', null=True, to='objects.ObjectDB'),
         ),
         migrations.AddField(
             model_name='mushobject',
@@ -111,6 +102,21 @@ class Migration(migrations.Migration):
             model_name='mushattribute',
             name='dbref',
             field=models.ForeignKey(related_name='attrs', to='mushimport.MushObject'),
+        ),
+        migrations.AddField(
+            model_name='mushaccount',
+            name='characters',
+            field=models.ManyToManyField(to='mushimport.MushObject'),
+        ),
+        migrations.AddField(
+            model_name='mushaccount',
+            name='dbref',
+            field=models.OneToOneField(related_name='mush_account', null=True, to='mushimport.MushObject'),
+        ),
+        migrations.AddField(
+            model_name='mushaccount',
+            name='player',
+            field=models.OneToOneField(related_name='mush_account', null=True, to=settings.AUTH_USER_MODEL),
         ),
         migrations.AddField(
             model_name='mushgroupranks',

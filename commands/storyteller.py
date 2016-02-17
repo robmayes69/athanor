@@ -20,14 +20,15 @@ class CmdSheet(AthCommand):
                 return
         self.msg(target.return_sheet(viewer=self.character))
 
-class CmdEditChar(EditCmd):
+
+class CmdTarget(EditCmd):
     """
     Used to select a character to edit. Temporarily bestows editing commands.
 
     Usage:
         +editchar <character>
     """
-    key = '+editchar'
+    key = '+target'
     locks = "cmd:perm(Wizards)"
 
     def func(self):
@@ -40,6 +41,43 @@ class CmdEditChar(EditCmd):
         except AthanorError as err:
             self.error(str(err))
             return
+        self.character.ndb.target = target
+        self.sys_msg("You are now editing %s" % target)
+        return
+
+
+class CmdEditChar(EditCmd):
+    """
+    Used to select a character to edit. Temporarily bestows editing commands.
+
+    Usage:
+        +editchar <character>
+    """
+    key = '+set'
+    locks = "cmd:perm(Wizards)"
+
+    def func(self):
+
+        target = self.character.ndb.target
+
+        if not target:
+            self.error("Nothing targeted to set!")
+            return
+
+        options = [op for op in target.storyteller.editchar_sections if 'set' in op.editchar_options]
+        if not options:
+            self.error("No options to set!")
+            return
+
+        if not self.lhslist:
+            self.error("Nothing entered to set!")
+            return
+
+        choice = self.partial(self.lhslist[0], options)
+
+        
+
+
         self.character.ndb.editchar = target
         self.sys_msg("You are now editing %s" % target)
         return
