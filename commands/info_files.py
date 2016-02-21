@@ -127,6 +127,16 @@ class CmdInfo(AthCommand):
         return target, filelist
 
     def switch_set(self, target, filelist, rhs):
+        """
+
+        Args:
+            target:
+            filelist:
+            rhs:
+
+        Returns:
+
+        """
         if target is not self.caller and not self.is_admin:
             self.error("Permission denied.")
             return
@@ -136,7 +146,7 @@ class CmdInfo(AthCommand):
         for info in filelist:
             try:
                 infoname = valid_name(info)
-                file, created = self.category.get_or_create(title__iexact=infoname)
+                file, created = self.category.files.get_or_create(title__iexact=infoname)
                 file.title = infoname
                 file.set_contents(rhs, self.character.actor)
             except AthanorError as err:

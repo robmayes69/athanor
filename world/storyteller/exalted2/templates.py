@@ -1,25 +1,3 @@
-from world.storyteller.templates import Template as OldTemplate
-
-from world.storyteller.exalted2.stats import Power
-from world.storyteller.exalted2.pools import UNIVERSAL_POOLS
-from world.storyteller.exalted2.pools import SOLAR_POOLS, INFERNAL_POOLS, ABYSSAL_POOLS, LUNAR_POOLS, SIDEREAL_POOLS
-from world.storyteller.exalted2.pools import TERRESTRIAL_POOLS, ALCHEMICAL_POOLS, RAKSHA_POOLS, DRAGONKING_POOLS
-from world.storyteller.exalted2.pools import SPIRIT_POOLS, GHOST_POOLS, JADEBORN_POOLS
-
-
-class ExaltedTemplate(OldTemplate):
-    game_category = 'Exalted2'
-    default_pools = UNIVERSAL_POOLS
-    native_charms = None
-    power_stat = Power
-    extended_charms = dict()
-    overdrive_charms = dict()
-
-
-class Mortal(ExaltedTemplate):
-    base_name = 'Mortal'
-
-
 class Solar(ExaltedTemplate):
     base_name = 'Solar'
     default_pools = UNIVERSAL_POOLS + SOLAR_POOLS

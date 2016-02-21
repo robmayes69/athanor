@@ -14,20 +14,11 @@ from evennia.utils.utils import time_format, lazy_property
 from evennia.utils.ansi import ANSIString
 from commands.library import AthanorError, utcnow, mxp_send, header
 
-from world.storyteller.templates import TemplateHandler
-from world.storyteller.stats import StatHandler
-from world.storyteller.pools import PoolHandler
-from world.storyteller.merits import MeritHandler
-from world.storyteller.advantages import AdvantageHandler
 from world.storyteller.manager import StorytellerHandler
 
-from world.storyteller.exalted2.templates import TEMPLATES_LIST as EX2_TEMPLATES
-from world.storyteller.exalted2.stats import STATS_LIST as EX2_STATS
-from world.storyteller.exalted2.pools import POOL_LIST as EX2_POOLS
-from world.storyteller.exalted2.merits import MERITS_LIST as EX2_MERITS
-from world.storyteller.exalted2.advantages import ALL_WORDPOWERS as EX2_WORDPOWERS
-from world.storyteller.exalted2.manager import ALL_SECTIONS as EX2_SECTIONS
+from world.storyteller.exalted2.rules import STATS as EX2_STATS, TEMPLATES as EX2_TEMPLATES, POOLS as EX2_POOLS
 
+from world.storyteller.exalted3.rules import STATS as EX3_STATS, TEMPLATES as EX3_TEMPLATES, POOLS as EX3_POOLS
 
 class Character(DefaultCharacter):
     """
@@ -236,32 +227,11 @@ class StorytellerCharacter(Character):
     """
     Base template for Storyteller characters. It's not meant to be used literally.
     """
-    valid_templates = list()
-    storage_locations = dict()
-    valid_pools = list()
-    valid_merits = list()
-    valid_advantages = list()
-    valid_sections = list()
+    storyteller_storage = dict()
+    storyteller_templates = list()
+    storyteller_stats = dict()
+    storyteller_pools = list()
 
-    @lazy_property
-    def template(self):
-        return TemplateHandler(self)
-
-    @lazy_property
-    def stats(self):
-        return StatHandler(self)
-
-    @lazy_property
-    def merits(self):
-        return MeritHandler(self)
-
-    @lazy_property
-    def advantages(self):
-        return AdvantageHandler(self)
-
-    @lazy_property
-    def pools(self):
-        return PoolHandler(self)
 
     @lazy_property
     def storyteller(self):
@@ -275,12 +245,22 @@ class Ex2Character(StorytellerCharacter):
     """
     For use with Exalted 2nd Edition characters.
     """
-    valid_templates = EX2_TEMPLATES
-    storage_locations = {'power': '_ex2_power', 'stats': '_ex2_stats', 'pools': '_ex2_pools', 'merits': '_ex2_merits',
-                         'advantages': '_ex2_advantages', 'template': '_ex2_template'}
 
-    valid_stats = EX2_STATS
-    valid_pools = EX2_POOLS
-    valid_merits = EX2_MERITS
-    valid_advantages = EX2_WORDPOWERS
-    valid_sections = EX2_SECTIONS
+    storyteller_storage = {'template': '_ex2_template', 'stats': '_ex2_stats', 'custom': '_ex2_custom',
+                            'pools': '_ex2_pools', 'merits': '_ex2_merits', 'charms': '_ex2_charms'}
+    storyteller_templates = EX2_TEMPLATES
+    storyteller_stats = EX2_STATS
+    storyteller_pools = EX2_POOLS
+
+
+class Ex3Character(StorytellerCharacter):
+    """
+    For use with Exalted 3rd Edition characters.
+    """
+
+    storyteller_storage = {'template': '_ex3_template', 'stats': '_ex3_stats', 'custom': '_ex3_custom',
+                            'pools': '_ex3_pools', 'merits': '_ex3_merits', 'charms': '_ex3_charms'}
+    storyteller_templates = EX3_TEMPLATES
+    storyteller_stats = EX3_STATS
+    storyteller_pools = EX3_POOLS
+
