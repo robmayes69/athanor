@@ -5,14 +5,12 @@ from django.conf import settings
 from evennia.utils.evtable import EvTable
 from evennia.utils.ansi import ANSIString
 from commands.library import partial_match, sanitize_string, tabular_table
-from world.storyteller.merits import Merit
-from world.storyteller.advantages import WordPower, StatPower
 from evennia.utils.utils import make_iter
 
 
 class SheetSection(object):
 
-    base_name = 'DefaultSection'
+    name = 'DefaultSection'
     list_order = 0
     sheet_display = True
     use_editchar = True
@@ -24,10 +22,10 @@ class SheetSection(object):
         self.load()
 
     def __str__(self):
-        return self.base_name
+        return self.name
 
     def __unicode__(self):
-        return unicode(self.base_name)
+        return self.name
 
     def load(self):
         pass
@@ -38,8 +36,8 @@ class SheetSection(object):
     @property
     def sheet_colors(self):
         color_dict = dict()
-        color_dict.update(self.owner.template.template.base_sheet_colors)
-        color_dict.update(self.owner.template.template.extra_sheet_colors)
+        color_dict.update(self.owner.ndb.template.template.base_sheet_colors)
+        color_dict.update(self.owner.ndb.template.template.extra_sheet_colors)
         return color_dict
 
     def sheet_header(self, center_text=None, width=78):
@@ -127,6 +125,7 @@ class SheetSection(object):
                 calculate = int(math.ceil(col_calc))
                 column_widths.append(calculate)
         return column_widths
+
 
 class StatSection(SheetSection):
 
@@ -402,7 +401,7 @@ class Favored(StatSection):
 class MeritSection(SheetSection):
     base_name = 'DefaultMerit'
     list_order = 20
-    custom_type = Merit
+    custom_type = None
     sheet_name = 'Default Merits'
 
     def load(self):
@@ -430,7 +429,7 @@ class MeritSection(SheetSection):
 class AdvantageStatSection(SheetSection):
     base_name = 'DefaultAdvStat'
     list_order = 30
-    custom_type = StatPower
+    custom_type = None
 
     def load(self):
         self.existing = [power for power in self.owner.advantages.all() if isinstance(power, self.custom_type)]
@@ -454,7 +453,7 @@ class AdvantageStatSection(SheetSection):
 class AdvantageWordSection(SheetSection):
     base_name = 'DefaultAdvPower'
     list_order = 50
-    custom_type = WordPower
+    custom_type = None
 
     def load(self):
         self.existing = [power for power in self.owner.advantages.all() if isinstance(power, self.custom_type)]
@@ -514,6 +513,8 @@ class FirstSection(SheetSection):
 
 class StorytellerHandler(object):
 
+    def __repr__(self):
+        return '<StorytellerHandler>'
 
     def __init__(self, owner):
         self.owner = owner
@@ -528,7 +529,7 @@ class StorytellerHandler(object):
         owner = self.owner
         valid_templates = owner.storyteller_templates
         db_name = owner.storyteller_storage['template']
-        save_data = owner.attribute.get(db_name, dict())
+        save_data = owner.attributes.get(db_name, dict())
         key = save_data.get('key', 'mortal')
         info_dict = save_data.get('info', dict())
         if key not in valid_templates.keys():
@@ -546,7 +547,7 @@ class StorytellerHandler(object):
     def load_stats(self):
         owner = self.owner
         db_name = owner.storyteller_storage['stats']
-        save_data = owner.attribute.get(db_name, dict())
+        save_data = owner.attributes.get(db_name, dict())
         init_stats = list()
         for key in owner.storyteller_stats.keys():
             stat = Stat(key=key, init_data=owner.storyteller_stats[key], save_data=save_data.get(key, dict()))
@@ -556,15 +557,18 @@ class StorytellerHandler(object):
         for stat in init_stats:
             self.stats_dict[stat.key] = int(stat)
         owner.ndb.stats_dict = self.stats_dict
+        stat_types = list(set([stat.type for stat in self.stats]))
+        self.stats_type = dict()
+        for type in stat_types:
+            self.stats_type[type] = tuple(sorted([stat for stat in self.stats if stat.type == type],
+                                                 key=lambda stat2: stat2.list_order))
+        owner.ndb.stats_type = self.stats_type
         self.save_stats()
 
     def save_stats(self):
         owner = self.owner
         db_name = owner.storyteller_storage['stats']
-        export_data = dict()
-        for stat in self.stats:
-            export = stat.export()
-            export_data[export[0]] = export[1]
+        export_data = {stat.key: stat.export() for stat in self.stats}
         owner.attributes.add(db_name, export_data)
 
     def change_template(self):
@@ -573,7 +577,7 @@ class StorytellerHandler(object):
     def load_pools(self):
         owner = self.owner
         db_name = owner.storyteller_storage['pools']
-        save_data = owner.attribute.get(db_name, dict())
+        save_data = owner.attributes.get(db_name, dict())
         valid_pools = owner.storyteller_pools
         pools = list()
         for key in owner.ndb.template.pools.keys():
@@ -606,11 +610,6 @@ class StorytellerHandler(object):
 
 class Template(object):
 
-    __slots__ = ['__name', 'key', 'pools', 'info', 'info_choices', 'info_defaults', 'charm_type', 'list_order',
-                 'base_sheet_colors', 'extra_sheet_colors', 'sheet_column_1', 'sheet_column_2', 'info_fields']
-
-    key = 'mortal'
-    __name = 'Mortal'
     pools = dict()
     info = dict()
     info_fields = dict()
@@ -618,7 +617,6 @@ class Template(object):
     info_defaults = dict()
     charm_type = ''
     list_order = 0
-
     base_sheet_colors = {'title': 'n', 'border': 'n', 'textfield': 'n', 'texthead': 'n', 'colon': 'n',
                          'section_name': 'n', '3_column_name': 'n', 'advantage_name': 'n', 'advantage_border': 'n',
                          'slash': 'n', 'statdot': 'n', 'statfill': 'n', 'statname': 'n', 'damagename': 'n',
@@ -628,22 +626,19 @@ class Template(object):
     sheet_column_2 = list()
 
     def __str__(self):
-        return self.__name
+        return self.name
 
     def __unicode__(self):
-        return self.__name
+        return self.name
 
     def __nonzero__(self):
         return True
-
-    def __hash__(self):
-        return hash(self.__name) ^ hash(type(self).__name__)
 
     def __init__(self, key=None, init_data=None, info_dict=None):
         if not info_dict:
             info_dict = dict()
         self.key = key
-        self.__name = init_data['name']
+        self.name = init_data['name']
         keys = init_data.keys()
         for category in ('info_defaults', 'info_choices', 'pools', 'charm_type', 'list_order', 'extra_sheet_colors',
                          'sheet_column_1', 'sheet_column_2'):
@@ -697,17 +692,18 @@ class ProtoStat(object):
     This provides logic for the other Stat classes. It is not used directly.
     """
 
-    __name = 'Unset'
-    __rating = 0
+    name = 'Unset'
+    value = 0
+    specialties_storage = dict()
 
     def __str__(self):
-        return self.__name
+        return self.name
 
     def __unicode__(self):
-        return self.__name
+        return self.name
 
     def __repr__(self):
-        return '<%s: %s - (%s)>' % (type(self).__name__, self.__name, self.__rating)
+        return '<%s: %s - (%s)>' % (type(self).__name__, self.name, self.rating)
 
     def __nonzero__(self):
         return True
@@ -716,13 +712,13 @@ class ProtoStat(object):
         return True
 
     def __int__(self):
-        return self.__rating
+        return self.rating
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.__name == other.__name
+        return type(self) == type(other) and self.name == other.__name
 
     def __hash__(self):
-        return hash(self.__name) ^ hash(type(self).__name__)
+        return hash(self.name) ^ hash(type(self).__name__)
 
     def __add__(self, other):
         return int(self) + int(other)
@@ -732,7 +728,7 @@ class ProtoStat(object):
 
     @property
     def rating(self):
-        return self.__rating
+        return self.value
 
     @rating.setter
     def rating(self, value):
@@ -742,7 +738,20 @@ class ProtoStat(object):
             raise ValueError("'%s' must be set to a positive integer." % self)
         if not new_value >= 0:
             raise ValueError("'%s' must be set to a positive integer." % self)
-        self.__rating = new_value
+        self.value = new_value
+
+    def set_specialty(self, name, value):
+        name = name.lower()
+        try:
+            new_value = int(value)
+        except ValueError:
+            raise ValueError("Specialties must be set to whole numbers.")
+        if not new_value >= 0:
+            raise ValueError("Specialties cannot be negative numbers.")
+        if new_value == 0 and name in self.specialties_storage.keys():
+            self.specialties_storage.pop(name, None)
+            return
+        self.specialties_storage[name] = new_value
 
 
 class Stat(ProtoStat):
@@ -750,25 +759,12 @@ class Stat(ProtoStat):
     This class is used for all of the 'default' stats provided by a Storyteller game. Attributes, Skills, etc.
     """
 
-    __slots__ = ['__name', '__rating', '__tags','__favored', '__supernal', '__epic', 'list_order', 'type', 'category',
-                 'sub_category', 'key']
-
-    key = ''
-    __tags = list()
-    __favored = False
-    __supernal = False
-    __epic = False
-    list_order = 0
-    type = 'Stat'
-    category = ''
-    sub_category = ''
-
-
     def __init__(self, key=None, init_data=None, save_data=None):
         if not save_data:
             save_data = dict()
         self.key = key
-        self.__tags = init_data.get('tags', tuple())
+        self.name = init_data.get('name')
+        self.tags = init_data.get('tags', tuple())
         self.type = init_data.get('type', '')
         self.__favored = save_data.get('favored', False)
         self.__supernal = save_data.get('supernal', False)
@@ -776,7 +772,7 @@ class Stat(ProtoStat):
         self.list_order = init_data.get('list_order', 0)
         self.category = init_data.get('category', '')
         self.sub_category = init_data.get('sub_category', '')
-        self.__rating = save_data.get('rating', init_data['start_value'] or 0)
+        self.value = save_data.get('rating', init_data.get('start_value', 0))
 
 
     def __hash__(self):
@@ -788,7 +784,7 @@ class Stat(ProtoStat):
 
     @favored.setter
     def favored(self, value):
-        if 'no_favor' in self.__tags:
+        if 'no_favor' in self.tags:
             raise ValueError("'%s' cannot be set Favored." % self)
         try:
             new_value = int(value)
@@ -804,7 +800,7 @@ class Stat(ProtoStat):
 
     @supernal.setter
     def supernal(self, value):
-        if 'no_supernal' in self.__tags:
+        if 'no_supernal' in self.tags:
             raise ValueError("'%s' cannot be set Supernal." % self)
         try:
             new_value = int(value)
@@ -820,7 +816,7 @@ class Stat(ProtoStat):
 
     @epic.setter
     def epic(self, value):
-        if 'no_epic' in self.__tags:
+        if 'no_epic' in self.tags:
             raise ValueError("'%s' cannot be set Epic." % self)
         try:
             new_value = int(value)
@@ -834,8 +830,7 @@ class Stat(ProtoStat):
         return self.supernal or self.favored or self.epic or int(self)
 
     def export(self):
-        return (self.key, {'rating': self.__rating, 'favored': self.__favored, 'supernal': self.__supernal,
-                             'epic': self.__epic})
+        return {'rating': self.value, 'favored': self.__favored, 'supernal': self.__supernal, 'epic': self.__epic}
 
 """
     def sheet_format(self, width=23, no_favored=False, fill_char='.',
@@ -879,22 +874,17 @@ class CustomStat(ProtoStat):
     This class is used for all of the custom stats like Crafts or Styles..
     """
 
-    __slots__ = ['__name', '__rating', '__tags', 'type', 'category', 'sub_category']
-
-    __tags = list()
+    tags = list()
     type = 'Stat'
     category = ''
     sub_category = ''
 
     def export(self):
-        return (self.__name, (self.__rating, self.type, self.category, self.sub_category, self.__tags))
+        return (self.name, (self.value, self.type, self.category, self.sub_category, self.tags))
 
 
 
 class Pool(object):
-
-    __slots__ = ['base_name', 'category', 'list_order', 'tags', '__commits', '__max', '__func', '__owner',
-                 '__used', 'unit', 'refresh', 'key']
 
     key = ''
     name = 'Pool'
@@ -904,7 +894,7 @@ class Pool(object):
     tags = tuple()
     refresh = ''
     __commits = dict()
-    __owner = None
+    owner = None
     __used = 0
     __func = None
 
@@ -936,7 +926,7 @@ class Pool(object):
         self.key = key
         for category in ('name', 'unit', 'tags', 'refresh', 'category'):
             if category in init_data.keys():
-                setattr(self, category, init_data['category'])
+                setattr(self, category, init_data[category])
         self.__used = save_data or 0
             
 
@@ -946,7 +936,7 @@ class Pool(object):
 
     @property
     def max(self):
-        return self.__func(self.__owner)
+        return self.__func(self.owner)
 
     @property
     def available(self):
