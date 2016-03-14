@@ -40,15 +40,16 @@ class Character(DefaultCharacter):
 
     """
 
+
     def at_object_creation(self):
         super(Character, self).at_object_creation()
-        from world.database.communications.models import ObjectActor, Gag
-        ObjectActor.objects.get_or_create(db_object=self, db_key=self.key)
-        Gag.objects.get_or_create(db_object=self)
+        from world.database.communications.models import ObjectStub, Gag
+        ObjectStub.objects.get_or_create(object=self, key=self.key)
+        Gag.objects.get_or_create(object=self)
         self.last_played(update=True)
 
-    def at_post_unpuppet(self, player, sessid=None):
-        super(Character, self).at_post_unpuppet(player, sessid)
+    def at_post_unpuppet(self, player, session=None):
+        super(Character, self).at_post_unpuppet(player, session)
         self.last_played(update=True)
         if self.sessions:
             return
@@ -61,7 +62,7 @@ class Character(DefaultCharacter):
     def at_post_puppet(self):
         super(Character, self).at_post_puppet()
         self.last_played(update=True)
-        if len(self.sessions) != 1 and not self.db._owner.db._watch_hide:
+        if len(self.sessions.all()) != 1 and not self.db._owner.db._watch_hide:
             for player in [play.db_player for play in self.on_watch.all() if not play.db_player.db._watch_mute]:
                 player.sys_msg('%s has connected.' % self, sys_name='WATCH')
 
@@ -113,18 +114,6 @@ class Character(DefaultCharacter):
     def delete(self):
         self.actor.update_name(self.key)
         super(Character, self).delete()
-
-    @property
-    def idle_time(self):
-        idle = [session.cmd_last_visible for session in self.sessions]
-        if idle:
-            return time.time() - float(max(idle))
-
-    @property
-    def connection_time(self):
-        conn = [session.conn_time for session in self.sessions]
-        if conn:
-            return time.time() - float(min(conn))
 
     def is_admin(self):
         return self.locks.check_lockstring(self, "dummy:perm(Wizards)")
@@ -217,9 +206,7 @@ class Character(DefaultCharacter):
 
     @property
     def screen_width(self):
-        width_list = list()
-        for session in self.sessions:
-            width_list.append(session.get_client_size()[0])
+        width_list = [session.get_client_size()[0] for session in self.sessions.all()]
         return min(width_list) or 78
 
 

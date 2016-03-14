@@ -13,7 +13,7 @@ class Board(models.Model):
     group = models.ForeignKey('groups.Group', null=True, related_name='boards')
     lock_storage = models.TextField('locks', blank=True)
     ignore_list = models.ManyToManyField('objects.ObjectDB')
-    anonymous = models.CharField(max_length=40, null=True)
+    anonymous = models.CharField(max_length=80, null=True)
     timeout = models.IntegerField(default=0, null=True)
     mandatory = models.BooleanField(default=False)
 
@@ -130,7 +130,7 @@ class Board(models.Model):
 
 class Post(models.Model):
     board = models.ForeignKey('Board', related_name='posts')
-    actor = models.ForeignKey('communications.ObjectActor')
+    poster = models.ForeignKey('communications.ObjectStub')
     post_date = models.DateTimeField()
     modify_date = models.DateTimeField()
     post_text = models.TextField()

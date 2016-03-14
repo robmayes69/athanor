@@ -1,6 +1,9 @@
+from __future__ import unicode_literals
+
 import re
 from django.db import models
 from commands.library import utcnow, sanitize_string, penn_substitutions, AthanorError, header, separator, make_table
+
 
 # Create your models here.
 
@@ -27,10 +30,10 @@ class InfoFile(models.Model):
     date_created = models.DateTimeField(default=utcnow())
     date_modified = models.DateTimeField(default=utcnow())
     text = models.TextField()
-    set_by = models.ForeignKey('communications.ObjectActor', null=True, on_delete=models.SET_NULL)
+    set_by = models.ForeignKey('communications.ObjectStub', null=True, on_delete=models.SET_NULL)
     date_approved = models.DateTimeField(null=True)
     approved = models.BooleanField(default=False)
-    approved_by = models.ForeignKey('communications.ObjectActor',null=True, on_delete=models.SET_NULL)
+    approved_by = models.ForeignKey('communications.ObjectStub',null=True, on_delete=models.SET_NULL)
     
     def __unicode__(self):
         return self.title

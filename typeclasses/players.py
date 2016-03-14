@@ -27,7 +27,7 @@ from django.conf import settings
 from evennia import DefaultPlayer, DefaultGuest
 from evennia.utils.utils import time_format, lazy_property
 from evennia.utils.ansi import ANSIString
-from commands.library import utcnow, AthanorError, header
+from commands.library import utcnow
 from world.player_settings import SettingHandler
 
 class Player(DefaultPlayer):
@@ -108,16 +108,16 @@ class Player(DefaultPlayer):
             self.db._playable_characters = []
 
         # All Players need an Actor and WatchFor entry!
-        from world.database.communications.models import PlayerActor, WatchFor
-        PlayerActor.objects.get_or_create(db_player=self, db_key=self.key)
-        WatchFor.objects.get_or_create(db_player=self)
+        from world.database.communications.models import PlayerStub, WatchFor
+        PlayerStub.objects.get_or_create(player=self, key=self.key)
+        WatchFor.objects.get_or_create(player=self)
 
-    def at_post_login(self, sessid=None):
-        super(Player, self).at_post_login(sessid)
+    def at_post_login(self, session=None):
+        super(Player, self).at_post_login(session)
         self.last_played(update=True)
 
-    def at_failed_login(self, sessid=None):
-        super(Player, self).at_failed_login(sessid)
+    def at_failed_login(self, session=None):
+        super(Player, self).at_failed_login(session)
         self.sys_msg('WARNING: Detected a failed login.')
 
     def is_admin(self):
@@ -244,9 +244,9 @@ class Player(DefaultPlayer):
             try:
                 new_value = int(update)
             except ValueError:
-                raise AthanorError("Character slots must be non-negative integers.")
+                raise ValueError("Character slots must be non-negative integers.")
             if new_value < 0:
-                raise AthanorError("Character slots must be non-negative integers.")
+                raise ValueError("Character slots must be non-negative integers.")
             self.db._character_slots = new_value
             self.sys_msg("You now have %i Extra Character Slots." % new_value)
         return int(self.db._character_slots)
@@ -264,7 +264,7 @@ class Player(DefaultPlayer):
     @property
     def screen_width(self):
         width_list = list()
-        for session in self.sessions:
+        for session in self.sessions.all():
             width_list += session.protocol_flags['SCREENWIDTH'].values()
         return min(width_list) or 78
 
