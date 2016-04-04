@@ -15,9 +15,7 @@ class Attributes(OldAttributes):
 
 class Abilities(Skills):
     name = 'Abilities'
-
-    def load(self):
-        self.choices = self.owner.ndb.stats_type['Ability']
+    kind = 'ability'
 
 
 class Specialties(OldSpecialties):
@@ -38,6 +36,7 @@ class CharmSection(AdvantageWordSection):
 
 class SolarCharms(CharmSection):
     name = 'Solar Charms'
+    kind = 'solar_charm'
     sub_choices = ('Archery', 'Brawl', 'Melee', 'War', 'Thrown', 'Bureaucracy', 'Linguistics', 'Ride', 'Sail',
                    'Socialize', 'Athletics', 'Awareness', 'Dodge', 'Larceny', 'Stealth', 'Craft', 'Investigation',
                    'Lore', 'Medicine', 'Occult', 'Integrity', 'Performance', 'Presence', 'Resistance', 'Survival')
@@ -45,10 +44,11 @@ class SolarCharms(CharmSection):
 
 class AbyssalCharms(SolarCharms):
     name = 'Abyssal Charms'
-
+    kind = 'abyssal_charm'
 
 class TerrestrialCharms(SolarCharms):
     name = 'Terrestrial Charms'
+    kind = 'terrestrial_charm'
 
 class MartialCharms(CharmSection):
     pass

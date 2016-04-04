@@ -133,9 +133,10 @@ class SheetSection(object):
 class StatSection(SheetSection):
     choices = tuple()
     section_type = 'Stat'
+    kind = 'stat'
 
     def load(self):
-        self.choices = self.owner.ndb.stats_all
+        self.choices = self.owner.ndb.stats_type[self.kind]
 
     def save(self):
         self.owner.storyteller.save_stats()
@@ -151,9 +152,10 @@ class Attributes(StatSection):
     physical = tuple()
     social = tuple()
     mental = tuple()
+    kind = 'attribute'
 
     def load(self):
-        self.choices = self.owner.ndb.stats_type['Attribute']
+        self.choices = self.owner.ndb.stats_type[self.kind]
         for stat_type in ['Physical', 'Social', 'Mental']:
             setattr(self, stat_type.lower(), [stat for stat in self.choices if stat.category == stat_type])
 
@@ -174,9 +176,10 @@ class Skills(StatSection):
     name = 'Skills'
     section_type = 'Skill'
     list_order = 15
+    kind = 'skill'
 
     def load(self):
-        self.choices = self.owner.ndb.stats_type['skill']
+        self.choices = self.owner.ndb.stats_type[self.kind]
 
     def sheet_render(self, width=78):
         colors = self.sheet_colors
@@ -220,6 +223,7 @@ class Favored(StatSection):
     base_name = 'Favored'
     section_type = 'Favored Stat'
     sheet_display = False
+    existing = tuple()
 
     def load(self):
         self.choices = [stat for stat in self.owner.ndb.stats_all if 'favor' in stat.features]
@@ -238,6 +242,7 @@ class MeritSection(SheetSection):
     list_order = 20
     custom_type = None
     sheet_name = 'Default Merits'
+    existing = tuple()
 
     def load(self):
         self.existing = [merit for merit in self.owner.merits.all() if isinstance(merit, self.custom_type)]
@@ -265,6 +270,7 @@ class AdvantageStatSection(SheetSection):
     base_name = 'DefaultAdvStat'
     list_order = 30
     kind = 'Unset'
+    existing = tuple()
 
     def load(self):
         self.existing = [power for power in self.owner.ndb.powers_all if power.kind == self.kind]
@@ -349,6 +355,7 @@ class StorytellerHandler(object):
 
     See the StorytellerCharacter and derived character typeclasses for which.
     """
+    stats = tuple()
     stats_dict = dict()
     stats_type = dict()
     owner = None
@@ -409,8 +416,8 @@ class StorytellerHandler(object):
         owner.ndb.stats_all = self.stats
         owner.ndb.stats_dict = self.stats_dict
         stat_types = list(set([stat.kind for stat in self.stats]))
-        for type in stat_types:
-            self.stats_type[type] = tuple(sorted([stat for stat in self.stats if stat.kind == type],
+        for kind in stat_types:
+            self.stats_type[kind] = tuple(sorted([stat for stat in self.stats if stat.kind == kind],
                                                  key=lambda stat2: stat2.list_order))
         owner.ndb.stats_type = self.stats_type
         self.save_stats()
