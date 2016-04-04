@@ -7,6 +7,8 @@ is setup to be the "default" character type created by the default
 creation commands.
 
 """
+from __future__ import unicode_literals
+
 import time, pytz
 from django.conf import settings
 from evennia import DefaultCharacter
@@ -237,7 +239,7 @@ class Ex2Character(StorytellerCharacter):
     """
 
     storyteller_storage = {'template': '_ex2_template', 'stats': '_ex2_stats', 'custom': '_ex2_custom',
-                            'pools': '_ex2_pools', 'merits': '_ex2_merits', 'charms': '_ex2_charms'}
+                            'pools': '_ex2_pools', 'merits': '_ex2_merits', 'powers': '_ex2_powers'}
     storyteller_templates = EX2_TEMPLATES
     storyteller_stats = EX2_STATS
     storyteller_pools = EX2_POOLS
@@ -249,7 +251,7 @@ class Ex3Character(StorytellerCharacter):
     """
 
     storyteller_storage = {'template': '_ex3_template', 'stats': '_ex3_stats', 'custom': '_ex3_custom',
-                            'pools': '_ex3_pools', 'merits': '_ex3_merits', 'charms': '_ex3_charms'}
+                            'pools': '_ex3_pools', 'merits': '_ex3_merits', 'powers': '_ex3_powers'}
     storyteller_templates = EX3_TEMPLATES
     storyteller_stats = EX3_STATS
     storyteller_pools = EX3_POOLS

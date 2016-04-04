@@ -17,9 +17,9 @@ ANCESTORS = {
         '_notes': None,
         'save_fields': ('_rating', '_description', '_notes')
     },
+
     'power': {
-        '_rating': 1,
-        'save_fields': ('_rating')
+
     },
     'pool': {
 
