@@ -12,54 +12,21 @@ ANCESTORS = {
 
     },
     'merit': {
-        'name': 'Unset',
-        'type': 'Unset',
-        'category': 'Unset',
-        'sub_category': 'Unset',
         '_rating': 0,
         '_descripion': None,
         '_notes': None,
         'save_fields': ('_rating', '_description', '_notes')
     },
     'power': {
-        'key':  'Unset',
-        'name': 'Unset',
-        'type': 'Unset',
-        'category': 'Unset',
-        'sub_category': 'Unset',
         '_rating': 1,
         'save_fields': ('_rating')
     },
     'pool': {
-        'name': 'Unset',
-        'unit': 'Points',
-        'features': set(),
-        'features_default': ('gain', 'spend', 'refresh', 'commit'),
-        'features_add': (),
-        'features_remove': (),
-        'refresh': 'max',
-        'category': 'Unset',
-        'sub_category': 'Unset',
-        'save_fields': ('_commits', '_points'),
-        '_commits': dict(),
-        '_points': 0,
-        '_func': None
+
     },
     'template': {
-        'name': 'Unset',
-        'pools': {},
         'charm_type': 'Unset',
-        'info_defaults': {},
-        'info_choices': {},
-        'info_save': {},
-        'base_sheet_colors': {'title': 'n', 'border': 'n', 'textfield': 'n', 'texthead': 'n', 'colon': 'n',
-                             'section_name': 'n', '3_column_name': 'n', 'advantage_name': 'n', 'advantage_border': 'n',
-                             'slash': 'n', 'statdot': 'n', 'statfill': 'n', 'statname': 'n', 'damagename': 'n',
-                             'damagetotal': 'n', 'damagetotalnum': 'n'},
-        'extra_sheet_colors': {},
-        'sheet_column_1': (),
-        'sheet_column_2': (),
-        'save_fields': ('key', 'info_save'),
+
     }
 
 }

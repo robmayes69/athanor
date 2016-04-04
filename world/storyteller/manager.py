@@ -7,6 +7,7 @@ from evennia.utils.ansi import ANSIString
 from commands.library import partial_match, sanitize_string, tabular_table, dramatic_capitalize
 from evennia.utils.utils import make_iter
 
+
 class SheetSection(object):
 
     name = 'DefaultSection'
@@ -51,7 +52,9 @@ class SheetSection(object):
                                                                  colors['slash'])).center(show_width, fill)
         return start_char + center_section + end_char
 
-    def sheet_triple_header(self, display_text=['', '', ''], width=78):
+    def sheet_triple_header(self, display_text=None, width=78):
+        if not display_text:
+            display_text = ['', '', '']
         colors = self.colors
         col_widths = self.calculate_widths(width-2)
         fill = ANSIString('{%s-{n' % colors['border'])
@@ -73,7 +76,9 @@ class SheetSection(object):
         ev_table.add_row(display_text, width=width)
         return ev_table
 
-    def sheet_columns(self, display_text=['', '', ''], width=78):
+    def sheet_columns(self, display_text=None, width=78):
+        if not display_text:
+            display_text = ['', '', '']
         colors = self.colors
         ev_table = EvTable(border='cols', pad_width=0, valign='t',
                            border_left_char=ANSIString('{%s|{n' % colors['border']),
@@ -84,7 +89,9 @@ class SheetSection(object):
             ev_table.reformat_column(count, width=col_width)
         return ev_table
 
-    def sheet_two_columns(self, display_text=['', ''], width=78):
+    def sheet_two_columns(self, display_text=None, width=78):
+        if not display_text:
+            display_text = ['', '']
         colors = self.colors
         ev_table = EvTable(border='cols', pad_width=0, valign='t',
                            border_left_char=ANSIString('{%s|{n' % colors['border']),
@@ -352,6 +359,15 @@ class StorytellerHandler(object):
 
     See the StorytellerCharacter and derived character typeclasses for which.
     """
+    stats_dict = dict()
+    stats_type = dict()
+    owner = None
+    custom = list()
+    merits = list()
+    pools = list()
+    powers = list()
+    sheet_sections = tuple()
+    render_sections = tuple()
 
     def __repr__(self):
         return '<StorytellerHandler for %s>' % self.owner.key
@@ -394,7 +410,6 @@ class StorytellerHandler(object):
         db_name = owner.storyteller_storage['stats']
         save_data = owner.attributes.get(db_name, dict())
         init_stats = list()
-        self.stats_dict = dict()
         for key in owner.storyteller_stats.keys():
             stat = Stat(owner=owner, key=key, save_data=save_data.get(key, dict()))
             init_stats.append(stat)
@@ -403,7 +418,6 @@ class StorytellerHandler(object):
         owner.ndb.stats_all = self.stats
         owner.ndb.stats_dict = self.stats_dict
         stat_types = list(set([stat.type for stat in self.stats]))
-        self.stats_type = dict()
         for type in stat_types:
             self.stats_type[type] = tuple(sorted([stat for stat in self.stats if stat.type == type],
                                                  key=lambda stat2: stat2.list_order))
@@ -447,7 +461,7 @@ class StorytellerHandler(object):
         for k, v in save_data.iteritems():
             stat = CustomStat(owner=owner, key=k, save_data=v)
             init_stats.append(stat)
-        self.custom = sorted(init_stats, key=lambda stat: stat.list_order)
+        self.custom = sorted(init_stats, key=lambda entry: entry.list_order)
         self.save_custom()
 
     def save_custom(self):
@@ -466,7 +480,7 @@ class StorytellerHandler(object):
         db_name = owner.storyteller_storage['merits']
         save_data = owner.attributes.get(db_name, dict())
         init_merits = list()
-        for k, v in self.save_data.iteritems():
+        for k, v in save_data.iteritems():
             merit = Merit(owner=owner, key=k, save_data=v)
             init_merits.append(merit)
         self.merits = init_merits
@@ -479,17 +493,15 @@ class StorytellerHandler(object):
             export_data[(merit.type, merit.category, merit.name)] = {merit.export()}
         owner.attributes.add(db_name, export_data)
 
-
     def load_powers(self):
         owner = self.owner
         db_name = owner.storyteller_storage['powers']
         save_data = owner.attributes.get(db_name, dict())
         init_merits = list()
-        for k, v in self.save_data.iteritems():
+        for k, v in save_data.iteritems():
             merit = Power(owner=owner, key=k, save_data=v)
             init_merits.append(merit)
         self.merits = init_merits
-
 
     def save_powers(self):
         owner = self.owner
@@ -518,8 +530,74 @@ class StorytellerHandler(object):
         return '\n'.join(line for line in sheet if line)
 
 
+class StorytellerProperty(object):
+    """
+    This provides logic for the other Stat classes. It is not used directly.
+    """
+    save_type = 'Unset'
+    name = 'Unset'
+    key = 'Unset'
+    category = 'Unset'
+    sub_category = 'Unset'
+    type = 'Unset'
+    save_fields = ()
+    list_order = 1
+    features = set()
+    features_default = ()
+    features_add = ()
+    features_remove = ()
 
-class Template(object):
+    def __nonzero__(self):
+        return True
+
+    def __bool__(self):
+        return True
+
+    def __init__(self, owner, key=None, save_data=None):
+        if not save_data:
+            save_data = dict()
+        self.owner = owner
+        self.key = key
+        set_data = self.defaults(owner, key, save_data)
+        for k, v in set_data.iteritems():
+            setattr(self, k, v)
+        default_set = set(self.features_default)
+        remove_set = set(self.features_remove)
+        add_set = set(self.features_add)
+        final_set = default_set.union(add_set)
+        self.features = tuple(final_set.difference(remove_set))
+
+    def defaults(self, owner, key, save_data):
+        child_data = owner.storyteller_stats[key]
+        ancestor_data = dict(owner.storyteller_ancestors[self.save_type])
+        parent_data = owner.storyteller_parents[self.save_type][child_data['parent']]
+        ancestor_data.update(parent_data)
+        ancestor_data.update(child_data)
+        ancestor_data.update(save_data)
+        return ancestor_data
+
+    def export(self):
+        export_dict = dict()
+        for field in self.save_fields:
+            export_dict[field] = getattr(self, field)
+        return export_dict
+
+
+class Template(StorytellerProperty):
+    save_type = 'template'
+    info_defaults = dict()
+    info_save = dict()
+    info_choices = dict()
+    info_fields = dict()
+    pools = dict()
+    base_sheet_colors = {'title': 'n', 'border': 'n', 'textfield': 'n', 'texthead': 'n', 'colon': 'n',
+                         'section_name': 'n', '3_column_name': 'n', 'advantage_name': 'n', 'advantage_border': 'n',
+                         'slash': 'n', 'statdot': 'n', 'statfill': 'n', 'statname': 'n', 'damagename': 'n',
+                         'damagetotal': 'n', 'damagetotalnum': 'n'}
+    extra_sheet_colors = dict()
+    sheet_column_1 = tuple()
+    sheet_column_2 = tuple()
+    save_fields = ('info_save',)
 
     def __str__(self):
         return self.name
@@ -530,12 +608,6 @@ class Template(object):
     def __nonzero__(self):
         return True
 
-    def __init__(self, owner, key=None, save_data=None):
-        self.key = key
-        template_data = self.defaults(owner, key, save_data)
-        for k, v in template_data.iteritems():
-            setattr(self, k, v)
-
     @property
     def info(self):
         info_dict = dict()
@@ -543,21 +615,11 @@ class Template(object):
         info_dict.update(self.info_save)
         return info_dict
 
-    def defaults(self, owner, key, save_data):
-        child_data = owner.storyteller_templates[key]
-        ancestor_data = dict(owner.storyteller_ancestors['template'])
-        parent_data = owner.storyteller_parents['template'][child_data['parent']]
-        ancestor_data.update(parent_data)
-        ancestor_data.update(child_data)
-        ancestor_data.update(save_data)
-        return ancestor_data
-
     def export(self):
         save_dict = dict()
         for field in self.save_fields:
             save_dict[field] = getattr(self, field)
         return save_dict
-
 
     def get(self, field=None):
         if not field:
@@ -590,52 +652,6 @@ class Template(object):
             self.info_save[found_field] = sanitize_string(value)
 
 
-class StorytellerProperty(object):
-    """
-    This provides logic for the other Stat classes. It is not used directly.
-    """
-    save_type = 'Unset'
-    name = 'Unset'
-    key = 'Unset'
-    category = 'Unset'
-    sub_category = 'Unset'
-    type = 'Unset'
-    save_fields = ()
-    list_order = 1
-
-
-    def __nonzero__(self):
-        return True
-
-    def __bool__(self):
-        return True
-
-    def __init__(self, owner, key=None, save_data=None):
-        if not save_data:
-            save_data = dict()
-        self.owner = owner
-        self.key = key
-        set_data = self.defaults(owner, key, save_data)
-        for k, v in set_data.iteritems():
-            setattr(self, k, v)
-
-
-    def defaults(self, owner, key, save_data):
-        child_data = owner.storyteller_stats[key]
-        ancestor_data = dict(owner.storyteller_ancestors[self.save_type])
-        parent_data = owner.storyteller_parents[self.save_type][child_data['parent']]
-        ancestor_data.update(parent_data)
-        ancestor_data.update(child_data)
-        ancestor_data.update(save_data)
-        return ancestor_data
-
-
-    def export(self):
-        export_dict = dict()
-        for field in self.save_fields:
-            export_dict[field] = getattr(self, field)
-        return export_dict
-
 class Stat(StorytellerProperty):
     """
     This class is used for all of the 'default' stats provided by a Storyteller game. Attributes, Skills, etc.
@@ -646,20 +662,8 @@ class Stat(StorytellerProperty):
     _epic = False
     _rating = 1
     _specialties = dict()
-    features = set()
-    features_default = ()
-    features_add = ()
-    features_remove = ()
     save_fields = ('_rating', '_favored', '_supernal', '_epic', '_specialties')
 
-
-    def __init__(self, owner, key=None, save_data=None):
-        super(Stat, self).__init__(owner, key, save_data)
-        default_set = set(self.features_default)
-        remove_set = set(self.features_remove)
-        add_set = set(self.features_add)
-        final_set = default_set.union(add_set)
-        self.features = tuple(final_set.difference(remove_set))
 
     def __str__(self):
         return self.name
@@ -692,6 +696,8 @@ class Stat(StorytellerProperty):
 
     @rating.setter
     def rating(self, value):
+        if 'dot' not in self.features:
+            raise ValueError("'%s' cannot be purchased directly." % self)
         try:
             new_value = int(value)
         except ValueError:
@@ -706,7 +712,7 @@ class Stat(StorytellerProperty):
 
     @favored.setter
     def favored(self, value):
-        if 'no_favor' in self.tags:
+        if 'favor' not in self.features:
             raise ValueError("'%s' cannot be set Favored." % self)
         try:
             new_value = int(value)
@@ -722,7 +728,7 @@ class Stat(StorytellerProperty):
 
     @supernal.setter
     def supernal(self, value):
-        if 'no_supernal' in self.tags:
+        if 'supernal' not in self.features:
             raise ValueError("'%s' cannot be set Supernal." % self)
         try:
             new_value = int(value)
@@ -738,7 +744,7 @@ class Stat(StorytellerProperty):
 
     @epic.setter
     def epic(self, value):
-        if 'no_epic' in self.tags:
+        if 'epic' not in self.features:
             raise ValueError("'%s' cannot be set Epic." % self)
         try:
             new_value = int(value)
@@ -763,7 +769,7 @@ class Stat(StorytellerProperty):
         self._specialties[name] = new_value
 
     def display(self):
-        return self.supernal or self.favored or self.epic or int(self)
+        return int(self) or self.favored or self.supernal or self.favored or self.epic
 
     def sheet_format(self, width=23, no_favored=False, fill_char='.', colors=None):
         if not colors:
@@ -830,7 +836,14 @@ class Power(StorytellerProperty):
 
 
 class Pool(StorytellerProperty):
-
+    save_type = 'pool'
+    unit = 'Points'
+    refresh = 'max'
+    features_default = ('gain', 'spend', 'refresh', 'commit')
+    save_fields = ('_commits', '_points')
+    _commits = dict()
+    _points = 0
+    _func = None
 
     def __repr__(self):
         return '<%s: %s/%s>' % (self.name, self.available, self.max)
@@ -845,12 +858,8 @@ class Pool(StorytellerProperty):
         return hash(self.key)
 
     def __init__(self, owner, key=None, save_data=None):
-        self.owner = owner
-        self.key = key
-        pool_data = self.defaults(owner, key, save_data)
-        for k, v in pool_data.iteritems():
-            setattr(self, k, v)
-        self.__func = owner.ndb.template.pools[key]
+        super(Pool, self).__init__(owner, key, save_data)
+        self._func = owner.ndb.template.pools[key]
 
     def defaults(self, owner, key, save_data):
         child_data = owner.storyteller_pools[key]
@@ -863,7 +872,7 @@ class Pool(StorytellerProperty):
 
     @property
     def max(self):
-        return self.__func(self.owner)
+        return self._func(self.owner)
 
     @property
     def available(self):
@@ -906,7 +915,7 @@ class Pool(StorytellerProperty):
             raise ValueError("Values must be integers.")
         if not value > 0:
             raise ValueError("Values must be positive.")
-        self._points = min(self._rating + value, self.max - self.total_commit)
+        self._points = min(self._points + value, self.max - self.total_commit)
         return True
 
     def drain(self, amount=None):
@@ -930,7 +939,7 @@ class Pool(StorytellerProperty):
             return
 
     def sheet_format(self, rjust=None, zfill=2):
-        val_string = '%s/%s' % (str(self.current_value).zfill(zfill), str(self.max).zfill(zfill))
+        val_string = '%s/%s' % (str(self._points).zfill(zfill), str(self.max).zfill(zfill))
         display_name = self.name
         if rjust:
             return '%s: %s' % (self.name.rjust(rjust), val_string)
