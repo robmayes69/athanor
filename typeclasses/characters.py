@@ -21,7 +21,7 @@ from world.storyteller.manager import StorytellerHandler
 from world.storyteller.exalted2.rules import STATS as EX2_STATS, TEMPLATES as EX2_TEMPLATES, POOLS as EX2_POOLS
 
 from world.storyteller.exalted3.rules import STATS as EX3_STATS, TEMPLATES as EX3_TEMPLATES, POOLS as EX3_POOLS, \
-    ANCESTORS as EX3_ANCESTORS, PARENTS as EX3_PARENTS
+    ANCESTORS as EX3_ANCESTORS, PARENTS as EX3_PARENTS, POWERS as EX3_POWERS
 from world.storyteller.exalted3.sheet import SECTION_LIST as EX3_SHEET
 
 class Character(DefaultCharacter):
@@ -238,8 +238,8 @@ class Ex2Character(StorytellerCharacter):
     For use with Exalted 2nd Edition characters.
     """
 
-    storyteller_storage = {'template': '_ex2_template', 'stats': '_ex2_stats', 'custom': '_ex2_custom',
-                            'pools': '_ex2_pools', 'merits': '_ex2_merits', 'powers': '_ex2_powers'}
+    storyteller_storage = {'template': '_ex2_template', 'stat': '_ex2_stats', 'custom': '_ex2_custom',
+                            'pool': '_ex2_pools', 'merit': '_ex2_merits', 'power': '_ex2_powers'}
     storyteller_templates = EX2_TEMPLATES
     storyteller_stats = EX2_STATS
     storyteller_pools = EX2_POOLS
@@ -250,11 +250,12 @@ class Ex3Character(StorytellerCharacter):
     For use with Exalted 3rd Edition characters.
     """
 
-    storyteller_storage = {'template': '_ex3_template', 'stats': '_ex3_stats', 'custom': '_ex3_custom',
-                            'pools': '_ex3_pools', 'merits': '_ex3_merits', 'powers': '_ex3_powers'}
+    storyteller_storage = {'template': '_ex3_template', 'stat': '_ex3_stats', 'custom': '_ex3_custom',
+                            'pool': '_ex3_pools', 'merit': '_ex3_merits', 'power': '_ex3_powers'}
     storyteller_templates = EX3_TEMPLATES
     storyteller_stats = EX3_STATS
     storyteller_pools = EX3_POOLS
     storyteller_ancestors = EX3_ANCESTORS
     storyteller_parents = EX3_PARENTS
     storyteller_sheet = EX3_SHEET
+    storyteller_powers = EX3_POWERS

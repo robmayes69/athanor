@@ -12,10 +12,7 @@ ANCESTORS = {
 
     },
     'merit': {
-        '_rating': 0,
-        '_descripion': None,
-        '_notes': None,
-        'save_fields': ('_rating', '_description', '_notes')
+
     },
 
     'power': {
@@ -82,6 +79,14 @@ PARENTS = {
             'kind': 'Pact',
         }
     },
+    'power': {
+        'charm': {
+            'category': 'Charm',
+        },
+        'spell': {
+            'category': 'Spell',
+        }
+    },
     'pool': {
         'essence': {
 
@@ -94,6 +99,26 @@ PARENTS = {
         'exalt': {
 
         }
+    },
+}
+
+# Powers!
+
+POWERS = {
+    'solar_charm': {
+        'parent': 'charm',
+        'category': 'Solar Charms',
+        'kind': 'solar_charm'
+    },
+    'sorcery_spell': {
+        'parent': 'spell',
+        'category': 'Sorcery',
+        'kind': 'sorcery_spell'
+    },
+    'necromancy_spell': {
+        'parent': 'spell',
+        'category': 'Necromancy',
+        'kind': 'necromancy_spell'
     },
 }
 
@@ -321,79 +346,79 @@ POOLS = {
 }
 
 
-def universal_willpower(character):
-    return character.ndb.stats_dict['willpower']
+def universal_willpower(handler):
+    return handler.stats_dict['willpower']
 
 
-def solar_personal(character):
-    return character.ndb.stats_dict['essence']*3 + 10
+def solar_personal(handler):
+    return handler.stats_dict['essence']*3 + 10
 
 
-def solar_peripheral(character):
-    return character.ndb.stats_dict['essence']*7 + 26
+def solar_peripheral(handler):
+    return handler.stats_dict['essence']*7 + 26
 
 
-def solar_limit(character):
+def solar_limit(handler):
     return 10
 
 
-def abyssal_personal(character):
-    return solar_personal(character)
+def abyssal_personal(handler):
+    return solar_personal(handler)
 
 
-def abyssal_peripheral(character):
-    return solar_peripheral(character)
+def abyssal_peripheral(handler):
+    return solar_peripheral(handler)
 
 
-def abyssal_resonance(character):
+def abyssal_resonance(handler):
     return 10
 
 
-def terrestrial_personal(character):
-    return character.ndb.stats_dict['essence'] + 11
+def terrestrial_personal(handler):
+    return handler.stats_dict['essence'] + 11
 
 
-def terrestrial_peripheral(character):
-    return character.ndb.stats_dict['essence']*4 + 23
+def terrestrial_peripheral(handler):
+    return handler.stats_dict['essence']*4 + 23
 
 
-def terrestrial_limit(character):
+def terrestrial_limit(handler):
     return 10
 
 
-def lunar_personal(character):
-    return character.ndb.stats_dict['essence'] + 15
+def lunar_personal(handler):
+    return handler.stats_dict['essence'] + 15
 
 
-def lunar_peripheral(character):
-    return character.ndb.stats_dict['essence']*4 + 34
+def lunar_peripheral(handler):
+    return handler.stats_dict['essence']*4 + 34
 
 
-def lunar_limit(character):
+def lunar_limit(handler):
     return 10
 
 
-def sidereal_personal(character):
-    return character.ndb.stats_dict['essence']*2 + 9
+def sidereal_personal(handler):
+    return handler.stats_dict['essence']*2 + 9
 
 
-def sidereal_peripheral(character):
-    return character.ndb.stats_dict['essence']*6 + 25
+def sidereal_peripheral(handler):
+    return handler.stats_dict['essence']*6 + 25
 
 
-def sidereal_limit(character):
+def sidereal_limit(handler):
     return 10
 
 
-def liminal_personal(character):
-    return character.ndb.stats_dict['essence']*3 + 10
+def liminal_personal(handler):
+    return handler.stats_dict['essence']*3 + 10
 
 
-def liminal_peripheral(character):
-    return character.ndb.stats_dict['essence']*4 + 23
+def liminal_peripheral(handler):
+    return handler.stats_dict['essence']*4 + 23
 
 
-def liminal_limit(character):
+def liminal_limit(handler):
     return 10
 
 

@@ -1,12 +1,12 @@
 from __future__ import unicode_literals
-from commands.library import tabular_table
+from commands.library import tabular_table, dramatic_capitalize, partial_match
 
 from world.storyteller.manager import SheetSection, StatSection, Attributes as OldAttributes, Skills, \
     AdvantageStatSection, AdvantageWordSection, Specialties as OldSpecialties, Favored as OldFavored, \
-    FirstSection as OldFirst
+    TemplateSection as OldTemplate, Power
 
 
-class FirstSection(OldFirst):
+class TemplateSection(OldTemplate):
     pass
 
 
@@ -35,12 +35,39 @@ class CharmSection(AdvantageWordSection):
     name = 'Charms'
     display_categories = tuple()
     charm_categorized = dict()
+    sub_choices = tuple()
+    kind = None
 
     def load(self):
         super(CharmSection, self).load()
         self.display_categories = sorted(list(set(stat.sub_category for stat in self.existing)))
         for category in self.display_categories:
-            self.charm_categorized[category] = [stat for stat in self.existing if stat.sub_category == category]
+            self.charm_categorized[category] = [power for power in self.existing if power.sub_category == category]
+
+    def add(self, sub_category, key, amount=1):
+        key = dramatic_capitalize(key)
+        found_category = partial_match(sub_category, self.sub_choices)
+        if not found_category:
+            raise ValueError("'%s' is not a valid category for %s. Choices are: %s" % (sub_category, self.name,
+                                                                                       ', '.join(self.sub_choices)))
+        try:
+            amount = int(amount)
+        except ValueError:
+            raise ValueError("That isn't an integer!")
+        if not amount > 0:
+            raise ValueError("%s must be raised by positive numbers.")
+        find_power = [power for power in self.existing if power.sub_category == found_category and power.key == key]
+        if find_power:
+            find_power[0]._rating += amount
+            find_power[0].save()
+            return
+        saver = self.handler.data_dict['powers']
+        new_power = Power(owner=self.owner, key=(self.kind, found_category, key), save_data=dict(),
+                          saver=saver, handler=self.handler)
+        self.handler.powers.append(new_power)
+        self.handler.save_powers()
+        self.handler.load_powers()
+        self.load()
 
     def sheet_render(self, width=78):
         powers = self.existing
@@ -89,5 +116,5 @@ class Necromancy(Sorcery):
     sub_choices = ('Shadowlands Circle Spells', 'Labyrinth Circle Spells', 'Void Circle Spells')
     kind = 'necromancy_spell'
 
-SECTION_LIST = (FirstSection, Attributes, Abilities, Specialties, Favored, Supernal, SolarCharms, AbyssalCharms,
+SECTION_LIST = (TemplateSection, Attributes, Abilities, Specialties, Favored, Supernal, SolarCharms, AbyssalCharms,
                 TerrestrialCharms, MartialCharms, Sorcery, Necromancy)
