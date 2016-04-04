@@ -117,7 +117,6 @@ class SheetSection(object):
                 column_widths.append(calculate)
         return column_widths
 
-
     def calculate_double(self, width=78):
         column_widths = list()
         col_calc = width / float(2)
@@ -132,14 +131,14 @@ class SheetSection(object):
 
 
 class StatSection(SheetSection):
-
+    choices = tuple()
     section_type = 'Stat'
 
     def load(self):
-        self.choices = self.owner.stats.all()
+        self.choices = self.owner.ndb.stats_all
 
     def save(self):
-        self.owner.stats.save()
+        self.owner.storyteller.save_stats()
 
     def all(self):
         return self.choices
@@ -149,6 +148,9 @@ class Attributes(StatSection):
     base_name = 'Attributes'
     section_type = 'Attribute'
     list_order = 10
+    physical = tuple()
+    social = tuple()
+    mental = tuple()
 
     def load(self):
         self.choices = self.owner.ndb.stats_type['Attribute']
@@ -178,8 +180,7 @@ class Skills(StatSection):
 
     def sheet_render(self, width=78):
         colors = self.sheet_colors
-        #skills = [stat for stat in self.choices if stat.should_display()]
-        skills = self.choices
+        skills = [stat for stat in self.choices if stat.display]
         if not skills:
             return
         section = list()
@@ -195,12 +196,9 @@ class Specialties(StatSection):
     section_type = 'Specialty'
     list_order = 16
 
-
     def load(self):
         self.choices = [stat for stat in self.owner.ndb.stats_all if 'special' in stat.features]
         self.specialized = [stat for stat in self.owner.ndb.stats_all if stat._specialties]
-
-
 
     def sheet_render(self, width=78):
         colors = self.sheet_colors
@@ -664,7 +662,6 @@ class Stat(StorytellerProperty):
     _specialties = dict()
     save_fields = ('_rating', '_favored', '_supernal', '_epic', '_specialties')
 
-
     def __str__(self):
         return self.name
 
@@ -692,7 +689,6 @@ class Stat(StorytellerProperty):
     @property
     def rating(self):
         return self._rating
-
 
     @rating.setter
     def rating(self, value):
@@ -754,7 +750,6 @@ class Stat(StorytellerProperty):
             raise ValueError("'%s' Epic must be set to 0 or 1." % self)
         self._epic = bool(new_value)
 
-
     def set_specialty(self, name, value):
         name = name.lower()
         try:
@@ -814,7 +809,7 @@ class CustomStat(Stat):
     This class is used for all of the custom stats like Crafts or Styles..
     """
 
-    def __init__(self, owner, key=None, parent=None, save_data=None):
+    def __init__(self, owner, key=None, save_data=None):
         super(CustomStat, self).__init__(owner, key=key[1], save_data=save_data)
         self.parent = key[0]
 
@@ -826,6 +821,7 @@ class CustomStat(Stat):
         ancestor_data.update(child_data)
         ancestor_data.update(save_data)
         return ancestor_data
+
 
 class Merit(StorytellerProperty):
     pass
