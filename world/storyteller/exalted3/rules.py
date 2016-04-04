@@ -37,49 +37,49 @@ ANCESTORS = {
 PARENTS = {
     'stat': {
         'physical': {
-            'type': 'Attribute',
+            'kind': 'Attribute',
             'category': 'Physical',
             'features_default': ('dot', 'roll', 'special'),
         },
         'social': {
-            'type': 'Attribute',
+            'kind': 'Attribute',
             'category': 'Social',
             'features_default': ('dot', 'roll', 'special'),
         },
         'mental': {
-            'type': 'Attribute',
+            'kind': 'Attribute',
             'category': 'Mental',
             'features_default': ('dot', 'roll', 'special'),
         },
         'ability': {
-            'type': 'Ability',
+            'kind': 'Ability',
             'features_default': ('dot', 'roll', 'favor', 'supernal', 'special'),
             '_rating': 0,
         },
         'advantage': {
-            'type': 'Advantage',
+            'kind': 'Advantage',
             'features_default': ('dot', 'roll'),
         },
     },
     'custom': {
         'craft': {
-            'type': 'Ability',
+            'kind': 'Ability',
             'category': 'Craft',
         },
         'style': {
-            'type': 'Ability',
+            'kind': 'Ability',
             'category': 'Style',
         }
     },
     'merit': {
         'merit': {
-            'type': 'Merit',
+            'kind': 'Merit',
         },
         'flaw': {
-            'type': 'Flaw',
+            'kind': 'Flaw',
         },
         'pact': {
-            'type': 'Pact',
+            'kind': 'Pact',
         }
     },
     'pool': {

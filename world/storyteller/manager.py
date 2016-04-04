@@ -195,6 +195,7 @@ class Specialties(StatSection):
     base_name = 'Specialties'
     section_type = 'Specialty'
     list_order = 16
+    specialized = tuple()
 
     def load(self):
         self.choices = [stat for stat in self.owner.ndb.stats_all if 'special' in stat.features]
@@ -263,11 +264,10 @@ class MeritSection(SheetSection):
 class AdvantageStatSection(SheetSection):
     base_name = 'DefaultAdvStat'
     list_order = 30
-    custom_type = None
+    kind = 'Unset'
 
     def load(self):
-        pass
-        #self.existing = [power for power in self.owner.ndb.powers_all if isinstance(power, self.custom_type)]
+        self.existing = [power for power in self.owner.ndb.powers_all if power.kind == self.kind]
 
     def sheet_render(self, width=78):
         powers = self.existing
@@ -285,14 +285,9 @@ class AdvantageStatSection(SheetSection):
         return self.existing
 
 
-class AdvantageWordSection(SheetSection):
+class AdvantageWordSection(AdvantageStatSection):
     base_name = 'DefaultAdvPower'
     list_order = 50
-    custom_type = None
-
-    def load(self):
-        pass
-        #self.existing = [power for power in self.owner.ndb.powers_all if isinstance(power, self.custom_type)]
 
     def sheet_render(self, width=78):
         powers = self.existing
@@ -305,9 +300,6 @@ class AdvantageWordSection(SheetSection):
         skill_table = tabular_table(skill_display, field_width=23, line_length=width-2)
         section.append(self.sheet_border(skill_table, width=width))
         return '\n'.join(unicode(line) for line in section)
-
-    def all(self):
-        return self.existing
 
 
 class FirstSection(SheetSection):
@@ -366,6 +358,7 @@ class StorytellerHandler(object):
     powers = list()
     sheet_sections = tuple()
     render_sections = tuple()
+    template = None
 
     def __repr__(self):
         return '<StorytellerHandler for %s>' % self.owner.key
@@ -415,9 +408,9 @@ class StorytellerHandler(object):
         self.stats = sorted(init_stats, key=lambda stat: stat.list_order)
         owner.ndb.stats_all = self.stats
         owner.ndb.stats_dict = self.stats_dict
-        stat_types = list(set([stat.type for stat in self.stats]))
+        stat_types = list(set([stat.kind for stat in self.stats]))
         for type in stat_types:
-            self.stats_type[type] = tuple(sorted([stat for stat in self.stats if stat.type == type],
+            self.stats_type[type] = tuple(sorted([stat for stat in self.stats if stat.kind == type],
                                                  key=lambda stat2: stat2.list_order))
         owner.ndb.stats_type = self.stats_type
         self.save_stats()
@@ -537,7 +530,7 @@ class StorytellerProperty(object):
     key = 'Unset'
     category = 'Unset'
     sub_category = 'Unset'
-    type = 'Unset'
+    kind = 'Unset'
     save_fields = ()
     list_order = 1
     features = set()
