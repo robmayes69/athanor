@@ -6,59 +6,27 @@ from __future__ import unicode_literals
 
 ANCESTORS = {
     'stat': {
-        'name': 'Unset',
-        'type': 'Unset',
-        'category': 'Unset',
-        'sub_category': 'Unset',
-        'list_order': 1,
-        'features': set(),
-        'features_default': (),
-        'features_add': (),
-        'features_remove': (),
-        '_rating': 1,
-        '_favored': False,
-        '_supernal': False,
-        '_epic': False,
-        '_specialties': dict(),
-        'save_fields': ('_rating', '_favored', '_supernal', '_specialties'),
+        'save_fields': ('_rating', '_favored', '_supernal', '_specialties')
     },
     'custom': {
-        'name': 'Unset',
-        'type': 'Unset',
-        'category': 'Unset',
-        'sub_category': 'Unset',
-        'list_order': 1,
-        'features': set(),
-        'features_default': ('dot', 'roll'),
-        'features_add': (),
-        'features_remove': (),
-        '_rating': 1,
-        '_favored': False,
-        '_supernal': False,
-        '_epic': False,
-        '_specialties': dict(),
-        'save_fields': ('_rating', '_favored', '_supernal', '_specialties'),
+
     },
     'merit': {
         'name': 'Unset',
         'type': 'Unset',
         'category': 'Unset',
         'sub_category': 'Unset',
-        'list_order': 1,
-        'category_order': 0,
         '_rating': 0,
         '_descripion': None,
         '_notes': None,
         'save_fields': ('_rating', '_description', '_notes')
     },
     'power': {
+        'key':  'Unset',
         'name': 'Unset',
         'type': 'Unset',
         'category': 'Unset',
         'sub_category': 'Unset',
-        'list_order': 1,
-        'category_order': 0,
-        'sub_choices': (),
         '_rating': 1,
         'save_fields': ('_rating')
     },
@@ -70,7 +38,6 @@ ANCESTORS = {
         'features_add': (),
         'features_remove': (),
         'refresh': 'max',
-        'list_order': 1,
         'category': 'Unset',
         'sub_category': 'Unset',
         'save_fields': ('_commits', '_points'),
@@ -80,7 +47,6 @@ ANCESTORS = {
     },
     'template': {
         'name': 'Unset',
-        'list_order': 1,
         'pools': {},
         'charm_type': 'Unset',
         'info_defaults': {},
@@ -106,21 +72,21 @@ PARENTS = {
         'physical': {
             'type': 'Attribute',
             'category': 'Physical',
-            'features_default': ('dot', 'roll'),
+            'features_default': ('dot', 'roll', 'special'),
         },
         'social': {
             'type': 'Attribute',
             'category': 'Social',
-            'features_default': ('dot', 'roll'),
+            'features_default': ('dot', 'roll', 'special'),
         },
         'mental': {
             'type': 'Attribute',
             'category': 'Mental',
-            'features_default': ('dot', 'roll'),
+            'features_default': ('dot', 'roll', 'special'),
         },
         'ability': {
             'type': 'Ability',
-            'features_default': ('dot', 'roll', 'favor', 'supernal'),
+            'features_default': ('dot', 'roll', 'favor', 'supernal', 'special'),
             '_rating': 0,
         },
         'advantage': {
@@ -132,34 +98,21 @@ PARENTS = {
         'craft': {
             'type': 'Ability',
             'category': 'Craft',
-            'category_order': 1,
         },
         'style': {
             'type': 'Ability',
             'category': 'Style',
-            'category_order': 2,
         }
     },
     'merit': {
         'merit': {
             'type': 'Merit',
-            'category_order': 1,
         },
         'flaw': {
             'type': 'Flaw',
-            'category_order': 2,
         },
         'pact': {
             'type': 'Pact',
-            'category_order': 3,
-        }
-    },
-    'power': {
-        'charm': {
-            'type': 'Charm'
-        },
-        'spell': {
-            'type': 'Spell'
         }
     },
     'pool': {
@@ -175,33 +128,6 @@ PARENTS = {
 
         }
     },
-}
-
-# Powers for Exalted 3rd Edition!
-POWERS = {
-    'solar_charm': {
-        'parent': 'charm',
-        'category': 'Solar',
-        'sub_choices': ('archery', 'brawl', 'melee', 'war', 'thrown', 'bureaucracy', 'linguistics', 'ride', 'sail',
-                        'socialize', 'athletics', 'awareness', 'dodge', 'larceny', 'stealth', 'craft', 'investigation',
-                        'lore', 'medicine', 'occult', 'integrity', 'performance', 'presence', 'resistance', 'survival')
-    },
-    'martial_charm': {
-        'parent': 'charm',
-        'category': 'Martial Arts',
-    },
-
-    'sorcery': {
-        'parent': 'spell',
-        'category': 'Sorcery',
-        'sub_choices': ('terrestrial', 'celestial', 'solar')
-    },
-
-    'necromancy': {
-        'parent': 'spell',
-        'category': 'Necromancy',
-        'sub_choices': ('shadowlands', 'labyrinth', 'void')
-    }
 }
 
 # And finally, the Stats for Exalted 3rd Edition.

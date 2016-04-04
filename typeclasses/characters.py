@@ -20,6 +20,7 @@ from world.storyteller.exalted2.rules import STATS as EX2_STATS, TEMPLATES as EX
 
 from world.storyteller.exalted3.rules import STATS as EX3_STATS, TEMPLATES as EX3_TEMPLATES, POOLS as EX3_POOLS, \
     ANCESTORS as EX3_ANCESTORS, PARENTS as EX3_PARENTS
+from world.storyteller.exalted3.sheet import SECTION_LIST as EX3_SHEET
 
 class Character(DefaultCharacter):
     """
@@ -254,3 +255,4 @@ class Ex3Character(StorytellerCharacter):
     storyteller_pools = EX3_POOLS
     storyteller_ancestors = EX3_ANCESTORS
     storyteller_parents = EX3_PARENTS
+    storyteller_sheet = EX3_SHEET
