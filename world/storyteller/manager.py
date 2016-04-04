@@ -4,21 +4,18 @@ import math
 from django.conf import settings
 from evennia.utils.evtable import EvTable
 from evennia.utils.ansi import ANSIString
-from commands.library import partial_match, sanitize_string, tabular_table
+from commands.library import partial_match, sanitize_string, tabular_table, dramatic_capitalize
 from evennia.utils.utils import make_iter
-
 
 class SheetSection(object):
 
     name = 'DefaultSection'
     list_order = 0
     sheet_display = True
-    use_editchar = True
-    editchar_options = list()
-    editchar_default = None
 
     def __init__(self, owner):
         self.owner = owner
+        self.colors = self.sheet_colors
         self.load()
 
     def __str__(self):
@@ -36,12 +33,12 @@ class SheetSection(object):
     @property
     def sheet_colors(self):
         color_dict = dict()
-        color_dict.update(self.owner.ndb.template.template.base_sheet_colors)
-        color_dict.update(self.owner.ndb.template.template.extra_sheet_colors)
+        color_dict.update(self.owner.ndb.template.base_sheet_colors)
+        color_dict.update(self.owner.ndb.template.extra_sheet_colors)
         return color_dict
 
     def sheet_header(self, center_text=None, width=78):
-        colors = self.sheet_colors
+        colors = self.colors
         start_char = ANSIString('{%s}{n' % colors['border'])
         end_char = ANSIString('{%s{{{n' % colors['border'])
         if not center_text:
@@ -55,7 +52,7 @@ class SheetSection(object):
         return start_char + center_section + end_char
 
     def sheet_triple_header(self, display_text=['', '', ''], width=78):
-        colors = self.sheet_colors
+        colors = self.colors
         col_widths = self.calculate_widths(width-2)
         fill = ANSIString('{%s-{n' % colors['border'])
         sections = list()
@@ -69,7 +66,7 @@ class SheetSection(object):
         return start_char + sections[0] + sections[1] + sections[2] + end_char
 
     def sheet_border(self, display_text=None, width=78):
-        colors = self.sheet_colors
+        colors = self.colors
         ev_table = EvTable(border='cols', pad_width=0, valign='t',
                            border_left_char=ANSIString('{%s|{n' % colors['border']),
                            border_right_char=ANSIString('{%s|{n' % colors['border']), header=False)
@@ -77,7 +74,7 @@ class SheetSection(object):
         return ev_table
 
     def sheet_columns(self, display_text=['', '', ''], width=78):
-        colors = self.sheet_colors
+        colors = self.colors
         ev_table = EvTable(border='cols', pad_width=0, valign='t',
                            border_left_char=ANSIString('{%s|{n' % colors['border']),
                            border_right_char=ANSIString('{%s|{n' % colors['border']), header=False)
@@ -88,7 +85,7 @@ class SheetSection(object):
         return ev_table
 
     def sheet_two_columns(self, display_text=['', ''], width=78):
-        colors = self.sheet_colors
+        colors = self.colors
         ev_table = EvTable(border='cols', pad_width=0, valign='t',
                            border_left_char=ANSIString('{%s|{n' % colors['border']),
                            border_right_char=ANSIString('{%s|{n' % colors['border']), header=False)
@@ -130,56 +127,6 @@ class SheetSection(object):
 class StatSection(SheetSection):
 
     section_type = 'Stat'
-    editchar_default = 'set'
-    editchar_options = ['set']
-    favorable = list()
-    supernable = list()
-    favored = list()
-    supernal = list()
-
-    def editchar_set(self, extra_args=[], single_arg=None, list_arg=[], caller=None):
-        if not list_arg:
-            raise ValueError("No %s entered to set!" % self.section_type)
-        valid_entries = dict()
-        error_list = list()
-        succeed_list = list()
-        for entry in list_arg:
-            try:
-                choice, value = entry.split('=', 1)
-                choice = choice.strip().lower()
-                value = value.strip()
-            except ValueError:
-                error_list.append("'%s' was not an accepted %s entry. Accepted Format: <Stat>=<Value>" %
-                                   (entry, self.section_type))
-            else:
-                valid_entries[choice] = value
-
-        for choice, value in valid_entries.items():
-            find_stat = partial_match(choice, self.choices)
-            if not find_stat:
-                error_list.append("Could not find %s: '%s'" % (self.section_type, choice))
-                continue
-            try:
-                find_stat.current_value = value
-                succeed_list.append(find_stat)
-            except ValueError as err:
-                error_list.append(str(err))
-                continue
-        if succeed_list:
-            self.save()
-        return succeed_list, error_list
-
-    def set(self, choice=None, value=None, no_save=False):
-        if not choice:
-            raise ValueError("No %s entered to set!" % self.section_type)
-        if not value:
-            raise ValueError("No value entered to set '%s' to!" % choice)
-        find_stat = partial_match(choice, self.choices)
-        if not find_stat:
-            raise ValueError("Could not find %s '%s'." % (self.section_type, choice))
-        find_stat.current_value = value
-        if not no_save:
-            self.save()
 
     def load(self):
         self.choices = self.owner.stats.all()
@@ -190,74 +137,6 @@ class StatSection(SheetSection):
     def all(self):
         return self.choices
 
-    def editchar_favor(self, stat_list=None, caller=None):
-        if not stat_list:
-            raise ValueError("Nothing entered to favor!")
-        save = False
-        stats_ok = list()
-        for stat in make_iter(stat_list):
-            find_stat = partial_match(stat, self.favorable)
-            if not find_stat:
-                continue
-            stats_ok.append(find_stat)
-        if not stats_ok:
-            raise ValueError("No stat from the provided list could be found.")
-        for stat in stats_ok:
-            stat.current_favored = True
-        self.save()
-        return stats_ok
-
-
-    def editchar_unfavor(self, stat_list=None, caller=None):
-        if not stat_list:
-            raise ValueError("Nothing entered to unfavor!")
-        save = False
-        stats_ok = list()
-        for stat in make_iter(stat_list):
-            find_stat = partial_match(stat, self.favored)
-            if not find_stat:
-                continue
-            stats_ok.append(find_stat)
-        if not stats_ok:
-            raise ValueError("No stat from the provided list could be found.")
-        for stat in stats_ok:
-            stat.current_favored = False
-        self.save()
-        return stats_ok
-
-    def editchar_supernal(self, stat_list=None, caller=None):
-        if not stat_list:
-            raise ValueError("Nothing entered to supernal!")
-        save = False
-        stats_ok = list()
-        for stat in make_iter(stat_list):
-            find_stat = partial_match(stat, self.supernable)
-            if not find_stat:
-                continue
-            stats_ok.append(find_stat)
-        if not stats_ok:
-            raise ValueError("No stat from the provided list could be found.")
-        for stat in stats_ok:
-            stat.current_supernal = True
-        self.save()
-        return stats_ok
-
-    def editchar_unsupernal(self, stat_list=None, caller=None):
-        if not stat_list:
-            raise ValueError("Nothing entered to unsupernal!")
-        save = False
-        stats_ok = list()
-        for stat in make_iter(stat_list):
-            find_stat = partial_match(stat, self.supernal)
-            if not find_stat:
-                continue
-            stats_ok.append(find_stat)
-        if not stats_ok:
-            raise ValueError("No stat from the provided list could be found.")
-        for stat in stats_ok:
-            stat.current_supernal = False
-        self.save()
-        return stats_ok
 
 class Attributes(StatSection):
     base_name = 'Attributes'
@@ -273,7 +152,7 @@ class Attributes(StatSection):
             setattr(self, stat_type.lower(), [stat for stat in self.choices if stat.sub_category == stat_type])
 
     def sheet_render(self, width=78):
-        colors = self.sheet_colors
+        colors = self.colors
         section = list()
         section.append(self.sheet_triple_header(['Physical Attributes', 'Social Attributes', 'Mental Attributes'],
                                                 width=width))
@@ -286,12 +165,12 @@ class Attributes(StatSection):
 
 
 class Skills(StatSection):
-    base_name = 'Skills'
+    name = 'Skills'
     section_type = 'Skill'
     list_order = 15
 
     def load(self):
-        self.choices = self.owner.stats.category('Skill')
+        self.choices = self.owner.ndb.stats_type['skill']
 
     def sheet_render(self, width=78):
         colors = self.sheet_colors
@@ -299,7 +178,7 @@ class Skills(StatSection):
         if not skills:
             return
         section = list()
-        section.append(self.sheet_header(self.base_name, width=width))
+        section.append(self.sheet_header(self.name, width=width))
         skill_display = [stat.sheet_format(width=23, colors=colors) for stat in skills]
         skill_table = tabular_table(skill_display, field_width=23, line_length=width-2)
         section.append(self.sheet_border(skill_table, width=width))
@@ -310,39 +189,13 @@ class Specialties(StatSection):
     base_name = 'Specialties'
     section_type = 'Specialty'
     list_order = 16
-    editchar_default = 'set'
+
 
     def load(self):
         self.choices = [stat for stat in self.owner.stats.all() if stat.can_specialize]
         self.specialized = [stat for stat in self.owner.stats.all() if stat.specialties]
 
-    def editchar_set(self, stat=None, name=None, value=None):
-        if not stat:
-            raise ValueError("No stat entered to specialize.")
-        if not name:
-            raise ValueError("No specialty name entered.")
-        if not value:
-            raise ValueError("Nothing entered to set it to.")
-        try:
-            new_value = int(value)
-        except ValueError:
-            raise ValueError("Specialties must be positive integers.")
-        if new_value < 0:
-            raise ValueError("Specialties must be positive integers.")
-        found_stat = partial_match(stat, self.choices)
-        if not found_stat:
-            raise ValueError("Stat '%s' not found." % stat)
-        new_name = sanitize_string(name, strip_ansi=True, strip_indents=True, strip_newlines=True, strip_mxp=True)
-        if '-' in new_name or '+' in new_name:
-            raise ValueError("Specialties cannot contain the - or + characters.")
-        if new_value == 0 and new_name.lower() in found_stat.specialties:
-            found_stat.specialties.pop(new_name.lower())
-        elif new_value == 0:
-            raise ValueError("Specialties cannot be zero dots!")
-        else:
-            found_stat.specialties[new_name.lower()] = new_value
-        self.save()
-        return True
+
 
     def sheet_render(self, width=78):
         colors = self.sheet_colors
@@ -367,28 +220,6 @@ class Favored(StatSection):
     def load(self):
         self.choices = [stat for stat in self.owner.stats.all() if stat.can_favor]
         self.existing = [stat for stat in self.owner.stats.all() if stat.current_favored]
-
-    def add(self, stat=None, no_save=False):
-        if not stat:
-            raise ValueError("Stat to tag is empty!")
-        found_stat = partial_match(stat, self.choices)
-        if not found_stat:
-            raise ValueError("Stat not found.")
-        found_stat.current_favored = True
-        if not no_save:
-            self.save()
-        return found_stat
-
-    def remove(self, stat=None, no_save=False):
-        if not stat:
-            raise ValueError("Stat to tag is empty!")
-        found_stat = partial_match(stat, self.existing)
-        if not found_stat:
-            raise ValueError("'%s' is not a %s" % (stat, self.section_type))
-        found_stat.current_favored = False
-        if not no_save:
-            self.save()
-        return found_stat
 
     def all(self):
         return self.existing
@@ -479,18 +310,18 @@ class FirstSection(SheetSection):
     list_order = 0
 
     def sheet_render(self, width=78):
-        servername = settings.SERVERNAME
+        servername = unicode(settings.SERVERNAME)
         colors = self.sheet_colors
         line1 = '  {%s.%s.{n' % (colors['border'], '-' * (width-6))
-        line2 = ' {%s/{n%s{n{%s\\{n' % (colors['border'], servername.center(width-4, ' '), colors['border'])
+        line2 = ' {%s/{n%s{n{%s\\{n' % (colors['border'], servername.center(width-4), colors['border'])
         line3 = self.sheet_header(width=width)
         name = self.owner.key
-        power = self.owner.stats.get('Power')
-        powername = str(power)
+        power = self.owner.ndb.stats_dict['essence']
+        powername = 'Essence'
         column_1 = ['Name']
-        column_1 += self.owner.template.template.sheet_column_1
+        column_1 += self.owner.ndb.template.sheet_column_1
         column_2 = [powername]
-        column_2 += self.owner.template.template.sheet_column_2
+        column_2 += self.owner.ndb.template.sheet_column_2
         column_1_len = max([len(entry) for entry in column_1])
         column_2_len = max([len(entry) for entry in column_2])
         column_1_prep = list()
@@ -499,24 +330,36 @@ class FirstSection(SheetSection):
             if entry == 'Name':
                 display = '%s: %s' % ('Name'.rjust(column_1_len), name)
             else:
-                display = '%s: %s' % (entry.rjust(column_1_len), self.owner.template.template.get(entry))
+                display = '%s: %s' % (entry.rjust(column_1_len), self.owner.ndb.template.get(entry))
             column_1_prep.append(display)
         for entry in column_2:
             if entry == powername:
                 display = '%s: %s' % (powername.rjust(column_2_len), int(power))
             else:
-                display = '%s: %s' % (entry.rjust(column_2_len), self.owner.template.template.get(entry))
+                display = '%s: %s' % (entry.rjust(column_2_len), self.owner.ndb.template.get(entry))
             column_2_prep.append(display)
         line4 = self.sheet_two_columns(['\n'.join(column_1_prep), '\n'.join(column_2_prep)], width=width)
         return '\n'.join(unicode(line) for line in [line1, line2, line3, line4])
 
 
 class StorytellerHandler(object):
+    """
+    The StorytellerHandler is the core of the Storyteller data engine. This is loaded on any Character instance on
+    demand via @lazy_property and uses properties from the specific typeclass of the character to determine what stats,
+    powers, and etc to use.
+
+    This per-character object is responsible for the saving, loading, and manipulating of all Storyteller data.
+
+    See the StorytellerCharacter and derived character typeclasses for which.
+    """
 
     def __repr__(self):
-        return '<StorytellerHandler>'
+        return '<StorytellerHandler for %s>' % self.owner.key
 
     def __init__(self, owner):
+        """
+        'Owner' must be an instance of StorytellerCharacter.
+        """
         self.owner = owner
         self.load()
 
@@ -524,6 +367,9 @@ class StorytellerHandler(object):
         self.load_template()
         self.load_stats()
         self.load_pools()
+        self.load_custom()
+        #self.load_merits()
+        self.load_sheet()
 
     def load_template(self):
         owner = self.owner
@@ -531,11 +377,9 @@ class StorytellerHandler(object):
         db_name = owner.storyteller_storage['template']
         save_data = owner.attributes.get(db_name, dict())
         key = save_data.get('key', 'mortal')
-        info_dict = save_data.get('info', dict())
         if key not in valid_templates.keys():
             key = 'mortal'
-            info_dict = dict()
-        self.template = Template(key=key, init_data=valid_templates[key], info_dict=info_dict)
+        self.template = Template(owner=owner, key=key, save_data=save_data)
         owner.ndb.template = self.template
         self.save_template()
 
@@ -549,13 +393,12 @@ class StorytellerHandler(object):
         db_name = owner.storyteller_storage['stats']
         save_data = owner.attributes.get(db_name, dict())
         init_stats = list()
-        for key in owner.storyteller_stats.keys():
-            stat = Stat(key=key, init_data=owner.storyteller_stats[key], save_data=save_data.get(key, dict()))
-            init_stats.append(stat)
-        self.stats = sorted(init_stats, key=lambda stat: stat.list_order)
         self.stats_dict = dict()
-        for stat in init_stats:
-            self.stats_dict[stat.key] = int(stat)
+        for key in owner.storyteller_stats.keys():
+            stat = Stat(owner=owner, key=key, save_data=save_data.get(key, dict()))
+            init_stats.append(stat)
+            self.stats_dict[key] = int(stat)
+        self.stats = sorted(init_stats, key=lambda stat: stat.list_order)
         owner.ndb.stats_dict = self.stats_dict
         stat_types = list(set([stat.type for stat in self.stats]))
         self.stats_type = dict()
@@ -571,17 +414,16 @@ class StorytellerHandler(object):
         export_data = {stat.key: stat.export() for stat in self.stats}
         owner.attributes.add(db_name, export_data)
 
-    def change_template(self):
+    def change_template(self, key=None):
         pass
 
     def load_pools(self):
         owner = self.owner
         db_name = owner.storyteller_storage['pools']
         save_data = owner.attributes.get(db_name, dict())
-        valid_pools = owner.storyteller_pools
         pools = list()
         for key in owner.ndb.template.pools.keys():
-            pool = Pool(key=key, init_data=valid_pools.get(key, dict()), save_data=save_data.get(key, None))
+            pool = Pool(owner=owner, key=key, save_data=save_data.get(key, dict()))
             pools.append(pool)
         self.pools = sorted(pools, key=lambda order: order.list_order)
         owner.ndb.pools = self.pools
@@ -592,8 +434,53 @@ class StorytellerHandler(object):
         db_name = owner.storyteller_storage['pools']
         export_data = dict()
         for pool in self.pools:
-            export_data[pool.key] = pool.used
+            export_data[pool.key] = pool.export()
         owner.attributes.add(db_name, export_data)
+
+    def load_custom(self):
+        owner = self.owner
+        db_name = owner.storyteller_storage['custom']
+        save_data = owner.attributes.get(db_name, dict())
+        init_stats = list()
+        for k, v in save_data.iteritems():
+            stat = CustomStat(owner=owner, key=k[1], parent=k[0], save_data=v)
+            init_stats.append(stat)
+        self.custom = sorted(init_stats, key=lambda stat: stat.list_order)
+        self.save_custom()
+
+    def save_custom(self):
+        owner = self.owner
+        db_name = owner.storyteller_storage['custom']
+        export_data = dict()
+        for stat in self.custom:
+            export_data[(stat.parent, stat.key)] = stat.export()
+        owner.attributes.add(db_name, export_data)
+
+    def set_custom(self, category, key, value):
+        pass
+
+    def load_merits(self):
+        owner = self.owner
+        db_name = owner.storyteller_storage['merits']
+        save_data = owner.attributes.get(db_name, dict())
+        init_merits = list()
+        for k, v in self.save_data.iteritems():
+            merit = Merit(owner=owner, key=k, save_data=v)
+            init_merits.append(merit)
+        self.merits = init_merits
+
+    def save_merits(self):
+        owner = self.owner
+        db_name = owner.storyteller_storage['merits']
+        export_data = dict()
+        for merit in self.merits:
+            export_data[(merit.type, merit.category, merit.name)] = {merit.export()}
+        owner.attributes.add(db_name, export_data)
+
+    def load_sheet(self):
+        self.sheet_sections = list()
+        section = FirstSection(owner=self.owner)
+        self.sheet_sections.append(section)
 
     def render_sheet(self, viewer=None, width=None):
         if not width and viewer:
@@ -603,27 +490,11 @@ class StorytellerHandler(object):
         sheet = list()
         for section in self.sheet_sections:
             sheet.append(section.sheet_render(width=width))
-            print section
-        print sheet
         return '\n'.join(line for line in sheet if line)
 
 
-class Template(object):
 
-    pools = dict()
-    info = dict()
-    info_fields = dict()
-    info_choices = dict()
-    info_defaults = dict()
-    charm_type = ''
-    list_order = 0
-    base_sheet_colors = {'title': 'n', 'border': 'n', 'textfield': 'n', 'texthead': 'n', 'colon': 'n',
-                         'section_name': 'n', '3_column_name': 'n', 'advantage_name': 'n', 'advantage_border': 'n',
-                         'slash': 'n', 'statdot': 'n', 'statfill': 'n', 'statname': 'n', 'damagename': 'n',
-                         'damagetotal': 'n', 'damagetotalnum': 'n'}
-    extra_sheet_colors = dict()
-    sheet_column_1 = list()
-    sheet_column_2 = list()
+class Template(object):
 
     def __str__(self):
         return self.name
@@ -634,33 +505,40 @@ class Template(object):
     def __nonzero__(self):
         return True
 
-    def __init__(self, key=None, init_data=None, info_dict=None):
-        if not info_dict:
-            info_dict = dict()
+    def __init__(self, owner, key=None, save_data=None):
         self.key = key
-        self.name = init_data['name']
-        keys = init_data.keys()
-        for category in ('info_defaults', 'info_choices', 'pools', 'charm_type', 'list_order', 'extra_sheet_colors',
-                         'sheet_column_1', 'sheet_column_2'):
-            if category in keys:
-                setattr(self, category, init_data[category])
+        template_data = self.defaults(owner, key, save_data)
+        for k, v in template_data.iteritems():
+            setattr(self, k, v)
 
-        self.info.update(self.info_defaults)
+    @property
+    def info(self):
+        info_dict = dict()
+        info_dict.update(self.info_defaults)
+        info_dict.update(self.info_save)
+        return info_dict
 
-        for key in self.info_fields.keys():
-            self.info[key] = info_dict.get(key)
+    def defaults(self, owner, key, save_data):
+        child_data = owner.storyteller_templates[key]
+        ancestor_data = dict(owner.storyteller_ancestors['template'])
+        parent_data = owner.storyteller_parents['template'][child_data['parent']]
+        ancestor_data.update(parent_data)
+        ancestor_data.update(child_data)
+        ancestor_data.update(save_data)
+        return ancestor_data
 
     def export(self):
-        return {'key': self.key, 'info': self.info}
+        save_dict = dict()
+        for field in self.save_fields:
+            save_dict[field] = getattr(self, field)
+        return save_dict
 
 
     def get(self, field=None):
         if not field:
             return
-        info_dict = dict(self.info_defaults)
-        info_dict.update(self.info)
         try:
-            response = info_dict[field]
+            response = self.info[field]
         except KeyError:
             return None
         return response
@@ -673,7 +551,7 @@ class Template(object):
             raise KeyError("Field '%s' not found." % field)
         if not value:
             try:
-                self.info_fields.pop(found_field)
+                self.info_save.pop(found_field)
             except KeyError:
                 return True
         if found_field in self.info_choices:
@@ -682,19 +560,15 @@ class Template(object):
             if not find_value:
                 raise KeyError("'%s' is not a valid entry for %s. Choices are: %s" % (value, found_field,
                                                                                           ', '.join(choices)))
-            self.info[found_field] = find_value
+            self.info_save[found_field] = find_value
         else:
-            self.info[found_field] = sanitize_string(value)
+            self.info_save[found_field] = sanitize_string(value)
 
 
 class ProtoStat(object):
     """
     This provides logic for the other Stat classes. It is not used directly.
     """
-
-    name = 'Unset'
-    value = 0
-    specialties_storage = dict()
 
     def __str__(self):
         return self.name
@@ -703,7 +577,7 @@ class ProtoStat(object):
         return self.name
 
     def __repr__(self):
-        return '<%s: %s - (%s)>' % (type(self).__name__, self.name, self.rating)
+        return '<%s: %s - (%s)>' % (type(self).__name__, self.name, self._rating)
 
     def __nonzero__(self):
         return True
@@ -728,7 +602,7 @@ class ProtoStat(object):
 
     @property
     def rating(self):
-        return self.value
+        return self._rating
 
     @rating.setter
     def rating(self, value):
@@ -738,7 +612,7 @@ class ProtoStat(object):
             raise ValueError("'%s' must be set to a positive integer." % self)
         if not new_value >= 0:
             raise ValueError("'%s' must be set to a positive integer." % self)
-        self.value = new_value
+        self._rating = new_value
 
     def set_specialty(self, name, value):
         name = name.lower()
@@ -748,10 +622,10 @@ class ProtoStat(object):
             raise ValueError("Specialties must be set to whole numbers.")
         if not new_value >= 0:
             raise ValueError("Specialties cannot be negative numbers.")
-        if new_value == 0 and name in self.specialties_storage.keys():
-            self.specialties_storage.pop(name, None)
+        if new_value == 0 and name in self._specialties.keys():
+            self._specialties.pop(name, None)
             return
-        self.specialties_storage[name] = new_value
+        self._specialties[name] = new_value
 
 
 class Stat(ProtoStat):
@@ -759,28 +633,36 @@ class Stat(ProtoStat):
     This class is used for all of the 'default' stats provided by a Storyteller game. Attributes, Skills, etc.
     """
 
-    def __init__(self, key=None, init_data=None, save_data=None):
+    def __init__(self, owner, key=None, save_data=None):
         if not save_data:
             save_data = dict()
+        self.owner = owner
         self.key = key
-        self.name = init_data.get('name')
-        self.tags = init_data.get('tags', tuple())
-        self.type = init_data.get('type', '')
-        self.__favored = save_data.get('favored', False)
-        self.__supernal = save_data.get('supernal', False)
-        self.__epic = save_data.get('epic', False)
-        self.list_order = init_data.get('list_order', 0)
-        self.category = init_data.get('category', '')
-        self.sub_category = init_data.get('sub_category', '')
-        self.value = save_data.get('rating', init_data.get('start_value', 0))
+        stat_data = self.defaults(owner, key, save_data)
+        for k, v in stat_data.iteritems():
+            setattr(self, k, v)
+        default_set = set(self.features_default)
+        remove_set = set(self.features_remove)
+        add_set = set(self.features_add)
+        final_set = default_set.union(add_set)
+        self.features = tuple(final_set.difference(remove_set))
 
+
+    def defaults(self, owner, key, save_data):
+        child_data = owner.storyteller_stats[key]
+        ancestor_data = dict(owner.storyteller_ancestors['stat'])
+        parent_data = owner.storyteller_parents['stat'][child_data['parent']]
+        ancestor_data.update(parent_data)
+        ancestor_data.update(child_data)
+        ancestor_data.update(save_data)
+        return ancestor_data
 
     def __hash__(self):
         return hash(self.key)
 
     @property
     def favored(self):
-        return self.__favored
+        return self._favored
 
     @favored.setter
     def favored(self, value):
@@ -792,11 +674,11 @@ class Stat(ProtoStat):
             raise ValueError("'%s' Favored must be set to 0 or 1." % self)
         if new_value not in [0, 1]:
             raise ValueError("'%s' Favored must be set to 0 or 1." % self)
-        self.__favored = bool(new_value)
+        self._favored = bool(new_value)
 
     @property
     def supernal(self):
-        return self.__supernal
+        return self._supernal
 
     @supernal.setter
     def supernal(self, value):
@@ -808,11 +690,11 @@ class Stat(ProtoStat):
             raise ValueError("'%s' Supernal must be set to 0 or 1." % self)
         if new_value not in [0, 1]:
             raise ValueError("'%s' Supernal must be set to 0 or 1." % self)
-        self.__supernal = bool(new_value)
+        self._supernal = bool(new_value)
 
     @property
     def epic(self):
-        return self.__supernal
+        return self._epic
 
     @epic.setter
     def epic(self, value):
@@ -824,79 +706,67 @@ class Stat(ProtoStat):
             raise ValueError("'%s' Epic must be set to 0 or 1." % self)
         if new_value not in [0, 1]:
             raise ValueError("'%s' Epic must be set to 0 or 1." % self)
-        self.__epic = bool(new_value)
+        self._epic = bool(new_value)
 
     def display(self):
         return self.supernal or self.favored or self.epic or int(self)
 
     def export(self):
-        return {'rating': self.value, 'favored': self.__favored, 'supernal': self.__supernal, 'epic': self.__epic}
+        export_dict = dict()
+        for field in self.save_fields:
+            export_dict[field] = getattr(self, field)
+        return export_dict
 
-"""
-    def sheet_format(self, width=23, no_favored=False, fill_char='.',
-                     colors={'statname': 'n', 'statfill': 'n', 'statdot': 'n'}):
-        display_name = ANSIString('{%s%s{n' % (colors['statname'], self.full_name))
-        if self.current_supernal:
+
+    def sheet_format(self, width=23, no_favored=False, fill_char='.', colors=None):
+        if not colors:
+            colors = {'statname': 'n', 'statfill': 'n', 'statdot': 'n'}
+        display_name = ANSIString('{%s%s{n' % (colors['statname'], self.name))
+        if self.supernal:
             fav_dot = ANSIString('{r*{n')
-        elif self.current_favored:
+        elif self.favored:
             fav_dot = ANSIString('{r+{n')
         else:
             fav_dot = ANSIString(' ')
         if not no_favored:
             display_name = fav_dot + display_name
-        if self.current_value > width - len(display_name) - 1:
-            dot_display = ANSIString('{%s%s{n' % (colors['statdot'], self.current_value))
+        if self.rating > width - len(display_name) - 1:
+            dot_display = ANSIString('{%s%s{n' % (colors['statdot'], self.rating))
         else:
-            dot_display = ANSIString('{%s%s{n' % (colors['statdot'], '*' * self.current_value))
+            dot_display = ANSIString('{%s%s{n' % (colors['statdot'], '*' * self.rating))
         fill_length = width - len(display_name) - len(dot_display)
         fill = ANSIString('{%s%s{n' % (colors['statfill'], fill_char * fill_length))
         return display_name + fill + dot_display
 
-    def sheet_specialties(self, width=35, fill_char='.', colors={'statname': 'n', 'statfill': 'n', 'statdot': 'n'}):
+    def sheet_specialties(self, width=35, fill_char='.', colors=None):
+        if not colors:
+            colors = {'statname': 'n', 'statfill': 'n', 'statdot': 'n'}
         specialty_list = list()
-        for specialty, value in self.specialties.items():
-            display_name = ANSIString('{%s%s/%s{n' % (colors['statname'], self.full_name,
+        for specialty, value in self._specialties.iteritems():
+            display_name = ANSIString('{%s%s/%s{n' % (colors['statname'], self.name,
                                                       dramatic_capitalize(specialty)))
             if value > width - len(display_name) - 1:
-                dot_display = ANSIString('{%s%s{n' % (colors['statdot'], self.current_value))
+                dot_display = ANSIString('{%s%s{n' % (colors['statdot'], self.rating))
             else:
-                dot_display = ANSIString('{%s%s{n' % (colors['statdot'], '*' * self.current_value))
+                dot_display = ANSIString('{%s%s{n' % (colors['statdot'], '*' * self.rating))
             fill_length = width - len(display_name) - len(dot_display)
             fill = ANSIString('{%s%s{n' % (colors['statfill'], fill_char * fill_length))
             specialty_display = display_name + fill + dot_display
             specialty_list.append(specialty_display)
         return specialty_list
-"""
 
 
-class CustomStat(ProtoStat):
+class CustomStat(Stat):
     """
     This class is used for all of the custom stats like Crafts or Styles..
     """
 
-    tags = list()
-    type = 'Stat'
-    category = ''
-    sub_category = ''
-
-    def export(self):
-        return (self.name, (self.value, self.type, self.category, self.sub_category, self.tags))
-
-
+    def __init__(self, owner, key=None, parent=None, save_data=None):
+        super(CustomStat, self).__init__(owner, key=key, save_data=save_data)
+        self.parent = parent
 
 class Pool(object):
 
-    key = ''
-    name = 'Pool'
-    category = 'Pool'
-    unit = ''
-    list_order = 0
-    tags = tuple()
-    refresh = ''
-    __commits = dict()
-    owner = None
-    __used = 0
-    __func = None
 
     def __repr__(self):
         return '<%s: %s/%s>' % (self.name, self.available, self.max)
@@ -922,17 +792,22 @@ class Pool(object):
     def __hash__(self):
         return hash(self.key)
 
-    def __init__(self, key=None, init_data=None, save_data=None):
+    def __init__(self, owner, key=None, save_data=None):
+        self.owner = owner
         self.key = key
-        for category in ('name', 'unit', 'tags', 'refresh', 'category'):
-            if category in init_data.keys():
-                setattr(self, category, init_data[category])
-        self.__used = save_data or 0
-            
+        pool_data = self.defaults(owner, key, save_data)
+        for k, v in pool_data.iteritems():
+            setattr(self, k, v)
+        self.__func = owner.ndb.template.pools[key]
 
-    @property
-    def used(self):
-        return self.__used
+    def defaults(self, owner, key, save_data):
+        child_data = owner.storyteller_pools[key]
+        ancestor_data = dict(owner.storyteller_ancestors['pool'])
+        parent_data = owner.storyteller_parents['pool'][child_data['parent']]
+        ancestor_data.update(parent_data)
+        ancestor_data.update(child_data)
+        ancestor_data.update(save_data)
+        return ancestor_data
 
     @property
     def max(self):
@@ -940,11 +815,11 @@ class Pool(object):
 
     @property
     def available(self):
-        return self.max - self.total_commit - self.__used
+        return min(self._points, self.max - self.total_commit)
 
     @property
     def total_commit(self):
-        return sum(self.__commits.values())
+        return sum(self._commits.values())
 
     def commit(self, reason=None, amount=None):
         if not reason:
@@ -957,18 +832,19 @@ class Pool(object):
             raise ValueError("Commitments must be positive integers.")
         if value > self.available:
             raise ValueError("Cannot commit more than you have!")
-        if reason.lower() in [key.lower() for key in self.__commits.keys()]:
+        if reason.lower() in [key.lower() for key in self._commits.keys()]:
             raise ValueError("Commitments must be unique.")
-        self.__commits[reason] = value
+        self._commits[reason] = value
+        self._points -= value
         return True
 
     def uncommit(self, reason=None):
         if not reason:
             raise ValueError("Reason is empty!")
-        find_reason = partial_match(reason, self.commitments.keys())
+        find_reason = partial_match(reason, self._commits.keys())
         if not find_reason:
             raise ValueError("Commitment not found.")
-        self.commitments.pop(find_reason)
+        self._commits.pop(find_reason)
         return True
 
     def fill(self, amount=None):
@@ -978,9 +854,7 @@ class Pool(object):
             raise ValueError("Values must be integers.")
         if not value > 0:
             raise ValueError("Values must be positive.")
-        if (self.current_value + value) > self.max:
-            raise ValueError("That would exceed the pool's current capacity.")
-        self.current_value += value
+        self._points = min(self._points + value, self.max - self.total_commit)
         return True
 
     def drain(self, amount=None):
@@ -990,13 +864,18 @@ class Pool(object):
             raise ValueError("Values must be integers.")
         if not value > 0:
             raise ValueError("Values must be positive.")
-        if value > self.current_value:
-            raise ValueError("There aren't that many %s to spend!" % self.component_plural)
-        self.current_value -= value
+        if value > self._points:
+            raise ValueError("There aren't that many %s to spend!" % self.unit)
+        self._points -= value
         return True
 
     def refresh_pool(self):
-        self.__used = 0
+        if self.refresh == 'max':
+            self._points = self.max - self.total_commit
+            return
+        if self.refresh == 'empty':
+            self._points = 0
+            return
 
     def sheet_format(self, rjust=None, zfill=2):
         val_string = '%s/%s' % (str(self.current_value).zfill(zfill), str(self.max).zfill(zfill))
@@ -1005,3 +884,9 @@ class Pool(object):
             return '%s: %s' % (self.name.rjust(rjust), val_string)
         else:
             return '%s: %s' % (self.name, val_string)
+
+    def export(self):
+        export_dict = dict()
+        for field in self.save_fields:
+            export_dict[field] = getattr(self, field)
+        return export_dict

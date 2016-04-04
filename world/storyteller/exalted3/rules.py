@@ -1,216 +1,403 @@
 from __future__ import unicode_literals
 
+
+# The ANCESTORS dictionary contains the top-level settings that will be used for Storyteller data. These ensure that
+# every stat, pool, etc, will have all of the necessary properties.
+
+ANCESTORS = {
+    'stat': {
+        'name': 'Unset',
+        'type': 'Unset',
+        'category': 'Unset',
+        'sub_category': 'Unset',
+        'list_order': 1,
+        'features': set(),
+        'features_default': (),
+        'features_add': (),
+        'features_remove': (),
+        '_rating': 1,
+        '_favored': False,
+        '_supernal': False,
+        '_epic': False,
+        '_specialties': dict(),
+        'save_fields': ('_rating', '_favored', '_supernal', '_specialties'),
+    },
+    'custom': {
+        'name': 'Unset',
+        'type': 'Unset',
+        'category': 'Unset',
+        'sub_category': 'Unset',
+        'list_order': 1,
+        'features': set(),
+        'features_default': ('dot', 'roll'),
+        'features_add': (),
+        'features_remove': (),
+        '_rating': 1,
+        '_favored': False,
+        '_supernal': False,
+        '_epic': False,
+        '_specialties': dict(),
+        'save_fields': ('_rating', '_favored', '_supernal', '_specialties'),
+    },
+    'merit': {
+        'name': 'Unset',
+        'type': 'Unset',
+        'category': 'Unset',
+        'sub_category': 'Unset',
+        'list_order': 1,
+        'category_order': 0,
+        '_rating': 0,
+        '_descripion': None,
+        '_notes': None,
+        'save_fields': ('_rating', '_description', '_notes')
+    },
+    'power': {
+        'name': 'Unset',
+        'type': 'Unset',
+        'category': 'Unset',
+        'sub_category': 'Unset',
+        'list_order': 1,
+        'category_order': 0,
+        'sub_choices': (),
+        '_rating': 1,
+        'save_fields': ('_rating')
+    },
+    'pool': {
+        'name': 'Unset',
+        'unit': 'Points',
+        'features': set(),
+        'features_default': ('gain', 'spend', 'refresh', 'commit'),
+        'features_add': (),
+        'features_remove': (),
+        'refresh': 'max',
+        'list_order': 1,
+        'category': 'Unset',
+        'sub_category': 'Unset',
+        'save_fields': ('_commits', '_points'),
+        '_commits': dict(),
+        '_points': 0,
+        '_func': None
+    },
+    'template': {
+        'name': 'Unset',
+        'list_order': 1,
+        'pools': {},
+        'charm_type': 'Unset',
+        'info_defaults': {},
+        'info_choices': {},
+        'info_save': {},
+        'base_sheet_colors': {'title': 'n', 'border': 'n', 'textfield': 'n', 'texthead': 'n', 'colon': 'n',
+                             'section_name': 'n', '3_column_name': 'n', 'advantage_name': 'n', 'advantage_border': 'n',
+                             'slash': 'n', 'statdot': 'n', 'statfill': 'n', 'statname': 'n', 'damagename': 'n',
+                             'damagetotal': 'n', 'damagetotalnum': 'n'},
+        'extra_sheet_colors': {},
+        'sheet_column_1': (),
+        'sheet_column_2': (),
+        'save_fields': ('key', 'info_save'),
+    }
+
+}
+
+# PARENTs are the second level of settings used for Storyteller data. These 'inherit' from the 'ANCESTORS' and serve
+# the same purpose, one level down. The 'parent' key of a STAT, POOL, or TEMPLATE is used to target this dictionary.
+
+PARENTS = {
+    'stat': {
+        'physical': {
+            'type': 'Attribute',
+            'category': 'Physical',
+            'features_default': ('dot', 'roll'),
+        },
+        'social': {
+            'type': 'Attribute',
+            'category': 'Social',
+            'features_default': ('dot', 'roll'),
+        },
+        'mental': {
+            'type': 'Attribute',
+            'category': 'Mental',
+            'features_default': ('dot', 'roll'),
+        },
+        'ability': {
+            'type': 'Ability',
+            'features_default': ('dot', 'roll', 'favor', 'supernal'),
+            '_rating': 0,
+        },
+        'advantage': {
+            'type': 'Advantage',
+            'features_default': ('dot', 'roll'),
+        },
+    },
+    'custom': {
+        'craft': {
+            'type': 'Ability',
+            'category': 'Craft',
+            'category_order': 1,
+        },
+        'style': {
+            'type': 'Ability',
+            'category': 'Style',
+            'category_order': 2,
+        }
+    },
+    'merit': {
+        'merit': {
+            'type': 'Merit',
+            'category_order': 1,
+        },
+        'flaw': {
+            'type': 'Flaw',
+            'category_order': 2,
+        },
+        'pact': {
+            'type': 'Pact',
+            'category_order': 3,
+        }
+    },
+    'power': {
+        'charm': {
+            'type': 'Charm'
+        },
+        'spell': {
+            'type': 'Spell'
+        }
+    },
+    'pool': {
+        'essence': {
+
+        },
+        'limit': {
+
+        }
+    },
+    'template': {
+        'exalt': {
+
+        }
+    },
+}
+
+# Powers for Exalted 3rd Edition!
+POWERS = {
+    'solar_charm': {
+        'parent': 'charm',
+        'category': 'Solar',
+        'sub_choices': ('archery', 'brawl', 'melee', 'war', 'thrown', 'bureaucracy', 'linguistics', 'ride', 'sail',
+                        'socialize', 'athletics', 'awareness', 'dodge', 'larceny', 'stealth', 'craft', 'investigation',
+                        'lore', 'medicine', 'occult', 'integrity', 'performance', 'presence', 'resistance', 'survival')
+    },
+    'martial_charm': {
+        'parent': 'charm',
+        'category': 'Martial Arts',
+    },
+
+    'sorcery': {
+        'parent': 'spell',
+        'category': 'Sorcery',
+        'sub_choices': ('terrestrial', 'celestial', 'solar')
+    },
+
+    'necromancy': {
+        'parent': 'spell',
+        'category': 'Necromancy',
+        'sub_choices': ('shadowlands', 'labyrinth', 'void')
+    }
+}
+
+# And finally, the Stats for Exalted 3rd Edition.
+
 STATS = {
     # attributes!
     'strength': {
         'name': 'Strength',
-        'type': 'Attribute',
-        'category': 'Physical',
+        'parent': 'physical',
         'list_order': 1,
-        'start_value': 1
     },
     'dexterity': {
         'name': 'Dexterity',
-        'type': 'Attribute',
-        'category': 'Physical',
+        'parent': 'physical',
         'list_order': 2,
-        'start_value': 1
     },
     'stamina': {
         'name': 'Stamina',
-        'type': 'Attribute',
-        'category': 'Physical',
+        'parent': 'physical',
         'list_order': 3,
-        'start_value': 1
     },
     'charisma': {
         'name': 'Charisma',
-        'type': 'Attribute',
-        'category': 'Social',
+        'parent': 'social',
         'list_order': 4,
-        'start_value': 1
     },
     'manipulation': {
         'name': 'Manipulation',
-        'type': 'Attribute',
-        'category': 'Social',
+        'parent': 'social',
         'list_order': 5,
-        'start_value': 1
     },
     'appearance': {
         'name': 'Appearance',
-        'type': 'Attribute',
-        'category': 'Social',
+        'parent': 'social',
         'list_order': 6,
-        'start_value': 1
     },
     'perception': {
         'name': 'Perception',
-        'type': 'Attribute',
-        'category': 'Mental',
+        'parent': 'mental',
         'list_order': 7,
-        'start_value': 1
     },
     'intelligence': {
         'name': 'Intelligence',
-        'type': 'Attribute',
-        'category': 'Mental',
+        'parent': 'mental',
         'list_order': 8,
-        'start_value': 1
     },
     'wits': {
         'name': 'Wits',
-        'type': 'Attribute',
-        'category': 'Mental',
+        'parent': 'mental',
         'list_order': 9,
-        'start_value': 1
     },
 
     #Abilities!
     'archery': {
         'name': 'Archery',
-        'type': 'Ability',
+        'parent': 'ability',
         'list_order': 10,
     },
     'brawl': {
         'name': 'Brawl',
-        'type': 'Ability',
+        'parent': 'ability',
         'list_order': 15,
     },
     'melee': {
         'name': 'Melee',
-        'type': 'Ability',
+        'parent': 'ability',
         'list_order': 20,
     },
     'war': {
         'name': 'War',
-        'type': 'Ability',
+        'parent': 'ability',
         'list_order': 25,
     },
     'thrown': {
         'name': 'Thrown',
-        'type': 'Ability',
+        'parent': 'ability',
         'list_order': 30,
     },
     'bureaucracy': {
         'name': 'Bureaucracy',
-        'type': 'Ability',
+        'parent': 'ability',
         'list_order': 35,
     },
     'linguistics': {
         'name': 'Linguistics',
-        'type': 'Ability',
+        'parent': 'ability',
         'list_order': 40,
     },
     'ride': {
         'name': 'Ride',
-        'type': 'Ability',
+        'parent': 'ability',
         'list_order': 45,
     },
     'sail': {
         'name': 'Sail',
-        'type': 'Ability',
+        'parent': 'ability',
         'list_order': 50,
     },
     'socialize': {
         'name': 'Socialize',
-        'type': 'Ability',
+        'parent': 'ability',
         'list_order': 55,
 
     },
     'athletics': {
         'name': 'Athletics',
-        'type': 'Ability',
+        'parent': 'ability',
         'list_order': 60,
     },
     'awareness': {
         'name': 'Awareness',
-        'type': 'Ability',
+        'parent': 'ability',
         'list_order': 65,
     },
     'dodge': {
         'name': 'Dodge',
-        'type': 'Ability',
+        'parent': 'ability',
         'list_order': 70,
     },
     'larceny': {
         'name': 'Larceny',
-        'type': 'Ability',
+        'parent': 'ability',
         'list_order': 75,
     },
     'stealth': {
         'name': 'Stealth',
-        'type': 'Ability',
+        'parent': 'ability',
         'list_order': 80,
     },
     'craft': {
         'name': 'Craft',
-        'type': 'Ability',
+        'parent': 'ability',
         'list_order': 85,
-        'tags': ('no_dots', )
+        'features_remove': ('dot', 'roll')
     },
     'investigation': {
         'name': 'Investigation',
-        'type': 'Ability',
+        'parent': 'ability',
         'list_order': 90,
     },
     'lore': {
         'name': 'Lore',
-        'type': 'Ability',
+        'parent': 'ability',
         'list_order': 95,
     },
     'medicine': {
         'name': 'Medicine',
-        'type': 'Ability',
+        'parent': 'ability',
         'list_order': 100,
     },
     'occult': {
         'name': 'Occult',
-        'type': 'Ability',
+        'parent': 'ability',
         'list_order': 105,
     },
     'integrity': {
         'name': 'Integrity',
-        'type': 'Ability',
+        'parent': 'ability',
         'list_order': 110,
     },
     'performance': {
         'name': 'Performance',
-        'type': 'Ability',
+        'parent': 'ability',
         'list_order': 115,
     },
     'presence': {
         'name': 'Presence',
-        'type': 'Ability',
+        'parent': 'ability',
         'list_order': 120,
     },
     'resistance': {
         'name': 'Resistance',
-        'type': 'Ability',
+        'parent': 'ability',
         'list_order': 125,
     },
     'survival': {
         'name': 'Survival',
-        'type': 'Ability',
+        'parent': 'ability',
         'list_order': 130,
     },
     'martial_arts': {
         'name': 'Martial Arts',
-        'type': 'Ability',
+        'parent': 'ability',
         'list_order': 13,
-        'tags': ('no_dots', 'no_favor')
+        'features_remove': ('dot', 'roll', 'favor')
     },
 
     # Advantages
     'essence': {
         'name': 'Essence',
-        'type': 'Advantage',
-        'start_value': 1,
+        'parent': 'advantage',
     },
     'willpower': {
         'name': 'Willpower',
-        'type': 'Advantage',
-        'start_value': 1,
+        'parent': 'advantage',
+        '_rating': 5,
     }
 
 }
@@ -218,26 +405,23 @@ STATS = {
 POOLS = {
     'personal': {
         'name': 'Personal',
-        'unit': 'Motes of Essence',
-        'tags': ('gain', 'spend', 'refresh', 'commit'),
-        'refresh': 'max'
+        'parent': 'essence',
+        'unit': 'Motes of Personal Essence',
     },
     'peripheral': {
         'name': 'Peripheral',
-        'unit': 'Motes of Essence',
-        'tags': ('gain', 'spend', 'refresh', 'commit'),
-        'refresh': 'max'
+        'parent': 'essence',
+        'unit': 'Motes of Peripheral Essence',
     },
     'willpower': {
         'name': 'Willpower',
-        'unit': 'Temporary Willpower',
-        'tags': ('gain', 'spend', 'refresh', 'commit'),
-        'refresh': 'max'
+        'parent': 'essence',
+        'unit': 'Points of Temporary Willpower',
     },
     'limit': {
         'name': 'Limit',
         'unit': 'Points of Limit',
-        'tags': ('gain', 'spend', 'refresh', 'commit'),
+        'parent': 'limit',
         'refresh': 'empty'
     },
 
@@ -323,23 +507,25 @@ def liminal_limit(character):
 TEMPLATES = {
     'mortal': {
         'name': 'Mortal',
+        'parent': 'exalt',
         'list_order': 0,
         'pools': {'willpower': universal_willpower}
     },
     'solar': {
         'name': 'Solar',
+        'parent': 'exalt',
         'list_order': 5,
         'pools': {'personal': solar_personal, 'peripheral': solar_peripheral, 'willpower': universal_willpower,
                   'limit': solar_limit},
-        'charm_type': 'Solar',
+        'charm_type': 'solar_charm',
         'info_defaults': {'Caste': None},
         'info_choices': {'Caste': ('Dawn', 'Zenith', 'Eclipse', 'Twilight', 'Night')},
         'extra_sheet_colors': {'border': 'Y', 'slash': 'r', 'section_name': 'y'},
         'sheet_column_1': ('Caste',),
-        'sheet_column_2': []
     },
     'abyssal': {
         'name': 'Abyssal',
+        'parent': 'exalt',
         'list_order': 10,
         'pools': {'personal': abyssal_personal, 'peripheral': abyssal_peripheral, 'willpower': universal_willpower,
                   'resonance': abyssal_resonance},
@@ -348,10 +534,10 @@ TEMPLATES = {
         'info_choices': {'Caste': ('Dusk', 'Midnight', 'Moonshadow', 'Daybreak', 'Day')},
         'extra_sheet_colors': {'border': 'Y', 'slash': 'r', 'section_name': 'y'},
         'sheet_column_1': ('Caste',),
-        'sheet_column_2': []
     },
     'lunar': {
         'name': 'Lunar',
+        'parent': 'exalt',
         'list_order': 15,
         'pools': {'personal': lunar_personal, 'peripheral': lunar_peripheral, 'willpower': universal_willpower,
                   'limit': lunar_limit},
@@ -360,10 +546,10 @@ TEMPLATES = {
         'info_choices': {'Caste': ('Full Moon', 'Changing Moon', 'No Moon')},
         'extra_sheet_colors': {'border': 'Y', 'slash': 'r', 'section_name': 'y'},
         'sheet_column_1': ('Caste',),
-        'sheet_column_2': []
     },
     'terrestrial': {
         'name': 'Terrestrial',
+        'parent': 'exalt',
         'list_order': 20,
         'pools': {'personal': terrestrial_personal, 'peripheral': terrestrial_peripheral,
                   'willpower': universal_willpower, 'limit': terrestrial_limit},
@@ -372,10 +558,10 @@ TEMPLATES = {
         'info_choices': {'Aspect': ('Fire', 'Air', 'Water', 'Wood', 'Earth')},
         'extra_sheet_colors': {'border': 'Y', 'slash': 'r', 'section_name': 'y'},
         'sheet_column_1': ('Aspect',),
-        'sheet_column_2': []
     },
     'sidereal': {
         'name': 'Sidereal',
+        'parent': 'exalt',
         'list_order': 25,
         'pools': {'personal': sidereal_personal, 'peripheral': sidereal_peripheral, 'willpower': universal_willpower,
                   'limit': sidereal_limit},
@@ -384,10 +570,10 @@ TEMPLATES = {
         'info_choices': {'Caste': ('Journeys', 'Battles', 'Serenity', 'Secrets', 'Endings')},
         'extra_sheet_colors': {'border': 'Y', 'slash': 'r', 'section_name': 'y'},
         'sheet_column_1': ('Caste',),
-        'sheet_column_2': []
     },
     'liminimal': {
         'name': 'Liminal',
+        'parent': 'exalt',
         'list_order': 30,
         'pools': {'personal': liminal_personal, 'peripheral': liminal_peripheral, 'willpower': universal_willpower,
                   'limit': liminal_limit},
@@ -396,6 +582,5 @@ TEMPLATES = {
         'info_choices': {'Aspect': ('Blood', 'Breath', 'Flesh', 'Marrow', 'Soil')},
         'extra_sheet_colors': {'border': 'Y', 'slash': 'r', 'section_name': 'y'},
         'sheet_column_1': ('Aspect',),
-        'sheet_column_2': []
     },
 }

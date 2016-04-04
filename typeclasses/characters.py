@@ -18,7 +18,8 @@ from world.storyteller.manager import StorytellerHandler
 
 from world.storyteller.exalted2.rules import STATS as EX2_STATS, TEMPLATES as EX2_TEMPLATES, POOLS as EX2_POOLS
 
-from world.storyteller.exalted3.rules import STATS as EX3_STATS, TEMPLATES as EX3_TEMPLATES, POOLS as EX3_POOLS
+from world.storyteller.exalted3.rules import STATS as EX3_STATS, TEMPLATES as EX3_TEMPLATES, POOLS as EX3_POOLS, \
+    ANCESTORS as EX3_ANCESTORS, PARENTS as EX3_PARENTS
 
 class Character(DefaultCharacter):
     """
@@ -218,6 +219,7 @@ class StorytellerCharacter(Character):
     storyteller_templates = list()
     storyteller_stats = dict()
     storyteller_pools = list()
+    storyteller_defaults = dict()
 
 
     @lazy_property
@@ -250,4 +252,5 @@ class Ex3Character(StorytellerCharacter):
     storyteller_templates = EX3_TEMPLATES
     storyteller_stats = EX3_STATS
     storyteller_pools = EX3_POOLS
-
+    storyteller_ancestors = EX3_ANCESTORS
+    storyteller_parents = EX3_PARENTS

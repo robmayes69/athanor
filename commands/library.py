@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import re, datetime
 from django.conf import settings
 from django.utils.timezone import utc
@@ -370,7 +372,7 @@ def tabular_table(word_list=[], field_width=26, line_length=78, output_separator
         elif count > 1:
             result_string += output_separator
             result_string += element
-    return unicode(result_string)
+    return result_string
 
 
 def sanitize_string(input=None, length=None, strip_ansi=False, strip_mxp=True, strip_newlines=True, strip_indents=True):
@@ -381,7 +383,7 @@ def sanitize_string(input=None, length=None, strip_ansi=False, strip_mxp=True, s
         input = ANSI_PARSER.strip_mxp(input)
     if strip_ansi:
         input = ANSIString(input).clean()
-        input = unicode(input)
+        input = input
     if strip_newlines:
         for bad_char in ['\n', '%r', '%R', '{/']:
             input = input.replace(bad_char, '')
@@ -390,7 +392,7 @@ def sanitize_string(input=None, length=None, strip_ansi=False, strip_mxp=True, s
             input = input.replace(bad_char, '')
     if length:
         input = input[:length]
-    return unicode(input)
+    return input
 
 
 def dramatic_capitalize(capitalize_string=''):
