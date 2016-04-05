@@ -1,6 +1,6 @@
 import pytz
 from commands.command import AthCommand
-from commands.library import AthanorError, utcnow, header, subheader, separator, make_table
+from commands.library import utcnow, header, subheader, separator, make_table
 from world.database.communications.models import WatchFor
 
 class CmdPlayerConfig(AthCommand):
@@ -9,7 +9,7 @@ class CmdPlayerConfig(AthCommand):
 
     Usage:
         +config - displays all possible options.
-        +config <category>/<option>=<value> - change an option.
+        +config <option>=<value> - change an option.
         +config/defaults - restore default settings.
 
     Options:
@@ -26,7 +26,6 @@ class CmdPlayerConfig(AthCommand):
     player_switches = ['defaults']
 
     def func(self):
-        print self.final_switches
         if 'defaults' in self.final_switches:
             self.reset_defaults()
             return
@@ -49,14 +48,8 @@ class CmdPlayerConfig(AthCommand):
 
     def set_config(self):
         try:
-            category, option = self.lhs.split('/', 1)
-        except ValueError:
-            self.error("Usage: +config <category>/<option>=<value>")
-            return
-
-        try:
-            self.player.settings.set_setting(category, option, self.rhs, exact=False)
-        except AthanorError as err:
+            self.player.settings.set_setting(self.lhs, self.rhs, exact=False)
+        except ValueError as err:
             self.error(str(err))
             return
 
@@ -93,18 +86,15 @@ class CmdTz(AthCommand):
 
     def switch_none(self):
         if not self.args:
-            current_tz = self.player.settings.get('system_timezone')
+            current_tz = self.player.settings.get('timezone')
             now = utcnow().astimezone(current_tz)
+
             self.sys_msg("Your Current Timezone is '%s'. Is it %s where you are right now?" % (str(current_tz),
-                                                                                               utcnow().strftime('%c %Z')))
+                                                                                               now.strftime('%c %Z')))
             return
-        tz = self.partial(self.args, pytz.common_timezones)
-        if not tz:
-            self.error("Search for '%s' found no results. Please try again." % self.args)
-            return
-        self.caller.execute_cmd('+config system/timezone=%s' % tz)
+        tz = self.player.settings.set_setting('timezone', self.args)
         self.sys_msg("Your Current Timezone is now '%s'. Is it %s where you are right now?" % (str(tz),
-                                                                                               utcnow().strftime('%c %Z')))
+                                                                                               utcnow().astimezone(tz).strftime('%c %Z')))
 
 
     def switch_list(self):
@@ -158,7 +148,7 @@ class CmdWatch(AthCommand):
             return
 
     def find_watch(self):
-        watch, created = WatchFor.objects.get_or_create(db_player=self.player)
+        watch, created = WatchFor.objects.get_or_create(player=self.player)
         return watch
 
     def display_list(self):
@@ -172,7 +162,7 @@ class CmdWatch(AthCommand):
     def switch_add(self):
         try:
             found = self.character.search_character(self.args)
-        except AthanorError as err:
+        except ValueError as err:
             self.error(str(err))
             return
         watch = self.find_watch()
@@ -182,7 +172,7 @@ class CmdWatch(AthCommand):
     def switch_delete(self):
         try:
             found = self.character.search_character(self.args)
-        except AthanorError as err:
+        except ValueError as err:
             self.error(str(err))
             return
         watch = self.find_watch()

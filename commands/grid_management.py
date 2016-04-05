@@ -1,5 +1,6 @@
+from __future__ import unicode_literals
 from commands.command import AthCommand
-from commands.library import header, make_table, sanitize_string, AthanorError
+from commands.library import header, make_table, sanitize_string
 from world.database.grid.models import District
 from evennia.locks.lockhandler import LockException
 from typeclasses.rooms import Room
@@ -67,14 +68,14 @@ class CmdDistrict(AthCommand):
 
     def find_district(self, find_name=None):
         if not find_name:
-            raise AthanorError("No District name entered!")
+            raise ValueError("No District name entered!")
         exact = District.objects.filter(key__iexact=find_name)
         if exact:
             return exact
         partial = District.objects.filter(key__istartswith=find_name).first()
         if partial:
             return partial
-        raise AthanorError("District '%s' not found!" % find_name)
+        raise ValueError("District '%s' not found!" % find_name)
 
     def switch_create(self):
         if not self.args:
@@ -91,7 +92,7 @@ class CmdDistrict(AthCommand):
         try:
             district = self.find_district(self.lhs)
             district.do_rename(self.rhs)
-        except AthanorError as err:
+        except ValueError as err:
             self.error(str(err))
             return
         self.sys_msg("District renamed to %s!" % district)
@@ -100,7 +101,7 @@ class CmdDistrict(AthCommand):
         try:
             district = self.find_district(self.lhs)
             new_order = int(self.rhs)
-        except AthanorError as err:
+        except ValueError as err:
             self.error(str(err))
             return
         except ValueError:
@@ -113,7 +114,7 @@ class CmdDistrict(AthCommand):
     def switch_describe(self):
         try:
             district = self.find_district(self.lhs)
-        except AthanorError as err:
+        except ValueError as err:
             self.error(str(err))
             return
         district.description = self.rhs
@@ -127,7 +128,7 @@ class CmdDistrict(AthCommand):
         try:
             district = self.find_district(self.lhs)
             district.locks.add(self.rhs)
-        except AthanorError as err:
+        except ValueError as err:
             self.error(str(err))
             return
         except LockException, e:
@@ -139,7 +140,7 @@ class CmdDistrict(AthCommand):
         try:
             district = self.find_district(self.lhs)
             new_value = bool(int(self.rhs))
-        except AthanorError as err:
+        except ValueError as err:
             self.error(str(err))
             return
         except ValueError as err:
@@ -163,7 +164,7 @@ class CmdDistrict(AthCommand):
     def switch_assign(self):
         try:
             district = self.find_district(self.lhs)
-        except AthanorError as err:
+        except ValueError as err:
             self.error(str(err))
             return
         if not self.rhs:
@@ -181,7 +182,7 @@ class CmdDistrict(AthCommand):
     def switch_remove(self):
         try:
             district = self.find_district(self.lhs)
-        except AthanorError as err:
+        except ValueError as err:
             self.error(str(err))
             return
         if not self.rhs:

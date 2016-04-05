@@ -4,6 +4,7 @@ Room
 Rooms are simple containers that has no location of their own.
 
 """
+from __future__ import unicode_literals
 from django.conf import settings
 from typeclasses.characters import Character
 from evennia import DefaultRoom

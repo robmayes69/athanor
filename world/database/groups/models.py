@@ -1,5 +1,6 @@
+from __future__ import unicode_literals
 from django.db import models
-from commands.library import utcnow, sanitize_string, AthanorError, partial_match, connected_characters
+from commands.library import utcnow, sanitize_string, partial_match, connected_characters
 from commands.library import header, make_table
 from evennia.utils.ansi import ANSIString
 
@@ -37,7 +38,7 @@ class Group(models.Model):
     def do_rename(self, new_name=None):
         new_name = valid_groupname(new_name)
         if Group.objects.filter(key__iexact=new_name).exclude(id=self.id):
-            raise AthanorError("That name is already in use.")
+            raise ValueError("That name is already in use.")
         self.key = new_name
         if self.ic_channel:
             self.ic_channel.key = 'group_%s_ic' % self.key
@@ -47,9 +48,9 @@ class Group(models.Model):
 
     def add_member(self, target=None, setrank=None, reason='accepted invite'):
         if not target:
-            raise AthanorError("No target to add.")
+            raise ValueError("No target to add.")
         if self.members.filter(character_obj=target):
-            raise AthanorError("'%s' is already a member of '%s'" % (target.key, self.key))
+            raise ValueError("'%s' is already a member of '%s'" % (target.key, self.key))
         if setrank:
             setrank = self.find_rank(setrank)
         else:
@@ -64,9 +65,9 @@ class Group(models.Model):
 
     def remove_member(self, target=None, reason='left'):
         if not target:
-            raise AthanorError("No target to remove.")
+            raise ValueError("No target to remove.")
         if not self.em_group_members.filter(character_obj=target):
-            raise AthanorError("'%s' is not a member of '%s'" % (target.key, self.key))
+            raise ValueError("'%s' is not a member of '%s'" % (target.key, self.key))
         self.members.filter(character_obj=target).delete()
         self.sys_msg("%s is no longer a group member. Reason: %s" % (target, reason))
         if not target.is_admin():
@@ -79,7 +80,7 @@ class Group(models.Model):
         if not membership and give_bool:
             return False
         elif not membership and not give_bool:
-            raise AthanorError("Checker is not a Group member.")
+            raise ValueError("Checker is not a Group member.")
         permissions = set([perm.name for perm in self.default_permissions.all()] +
                           [perm.name for perm in membership.rank.perms.all()])
         if check.lower in permissions:
@@ -87,23 +88,23 @@ class Group(models.Model):
         if bool:
             return False
         else:
-            raise AthanorError("Permission denied.")
+            raise ValueError("Permission denied.")
 
     def add_rank(self, rank=None, name=None):
         rank = valid_ranknum(rank)
         if self.ranks.filter(num=rank):
-            raise AthanorError("Rank already exists.")
+            raise ValueError("Rank already exists.")
         if self.ranks.filter(name__iexact=name):
-            raise AthanorError("Rank names must be unique per-group.")
+            raise ValueError("Rank names must be unique per-group.")
         return self.ranks.create(num=rank, name=name)
 
     def remove_rank(self, rank=None):
         rank = valid_ranknum(rank)
         found = self.ranks.filter(num=rank).first()
         if not found:
-            raise AthanorError("Rank not found.")
+            raise ValueError("Rank not found.")
         if found.members.count():
-            raise AthanorError("Rank has members remaining. Change their ranks first.")
+            raise ValueError("Rank has members remaining. Change their ranks first.")
         found.delete()
 
     def get_rank(self, checker=None, ignore_admin=False):
@@ -117,20 +118,20 @@ class Group(models.Model):
         try:
             rank_num = int(rank)
         except ValueError:
-            raise AthanorError("Ranks must be targeted by number.")
+            raise ValueError("Ranks must be targeted by number.")
         found_rank = self.ranks.filter(num=rank_num).first()
         if not found_rank:
-            raise AthanorError("Rank '%s' not found." % rank)
+            raise ValueError("Rank '%s' not found." % rank)
         return found_rank
 
     def change_rank(self, target=None, rank=None):
         if not target:
-            raise AthanorError("Target field empty.")
+            raise ValueError("Target field empty.")
         if not rank:
-            raise AthanorError("Rank field empty.")
+            raise ValueError("Rank field empty.")
         member = self.members.filter(character_obj=target).first()
         if not member:
-            raise AthanorError("Target is not a member of this group.")
+            raise ValueError("Target is not a member of this group.")
         if not isinstance(rank, GroupRank):
             rank = self.find_rank(rank)
         member.rank = rank
@@ -198,7 +199,7 @@ class GroupRank(models.Model):
     def do_rename(self, newname=None):
         newname = valid_rankname(newname)
         if self.group.ranks.objects.filter(name__iexact=newname).exclude(id=self.id).count():
-            raise AthanorError("Rank names must be unique per group.")
+            raise ValueError("Rank names must be unique per group.")
         self.name = newname
         self.save()
 
@@ -234,31 +235,31 @@ class GroupOptions(models.Model):
 
 def valid_groupname(newname=None):
     if not newname:
-        raise AthanorError("Group Name is empty.")
+        raise ValueError("Group Name is empty.")
     newname = sanitize_string(newname, strip_ansi=True)
     if len(newname) > 35:
-        raise AthanorError("Group names may not exceed 35 characters in length.")
+        raise ValueError("Group names may not exceed 35 characters in length.")
     return newname
 
 
 def valid_rankname(newname=None):
     if not newname:
-        raise AthanorError("Rank Name is empty.")
+        raise ValueError("Rank Name is empty.")
     newname = sanitize_string(newname)
     if len(newname) > 35:
-        raise AthanorError("Rank Names may not exceed 35 characters in length.")
+        raise ValueError("Rank Names may not exceed 35 characters in length.")
     return newname
 
 
 def valid_ranknum(newrank=None):
     if not newrank:
-        raise AthanorError("No rank entered.")
+        raise ValueError("No rank entered.")
     try:
         rank_num = int(newrank)
     except ValueError:
-        raise AthanorError("Ranks must be numeric.")
+        raise ValueError("Ranks must be numeric.")
     if not rank_num > 4:
-        raise AthanorError("Cannot interfere with default ranks 1-4.")
+        raise ValueError("Cannot interfere with default ranks 1-4.")
     return rank_num
 
 
@@ -269,7 +270,7 @@ def find_group(search_name=None, exact=False, member=False, checker=None):
     else:
         groups = Group.objects.all()
     if not search_name:
-        raise AthanorError("No group entered to match.")
+        raise ValueError("No group entered to match.")
     if exact:
         find = groups.filter(key__iexact=search_name).first()
     else:
@@ -277,4 +278,4 @@ def find_group(search_name=None, exact=False, member=False, checker=None):
     if find:
         return find
     else:
-        raise AthanorError("Group '%s' not found. % search_name")
+        raise ValueError("Group '%s' not found. % search_name")

@@ -1,10 +1,10 @@
+from __future__ import unicode_literals
 import re, traceback
 from django.conf import settings
 from evennia.players.models import PlayerDB
 from typeclasses.characters import Character
 from evennia.server.models import ServerConfig
 from commands.command import MuxCommand
-from commands.library import AthanorError
 from evennia.commands.default.unloggedin import CmdUnconnectedConnect, _LATEST_FAILED_LOGINS, _throttle
 
 class CmdMushConnect(MuxCommand):

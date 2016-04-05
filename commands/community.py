@@ -1,5 +1,7 @@
+from __future__ import unicode_literals
+
 from commands.command import AthCommand
-from commands.library import AthanorError, connected_characters, connected_players, header, make_table
+from commands.library import connected_characters, connected_players, header, make_table
 
 class CmdWho(AthCommand):
     """

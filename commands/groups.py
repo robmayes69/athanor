@@ -1,8 +1,8 @@
+from __future__ import unicode_literals
 import re
 from world.database.groups.models import Group, valid_groupname, find_group, GroupPermissions
 from commands.command import AthCommand
-from commands.library import header, make_table, partial_match, sanitize_string, duration_from_string, utcnow, \
-    AthanorError
+from commands.library import header, make_table, partial_match, sanitize_string, duration_from_string, utcnow
 from evennia.utils.ansi import ANSIString
 
 class GroupCommand(AthCommand):
@@ -16,7 +16,7 @@ class GroupCommand(AthCommand):
     def get_focus(self):
         group = self.character.db.group
         if not group:
-            raise AthanorError("No group focused.")
+            raise ValueError("No group focused.")
         return group
 
 
@@ -60,7 +60,7 @@ class CmdGroupFocus(GroupCommand):
                 group = find_group(search_name=lhs, exact=False, member=False)
             else:
                 group = find_group(search_name=lhs, exact=False, member=True, checker=self.character)
-        except AthanorError as err:
+        except ValueError as err:
             self.error(str(err))
             return
         if not group.is_member(self.character):
@@ -88,7 +88,7 @@ class CmdGroupDisplay(GroupCommand):
                 group = find_group(search_name=lhs, exact=False, member=False)
             else:
                 group = self.get_focus()
-        except AthanorError as err:
+        except ValueError as err:
             self.error(str(err))
             return
         if not group:
@@ -114,7 +114,7 @@ class CmdGroupCreate(GroupCommand):
 
         try:
             groupname = valid_groupname(lhs)
-        except AthanorError as err:
+        except ValueError as err:
             self.error(str(err))
             return
         if Group.objects.filter(key__iexact=groupname):
@@ -127,7 +127,7 @@ class CmdGroupCreate(GroupCommand):
                 target = self.character.search_character(rhs)
                 newgroup.add_member(target, setrank=1)
                 self.sys_msg("You have been made leader of the new '%s' Group." % newgroup, target)
-            except AthanorError as err:
+            except ValueError as err:
                 self.error(str(err))
         self.character.db.group = newgroup
         self.sys_msg("Focus changed to: %s" % newgroup)
@@ -151,7 +151,7 @@ class CmdGroupDescribe(GroupCommand):
         try:
             group = self.get_focus()
             group.check_permission(self.character, "admin")
-        except AthanorError as err:
+        except ValueError as err:
             self.error(str(err))
             return
         group.set_desc(desc)
@@ -173,7 +173,7 @@ class CmdGroupDisband(GroupCommand):
         lhs = self.lhs
         try:
             group = find_group(search_name=lhs, exact=False, member=False)
-        except AthanorError as err:
+        except ValueError as err:
             self.error(str(err))
             return
         if not self.verify("GROUP DISBAND '%s'" % group):
@@ -200,7 +200,7 @@ class CmdGroupRename(GroupCommand):
         try:
             group = self.get_focus()
             group.do_rename(lhs)
-        except AthanorError as err:
+        except ValueError as err:
             self.error(str(err))
             return
         group.sys_msg("%s renamed the group!" % self.character.key, sender=self.character)
@@ -250,7 +250,7 @@ class CmdGroupRank(GroupCommand):
             group = self.get_focus()
             group.check_permission(self.character, "manage")
             target = self.character.search_character(lhs)
-        except AthanorError as err:
+        except ValueError as err:
             self.error(str(err))
             return
         found = group.members.filter(character_obj=target)
@@ -259,7 +259,7 @@ class CmdGroupRank(GroupCommand):
             return
         try:
             rank = group.find_rank(rhs)
-        except AthanorError as err:
+        except ValueError as err:
             self.error(str(err))
             return
         if not (self.is_admin or group.get_rank(self.character) < group.get_rank(target)):
@@ -270,7 +270,7 @@ class CmdGroupRank(GroupCommand):
             return
         try:
             group.change_rank(target, rank)
-        except AthanorError as err:
+        except ValueError as err:
             self.error(str(err))
             return
         group.sys_msg("%s has been assigned to Rank %s by %s" % (target.key, rank.name,
@@ -279,7 +279,7 @@ class CmdGroupRank(GroupCommand):
     def list_ranks(self):
         try:
             group = self.get_focus()
-        except AthanorError as err:
+        except ValueError as err:
             self.error(str(err))
             return
         self.caller.msg(group.display_ranks(self.character))
@@ -287,7 +287,7 @@ class CmdGroupRank(GroupCommand):
     def group_addrank(self, lhs=None, rhs=None):
         try:
             group = self.get_focus()
-        except AthanorError as err:
+        except ValueError as err:
             self.error(str(err))
             return
         if not group.get_rank(self.character) <= 1:
@@ -295,7 +295,7 @@ class CmdGroupRank(GroupCommand):
             return
         try:
             newrank = group.add_rank(lhs, rhs)
-        except AthanorError as err:
+        except ValueError as err:
             self.error(str(err))
             return
         self.sys_msg("Rank %s created for the %s Group" % (newrank.num, group))
@@ -303,7 +303,7 @@ class CmdGroupRank(GroupCommand):
     def group_delrank(self, lhs=None):
         try:
             group = self.get_focus()
-        except AthanorError as err:
+        except ValueError as err:
             self.error(str(err))
             return
         if not group.get_rank(self.character) <= 1:
@@ -311,7 +311,7 @@ class CmdGroupRank(GroupCommand):
             return
         try:
             group.del_rank(lhs)
-        except AthanorError as err:
+        except ValueError as err:
             self.error(str(err))
             return
         self.sys_msg("Rank %s deleted!" % lhs)
@@ -356,7 +356,7 @@ class CmdGroupPerm(GroupCommand):
     def group_addperm(self, lhs, rhs):
         try:
             group = self.get_focus()
-        except AthanorError as err:
+        except ValueError as err:
             self.error(str(err))
             return
         if not group.get_rank(self.character) <= 1:
@@ -366,7 +366,7 @@ class CmdGroupPerm(GroupCommand):
             try:
                 rank = group.find_rank(lhs)
                 set_all = False
-            except AthanorError as err:
+            except ValueError as err:
                 self.error(str(err))
                 return
         else:
@@ -388,7 +388,7 @@ class CmdGroupPerm(GroupCommand):
     def group_delperm(self, lhs, rhs):
         try:
             group = self.get_focus()
-        except AthanorError as err:
+        except ValueError as err:
             self.error(str(err))
             return
         if not group.get_rank(self.character) <= 1:
@@ -398,7 +398,7 @@ class CmdGroupPerm(GroupCommand):
             try:
                 rank = group.find_rank(lhs)
                 set_all = False
-            except AthanorError as err:
+            except ValueError as err:
                 self.error(str(err))
                 return
         else:
@@ -439,7 +439,7 @@ class CmdGroupTitle(GroupCommand):
             target = self.character.search_character(lhs)
             identical = (target == self.character)
             group.check_permission(self.character, "titleself" if identical else 'titleother')
-        except AthanorError as err:
+        except ValueError as err:
             self.error(str(err))
             return
         if not group.is_member(target):
@@ -494,7 +494,7 @@ class CmdGroupSet(GroupCommand):
     def func(self):
         try:
             group = self.get_focus()
-        except AthanorError as err:
+        except ValueError as err:
             self.error(str(err))
             return
         if not self.args:
@@ -534,7 +534,7 @@ class CmdGroupSet(GroupCommand):
         try:
             exec 'new_value = self.setting_%s(group)' % choice
             group.save()
-        except AthanorError as err:
+        except ValueError as err:
             self.error(str(err))
             return
         except ValueError as err:
@@ -555,21 +555,21 @@ class CmdGroupSet(GroupCommand):
 
     def setting_ic(self, group):
         if self.rhs not in ['0', '1']:
-            raise AthanorError("'IC' Must be 0 or 1.")
+            raise ValueError("'IC' Must be 0 or 1.")
         validate = int(self.rhs)
         group.ic_enabled = validate
         return validate
 
     def setting_ooc(self, group):
         if self.rhs not in ['0', '1']:
-            raise AthanorError("'OOC' Must be 0 or 1.")
+            raise ValueError("'OOC' Must be 0 or 1.")
         validate = int(self.rhs)
         group.ooc_enabled = validate
         return validate
 
     def setting_color(self, group):
         if not len(ANSIString('{%s' % self.rhs)) == 0:
-            raise AthanorError("Invalid color code!")
+            raise ValueError("Invalid color code!")
         group.color = self.rhs
         return self.rhs
 
@@ -585,7 +585,7 @@ class CmdGroupSet(GroupCommand):
 
     def setting_faction(self, group):
         if self.rhs not in ['0', '1']:
-            raise AthanorError("'Faction' Must be 0 or 1.")
+            raise ValueError("'Faction' Must be 0 or 1.")
         validate = bool(int(self.rhs))
         group.faction = validate
         return validate
@@ -619,7 +619,7 @@ class CmdGroupMuzzle(GroupCommand):
         rhs = self.rhs
         try:
             group = self.get_focus()
-        except AthanorError as err:
+        except ValueError as err:
             self.error(str(err))
             return
         target = self.character.search_character(lhs)
@@ -631,7 +631,7 @@ class CmdGroupMuzzle(GroupCommand):
             return
         try:
             group.check_permission(self.character, "moderate")
-        except AthanorError as err:
+        except ValueError as err:
             self.error(str(err))
             return
         if group.get_rank(target) < group.get_rank(self.caller):
@@ -694,7 +694,7 @@ class CmdGroupAdd(GroupCommand):
             group.check_permission(self.character, "add")
             target = self.character.search_character(lhs)
             group.add_member(target=target, setrank=rhs)
-        except AthanorError as err:
+        except ValueError as err:
             self.error(str(err))
             return
         group.sys_msg("%s has been added to the group by %s" % (target.key, self.character.key), sender=self.character)
@@ -717,7 +717,7 @@ class CmdGroupKick(GroupCommand):
             group = self.get_focus()
             group.check_permission(self.character, "manage")
             target = self.character.search_character(lhs)
-        except AthanorError as err:
+        except ValueError as err:
             self.error(str(err))
             return
 
@@ -729,7 +729,7 @@ class CmdGroupKick(GroupCommand):
             return
         try:
             group.del_member(target)
-        except AthanorError as err:
+        except ValueError as err:
             self.error(str(err))
             return
         message = "%s has been kicked from the group by %s"
@@ -761,7 +761,7 @@ class CmdGroupInvite(GroupCommand):
             group = self.get_focus()
             group.check_permission(self.character, "manage")
             target = self.character.search_character(lhs)
-        except AthanorError as err:
+        except ValueError as err:
             self.error(str(err))
             return
         if group.is_member(target, ignore_admin=True):
@@ -814,7 +814,7 @@ class CmdGroupJoin(GroupCommand):
         try:
             found.add_member(self.character, reason='accepted invite')
             found.invites.remove(self.character)
-        except AthanorError as err:
+        except ValueError as err:
             self.error(str(err))
             return
         self.sys_msg('Welcome to the %s!' % found)
@@ -832,7 +832,7 @@ class CmdGroupLeave(GroupCommand):
     def func(self):
         try:
             group = self.get_focus()
-        except AthanorError as err:
+        except ValueError as err:
             self.error(str(err))
             return
         if group.is_member(self.character, ignore_admin=True):
@@ -846,7 +846,7 @@ class CmdGroupLeave(GroupCommand):
             return
         try:
             group.remove_member(self.character)
-        except AthanorError as err:
+        except ValueError as err:
             self.error(str(err))
             return
         self.sys_msg("You have left the group!")
@@ -869,7 +869,7 @@ class CmdGroupChan(GroupCommand):
         if cstr == '+gchat':
             try:
                 group = self.get_focus()
-            except AthanorError as err:
+            except ValueError as err:
                 self.error(str(err))
                 return
             if not lhs:
@@ -888,14 +888,14 @@ class CmdGroupChan(GroupCommand):
                 try:
                     group_name = group_match.group(2)
                     group = find_group(search_name=group_name, exact=False, member=True)
-                except AthanorError as err:
+                except ValueError as err:
                     self.error(str(err))
                     return
                 match_name, message = self.args.split(' ', 1)
             else:
                 try:
                     group = self.get_focus()
-                except AthanorError as err:
+                except ValueError as err:
                     self.error(str(err))
                     return
                 message = self.args
@@ -911,7 +911,7 @@ class CmdGroupChan(GroupCommand):
                 type = 'ic'
             try:
                 group = self.get_focus()
-            except AthanorError as err:
+            except ValueError as err:
                 self.error(str(err))
                 return
             message = self.args
@@ -979,7 +979,7 @@ class CmdGroupChan(GroupCommand):
         try:
 
             channel.msg(message, senders=self.character)
-        except AthanorError as err:
+        except ValueError as err:
             self.error(unicode(err))
             return
 

@@ -1,9 +1,10 @@
+from __future__ import unicode_literals
 import re
 from django.db import models
 from django.conf import settings
 from evennia.locks.lockhandler import LockHandler
 from evennia.utils.utils import lazy_property
-from commands.library import utcnow, mxp_send, connected_characters, AthanorError, header, separator, make_table
+from commands.library import utcnow, mxp_send, connected_characters, header, separator, make_table
 
 # Create your models here.
 class Board(models.Model):
@@ -71,11 +72,11 @@ class Board(models.Model):
 
     def make_post(self, actor=None, subject=None, text=None, announce=True, date=utcnow()):
         if not actor:
-            raise AthanorError("No player data to use.")
+            raise ValueError("No player data to use.")
         if not text:
-            raise AthanorError("Text field empty.")
+            raise ValueError("Text field empty.")
         if not subject:
-            raise AthanorError("Subject field empty.")
+            raise ValueError("Subject field empty.")
         order = self.posts.all().count() + 1
         post = self.posts.create(actor=actor, post_subject=subject, post_text=text, post_date=date,
                                  modify_date=date, timeout=self.timeout,
@@ -150,7 +151,7 @@ class Post(models.Model):
 
     def edit_post(self, find=None, replace=None):
         if not find:
-            raise AthanorError("No text entered to find.")
+            raise ValueError("No text entered to find.")
         if not replace:
             replace = ''
         self.modify_date = utcnow()
@@ -185,9 +186,9 @@ def list_all_boards(group=None):
 
 def list_boards(group=None, type="read", checker=None):
     if not re.match(r'^read|write|admin$', type):
-        raise AthanorError("Invalid access type.")
+        raise ValueError("Invalid access type.")
     if not checker:
-        raise AthanorError("Who is doing the checking?")
+        raise ValueError("Who is doing the checking?")
     if group:
         boards = group.boards.all().order_by('order')
     else:

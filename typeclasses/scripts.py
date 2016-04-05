@@ -11,7 +11,7 @@ Rather, each script tends to inherit from the base Script class and
 just overloads its hooks to have it perform its function.
 
 """
-
+from __future__ import unicode_literals
 from evennia import DefaultScript
 
 

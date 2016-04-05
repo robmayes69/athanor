@@ -1,5 +1,5 @@
+from __future__ import unicode_literals
 from commands.command import AthCommand
-from commands.library import AthanorError
 
 
 class EditCmd(AthCommand):
@@ -15,7 +15,7 @@ class CmdSheet(AthCommand):
         else:
             try:
                 target = self.character.search_character(self.args)
-            except AthanorError as err:
+            except ValueError as err:
                 self.error(str(err))
                 return
         self.msg(target.return_sheet(viewer=self.character))
@@ -38,7 +38,7 @@ class CmdTarget(EditCmd):
             return
         try:
             target = self.character.search_character(self.args)
-        except AthanorError as err:
+        except ValueError as err:
             self.error(str(err))
             return
         self.character.ndb.target = target

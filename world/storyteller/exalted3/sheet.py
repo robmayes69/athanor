@@ -36,7 +36,7 @@ class CharmSection(AdvantageWordSection):
     display_categories = tuple()
     charm_categorized = dict()
     sub_choices = tuple()
-    kind = None
+    kind = 'charm'
 
     def load(self):
         super(CharmSection, self).load()
@@ -61,11 +61,9 @@ class CharmSection(AdvantageWordSection):
             find_power[0]._rating += amount
             find_power[0].save()
             return
-        saver = self.handler.data_dict['powers']
-        new_power = Power(owner=self.owner, key=(self.kind, found_category, key), save_data=dict(),
-                          saver=saver, handler=self.handler)
+        new_power = Power(key=(self.kind, found_category, key), handler=self.handler)
         self.handler.powers.append(new_power)
-        self.handler.save_powers()
+        new_power.save()
         self.handler.load_powers()
         self.load()
 
@@ -82,7 +80,7 @@ class CharmSection(AdvantageWordSection):
             section.append(self.sheet_border(cat_line, width=width))
             skill_display = [power.sheet_format(width=23, colors=colors, mode='word') for power
                              in self.charm_categorized[category]]
-            skill_table = tabular_table(skill_display, field_width=23, line_length=width-2)
+            skill_table = unicode(tabular_table(skill_display, field_width=37, line_length=width-2))
             section.append(self.sheet_border(skill_table, width=width))
         return '\n'.join(unicode(line) for line in section)
 

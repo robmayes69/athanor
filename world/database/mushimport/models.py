@@ -1,6 +1,7 @@
+from __future__ import unicode_literals
 import re, hashlib
 from django.db import models
-from commands.library import AthanorError, partial_match
+from commands.library import partial_match
 
 # Create your models here.
 
@@ -92,20 +93,20 @@ class MushObject(models.Model):
 
 def cobj(abbr=None):
     if not abbr:
-        raise AthanorError("No abbreviation entered!")
+        raise ValueError("No abbreviation entered!")
     code_object = MushObject.objects.filter(name='Master Code Object <MCO>').first()
     if not code_object:
-        raise AthanorError("Master Code Object <MCO> not found!")
+        raise ValueError("Master Code Object <MCO> not found!")
     search_name = 'COBJ`%s' % abbr.upper()
     found_attr = code_object.attrs.filter(name=search_name).first()
     if not found_attr:
-        raise AthanorError("COBJ`%s not found!" % abbr.upper())
+        raise ValueError("COBJ`%s not found!" % abbr.upper())
     if ':' in found_attr.value:
         dbref, discard = found_attr.value.split(':', 1)
     else:
         dbref = found_attr.value
     if not dbref:
-        raise AthanorError("Cannot find DBREF of %s" % abbr.upper())
+        raise ValueError("Cannot find DBREF of %s" % abbr.upper())
     return MushObject.objects.filter(dbref=dbref).first()
 
 

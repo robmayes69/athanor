@@ -6,32 +6,34 @@ from evennia.utils.ansi import ANSIString
 
 
 class SettingHandler(object):
+    settings = list()
+    categories_cache = list()
+    settings_dict = dict()
+    sorted_cache = dict()
+    values_cache = dict()
 
     def __init__(self, owner):
         self.owner = owner
-        self.categories_cache = dict()
-        self.sorted_cache = dict()
-        self.search_cache = dict()
-        self.values_cache = dict()
-        self.settings_cache = dict()
         self.load()
         self.save()
 
     def load(self):
-        load_settings = self.owner.attributes.get('_settings', dict())
+        self.settings = list()
+        save_data = self.owner.attributes.get('_settings', dict())
+        if not len(save_data):
+            self.owner.attributes.add('_settings', dict())
+            save_data = self.owner.attributes.get('_settings', dict())
         for key in ALL_SETTINGS.keys():
-            setting = Setting(key, ALL_SETTINGS[key], load_settings.get(key, None))
-            self.settings_cache[key] = setting
+            setting = Setting(key, self, save_data)
+            self.settings.append(setting)
+            self.settings_dict[key] = setting
             self.values_cache[key] = setting.value
-            if setting.category not in self.categories_cache.keys():
-                self.categories_cache[setting.category] = list()
-            self.categories_cache[setting.category].append(setting)
+            self.categories_cache = sorted(list(set(setting.category for setting in self.settings)))
+            for category in self.categories_cache:
+                self.sorted_cache[category] = [setting for setting in self.settings if setting.category == category]
 
     def save(self):
-        new_export = dict()
-        for key in self.settings_cache.keys():
-            new_export[key] = self.settings_cache[key].real_value
-        self.owner.db._settings = new_export
+        for setting in self.settings: setting.save()
 
     def restore_defaults(self):
         del self.owner.db._settings
@@ -48,29 +50,36 @@ class SettingHandler(object):
     def display_single_category(self, category, viewer):
         message = list()
         message.append(separator(category, viewer=viewer))
-        category_table = make_table('Setting', 'Value', 'Description', width=[15, 12, 51], viewer=viewer)
+        category_table = make_table('Setting', 'Value', 'Type', 'Description', width=[18, 10, 9, 41], viewer=viewer)
         for setting in self.sorted_cache[category]:
-            category_table.add_row(setting.key, setting.value,
-                                   '<%s> %s' % (setting.type.upper(), setting.description))
+            category_table.add_row(setting.key, setting.value, setting.kind, setting.description)
         message.append(category_table)
         return "\n".join([unicode(line) for line in message])
 
     def get(self, key):
         return self.values_cache[key]
+    
+    
 
-"""
+
     def set_setting(self, key, new_value, exact=True):
         if new_value == '':
             new_value = None
-        target_setting = self.find_setting(category, setting, exact=exact)
+        if exact:
+            target_setting = self.settings_dict[key]
+        else:
+            target_setting = partial_match(key, self.settings)
+        if not target_setting:
+            raise ValueError("Cannot find setting '%s'." % key)
         target_setting.value = new_value
+        target_setting.save()
         set_value = target_setting.value
-        self.load()
-        self.save()
         self.owner.sys_msg("Setting '%s/%s' changed to %s!" % (target_setting.category, target_setting.key, set_value),
                            sys_name='CONFIG')
+        return set_value
 
 
+"""
     def get_color_name(self, target, no_default=False):
         colors = self.owner.db._color_name or {}
         try:
@@ -99,10 +108,11 @@ class SettingHandler(object):
 class Setting(object):
     key = 'Unset'
     category = 'Unset'
-    type = None
-    real_value = None
-    value_default = None
+    kind = None
+    custom_value = None
+    default_value = None
     description = 'Unset'
+    handler = None
 
     def __str__(self):
         return self.key
@@ -113,37 +123,42 @@ class Setting(object):
     def __hash__(self):
         return self.key.__hash__()
 
-    def __init__(self, key, init_dict, save_value=None):
+    def __init__(self, key, handler, saver):
         self.key = key
-        self.category = init_dict['category']
-        self.value_default = init_dict['default']
-        self._value = save_value
-        self.description = init_dict['description']
-        self.type = init_dict['type']
+        self.handler = handler
+        self.saver = saver
+        for k, v in ALL_SETTINGS[key].iteritems():
+            setattr(self, k, v)
+        self.custom_value = saver.get(key, None)
+
+    def save(self):
+        self.saver[self.key] = self.custom_value
+        self.handler.values_cache[self.key] = self.value
 
     @property
     def value(self):
-        if self.real_value is not None:
-            return self.real_value
-        return self.value_default
+        if self.custom_value is None:
+            return self.default_value
+        return self.custom_value
 
     @value.setter
     def value(self, value):
         if value is None:
-            self.real_value = None
+            self.custom_value = None
         else:
-            self.real_value = self.validate(value)
+            self.custom_value = self.validate(value)
+        self.save()
 
     def validate(self, new_value):
-        if self.type == 'Bool':
+        if self.kind == 'Bool':
             if new_value not in ['0', '1']:
                 raise ValueError("Bool-type settings must be 0 (false) or 1 (true).")
             return bool(int(new_value))
-        if self.type == 'Duration':
+        if self.kind == 'Duration':
             return duration_from_string(new_value)
-        if self.type == 'Color':
+        if self.kind == 'Color':
             return self.validate_color(new_value)
-        if self.type == 'Timezone':
+        if self.kind == 'Timezone':
             return self.validate_timezone(new_value)
         return new_value
 
@@ -167,155 +182,155 @@ ALL_SETTINGS = {
     'look_alert': {
         'category': 'Alerts',
         'description': 'Show alert when looked at?',
-        'default': True,
-        'type': 'Bool'
+        'default_value': True,
+        'kind': 'Bool'
     },
 
 
     'finger_alert': {
         'category': 'Alerts',
         'description': 'Show alert when targeted by +finger?',
-        'default': True,
-        'type': 'Bool'
+        'default_value': True,
+        'kind': 'Bool'
     },
 
 
     'bbscan_alert': {
         'category': 'Alerts',
-        'description': 'Display unread BBS messages at logon?',
-        'default': True,
-        'type': 'Bool'
+        'description': 'Logon: Run +bbscan?',
+        'default_value': True,
+        'kind': 'Bool'
     },
 
 
-    'idle_duration': {
+    'idle_warn': {
         'category': 'Alerts',
-        'description': 'Minutes until pagers receive idle message.',
-        'default': duration_from_string('30m'),
-        'type': 'Duration'
+        'description': 'Minutes until declared idle.',
+        'default_value': duration_from_string('30m'),
+        'kind': 'Duration'
     },
 
     'mail_alert': {
         'category': 'Alerts',
-        'description': 'Notify about unread mail at logon?',
-        'default': True,
-        'type': 'Bool'
+        'description': 'Logon: Notify about unread mail?',
+        'default_value': True,
+        'kind': 'Bool'
     },
 
     'scenes_alert': {
         'category': 'Alerts',
-        'description': 'Notify about upcoming scenes at logon?',
-        'default': True,
-        'type': 'Bool'
+        'description': 'Logon: Notify about upcoming scenes?',
+        'default_value': True,
+        'kind': 'Bool'
     },
 
     #Channel Settings
-    'channel_namelink': {
+    'namelink_channel': {
         'category': 'Channel',
         'description': 'Make speaker name clickable?',
-        'default': True,
-        'type': 'Bool'
+        'default_value': True,
+        'kind': 'Bool'
     },
 
-    'channel_quotes_color': {
+    'quotes_channel': {
         'category': 'Channel',
         'description': 'Color of " characters?',
-        'default': 'n',
-        'type': 'Color'
+        'default_value': 'n',
+        'kind': 'Color'
     },
 
-    'channel_speech_color': {
+    'speech_channel': {
         'category': 'Channel',
         'description': 'Color of channel dialogue?',
-        'default': 'n',
-        'type': 'Color'
+        'default_value': 'n',
+        'kind': 'Color'
     },
 
     # Color settings.
     'border_color': {
         'category': 'Color',
         'description': 'Color of borders, headers, etc?',
-        'default': 'M',
-        'type': 'Color'
+        'default_value': 'M',
+        'kind': 'Color'
     },
 
     'columnname_color': {
         'category': 'Color',
         'description': 'Color of table column names?',
-        'default': 'G',
-        'type': 'Color'
+        'default_value': 'G',
+        'kind': 'Color'
     },
 
     'headerstar_color': {
         'category': 'Color',
         'description': 'Color of * in headers?',
-        'default': 'm',
-        'type': 'Color'
+        'default_value': 'm',
+        'kind': 'Color'
     },
 
     'headertext_color': {
         'category': 'Color',
         'description': 'Color of text in headers?',
-        'default': 'w',
-        'type': 'Color'
+        'default_value': 'w',
+        'kind': 'Color'
     },
 
     # Message settings.
     'msgborder_color': {
         'category': 'Message',
         'description': 'Color of system message bracing?',
-        'default': 'm',
-        'type': 'Color'
+        'default_value': 'm',
+        'kind': 'Color'
     },
 
     'msgtext_color': {
         'category': 'Message',
         'description': 'Color of name in system messages?',
-        'default': 'w',
-        'type': 'Color'
+        'default_value': 'w',
+        'kind': 'Color'
     },
 
     'oocborder_color': {
         'category': 'Message',
         'description': 'Color of OOC message bracing?',
-        'default': 'x',
-        'type': 'Color'
+        'default_value': 'x',
+        'kind': 'Color'
     },
 
     'ooctext_color': {
         'category': 'Message',
         'description': 'Color of OOC tag?',
-        'default': 'r',
-        'type': 'Color'
+        'default_value': 'r',
+        'kind': 'Color'
     },
 
     'page_color': {
         'category': 'Message',
         'description': 'Color of incoming pages?',
-        'default': 'n',
-        'type': 'Color'
+        'default_value': 'n',
+        'kind': 'Color'
     },
 
     'outpage_color': {
         'category': 'Message',
         'description': 'Color of sent pages?',
-        'default': 'n',
-        'type': 'Color'
+        'default_value': 'n',
+        'kind': 'Color'
     },
 
     # Room settings.
     'exitname_color': {
         'category': 'Room',
         'description': 'Color of exit names?',
-        'default': 'n',
-        'type': 'Color'
+        'default_value': 'n',
+        'kind': 'Color'
     },
 
     'exitalias_color': {
         'category': 'Room',
         'description': 'Color of exit aliases?',
-        'default': 'n',
-        'type': 'Color'
+        'default_value': 'n',
+        'kind': 'Color'
     },
 
     #System
@@ -323,8 +338,8 @@ ALL_SETTINGS = {
     'timezone': {
         'category': 'System',
         'description': 'Timezone used for date displays?',
-        'default': pytz.UTC,
-        'type': 'Timezone'
+        'default_value': pytz.UTC,
+        'kind': 'Timezone'
     },
 
 

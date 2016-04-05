@@ -22,6 +22,8 @@ several more options for customizing the Guest account system.
 
 """
 
+from __future__ import unicode_literals
+
 import pytz
 from django.conf import settings
 from evennia import DefaultPlayer, DefaultGuest
@@ -215,8 +217,8 @@ class Player(DefaultPlayer):
     def sys_msg(self, message, sys_name='SYSTEM', error=False):
         if error:
             message = '{rERROR:{n %s' % message
-        alert = '{%s-=<{n{%s%s{n{%s>=-{n ' % (self.settings.get('color_msgborder'), self.settings.get('color_msgtext'),
-                                            sys_name.upper(), self.settings.get('color_msgborder'))
+        alert = '{%s-=<{n{%s%s{n{%s>=-{n ' % (self.settings.get('msgborder_color'), self.settings.get('msgtext_color'),
+                                            sys_name.upper(), self.settings.get('msgborder_color'))
         send_string = alert + '(Account) ' + message
         self.msg(unicode(ANSIString(send_string)))
 

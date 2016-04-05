@@ -21,8 +21,8 @@ def make_table(*args, **kwargs):
     if 'viewer' in kwargs:
         viewer = kwargs['viewer']
         try:
-            border_color = viewer.settings.get('color_border')
-            column_color = viewer.settings.get('color_columns')
+            border_color = viewer.settings.get('border_color')
+            column_color = viewer.settings.get('columnname_color')
         except AttributeError:
             border_color = 'M'
             column_color = 'G'
@@ -70,10 +70,6 @@ def make_column_table(*args, **kwargs):
     return table
 
 
-class AthanorError(Exception):
-    pass
-
-
 def connected_sessions():
     """
     Simple shortcut to retrieving all connected sessions.
@@ -81,7 +77,7 @@ def connected_sessions():
     Returns:
         list
     """
-    return evennia.SESSION_HANDLER.sessions.values()
+    return evennia.SESSION_HANDLER.values()
 
 
 def connected_players(viewer=None):
@@ -168,7 +164,7 @@ def duration_from_string(time_string):
         elif re.match(r'^[\d]+y$', interval):
             days =+ int(interval.lower().rstrip("y")) * 365
         else:
-            raise AthanorError("Could not convert section '%s' to a time duration." % interval)
+            raise ValueError("Could not convert section '%s' to a time duration." % interval)
 
     return datetime.timedelta(days, seconds, 0, 0, minutes, hours, weeks)
 
@@ -203,9 +199,9 @@ def header(header_text=None, width=78, width_mode='fixed', fill_character=None, 
     colors = {}
     if viewer:
         try:
-            colors['border'] = viewer.settings.get('color_border')
-            colors['headertext'] = viewer.settings.get('color_headertext')
-            colors['headerstar'] = viewer.settings.get('color_headerstar')
+            colors['border'] = viewer.settings.get('border_color')
+            colors['headertext'] = viewer.settings.get('headertext_color')
+            colors['headerstar'] = viewer.settings.get('headerstar_color')
         except AttributeError:
             colors['border'] = MAIN_COLOR_DEFAULTS['borders']['border']
             colors['headertext'] = MAIN_COLOR_DEFAULTS['borders']['bordertext']

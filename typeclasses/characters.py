@@ -14,14 +14,14 @@ from django.conf import settings
 from evennia import DefaultCharacter
 from evennia.utils.utils import time_format, lazy_property
 from evennia.utils.ansi import ANSIString
-from commands.library import AthanorError, utcnow, mxp_send, header
+from commands.library import ValueError, utcnow, mxp_send, header
 
 from world.storyteller.manager import StorytellerHandler
 
 from world.storyteller.exalted2.rules import STATS as EX2_STATS, TEMPLATES as EX2_TEMPLATES, POOLS as EX2_POOLS
 
 from world.storyteller.exalted3.rules import STATS as EX3_STATS, TEMPLATES as EX3_TEMPLATES, POOLS as EX3_POOLS, \
-    ANCESTORS as EX3_ANCESTORS, PARENTS as EX3_PARENTS, POWERS as EX3_POWERS
+    ANCESTORS as EX3_ANCESTORS, PARENTS as EX3_PARENTS, POWERS as EX3_POWERS, CUSTOM as EX3_CUSTOM, MERITS as EX3_MERITS
 from world.storyteller.exalted3.sheet import SECTION_LIST as EX3_SHEET
 
 class Character(DefaultCharacter):
@@ -85,7 +85,7 @@ class Character(DefaultCharacter):
 
         """
         if not search_name:
-            raise AthanorError("Character name field empty.")
+            raise ValueError("Character name field empty.")
 
         # First, collect all possible character candidates.
         candidates = Character.objects.filter_family()
@@ -101,7 +101,7 @@ class Character(DefaultCharacter):
 
         # We found NOBODY? Then error!
         if not search_results:
-            raise AthanorError("Character '%s' not found." % search_name)
+            raise ValueError("Character '%s' not found." % search_name)
 
         # We only want to return one result, even if multiple matches were found.
         if isinstance(search_results, list):
@@ -181,8 +181,8 @@ class Character(DefaultCharacter):
     def sys_msg(self, message, sys_name='SYSTEM', error=False):
         if error:
             message = '{rERROR:{n %s' % message
-        alert = '{%s-=<{n{%s%s{n{%s>=-{n ' % (self.settings.get('color_msgborder'), self.settings.get('color_msgtext'),
-                                            sys_name.upper(), self.settings.get('color_msgborder'))
+        alert = '{%s-=<{n{%s%s{n{%s>=-{n ' % (self.settings.get('msgborder_color'), self.settings.get('msgtext_color'),
+                                            sys_name.upper(), self.settings.get('msgborder_color'))
         send_string = alert + message
         self.msg(unicode(ANSIString(send_string)))
 
@@ -191,9 +191,9 @@ class Character(DefaultCharacter):
             try:
                 new_value = int(update)
             except ValueError:
-                raise AthanorError("Character slots must be non-negative integers.")
+                raise ValueError("Character slots must be non-negative integers.")
             if new_value < 0:
-                raise AthanorError("Character slots must be non-negative integers.")
+                raise ValueError("Character slots must be non-negative integers.")
             self.db._slot_value = new_value
             self.sys_msg("This Character is now worth %i Character Slots." % new_value)
         return int(self.db._slot_value)
@@ -259,3 +259,5 @@ class Ex3Character(StorytellerCharacter):
     storyteller_parents = EX3_PARENTS
     storyteller_sheet = EX3_SHEET
     storyteller_powers = EX3_POWERS
+    storyteller_custom = EX3_CUSTOM
+    storyteller_merits = EX3_MERITS

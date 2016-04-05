@@ -1,7 +1,8 @@
+from __future__ import unicode_literals
 import datetime, pytz, random
 from django.conf import settings
 from commands.command import AthCommand
-from commands.library import AthanorError, partial_match
+from commands.library import partial_match
 from world.database.mushimport.models import MushObject, MushAttribute, cobj, MushAccount
 from world.database.mushimport.convpenn import read_penn
 from world.database.grid.models import District
@@ -48,7 +49,7 @@ class CmdImport(AthCommand):
             self.error(str(err))
             self.error("Had an IOError. Did you put the outdb in the game's root directory?")
             return
-        except AthanorError as err:
+        except ValueError as err:
             self.error(str(err))
             return
 

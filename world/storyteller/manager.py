@@ -9,11 +9,11 @@ from evennia.utils.utils import make_iter
 
 
 class SheetSection(object):
-
     name = 'DefaultSection'
     list_order = 0
     sheet_display = True
     handler = None
+    kind = 'sheet'
 
     def __init__(self, handler):
         self.handler = handler
@@ -26,6 +26,9 @@ class SheetSection(object):
 
     def __unicode__(self):
         return self.name
+
+    def __repr__(self):
+        return '<SheetSection: %s>' % self.name
 
     def load(self):
         pass
@@ -143,12 +146,24 @@ class StatSection(SheetSection):
     def save(self):
         self.owner.storyteller.save_stats()
 
+    def set(self, skill, rating):
+        found_stat = partial_match(skill, self.choices)
+        if not found_stat:
+            raise ValueError("Cannot find '%s'. Your choices are: %s" % (skill,
+                                                                         ', '.join(str(stat) for stat in self.choices)))
+        try:
+            rating = int(rating)
+        except ValueError:
+            raise ValueError("Rating must be a number!")
+        found_stat.rating = rating
+        found_stat.save()
+
     def all(self):
         return self.choices
 
 
 class Attributes(StatSection):
-    base_name = 'Attributes'
+    name = 'Attributes'
     section_type = 'Attribute'
     list_order = 10
     physical = tuple()
@@ -201,6 +216,7 @@ class Specialties(StatSection):
     section_type = 'Specialty'
     list_order = 16
     specialized = tuple()
+    kind = 'specialty'
 
     def load(self):
         self.choices = [stat for stat in self.handler.stats if 'special' in stat.features]
@@ -226,6 +242,7 @@ class Favored(StatSection):
     section_type = 'Favored Stat'
     sheet_display = False
     existing = tuple()
+    kind = 'favored'
 
     def load(self):
         self.choices = [stat for stat in self.handler.stats if 'favor' in stat.features]
@@ -245,10 +262,7 @@ class MeritSection(SheetSection):
     custom_type = None
     sheet_name = 'Default Merits'
     existing = tuple()
-    _description = None
-    _notes = None
-    _rating = 0
-    save_fields = ('_rating', '_description', '_notes')
+    kind = 'merit'
 
     def load(self):
         self.existing = [merit for merit in self.handler.merits if isinstance(merit, self.custom_type)]
@@ -318,8 +332,10 @@ class AdvantageWordSection(AdvantageStatSection):
 
 
 class TemplateSection(SheetSection):
+    name = 'Template'
     use_editchar = False
     list_order = 0
+    kind = 'template'
 
     def sheet_render(self, width=78):
         servername = unicode(settings.SERVERNAME)
@@ -376,6 +392,7 @@ class StorytellerHandler(object):
     render_sections = tuple()
     template = None
     data_dict = dict()
+    sheet_dict = dict()
 
     def __repr__(self):
         return '<StorytellerHandler for %s>' % self.owner.key
@@ -386,6 +403,7 @@ class StorytellerHandler(object):
         """
         self.owner = owner
         self.load()
+        self.save()
 
     def load(self):
         self.load_storage()
@@ -394,7 +412,7 @@ class StorytellerHandler(object):
         self.load_pools()
         self.load_custom()
         self.load_powers()
-        #self.load_merits()
+        self.load_merits()
         self.load_sheet()
 
     def save(self):
@@ -403,6 +421,7 @@ class StorytellerHandler(object):
         self.save_custom()
         self.save_pools()
         self.save_powers()
+        self.save_merits()
 
     def load_storage(self):
         owner = self.owner
@@ -441,7 +460,6 @@ class StorytellerHandler(object):
         for kind in stat_types:
             self.stats_type[kind] = tuple(sorted([stat for stat in self.stats if stat.kind == kind],
                                                  key=lambda stat2: stat2.list_order))
-        self.save_stats()
 
     def save_stats(self):
         for stat in self.stats: stat.save()
@@ -455,7 +473,6 @@ class StorytellerHandler(object):
             pool = Pool(key=key, handler=self)
             pools.append(pool)
         self.pools = sorted(pools, key=lambda order: order.list_order)
-        self.save_pools()
 
     def save_pools(self):
         for pool in self.pools: pool.save()
@@ -467,7 +484,6 @@ class StorytellerHandler(object):
             stat = CustomStat(key=k, handler=self)
             init_stats.append(stat)
         self.custom = sorted(init_stats, key=lambda entry: entry.list_order)
-        self.save_custom()
 
     def save_custom(self):
         for custom in self.custom: custom.save()
@@ -497,7 +513,9 @@ class StorytellerHandler(object):
     def load_sheet(self):
         self.sheet_sections = list()
         for section in self.owner.storyteller_sheet:
-            self.sheet_sections.append(section(handler=self))
+            section_obj = section(handler=self)
+            self.sheet_sections.append(section_obj)
+            self.sheet_dict[section_obj.kind] = section_obj
         self.sheet_sections = sorted(self.sheet_sections, key=lambda stat: stat.list_order)
         self.render_sections = [section for section in self.sheet_sections if section.sheet_display]
 
@@ -540,12 +558,12 @@ class StorytellerProperty(object):
         self.key = key
         self.owner = handler.owner
         self.handler = handler
+        self.load()
         default_set = set(self.features_default)
         remove_set = set(self.features_remove)
         add_set = set(self.features_add)
         final_set = default_set.union(add_set)
         self.features = tuple(final_set.difference(remove_set))
-        self.load()
 
     @property
     def save_key(self):
@@ -556,10 +574,7 @@ class StorytellerProperty(object):
         return self.handler.data_dict[self.save_type]
 
     def export(self):
-        export_dict = dict()
-        for field in self.save_fields:
-            export_dict[field] = getattr(self, field)
-        return export_dict
+        return {field: getattr(self, field) for field in self.save_fields}
 
     def save(self):
         self.saver[self.save_key] = self.export()
@@ -603,7 +618,8 @@ class Template(StorytellerProperty):
         ancestor_data.update(parent_data)
         ancestor_data.update(child_data)
         ancestor_data.update(save_data)
-        return ancestor_data
+        for k, v in ancestor_data.iteritems():
+            setattr(self, k, v)
 
     @property
     def info(self):
@@ -688,7 +704,12 @@ class Stat(StorytellerProperty):
         ancestor_data.update(parent_data)
         ancestor_data.update(child_data)
         ancestor_data.update(save_data)
-        return ancestor_data
+        for k, v in ancestor_data.iteritems():
+            setattr(self, k, v)
+
+    def save(self):
+        super(Stat, self).save()
+        self.handler.stats_dict[self.save_key] = self.rating
 
     @property
     def rating(self):
@@ -826,14 +847,17 @@ class CustomStat(Stat):
         self.parent = key[0]
         self.name = dramatic_capitalize(key[1])
 
-    def defaults(self, owner, key, save_data):
-        child_data = owner.storyteller_customs[key]
-        ancestor_data = dict(owner.storyteller_ancestors['custom'])
-        parent_data = owner.storyteller_parents['custom'][child_data['parent']]
+    def load(self):
+        owner = self.owner
+        save_data = self.saver.get(self.save_key, dict())
+        child_data = owner.storyteller_custom[self.save_key]
+        ancestor_data = dict(owner.storyteller_ancestors[self.save_key])
+        parent_data = owner.storyteller_parents[self.save_key][child_data[self.save_key]]
         ancestor_data.update(parent_data)
         ancestor_data.update(child_data)
         ancestor_data.update(save_data)
-        return ancestor_data
+        for k, v in ancestor_data.iteritems():
+            setattr(self, k, v)
 
     @property
     def save_key(self):
@@ -841,30 +865,35 @@ class CustomStat(Stat):
 
 class Merit(StorytellerProperty):
     save_type = 'merits'
+    _description = None
+    _notes = None
+    _rating = 0
+    save_fields = ('_rating', '_description', '_notes')
 
     def __init__(self, key, handler):
-        super(Merit, self).__init__(key=key[2], handler=handler)
         self.kind = key[0]
+        super(Merit, self).__init__(key=key[2], handler=handler)
         self.category = dramatic_capitalize(key[1])
         self.key = dramatic_capitalize(self.key)
 
-    def defaults(self, owner, key, save_data):
-        child_data = owner.storyteller_merits[key]
+    def load(self):
+        owner = self.owner
+        save_data = self.saver.get(self.save_key, dict())
+        child_data = owner.storyteller_merits[self.kind]
         ancestor_data = dict(owner.storyteller_ancestors[self.save_type])
         parent_data = owner.storyteller_parents[self.save_type][child_data['parent']]
         ancestor_data.update(parent_data)
         ancestor_data.update(child_data)
         ancestor_data.update(save_data)
-        return ancestor_data
+        for k, v in ancestor_data.iteritems():
+            setattr(self, k, v)
 
-    def save(self):
-        self.saver[(self.kind, self.category, self.key)] = self.export()
 
 class Power(StorytellerProperty):
     save_type = 'power'
     kind = 'power'
     _rating = 1
-    save_fields = ('_rating')
+    save_fields = ('_rating',)
 
     def __init__(self, key, handler):
         self.kind = key[0]
@@ -874,6 +903,9 @@ class Power(StorytellerProperty):
 
     def __int__(self):
         return self.rating
+
+    def __repr__(self):
+        return '<%s: %s (%s)>' % (self.kind, self.key, self.rating)
 
     @property
     def rating(self):
@@ -888,7 +920,8 @@ class Power(StorytellerProperty):
         ancestor_data.update(parent_data)
         ancestor_data.update(child_data)
         ancestor_data.update(save_data)
-        return ancestor_data
+        for k, v in ancestor_data.iteritems():
+            setattr(self, k, v)
 
     def sheet_format(self, width=23, colors=None, mode='stat'):
         if mode == 'stat':
@@ -905,11 +938,9 @@ class Power(StorytellerProperty):
     def stat_format(self, width, colors):
         pass
 
+    @property
     def save_key(self):
         return (self.kind, self.sub_category, self.key)
-
-    def save(self):
-        self.saver[self.save_key] = self.export()
 
 class Pool(StorytellerProperty):
     save_type = 'pool'
@@ -940,13 +971,14 @@ class Pool(StorytellerProperty):
     def load(self):
         owner = self.owner
         save_data = self.handler.data_dict[self.save_type].get(self.save_key, dict())
-        child_data = owner.storyteller_pools[key]
+        child_data = owner.storyteller_pools[self.key]
         ancestor_data = dict(owner.storyteller_ancestors[self.save_type])
         parent_data = owner.storyteller_parents[self.save_type][child_data['parent']]
         ancestor_data.update(parent_data)
         ancestor_data.update(child_data)
         ancestor_data.update(save_data)
-        return ancestor_data
+        for k, v in ancestor_data.iteritems():
+            setattr(self, k, v)
 
     @property
     def max(self):

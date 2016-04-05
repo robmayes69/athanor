@@ -12,6 +12,7 @@ to be modified.
 
 """
 
+from __future__ import unicode_literals
 from evennia import DefaultChannel
 from evennia.utils import logger
 from evennia.utils.utils import make_iter
@@ -226,8 +227,9 @@ class GroupIC(GroupChannel):
     def get_group(self):
         return self.group_ic.all().first()
 
-    def init_locks(self):
-        group = self.get_group()
+    def init_locks(self, group=None):
+        if not group:
+            group = self.get_group()
         lockstring = "control:perm(Wizards) or group(##,1);send:perm(Wizards) or gperm(##,ic);listen:perm(Wizards) or gperm(##,ic)"
         self.locks.add(lockstring.replace('##', str(group.id)))
 
@@ -251,8 +253,9 @@ class GroupIC(GroupChannel):
 
 class GroupOOC(GroupChannel):
 
-    def init_locks(self):
-        group = self.get_group()
+    def init_locks(self, group=None):
+        if not group:
+            group = self.get_group()
         lockstring = "control:perm(Wizards) or group(##,1);send:perm(Wizards) or gperm(##,ooc);listen:perm(Wizards) or gperm(##,ooc)"
         self.locks.add(lockstring.replace('##', str(group.id)))
 

@@ -70,13 +70,13 @@ PARENTS = {
     },
     'merit': {
         'merit': {
-            'kind': 'Merit',
+            'kind': 'merit',
         },
         'flaw': {
-            'kind': 'Flaw',
+            'kind': 'flaw',
         },
         'pact': {
-            'kind': 'Pact',
+            'kind': 'pact',
         }
     },
     'power': {
@@ -318,6 +318,27 @@ STATS = {
         '_rating': 5,
     }
 
+}
+
+CUSTOM = {
+    'craft': {
+
+    },
+    'style': {
+
+    }
+}
+
+MERITS = {
+    'merit': {
+        'parent': 'merit'
+    },
+    'flaw': {
+        'parent': 'merit'
+    },
+    'pact': {
+        'parent': 'merit'
+    }
 }
 
 POOLS = {

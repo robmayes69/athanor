@@ -1,6 +1,7 @@
+from __future__ import unicode_literals
+
 from world.database.info.models import valid_name
 from commands.command import AthCommand
-from commands.library import AthanorError
 
 class CmdInfo(AthCommand):
     """
@@ -65,8 +66,8 @@ class CmdInfo(AthCommand):
 
         try:
             self.target, self.filelist = self.target_character(lhs)
-        except AthanorError:
-            self.error(str(AthanorError))
+        except ValueError:
+            self.error(str(ValueError))
             return
 
         if not self.target:
@@ -120,7 +121,7 @@ class CmdInfo(AthCommand):
         else:
             try:
                 target = self.character.search_character(check_input)
-            except AthanorError:
+            except ValueError:
                 target = self.character
                 filelist = check_input.split("|")
         filelist = [entry.strip() for entry in filelist]
@@ -149,7 +150,7 @@ class CmdInfo(AthCommand):
                 file, created = self.category.files.get_or_create(title__iexact=infoname)
                 file.title = infoname
                 file.set_contents(rhs, self.character.actor)
-            except AthanorError as err:
+            except ValueError as err:
                 self.error(str(err))
                 return
             if self.caller is not target:
@@ -167,7 +168,7 @@ class CmdInfo(AthCommand):
                 oldname = str(entry)
                 try:
                     entry.del_file()
-                except AthanorError as err:
+                except ValueError as err:
                     self.error(str(err))
                     return
                 if self.caller is not target:
@@ -184,7 +185,7 @@ class CmdInfo(AthCommand):
             else:
                 try:
                     entry.set_approved(approver=self.character.actor)
-                except AthanorError as err:
+                except ValueError as err:
                     self.error(str(err))
                     return
                 if self.caller is not target:
@@ -201,7 +202,7 @@ class CmdInfo(AthCommand):
             else:
                 try:
                     entry.set_unapproved()
-                except AthanorError as err:
+                except ValueError as err:
                     self.error(str(err))
                     return
                 if self.caller is not target:
@@ -219,7 +220,7 @@ class CmdInfo(AthCommand):
                 oldname = str(file.title)
                 try:
                     file.set_name(rhs)
-                except AthanorError as err:
+                except ValueError as err:
                     self.error(str(err))
                     return
                 if self.caller is not target:

@@ -1,7 +1,8 @@
+from __future__ import unicode_literals
 from django.db import models
 from evennia.locks.lockhandler import LockHandler
 from evennia.utils.utils import lazy_property
-from commands.library import AthanorError, tabular_table, separator, sanitize_string
+from commands.library import tabular_table, separator, sanitize_string
 
 # Create your models here.
 class District(models.Model):
@@ -21,10 +22,10 @@ class District(models.Model):
 
     def do_rename(self, new_name):
         if not new_name:
-            raise AthanorError("no new name entered!")
+            raise ValueError("no new name entered!")
         clean_name = sanitize_string(new_name, strip_ansi=True)
         if District.objects.filter(key__iexact=clean_name).exclude(id=self.id).count():
-            raise AthanorError("District names must be unique.")
+            raise ValueError("District names must be unique.")
         else:
             self.key = clean_name
             self.save()

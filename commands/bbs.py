@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import re
 from django.conf import settings
 from evennia.locks.lockhandler import LockException
@@ -5,7 +7,7 @@ from world.database.bbs.models import Board, list_all_boards, list_boards
 from world.database.groups.models import Group
 from commands.command import AthCommand
 from commands.library import header, make_table, mxp_send
-from commands.library import AthanorError, duration_from_string, sanitize_string, penn_substitutions
+from commands.library import duration_from_string, sanitize_string, penn_substitutions
 from typeclasses.scripts import BoardTimeout
 from evennia import create_script
 from evennia.utils.utils import time_format
@@ -33,17 +35,17 @@ class BBCommand(AthCommand):
             checker = self.character
         boards = list_boards(group=group, type='read', checker=checker)
         if not boards:
-            raise AthanorError("No applicable boards.")
+            raise ValueError("No applicable boards.")
         try:
             find_num = int(find_name)
         except ValueError:
             find_board = self.partial(find_name, boards)
             if not find_board:
-                raise AthanorError("Board '%s' not found." % find_name)
+                raise ValueError("Board '%s' not found." % find_name)
             return find_board
         else:
             if find_num not in [board.order for board in boards]:
-                raise AthanorError("Board '%s' not found." % find_name)
+                raise ValueError("Board '%s' not found." % find_name)
             return [board for board in boards if board.order == find_num][0]
 
     def func(self):
@@ -151,9 +153,9 @@ class BBCommand(AthCommand):
         if not player:
             player = self.player
         if not board:
-            raise AthanorError("No board entered to check.")
+            raise ValueError("No board entered to check.")
         if not check:
-            raise AthanorError("No posts entered to check.")
+            raise ValueError("No posts entered to check.")
         fullnums = []
         for arg in check.split(','):
             arg = arg.strip()
@@ -205,7 +207,7 @@ class CmdBBList(BBCommand):
     def board_leave(self, lhs=None, rhs=None):
         try:
             board = self.find_board(find_name=lhs.strip(), group=self.group, checker=self.character)
-        except AthanorError as err:
+        except ValueError as err:
             self.error(unicode(err))
             return
         if self.character in board.ignore_list.all():
@@ -217,7 +219,7 @@ class CmdBBList(BBCommand):
     def board_join(self, lhs=None, rhs=None):
         try:
             board = self.find_board(find_name=lhs.strip(), group=self.group, checker=self.character)
-        except AthanorError as err:
+        except ValueError as err:
             self.error(unicode(err))
             return
         if self.character not in board.ignore_list.all():
@@ -268,7 +270,7 @@ class CmdBBAdmin(BBCommand):
             try:
                 self.group.check_permission(checker=self.character, check="gbadmin")
                 board = self.create_board(lhs)
-            except AthanorError as err:
+            except ValueError as err:
                 self.error(unicode(err))
                 return
         else:
@@ -277,7 +279,7 @@ class CmdBBAdmin(BBCommand):
                 return
             try:
                 board = self.create_board(lhs)
-            except AthanorError as err:
+            except ValueError as err:
                 self.error(unicode(err))
                 return
         self.sys_msg("Board '%s' created!" % board)
@@ -286,7 +288,7 @@ class CmdBBAdmin(BBCommand):
 
     def create_board(self, lhs):
         if not lhs:
-            raise AthanorError("Board requires a name.")
+            raise ValueError("Board requires a name.")
         new_name = sanitize_string(lhs, strip_ansi=True)
         try:
             new_num = max([board.order for board in list_all_boards(group=self.group)]) + 1
@@ -302,7 +304,7 @@ class CmdBBAdmin(BBCommand):
     def board_cleargroup(self, name):
         try:
             board = self.find_board(find_name=name.strip(), group=self.group, checker=self.character)
-        except AthanorError as err:
+        except ValueError as err:
             self.error(unicode(err))
             return
         if not self.verify("Delete Board %s" % board.order):
@@ -319,7 +321,7 @@ class CmdBBAdmin(BBCommand):
         try:
             board = self.find_board(find_name=lhs.strip(), group=self.group, checker=self.character)
             new_order = int(rhs)
-        except AthanorError as err:
+        except ValueError as err:
             self.error(unicode(err))
             return
         except ValueError:
@@ -335,7 +337,7 @@ class CmdBBAdmin(BBCommand):
     def board_lock(self, lhs=None, rhs=None):
         try:
             board = self.find_board(find_name=lhs.strip(), group=self.group, checker=self.character)
-        except AthanorError as err:
+        except ValueError as err:
             self.error(unicode(err))
             return
         if not board.check_permission(checker=self.character, type='admin', checkadmin=False):
@@ -479,7 +481,7 @@ class CmdBBWrite(BBCommand):
             return
         try:
             board = self.find_board(find_name=findname.strip(), group=self.group, checker=self.character)
-        except AthanorError as err:
+        except ValueError as err:
             self.error(unicode(err))
             return
         if not board.perm_check(self.character, 'write'):
@@ -508,7 +510,7 @@ class CmdBBWrite(BBCommand):
             return
         try:
             board = self.find_board(find_name=findname.strip(), group=self.group, checker=self.character)
-        except AthanorError as err:
+        except ValueError as err:
             self.error(unicode(err))
             return
         board.make_post(actor=self.character.actor, subject=sanitize_string(subject),
@@ -558,7 +560,7 @@ class CmdBBWrite(BBCommand):
         try:
             board = self.find_board(find_name=boardname, group=self.group, checker=self.character)
             posts = self.parse_postnums(check=postnums, board=board)
-        except AthanorError as err:
+        except ValueError as err:
             self.error(unicode(err))
             return
         if len(posts) > 1:
@@ -587,7 +589,7 @@ class CmdBBWrite(BBCommand):
             board = self.find_board(find_name=boardname, group=self.group, checker=self.character)
             posts = self.parse_postnums(check=postnums, board=board)
             board2 = self.find_board(find_name=rhs, group=self.group, checker=self.character)
-        except AthanorError as err:
+        except ValueError as err:
             self.error(unicode(err))
             return
         if not board2.perm_check(self.player, 'write'):
@@ -616,7 +618,7 @@ class CmdBBWrite(BBCommand):
         try:
             board = self.find_board(find_name=boardname, group=self.group, checker=self.character)
             posts = self.parse_postnums(check=postnums, board=board)
-        except AthanorError as err:
+        except ValueError as err:
             self.error(unicode(err))
             return
         if not self.verify("posts delete %s" % postnums):
@@ -645,7 +647,7 @@ class CmdBBWrite(BBCommand):
         try:
             board = self.find_board(find_name=boardname, group=self.group, checker=self.character)
             posts = self.parse_postnums(check=postnums, board=board)
-        except AthanorError as err:
+        except ValueError as err:
             self.error(unicode(err))
             return
         if not board.timeout:
@@ -677,7 +679,7 @@ class CmdBBWrite(BBCommand):
     def board_timeout_board_set(self, lhs, rhs):
         try:
             board = self.find_board(find_name=lhs, group=self.group, checker=self.character)
-        except AthanorError as err:
+        except ValueError as err:
             self.error(unicode(err))
             return
         if not board.perm_check(self.player, 'admin'):
@@ -758,7 +760,7 @@ class CmdBBRead(BBCommand):
         try:
             board = self.find_board(find_name=boardname, group=self.group, checker=self.character)
             posts = self.parse_postnums(check=postnums, board=board)
-        except AthanorError as err:
+        except ValueError as err:
             self.error(unicode(err))
             return
         if not posts:
@@ -773,7 +775,7 @@ class CmdBBRead(BBCommand):
             return
         try:
             board = self.find_board(find_name=lhs, group=self.group, checker=self.character)
-        except AthanorError as err:
+        except ValueError as err:
             self.error(unicode(err))
             return
         self.caller.msg(board.show_board(self.player))
@@ -799,7 +801,7 @@ class CmdBBRead(BBCommand):
         else:
             try:
                 board = self.find_board(find_name=lhs.strip(), group=self.group, checker=self.character)
-            except AthanorError as err:
+            except ValueError as err:
                 self.error(unicode(err))
                 return
             for post in board.posts.all():
