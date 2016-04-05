@@ -88,17 +88,8 @@ def connected_players(viewer=None):
         list
     """
     from typeclasses.players import Player
-    players = []
-    session_list = [session for session in connected_sessions() if session.logged_in]
-    for session in session_list:
-        player = session.get_player()
-        if player.is_typeclass(Player, exact=False):
-            players.append(player)
-    player_list = sorted(list(set(players)), key=lambda play: play.key)
-    if viewer:
-        return [player for player in player_list if viewer.can_see(player)]
-    return player_list
-
+    return sorted([player for player in evennia.SESSION_HANDLER.all_connected_players()
+            if player.is_typeclass(Player, exact=False)], key=lambda play: play.key)
 
 def connected_characters(viewer=None):
     """
@@ -108,13 +99,8 @@ def connected_characters(viewer=None):
         list
     """
     from typeclasses.characters import Character
-    characters = []
-    session_list = [session for session in connected_sessions() if session.logged_in]
-    for session in session_list:
-        character = session.get_puppet()
-        if character:
-            if character.is_typeclass(Character, exact=False):
-                characters.append(session.get_puppet())
+    characters = [session.get_puppet() for session in connected_sessions() if session.get_puppet()]
+    characters = [char for char in characters if char.is_typeclass(Character, exact=False)]
     character_list = sorted(list(set(characters)), key=lambda char: char.key)
     if viewer:
         return [char for char in character_list if viewer.can_see(char)]

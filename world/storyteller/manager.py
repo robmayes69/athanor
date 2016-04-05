@@ -137,7 +137,6 @@ class SheetSection(object):
 
 class StatSection(SheetSection):
     choices = tuple()
-    section_type = 'Stat'
     kind = 'stat'
 
     def load(self):
@@ -161,10 +160,50 @@ class StatSection(SheetSection):
     def all(self):
         return self.choices
 
+class CustomSection(StatSection):
+    kind = 'custom'
+
+    def load(self):
+        self.existing = sorted([stat for stat in self.handler.custom if stat.kind == self.kind],
+                               key=lambda stat2: stat2.key)
+
+    def save(self):
+        self.owner.storyteller.save_custom()
+
+    def set(self, skill, rating):
+        try:
+            rating = int(rating)
+        except ValueError:
+            raise ValueError("That's not an acceptable rating!")
+        find_stat = partial_match(skill, self.existing)
+        if find_stat:
+            if not find_stat.name.lower() == skill.lower():
+                find_stat = CustomStat((self.kind, skill), self.handler)
+        else:
+            find_stat = CustomStat((self.kind, skill), self.handler)
+        if rating > 0:
+            find_stat.rating = rating
+            find_stat.save()
+            self.load()
+        else:
+            del find_stat
+            self.save()
+
+    def sheet_render(self, width=78):
+        colors = self.sheet_colors
+        skills = [stat for stat in self.existing if stat.display()]
+        if not skills:
+            return
+        section = list()
+        section.append(self.sheet_header(self.name, width=width))
+        skill_display = [stat.sheet_format(width=24, colors=colors) for stat in skills]
+        skill_table = tabular_table(skill_display, field_width=24, line_length=width-2)
+        section.append(self.sheet_border(skill_table, width=width))
+        return '\n'.join(unicode(line) for line in section)
+
 
 class Attributes(StatSection):
     name = 'Attributes'
-    section_type = 'Attribute'
     list_order = 10
     physical = tuple()
     social = tuple()
@@ -191,7 +230,6 @@ class Attributes(StatSection):
 
 class Skills(StatSection):
     name = 'Skills'
-    section_type = 'Skill'
     list_order = 15
     kind = 'skill'
 
@@ -205,8 +243,8 @@ class Skills(StatSection):
             return
         section = list()
         section.append(self.sheet_header(self.name, width=width))
-        skill_display = [stat.sheet_format(width=23, colors=colors) for stat in skills]
-        skill_table = tabular_table(skill_display, field_width=23, line_length=width-2)
+        skill_display = [stat.sheet_format(width=24, colors=colors) for stat in skills]
+        skill_table = tabular_table(skill_display, field_width=24, line_length=width-2)
         section.append(self.sheet_border(skill_table, width=width))
         return '\n'.join(unicode(line) for line in section)
 
@@ -257,15 +295,23 @@ class Favored(StatSection):
 
 
 class MeritSection(SheetSection):
-    base_name = 'DefaultMerit'
+    name = 'DefaultMerit'
     list_order = 20
-    custom_type = None
-    sheet_name = 'Default Merits'
     existing = tuple()
     kind = 'merit'
 
     def load(self):
-        self.existing = [merit for merit in self.handler.merits if isinstance(merit, self.custom_type)]
+        self.existing = sorted([merit for merit in self.handler.merits if merit.kind == self.kind],
+                               key=lambda mer: mer.display_name)
+
+    def add(self, category, context, rating=None):
+        if rating is None:
+            rating = 0
+        new_merit = Merit(key=(self.kind, category, context), handler=self.handler)
+        new_merit.rating = rating
+        new_merit.save()
+        self.load()
+        return new_merit
 
     def sheet_render(self, width=78):
         if not self.existing:
@@ -273,10 +319,10 @@ class MeritSection(SheetSection):
         colors = self.sheet_colors
         section = list()
         merit_section = list()
-        section.append(self.sheet_header(self.sheet_name, width=width))
-        short_list = [merit for merit in self.existing if len(merit.full_name) <= 30]
-        long_list = [merit for merit in self.existing if len(merit.full_name) > 30]
-        short_format = [merit.sheet_format(colors=colors) for merit in short_list]
+        section.append(self.sheet_header(self.name, width=width))
+        short_list = [merit for merit in self.existing if len(merit.display_name) <= 30]
+        long_list = [merit for merit in self.existing if len(merit.display_name) > 30]
+        short_format = [merit.sheet_format(colors=colors, width=36) for merit in short_list]
         long_format = [merit.sheet_format(width=width-4, colors=colors) for merit in long_list]
         if short_list:
             merit_section.append(tabular_table(short_format, field_width=36, line_length=width-4))
@@ -333,7 +379,6 @@ class AdvantageWordSection(AdvantageStatSection):
 
 class TemplateSection(SheetSection):
     name = 'Template'
-    use_editchar = False
     list_order = 0
     kind = 'template'
 
@@ -448,6 +493,18 @@ class StorytellerHandler(object):
     def save_template(self):
         self.template.save()
 
+    def swap_template(self, key=None):
+        if not key:
+            raise ValueError("No template entered to swap to!")
+        find_template = partial_match(key, self.owner.storyteller_templates.keys())
+        if not find_template:
+            raise ValueError("Could not find a '%s' template." % key)
+        self.template = Template(find_template, self)
+        self.save_template()
+        self.load_pools()
+        self.load_sheet()
+
+
     def load_stats(self):
         owner = self.owner
         init_stats = list()
@@ -463,9 +520,6 @@ class StorytellerHandler(object):
 
     def save_stats(self):
         for stat in self.stats: stat.save()
-
-    def change_template(self, key=None):
-        pass
 
     def load_pools(self):
         pools = list()
@@ -559,6 +613,9 @@ class StorytellerProperty(object):
         self.owner = handler.owner
         self.handler = handler
         self.load()
+        self.init_features()
+
+    def init_features(self):
         default_set = set(self.features_default)
         remove_set = set(self.features_remove)
         add_set = set(self.features_add)
@@ -599,6 +656,7 @@ class Template(StorytellerProperty):
     sheet_column_1 = tuple()
     sheet_column_2 = tuple()
     save_fields = ('info_save',)
+    sheet_footer = ''
 
     def __str__(self):
         return self.name
@@ -843,16 +901,18 @@ class CustomStat(Stat):
     save_type = 'custom'
 
     def __init__(self, key, handler):
+        self.kind = key[0]
+        self.name = dramatic_capitalize(key[1])
         super(CustomStat, self).__init__(key=key[1].lower(), handler=handler)
         self.parent = key[0]
-        self.name = dramatic_capitalize(key[1])
+
 
     def load(self):
         owner = self.owner
         save_data = self.saver.get(self.save_key, dict())
-        child_data = owner.storyteller_custom[self.save_key]
-        ancestor_data = dict(owner.storyteller_ancestors[self.save_key])
-        parent_data = owner.storyteller_parents[self.save_key][child_data[self.save_key]]
+        child_data = owner.storyteller_custom[self.kind]
+        ancestor_data = dict(owner.storyteller_ancestors['custom'])
+        parent_data = owner.storyteller_parents['custom'][child_data['parent']]
         ancestor_data.update(parent_data)
         ancestor_data.update(child_data)
         ancestor_data.update(save_data)
@@ -863,18 +923,56 @@ class CustomStat(Stat):
     def save_key(self):
         return (self.kind, self.name)
 
+
 class Merit(StorytellerProperty):
-    save_type = 'merits'
+    name = None
+    save_type = 'merit'
     _description = None
     _notes = None
     _rating = 0
+    kind = 'merit'
     save_fields = ('_rating', '_description', '_notes')
 
     def __init__(self, key, handler):
+        self.key = key[2]
+        self.owner = handler.owner
+        self.handler = handler
         self.kind = key[0]
-        super(Merit, self).__init__(key=key[2], handler=handler)
         self.category = dramatic_capitalize(key[1])
-        self.key = dramatic_capitalize(self.key)
+        if key[2]:
+            self.name = dramatic_capitalize(self.key)
+            self.key = self.name
+        self.load()
+        self.init_features()
+
+
+    def __repr__(self):
+        return '%s: %s: %s (%s)' % (self.kind, self.category, self.name, self.rating)
+
+    @property
+    def display_name(self):
+        if not self.name:
+            name_string = self.category
+        else:
+            name_string = '%s: %s' % (self.category, self.name)
+        return name_string
+
+    @property
+    def rating(self):
+        return self._rating
+
+    @rating.setter
+    def rating(self, value):
+        try:
+            new_value = int(value)
+        except ValueError:
+            raise ValueError("'%s' must be set to a positive integer." % self)
+        if not new_value >= 0:
+            raise ValueError("'%s' must be set to a positive integer." % self)
+        if self._rating == new_value:
+            return
+        self._rating = new_value
+        self.save()
 
     def load(self):
         owner = self.owner
@@ -887,6 +985,22 @@ class Merit(StorytellerProperty):
         ancestor_data.update(save_data)
         for k, v in ancestor_data.iteritems():
             setattr(self, k, v)
+
+    def sheet_format(self, width=23, fill_char='.', colors=None):
+        if not colors:
+            colors = {'statname': 'n', 'statfill': 'n', 'statdot': 'n'}
+        display_name = ANSIString('{%s%s{n' % (colors['statname'], self.display_name))
+        if self.rating > width - len(display_name) - 1:
+            dot_display = ANSIString('{%s%s{n' % (colors['statdot'], self.rating))
+        else:
+            dot_display = ANSIString('{%s%s{n' % (colors['statdot'], '*' * self.rating))
+        fill_length = width - len(display_name) - len(dot_display)
+        fill = ANSIString('{%s%s{n' % (colors['statfill'], fill_char * fill_length))
+        return display_name + fill + dot_display
+
+    @property
+    def save_key(self):
+        return (self.kind, dramatic_capitalize(self.category), dramatic_capitalize(self.name) if self.name else None)
 
 
 class Power(StorytellerProperty):

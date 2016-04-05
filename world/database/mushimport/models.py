@@ -8,9 +8,9 @@ from commands.library import partial_match
 
 class MushObject(models.Model):
     obj = models.OneToOneField('objects.ObjectDB', related_name='mush', null=True)
-    dbref = models.CharField(max_length=15, unique=True)
-    objid = models.CharField(max_length=30, unique=True)
-    type = models.PositiveSmallIntegerField()
+    dbref = models.CharField(max_length=15, unique=True, db_index=True)
+    objid = models.CharField(max_length=30, unique=True, db_index=True)
+    type = models.PositiveSmallIntegerField(db_index=True)
     name = models.CharField(max_length=80)
     created = models.DateTimeField()
     location = models.ForeignKey('MushObject', related_name='contents', null=True)
@@ -35,6 +35,12 @@ class MushObject(models.Model):
             return self.parent.mushget(attrname)
         else:
             return ""
+
+    def hasattr(self, attrname):
+        if not attrname:
+            return False
+        attr = self.attrs.filter(name__iexact=attrname).first()
+        return bool(attr)
 
     def lattr(self, attrpattern):
         if not attrpattern:

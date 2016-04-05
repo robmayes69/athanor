@@ -1,4 +1,5 @@
 from __future__ import unicode_literals
+from evennia.utils.ansi import ANSIString
 
 
 # The ANCESTORS dictionary contains the top-level settings that will be used for Storyteller data. These ensure that
@@ -62,10 +63,12 @@ PARENTS = {
         'craft': {
             'kind': 'craft',
             'category': 'Craft',
+            'features_default': ('dot', 'roll', 'special')
         },
         'style': {
             'kind': 'style',
             'category': 'Style',
+            'features_default': ('dot', 'roll', 'special')
         }
     },
     'merit': {
@@ -89,10 +92,10 @@ PARENTS = {
     },
     'pool': {
         'essence': {
-
+            'category': 'Pool'
         },
         'limit': {
-
+            'category': 'Track'
         }
     },
     'template': {
@@ -322,10 +325,10 @@ STATS = {
 
 CUSTOM = {
     'craft': {
-
+        'parent': 'craft'
     },
     'style': {
-
+        'parent': 'style'
     }
 }
 
@@ -448,7 +451,8 @@ TEMPLATES = {
         'name': 'Mortal',
         'parent': 'exalt',
         'list_order': 0,
-        'pools': {'willpower': universal_willpower}
+        'pools': {'willpower': universal_willpower},
+        'sheet_footer': 'Mortals: The Heroes'
     },
     'solar': {
         'name': 'Solar',
@@ -461,6 +465,7 @@ TEMPLATES = {
         'info_choices': {'Caste': ('Dawn', 'Zenith', 'Eclipse', 'Twilight', 'Night')},
         'extra_sheet_colors': {'border': 'Y', 'slash': 'r', 'section_name': 'y'},
         'sheet_column_1': ('Caste',),
+        'sheet_footer': ANSIString('{ySolars: The Lawgivers{n')
     },
     'abyssal': {
         'name': 'Abyssal',
@@ -483,8 +488,9 @@ TEMPLATES = {
         'charm_type': 'Lunar',
         'info_defaults': {'Caste': None},
         'info_choices': {'Caste': ('Full Moon', 'Changing Moon', 'No Moon')},
-        'extra_sheet_colors': {'border': 'Y', 'slash': 'r', 'section_name': 'y'},
+        'extra_sheet_colors': {'border': '155', 'slash': '125', 'section_name': 'c'},
         'sheet_column_1': ('Caste',),
+        'sheet_footer': ANSIString('{cLunars: The Stewards{n')
     },
     'terrestrial': {
         'name': 'Terrestrial',

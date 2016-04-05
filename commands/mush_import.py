@@ -7,7 +7,7 @@ from world.database.mushimport.models import MushObject, MushAttribute, cobj, Mu
 from world.database.mushimport.convpenn import read_penn
 from world.database.grid.models import District
 from evennia.utils import create
-from typeclasses.characters import Ex2Character
+from typeclasses.characters import Ex2Character, Ex3Character
 
 
 def from_unixtimestring(secs):
@@ -28,18 +28,21 @@ class CmdImport(AthCommand):
     key = '+import'
     system_name = 'IMPORT'
     locks = 'cmd:perm(Immortals)'
-    admin_switches = ['initialize', 'grid', 'accounts', 'groups', 'boards', 'ex2']
+    admin_switches = ['initialize', 'grid', 'accounts', 'groups', 'boards', 'ex2', 'ex3']
 
     def func(self):
         if not self.final_switches:
-            self.error("This requires a switch. Choices are: %s" % " ,".join(self.admin_switches))
+            self.error("This requires a switch. Choices are: %s" % ", ".join(self.admin_switches))
             return
+        """
         try:
             exec "self.switch_%s()" % self.final_switches[0]
         except AttributeError as err:
             self.error(str(err))
             self.error("Yeah that didn't work.")
             return
+        """
+        exec "self.switch_%s()" % self.final_switches[0]
 
 
     def switch_initialize(self):
@@ -357,3 +360,131 @@ class CmdImport(AthCommand):
                 new_charm = spell_class(name=prep_charm, sub_category=spell_type)
                 new_charm.current_value = charm_dict[prep_charm]
                 character.advantages.cache_advantages.add(new_charm)
+
+    def switch_ex3(self):
+        characters = [char for char in Ex3Character.objects.filter_family() if hasattr(char, 'mush')]
+        for char in characters:
+            self.convert_ex3(char)
+
+    def convert_ex3(self, character):
+        # First, let's convert templates.
+        template = character.mush.getstat('D`INFO', 'Class') or 'Mortal'
+
+        sub_class = character.mush.getstat('D`INFO', 'Caste') or None
+        attribute_string = character.mush.mushget('D`ATTRIBUTES') or ''
+        skill_string = character.mush.mushget('D`ABILITIES') or ''
+        specialties_string = character.mush.mushget('D`SPECIALTIES')
+        power = character.mush.getstat('D`INFO', 'POWER') or 1
+        power_string = 'POWER~%s' % power
+        willpower = character.mush.getstat('D`INFO', 'WILLPOWER')
+        if willpower:
+            willpower_string = 'WILLPOWER~%s' % willpower
+        else:
+            willpower_string = ''
+        stat_string = "|".join([attribute_string, skill_string, willpower_string, power_string])
+        stat_list = [element for element in stat_string.split('|') if len(element)]
+        stats_dict = dict()
+        for stat in stat_list:
+            name, value = stat.split('~', 1)
+            try:
+                int_value = int(value)
+            except ValueError:
+                int_value = 0
+            stats_dict[name] = int(int_value)
+
+        character.storyteller.swap_template(template)
+
+        new_stats = character.storyteller.stats
+        for k, v in stats_dict.iteritems():
+            find_stat = partial_match(k, new_stats)
+            if not find_stat:
+                continue
+            find_stat.rating = v
+            find_stat.save()
+
+        custom_dict = {'D`CRAFTS': 'craft', 'D`STYLES': 'style'}
+        for k, v in custom_dict.iteritems():
+            self.ex3_custom(character, k, v)
+
+        merits_dict = {'D`MERITS`*': 'merit', 'D`FLAWS`*': 'flaw'}
+        for k, v in merits_dict.iteritems():
+            self.ex3_merits(character, k, v)
+
+        charms_dict = {'D`CHARMS`SOLAR': 'solar_charm', 'D`CHARMS`LUNAR': 'lunar_charm',
+                       'D`CHARMS`ABYSSAL': 'abyssal_charm'}
+        for k, v in charms_dict.iteritems():
+            self.ex3_charms(character, k, v)
+
+
+        self.ex3_spells(character)
+
+    def ex3_merits(self, character, merit_type, merit_class):
+        sheet_section = character.storyteller.sheet_dict[merit_class]
+        for old_attrs in character.mush.lattr(merit_type):
+            old_name = character.mush.mushget(old_attrs)
+            old_context = character.mush.mushget(old_attrs + '`CONTEXT')
+            old_rank = int(character.mush.mushget(old_attrs + '`RANK'))
+            old_description = character.mush.mushget(old_attrs + '`DESC')
+            old_notes = character.mush.mushget(old_attrs + '`NOTES')
+            new_merit = sheet_section.add(old_name, old_context, old_rank)
+            new_merit._description = old_description
+            new_merit._notes = old_notes
+            new_merit.save()
+
+    def ex3_custom(self, character, custom_attr, custom_kind):
+        sheet_section = character.storyteller.sheet_dict[custom_kind]
+        customs = character.mush.mushget(custom_attr)
+        if not customs:
+            return
+        customs_dict = dict()
+        customs = customs.split('|')
+        for custom in customs:
+            cust_name, cust_dots = custom.split('~', 1)
+            cust_dots = int(cust_dots)
+            customs_dict[cust_name] = cust_dots
+        for k, v in customs_dict.iteritems():
+            sheet_section.set(k, v)
+
+    def ex3_charms(self, character, attribute, charm_class):
+        sheet_section = character.storyteller.sheet_dict[charm_class]
+        for charm_attr in character.mush.lattr(attribute + '`*'):
+            charm_type = charm_attr.split('`')[-1]
+            charm_dict = dict()
+            if not character.mush.mushget(charm_attr):
+                continue
+            for charm in character.mush.mushget(charm_attr).split('|'):
+                charm_name, charm_purchases = charm.split('~', 1)
+                charm_purchases = int(charm_purchases)
+                charm_dict[charm_name] = charm_purchases
+            for k, v in charm_dict.iteritems():
+                sheet_section.add(charm_type, k, v)
+
+    def ex3_martial(self, character, attribute, martial_class):
+        sheet_section = character.storyteller.sheet_dict[martial_class]
+        for count, charm_attr in enumerate(character.mush.lattr(attribute + '`*')):
+            style_name = character.mush.mushget(charm_attr + '`NAME') or 'Unknown Style %s' % str(count + 1)
+            charm_dict = dict()
+            for charm in character.mush.mushget(charm_attr).split('|'):
+                if charm:
+                    charm_name, charm_purchases = charm.split('~', 1)
+                    charm_purchases = int(charm_purchases)
+                    charm_dict[charm_name] = charm_purchases
+            for k, v in charm_dict.iteritems():
+                sheet_section.add(style_name, k, v)
+
+    def ex3_spells(self, character):
+        attr_list = [attr for attr in character.mush.lattr('D`SPELLS`*')]
+        for attr in attr_list:
+            category = attr.split('`')[-1]
+            if category in ('TERRESTRIAL', 'CELESTIAL', 'SOLAR'):
+                kind = 'sorcery_spell'
+            else:
+                kind = 'necromancy_spell'
+            charm_dict = dict()
+            sheet_section = character.storyteller.sheet_dict[kind]
+            for charm in character.mush.mushget(attr).split('|'):
+                charm_name, charm_purchases = charm.split('~', 1)
+                charm_purchases = int(charm_purchases)
+                charm_dict[charm_name] = charm_purchases
+            for k, v in charm_dict.iteritems():
+                sheet_section.add(category, k, v)

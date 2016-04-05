@@ -14,7 +14,7 @@ from django.conf import settings
 from evennia import DefaultCharacter
 from evennia.utils.utils import time_format, lazy_property
 from evennia.utils.ansi import ANSIString
-from commands.library import ValueError, utcnow, mxp_send, header
+from commands.library import utcnow, mxp_send, header
 
 from world.storyteller.manager import StorytellerHandler
 
