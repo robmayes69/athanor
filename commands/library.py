@@ -69,6 +69,38 @@ def make_column_table(*args, **kwargs):
                             border_top_char=ANSIString('{M-{n'), header=header)
     return table
 
+def start_menu(*args, **kwargs):
+    from commands.menu import AthanorMenu
+    if 'node_formatter' not in kwargs:
+        kwargs['node_formatter'] = node_formatter
+    if 'nodetext_formatter' not in kwargs:
+        kwargs['nodetext_formatter'] = nodetext_formatter
+    if 'options_formatter' not in kwargs:
+        kwargs['options_formatter'] = options_formatter
+
+    return AthanorMenu(*args, **kwargs)
+
+def node_formatter(main_text, option_text, viewer):
+    return "\n".join(line for line in [main_text, option_text])
+
+
+def options_formatter(options, viewer):
+    message = list()
+    message.append(header('Options', viewer=viewer))
+    options_table = make_table('Option', 'Description', width=[20, 58])
+    for num, option in enumerate(options):
+        options_table.add_row(option[0], option[1])
+    message.append(options_table)
+    message.append(header())
+    return "\n".join(unicode(line) for line in message)
+
+
+def nodetext_formatter(text, options, viewer):
+    message = list()
+    #message.append(header(viewer=viewer))
+    message.append(text)
+    return "\n".join(unicode(line) for line in message)
+
 
 def connected_sessions():
     """

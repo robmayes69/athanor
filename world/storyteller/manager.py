@@ -211,7 +211,7 @@ class Attributes(StatSection):
     kind = 'attribute'
 
     def load(self):
-        self.choices = self.handler.stats_type[self.kind]
+        self.choices = sorted(self.handler.stats_type[self.kind], key=lambda stat: stat.list_order)
         for stat_type in ['Physical', 'Social', 'Mental']:
             setattr(self, stat_type.lower(), [stat for stat in self.choices if stat.category == stat_type])
 
@@ -427,6 +427,7 @@ class StorytellerHandler(object):
     """
     stats = tuple()
     stats_dict = dict()
+    stats_values = dict()
     stats_type = dict()
     owner = None
     custom = list()
@@ -511,7 +512,8 @@ class StorytellerHandler(object):
         for key in owner.storyteller_stats.keys():
             stat = Stat(key=key, handler=self)
             init_stats.append(stat)
-            self.stats_dict[key] = int(stat)
+            self.stats_dict[key] = stat
+            self.stats_values[key] = int(stat)
         self.stats = sorted(init_stats, key=lambda stat: stat.list_order)
         stat_types = list(set([stat.kind for stat in self.stats]))
         for kind in stat_types:
@@ -767,7 +769,7 @@ class Stat(StorytellerProperty):
 
     def save(self):
         super(Stat, self).save()
-        self.handler.stats_dict[self.save_key] = self.rating
+        self.handler.stats_values[self.save_key] = self.rating
 
     @property
     def rating(self):

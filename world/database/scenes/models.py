@@ -4,12 +4,12 @@ from commands.library import utcnow, header, separator, make_table
 
 # Create your models here.
 class Plot(models.Model):
-    owner = models.ForeignKey('communications.ObjectActor', related_name='plots')
+    owner = models.ForeignKey('communications.ObjectStub', related_name='plots')
     title = models.CharField(max_length=150)
     description = models.TextField(blank=True)
     date_start = models.DateTimeField(null=True)
     date_end = models.DateTimeField(null=True)
-    status = models.SmallIntegerField(default=0)
+    status = models.SmallIntegerField(default=0, db_index=True)
 
     def display_plot(self, viewer):
         message = []
@@ -33,16 +33,26 @@ class Plot(models.Model):
         message.append(header())
         return "\n".join([unicode(line) for line in message])
 
+    @property
+    def recipients(self):
+        return [actor.object for actor in self.participants if actor.object]
+
+    @property
+    def participants(self):
+        return Participant.objects.filter(scene__in=self.scenes).values_list('actor', flat=True)
+
+    @property
+    def locations(self):
+        return Pose.objects.filter(scene__in=self.scenes).values_list('location', flat=True).distinct()
 
 class Scene(models.Model):
-    owner = models.ForeignKey('communications.ObjectActor', related_name='scenes')
+    owner = models.ForeignKey('communications.ObjectStub', related_name='scenes')
     title = models.CharField(max_length=150)
     description = models.TextField(blank=True)
     date_created = models.DateTimeField(default=utcnow())
     date_finished = models.DateTimeField(null=True)
     plot = models.ForeignKey('Plot', null=True, related_name='scenes')
-    status = models.SmallIntegerField(default=0)
-    location = models.ForeignKey('objects.ObjectDB', related_name='scenes', null=True, on_delete=models.SET_NULL)
+    status = models.SmallIntegerField(default=0, db_index=True)
 
     def display_scene(self, viewer):
         message = []
@@ -55,7 +65,7 @@ class Scene(models.Model):
         message.append('Status: %s' % self.display_status())
         message.append(separator('Players'))
         player_table = make_table('Name', 'Status', 'Poses')
-        participants = sorted(self.poses.exclude(ignore=True).values_list('owner').unique(), key=lambda char: str(char).lower())
+        participants = sorted(self.poses.exclude(ignore=True).values_list('owner', flat=True).distinct(), key=lambda char: str(char).lower())
         for participant in participants:
             player_table.add_row(participant, '', self.poses.filter(owner=participant,ignore=False).count())
         message.append(player_table)
@@ -70,12 +80,39 @@ class Scene(models.Model):
         if self.status == 2:
             return 'Finished'
 
+    def msg(self, text):
+        for character in self.recipients:
+            character.msg(text)
+
+    @property
+    def recipients(self):
+        recip_list = list()
+        if self.owner.actor: recip_list.append(self.owner)
+        recip_list += [actor.object for actor in self.participants.values_list('actor', flat=True) if actor.object]
+        return set(recip_list)
+
+    @property
+    def locations(self):
+        return self.poses.values_list('location', flat=True).distinct()
+
+    @property
+    def poses(self):
+        return Pose.objects.filter(owner__scene=self)
+
+class Participant(models.Model):
+    actor = models.ForeignKey('communications.ObjectStub', related_name='scenes')
+    scene = models.ForeignKey('scenes.Scene', related_name='participants')
+
+    class Meta:
+        unique_together = (("actor", "scene"),)
+
+
 class Pose(models.Model):
-    owner = models.ForeignKey('communications.ObjectActor', related_name='poses')
-    scene = models.ForeignKey('Scene', related_name='poses')
-    ignore = models.BooleanField(default=False)
+    owner = models.ForeignKey('scenes.Participant', related_name='poses')
+    ignore = models.BooleanField(default=False, db_index=True)
     date_made = models.DateTimeField(default=utcnow())
     text = models.TextField(blank=True)
+    location = models.ForeignKey('communications.ObjectStub', related_name='poses_here')
 
     def display_pose(self, viewer):
         message = []
@@ -84,10 +121,10 @@ class Pose(models.Model):
         return "\n".join([unicode(line) for line in message])
 
 class Event(models.Model):
-    owner = models.ForeignKey('communications.ObjectActor', related_name='events')
+    owner = models.ForeignKey('communications.ObjectStub', related_name='events')
     title = models.CharField(max_length=150)
     description = models.TextField(blank=True)
-    date_schedule = models.DateTimeField()
+    date_schedule = models.DateTimeField(db_index=True)
     plot = models.ForeignKey('Plot', null=True, related_name='events')
     interest = models.ManyToManyField('objects.ObjectDB')
 
