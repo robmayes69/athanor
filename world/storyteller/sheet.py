@@ -17,7 +17,7 @@ class SheetSection(object):
 
     def __init__(self, handler):
         self.handler = handler
-        self.owner = handler.character
+        self.owner = handler.owner
         self.colors = self.sheet_colors
         self.load()
 
@@ -39,8 +39,8 @@ class SheetSection(object):
     @property
     def sheet_colors(self):
         color_dict = dict()
-        color_dict.update(self.handler.template.base_sheet_colors)
-        color_dict.update(self.handler.template.extra_sheet_colors)
+        color_dict.update(self.owner.storyteller.base_sheet_colors)
+        color_dict.update(self.owner.storyteller.extra_sheet_colors)
         return color_dict
 
     def sheet_header(self, center_text=None, width=78):
@@ -140,7 +140,7 @@ class StatSection(SheetSection):
     kind = 'stat'
 
     def load(self):
-        self.choices = [stat for stat in self.handler.stats.all() if stat.kind == self.kind]
+        self.choices = [stat for stat in self.handler.stats_dict.values() if stat.kind == self.kind]
 
     def set(self, skill, rating):
         found_stat = partial_match(skill, self.choices)
@@ -161,7 +161,7 @@ class CustomSection(StatSection):
     kind = 'custom'
 
     def load(self):
-        self.existing = sorted([stat for stat in self.handler.custom_stats.all() if stat.kind == self.kind],
+        self.existing = sorted([stat for stat in self.owner.storyteller.custom_stats.all() if stat.kind == self.kind],
                                key=lambda stat2: str(stat2))
 
     def set(self, skill, rating):
@@ -205,7 +205,7 @@ class Attributes(StatSection):
     kind = 'attribute'
 
     def load(self):
-        self.choices = sorted([stat for stat in self.handler.stats.all() if stat.kind == self.kind],
+        self.choices = sorted([stat for stat in self.handler.stats_type[self.kind] if stat.kind == self.kind],
                               key=lambda stat2: stat2.list_order)
         for stat_type in ['Physical', 'Social', 'Mental']:
             setattr(self, stat_type.lower(), [stat for stat in self.choices if stat.category == stat_type])
@@ -279,14 +279,10 @@ class Favored(StatSection):
 
     def load(self):
         self.choices = [stat for stat in self.handler.stats if 'favor' in stat.features]
-        self.existing = [stat for stat in self.handler.stats if stat._favored]
+        self.existing = [stat for stat in self.handler.stats if stat.is_favored]
 
     def all(self):
         return self.existing
-
-    def save(self):
-        super(Favored, self).save()
-        self.load()
 
 
 class MeritSection(SheetSection):
@@ -415,14 +411,8 @@ class StorytellerHandler(object):
     stats_values = dict()
     stats_type = dict()
     owner = None
-    custom = list()
-    merits = list()
-    pools = list()
-    powers = list()
     sheet_sections = tuple()
     render_sections = tuple()
-    template = None
-    data_dict = dict()
     sheet_dict = dict()
 
     def __repr__(self):
@@ -433,13 +423,20 @@ class StorytellerHandler(object):
         'Owner' must be an instance of StorytellerCharacter.
         """
         self.owner = owner
-        self.load()
-        self.save()
+        stat_types = list()
 
+        for stat in owner.storyteller.stats.all():
+            self.stats_dict[stat.stat.key] = stat
+            self.stats_values[stat.stat.key] = stat.rating
+            stat_types.append(stat.kind)
 
-    def load_sheet(self):
+        stat_types = set(stat_types)
+        for kind in stat_types:
+            self.stats_type[kind] = sorted([stat for stat in owner.storyteller.stats.all() if stat.kind == kind],
+                                           key=lambda stat2: stat2.list_order)
+
         self.sheet_sections = list()
-        for section in self.owner.storyteller_sheet:
+        for section in self.owner.sheet_sections:
             section_obj = section(handler=self)
             self.sheet_sections.append(section_obj)
             self.sheet_dict[section_obj.kind] = section_obj
