@@ -17,7 +17,7 @@ class SheetSection(object):
 
     def __init__(self, handler):
         self.handler = handler
-        self.owner = handler.owner
+        self.owner = handler.character
         self.colors = self.sheet_colors
         self.load()
 
@@ -140,10 +140,7 @@ class StatSection(SheetSection):
     kind = 'stat'
 
     def load(self):
-        self.choices = self.handler.stats_type[self.kind]
-
-    def save(self):
-        self.owner.storyteller.save_stats()
+        self.choices = [stat for stat in self.handler.stats.all() if stat.kind == self.kind]
 
     def set(self, skill, rating):
         found_stat = partial_match(skill, self.choices)
@@ -164,11 +161,8 @@ class CustomSection(StatSection):
     kind = 'custom'
 
     def load(self):
-        self.existing = sorted([stat for stat in self.handler.custom if stat.kind == self.kind],
-                               key=lambda stat2: stat2.key)
-
-    def save(self):
-        self.owner.storyteller.save_custom()
+        self.existing = sorted([stat for stat in self.handler.custom_stats.all() if stat.kind == self.kind],
+                               key=lambda stat2: str(stat2))
 
     def set(self, skill, rating):
         try:
@@ -211,7 +205,8 @@ class Attributes(StatSection):
     kind = 'attribute'
 
     def load(self):
-        self.choices = sorted(self.handler.stats_type[self.kind], key=lambda stat: stat.list_order)
+        self.choices = sorted([stat for stat in self.handler.stats.all() if stat.kind == self.kind],
+                              key=lambda stat2: stat2.list_order)
         for stat_type in ['Physical', 'Social', 'Mental']:
             setattr(self, stat_type.lower(), [stat for stat in self.choices if stat.category == stat_type])
 
@@ -416,16 +411,6 @@ class TemplateSection(SheetSection):
 
 
 class StorytellerHandler(object):
-    """
-    The StorytellerHandler is the core of the Storyteller data engine. This is loaded on any Character instance on
-    demand via @lazy_property and uses properties from the specific typeclass of the character to determine what stats,
-    powers, and etc to use.
-
-    This per-character object is responsible for the saving, loading, and manipulating of all Storyteller data.
-
-    See the StorytellerCharacter and derived character typeclasses for which.
-    """
-    stats = tuple()
     stats_dict = dict()
     stats_values = dict()
     stats_type = dict()
@@ -451,120 +436,6 @@ class StorytellerHandler(object):
         self.load()
         self.save()
 
-    def load(self):
-        self.load_storage()
-        self.load_template()
-        self.load_stats()
-        self.load_pools()
-        self.load_custom()
-        self.load_powers()
-        self.load_merits()
-        self.load_sheet()
-
-    def save(self):
-        self.save_template()
-        self.save_stats()
-        self.save_custom()
-        self.save_pools()
-        self.save_powers()
-        self.save_merits()
-
-    def load_storage(self):
-        owner = self.owner
-        for k, v in owner.storyteller_storage.iteritems():
-            storage_dict = owner.attributes.get(v, dict())
-            if not storage_dict:
-                owner.attributes.add(v, storage_dict)
-                storage_dict = owner.attributes.get(v)
-            self.data_dict[k] = storage_dict
-
-    def load_template(self):
-        owner = self.owner
-        valid_templates = owner.storyteller_templates
-        save_data = self.data_dict['template']
-        if not len(save_data):
-            key = 'mortal'
-        else:
-            key = save_data.keys()[0]
-            if key not in valid_templates.keys():
-                key = 'mortal'
-        self.template = Template(key=key, handler=self)
-        self.save_template()
-
-    def save_template(self):
-        self.template.save()
-
-    def swap_template(self, key=None):
-        if not key:
-            raise ValueError("No template entered to swap to!")
-        find_template = partial_match(key, self.owner.storyteller_templates.keys())
-        if not find_template:
-            raise ValueError("Could not find a '%s' template." % key)
-        self.template = Template(find_template, self)
-        self.save_template()
-        self.load_pools()
-        self.load_sheet()
-
-
-    def load_stats(self):
-        owner = self.owner
-        init_stats = list()
-        for key in owner.storyteller_stats.keys():
-            stat = Stat(key=key, handler=self)
-            init_stats.append(stat)
-            self.stats_dict[key] = stat
-            self.stats_values[key] = int(stat)
-        self.stats = sorted(init_stats, key=lambda stat: stat.list_order)
-        stat_types = list(set([stat.kind for stat in self.stats]))
-        for kind in stat_types:
-            self.stats_type[kind] = tuple(sorted([stat for stat in self.stats if stat.kind == kind],
-                                                 key=lambda stat2: stat2.list_order))
-
-    def save_stats(self):
-        for stat in self.stats: stat.save()
-
-    def load_pools(self):
-        pools = list()
-        for key in self.template.pools.keys():
-            pool = Pool(key=key, handler=self)
-            pools.append(pool)
-        self.pools = sorted(pools, key=lambda order: order.list_order)
-
-    def save_pools(self):
-        for pool in self.pools: pool.save()
-
-    def load_custom(self):
-        save_data = self.data_dict['custom']
-        init_stats = list()
-        for k, v in save_data.iteritems():
-            stat = CustomStat(key=k, handler=self)
-            init_stats.append(stat)
-        self.custom = sorted(init_stats, key=lambda entry: entry.list_order)
-
-    def save_custom(self):
-        for custom in self.custom: custom.save()
-
-    def load_merits(self):
-        save_data = self.data_dict['merit']
-        init_merits = list()
-        for k, v in save_data.iteritems():
-            merit = Merit(key=k, handler=self)
-            init_merits.append(merit)
-        self.merits = init_merits
-
-    def save_merits(self):
-        for merit in self.merits: merit.save()
-
-    def load_powers(self):
-        save_data = self.data_dict['power']
-        init_powers = list()
-        for k, v in save_data.iteritems():
-            power = Power(key=k, handler=self)
-            init_powers.append(power)
-        self.powers = init_powers
-
-    def save_powers(self):
-        for power in self.powers: power.save()
 
     def load_sheet(self):
         self.sheet_sections = list()
@@ -584,266 +455,3 @@ class StorytellerHandler(object):
         for section in self.render_sections:
             sheet.append(section.sheet_render(width=width))
         return '\n'.join(line for line in sheet if line)
-
-
-class StorytellerProperty(object):
-    """
-    This provides logic for the other Stat classes. It is not used directly.
-    """
-    key = 'Unset'
-    handler = None
-    save_type = 'Unset'
-    name = 'Unset'
-    category = 'Unset'
-    sub_category = 'Unset'
-    kind = 'Unset'
-    save_fields = ()
-    list_order = 1
-    features = set()
-    features_default = ()
-    features_add = ()
-    features_remove = ()
-
-    def __nonzero__(self):
-        return True
-
-    def __bool__(self):
-        return True
-
-    def __init__(self, key, handler):
-        self.key = key
-        self.owner = handler.owner
-        self.handler = handler
-        self.load()
-        self.init_features()
-
-    def init_features(self):
-        default_set = set(self.features_default)
-        remove_set = set(self.features_remove)
-        add_set = set(self.features_add)
-        final_set = default_set.union(add_set)
-        self.features = tuple(final_set.difference(remove_set))
-
-    @property
-    def save_key(self):
-        return self.key
-
-    @property
-    def saver(self):
-        return self.handler.data_dict[self.save_type]
-
-    def export(self):
-        return {field: getattr(self, field) for field in self.save_fields}
-
-    def save(self):
-        self.saver[self.save_key] = self.export()
-
-    def load(self):
-        save_data = self.saver.get(self.save_key, dict())
-        for k, v in save_data.iteritems():
-            setattr(self, k, v)
-
-class Template(StorytellerProperty):
-    save_type = 'template'
-    info_defaults = dict()
-    info_save = dict()
-    info_choices = dict()
-    info_fields = dict()
-    pools = dict()
-    base_sheet_colors = {'title': 'n', 'border': 'n', 'textfield': 'n', 'texthead': 'n', 'colon': 'n',
-                         'section_name': 'n', '3_column_name': 'n', 'advantage_name': 'n', 'advantage_border': 'n',
-                         'slash': 'n', 'statdot': 'n', 'statfill': 'n', 'statname': 'n', 'damagename': 'n',
-                         'damagetotal': 'n', 'damagetotalnum': 'n'}
-    extra_sheet_colors = dict()
-    sheet_column_1 = tuple()
-    sheet_column_2 = tuple()
-    save_fields = ('info_save',)
-    sheet_footer = ''
-
-    def __str__(self):
-        return self.name
-
-    def __unicode__(self):
-        return self.name
-
-    def __nonzero__(self):
-        return True
-
-    def load(self):
-        owner = self.owner
-        save_data = self.saver.get(self.save_key, dict())
-        child_data = owner.storyteller_templates[self.key]
-        ancestor_data = dict(owner.storyteller_ancestors[self.save_type])
-        parent_data = owner.storyteller_parents[self.save_type][child_data['parent']]
-        ancestor_data.update(parent_data)
-        ancestor_data.update(child_data)
-        ancestor_data.update(save_data)
-        for k, v in ancestor_data.iteritems():
-            setattr(self, k, v)
-
-    @property
-    def info(self):
-        info_dict = dict()
-        info_dict.update(self.info_defaults)
-        info_dict.update(self.info_save)
-        return info_dict
-
-    def get(self, field=None):
-        if not field:
-            return
-        try:
-            response = self.info[field]
-        except KeyError:
-            return None
-        return response
-
-    def set(self, field=None, value=None):
-        if not field:
-            raise KeyError("No field entered to set!")
-        found_field = partial_match(field, self.info_fields)
-        if not found_field:
-            raise KeyError("Field '%s' not found." % field)
-        if not value:
-            try:
-                self.info_save.pop(found_field)
-            except KeyError:
-                return True
-        if found_field in self.info_choices:
-            choices = self.info_choices[found_field]
-            find_value = partial_match(value, choices)
-            if not find_value:
-                raise KeyError("'%s' is not a valid entry for %s. Choices are: %s" % (value, found_field,
-                                                                                          ', '.join(choices)))
-            self.info_save[found_field] = find_value
-        else:
-            self.info_save[found_field] = sanitize_string(value)
-        self.save()
-
-class Merit(StorytellerProperty):
-    name = None
-    save_type = 'merit'
-    _description = None
-    _notes = None
-    _rating = 0
-    kind = 'merit'
-    save_fields = ('_rating', '_description', '_notes')
-
-class Power(StorytellerProperty):
-    save_type = 'power'
-    kind = 'power'
-    _rating = 1
-    save_fields = ('_rating',)
-
-
-class Pool(StorytellerProperty):
-    save_type = 'pool'
-    unit = 'Points'
-    refresh = 'max'
-    features_default = ('gain', 'spend', 'refresh', 'commit')
-    save_fields = ('_commits', '_points')
-    _commits = dict()
-    _points = 0
-    _func = None
-
-    def __repr__(self):
-        return '<%s: %s/%s>' % (self.name, self.available, self.max)
-
-    def __int__(self):
-        return self.available
-
-    def __eq__(self, other):
-        return self.key == other.key
-
-    def __hash__(self):
-        return hash(self.key)
-
-    def __init__(self, key, handler):
-        super(Pool, self).__init__(key, handler)
-        self._func = handler.template.pools[key]
-
-    def load(self):
-        owner = self.owner
-        save_data = self.handler.data_dict[self.save_type].get(self.save_key, dict())
-        child_data = owner.storyteller_pools[self.key]
-        ancestor_data = dict(owner.storyteller_ancestors[self.save_type])
-        parent_data = owner.storyteller_parents[self.save_type][child_data['parent']]
-        ancestor_data.update(parent_data)
-        ancestor_data.update(child_data)
-        ancestor_data.update(save_data)
-        for k, v in ancestor_data.iteritems():
-            setattr(self, k, v)
-
-    @property
-    def max(self):
-        return self._func(self.handler)
-
-    @property
-    def available(self):
-        return min(self._points, self.max - self.total_commit)
-
-    @property
-    def total_commit(self):
-        return sum(self._commits.values())
-
-    def commit(self, reason=None, amount=None):
-        if not reason:
-            raise ValueError("Reason is empty!")
-        try:
-            value = int(amount)
-        except ValueError:
-            raise ValueError("Amount must be an integer.")
-        if value < 1:
-            raise ValueError("Commitments must be positive integers.")
-        if value > self.available:
-            raise ValueError("Cannot commit more than you have!")
-        if reason.lower() in [key.lower() for key in self._commits.keys()]:
-            raise ValueError("Commitments must be unique.")
-        self._commits[reason] = value
-        self._points -= value
-        return True
-
-    def uncommit(self, reason=None):
-        if not reason:
-            raise ValueError("Reason is empty!")
-        find_reason = partial_match(reason, self._commits.keys())
-        if not find_reason:
-            raise ValueError("Commitment not found.")
-        self._commits.pop(find_reason)
-        return True
-
-    def fill(self, amount=None):
-        try:
-            value = int(amount)
-        except ValueError:
-            raise ValueError("Values must be integers.")
-        if not value > 0:
-            raise ValueError("Values must be positive.")
-        self._points = min(self._points + value, self.max - self.total_commit)
-        return True
-
-    def drain(self, amount=None):
-        try:
-            value = int(amount)
-        except ValueError:
-            raise ValueError("Values must be integers.")
-        if not value > 0:
-            raise ValueError("Values must be positive.")
-        if value > self._points:
-            raise ValueError("There aren't that many %s to spend!" % self.unit)
-        self._points -= value
-        return True
-
-    def refresh_pool(self):
-        if self.refresh == 'max':
-            self._points = self.max - self.total_commit
-            return
-        if self.refresh == 'empty':
-            self._points = 0
-            return
-
-    def sheet_format(self, rjust=None, zfill=2):
-        val_string = '%s/%s' % (str(self._points).zfill(zfill), str(self.max).zfill(zfill))
-        if rjust:
-            return '%s: %s' % (self.name.rjust(rjust), val_string)
-        else:
-            return '%s: %s' % (self.name, val_string)

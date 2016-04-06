@@ -1,9 +1,9 @@
 from __future__ import unicode_literals
 from commands.library import tabular_table, dramatic_capitalize, partial_match
 
-from world.storyteller.manager import SheetSection, StatSection, Attributes as OldAttributes, Skills, \
+from world.storyteller.sheet import SheetSection, StatSection, Attributes as OldAttributes, Skills, \
     AdvantageStatSection, AdvantageWordSection, Specialties as OldSpecialties, Favored as OldFavored, \
-    TemplateSection as OldTemplate, Power, MeritSection as OldMerit, CustomSection
+    TemplateSection as OldTemplate, MeritSection as OldMerit, CustomSection
 
 
 class TemplateSection(OldTemplate):

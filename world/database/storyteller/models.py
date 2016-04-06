@@ -1,23 +1,14 @@
 from __future__ import unicode_literals
 from django.db import models
-from evennia.utils.dbserialize import to_pickle, from_pickle
 from evennia.utils.picklefield import PickledObjectField
 from evennia.utils.ansi import ANSIString
-from commands.library import partial_match, sanitize_string, dramatic_capitalize
+from commands.library import partial_match, sanitize_string
 
-from world.storyteller.exalted3.rules import STATS as EX3_STATS, POWERS as EX3_POWERS, MERITS as EX3_MERITS, \
-    CUSTOM as EX3_CUSTOM, POOLS as EX3_POOLS, TEMPLATES as EX3_TEMPLATES
+from world.storyteller.exalted3.rules import EX3_RULES
 
 RULES_DICT = {
-    'ex3':
-        {
-            'stats': EX3_STATS,
-            'powers': EX3_POWERS,
-            'merits': EX3_MERITS,
-            'custom': EX3_CUSTOM,
-            'pools': EX3_POOLS,
-            'templates': EX3_TEMPLATES
-        }
+    'ex3': EX3_RULES,
+
 }
 
 # Create your models here.
@@ -55,11 +46,21 @@ class Template(models.Model):
     class Meta:
         unique_together = (("key", "game"),)
 
+    def __str__(self):
+        return self.rules['name']
+
+    @property
+    def rules(self):
+        return self.game.rules['templates'][self.key]
 
 class CharacterTemplate(models.Model):
     template = models.ForeignKey('storyteller.Template', related_name='characters')
     character = models.OneToOneField('objects.ObjectDB', related_name='storyteller')
     info_save = PickledObjectField(null=True)
+    base_sheet_colors = {'title': 'n', 'border': 'n', 'textfield': 'n', 'texthead': 'n', 'colon': 'n',
+                         'section_name': 'n', '3_column_name': 'n', 'advantage_name': 'n', 'advantage_border': 'n',
+                         'slash': 'n', 'statdot': 'n', 'statfill': 'n', 'statname': 'n', 'damagename': 'n',
+                         'damagetotal': 'n', 'damagetotalnum': 'n'}
 
     def setup_character(self):
         game = self.template.game
@@ -77,20 +78,63 @@ class CharacterTemplate(models.Model):
         for pool in game_pools:
             obj, created = self.pools.get_or_create(pool=pool)
 
+    def __str__(self):
+        return self.rules['name']
+
     @property
     def game(self):
         return self.template.game
 
     @property
     def rules(self):
-        return self.game.rules[self.template.key]
+        return self.game.rules['templates'][self.template.key]
+
+    @property
+    def name(self):
+        return self.rules['name']
+
+    @property
+    def list_order(self):
+        return self.rules['list_order']
+
+    @property
+    def pools(self):
+        return self.rules['pools']
+
+    @property
+    def charm_type(self):
+        return self.rules['charm_type']
+
+    @property
+    def info_defaults(self):
+        return self.rules['info_defaults']
+
+    @property
+    def info_choices(self):
+        return self.rules['info_choices']
+
+    @property
+    def extra_sheet_colors(self):
+        return self.rules['extra_sheet_colors']
+
+    @property
+    def sheet_column_1(self):
+        return self.rules['sheet_column_1']
+
+    @property
+    def sheet_column_2(self):
+        return self.rules['sheet_column_2']
+
+    @property
+    def sheet_footer(self):
+        return self.rules['sheet_footer']
 
     @property
     def info(self):
-        info_save = from_pickle(self.info_save, db_obj=self) or {}
+        info_defaults = self.rules['info_defaults']
         info_dict = dict()
-        info_dict.update(self.info_defaults)
-        info_dict.update(info_save)
+        info_dict.update(info_defaults)
+        info_dict.update(self.info_save or {})
         return info_dict
 
     def get(self, field=None):
@@ -105,17 +149,20 @@ class CharacterTemplate(models.Model):
     def set(self, field=None, value=None):
         if not field:
             raise KeyError("No field entered to set!")
-        found_field = partial_match(field, self.info_fields)
+        info_choices = self.rules['info_choices']
+        info_fields = info_choices.keys()
+        found_field = partial_match(field, info_fields)
         if not found_field:
             raise KeyError("Field '%s' not found." % field)
-        info_save = from_pickle(self.info_save, db_obj=self) or {}
+        info_save = self.info_save or {}
         if not value:
             try:
                 info_save.pop(found_field)
             except KeyError:
                 return True
-        if found_field in self.info_choices:
-            choices = self.info_choices[found_field]
+
+        if found_field in info_choices:
+            choices = info_choices[found_field]
             find_value = partial_match(value, choices)
             if not find_value:
                 raise KeyError("'%s' is not a valid entry for %s. Choices are: %s" % (value, found_field,
@@ -123,8 +170,18 @@ class CharacterTemplate(models.Model):
             info_save[found_field] = find_value
         else:
             info_save[found_field] = sanitize_string(value)
-            self.info_save = to_pickle(info_save)
+        self.info_save = info_save
         self.save(update_fields=['info_save'])
+
+    def swap_template(self, key=None):
+        if not key:
+            raise ValueError("No template entered to swap to!")
+        find_template = partial_match(key, self.template.game.templates.all())
+        if not find_template:
+            raise ValueError("Could not find a '%s' template." % key)
+        self.template = find_template
+        self.info_save = {}
+        self.save(update_fields=['template', 'info_save'])
 
 
 class Stat(models.Model):
@@ -144,13 +201,14 @@ class CharacterStat(models.Model):
     is_epic = models.BooleanField(default=False)
     is_caste = models.BooleanField(default=False)
     is_supernal = models.BooleanField(default=False)
+    features_default = set(['dot', 'roll', 'favor', 'supernal', 'caste', 'special'])
 
     class Meta:
         unique_together = (("character", "stat"),)
         index_together = [['character', 'stat'],]
 
     def __str__(self):
-        return self.rules['name']
+        return self.name
 
     def __int__(self):
         return self.rating
@@ -162,6 +220,39 @@ class CharacterStat(models.Model):
     @property
     def rules(self):
         return self.character.game.rules['stats'][self.stat.key]
+
+    @property
+    def name(self):
+        return self.rules['name']
+
+    @property
+    def kind(self):
+        return self.rules['kind']
+
+    @property
+    def category(self):
+        return self.rules['category']
+
+    @property
+    def list_order(self):
+        return self.rules['list_order']
+
+    @property
+    def start_rating(self):
+        return self.rules['start_rating']
+
+    @property
+    def features_add(self):
+        return set(self.rules['features_add'])
+
+    @property
+    def features_remove(self):
+        return set(self.rules['features_remove'])
+
+    @property
+    def features(self):
+        features = self.features_default.union(self.features_add)
+        return features.difference(self.features_remove)
 
     def display(self):
         return int(self) or self.is_favored or self.is_supernal or self.is_caste or self.is_epic
@@ -321,6 +412,83 @@ class CharacterPool(models.Model):
     def rules(self):
         return self.game.rules['pools'][self.pool.key]
 
+    @property
+    def max(self):
+        return self._func(self.handler)
+
+    @property
+    def available(self):
+        return min(self._points, self.max - self.total_commit)
+
+    @property
+    def total_commit(self):
+        return sum(self._commits.values())
+
+    def commit(self, reason=None, amount=None):
+        if not reason:
+            raise ValueError("Reason is empty!")
+        try:
+            value = int(amount)
+        except ValueError:
+            raise ValueError("Amount must be an integer.")
+        if value < 1:
+            raise ValueError("Commitments must be positive integers.")
+        if value > self.available:
+            raise ValueError("Cannot commit more than you have!")
+        if reason.lower() in [key.lower() for key in self._commits.keys()]:
+            raise ValueError("Commitments must be unique.")
+        self._commits[reason] = value
+        self.points -= value
+        self.save(update_fields=['points'])
+        return True
+
+    def uncommit(self, reason=None):
+        if not reason:
+            raise ValueError("Reason is empty!")
+        find_reason = partial_match(reason, self._commits.keys())
+        if not find_reason:
+            raise ValueError("Commitment not found.")
+        self._commits.pop(find_reason)
+        return True
+
+    def fill(self, amount=None):
+        try:
+            value = int(amount)
+        except ValueError:
+            raise ValueError("Values must be integers.")
+        if not value > 0:
+            raise ValueError("Values must be positive.")
+        self.points = min(self.points + value, self.max - self.total_commit)
+        self.save(update_fields=['points'])
+        return True
+
+    def drain(self, amount=None):
+        try:
+            value = int(amount)
+        except ValueError:
+            raise ValueError("Values must be integers.")
+        if not value > 0:
+            raise ValueError("Values must be positive.")
+        if value > self.points:
+            raise ValueError("There aren't that many %s to spend!" % self.unit)
+        self.points -= value
+        self.save(update_fields=['points'])
+        return True
+
+    def refresh_pool(self):
+        if self.refresh == 'max':
+            self.points = self.max - self.total_commit
+            return
+        if self.refresh == 'empty':
+            self.points = 0
+            return
+
+    def sheet_format(self, rjust=None, zfill=2):
+        val_string = '%s/%s' % (str(self._points).zfill(zfill), str(self.max).zfill(zfill))
+        if rjust:
+            return '%s: %s' % (self.name.rjust(rjust), val_string)
+        else:
+            return '%s: %s' % (self.name, val_string)
 
 class PoolCommits(models.Model):
     pool = models.ForeignKey('storyteller.CharacterPool', related_name='commitments')

@@ -17,7 +17,7 @@ from evennia.utils.ansi import ANSIString
 from commands.library import utcnow, mxp_send, header
 
 from world.database.storyteller.models import Game as StGame
-
+from world.storyteller.sheet import StorytellerHandler
 from world.storyteller.exalted3.sheet import SECTION_LIST as EX3_SHEET
 
 class Character(DefaultCharacter):
@@ -220,20 +220,22 @@ class StorytellerCharacter(Character):
         super(StorytellerCharacter, self).at_object_creation()
         self.setup_storyteller()
 
-
     def at_post_puppet(self):
         super(StorytellerCharacter, self).at_post_puppet()
         self.setup_storyteller()
 
-
     def return_sheet(self, viewer):
-        return self.storyteller.render_sheet(viewer=viewer)
+        return self.story.render_sheet(viewer=viewer)
 
     def setup_storyteller(self):
         obj, created = StGame.objects.get_or_create(key=self.game_mode)
         obj.setup_storyteller()
         template = obj.templates.filter(key='mortal').first()
         template.characters.get_or_create(character=self)
+
+    @lazy_property
+    def story(self):
+        return StorytellerHandler(self)
 
 
 class Ex2Character(StorytellerCharacter):
@@ -248,3 +250,4 @@ class Ex3Character(StorytellerCharacter):
     For use with Exalted 3rd Edition characters.
     """
     game_mode = 'ex3'
+    sheet_sections = EX3_SHEET
