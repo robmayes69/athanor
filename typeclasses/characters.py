@@ -16,12 +16,8 @@ from evennia.utils.utils import time_format, lazy_property
 from evennia.utils.ansi import ANSIString
 from commands.library import utcnow, mxp_send, header
 
-from world.storyteller.manager import StorytellerHandler
+from world.database.storyteller.models import Game as StGame
 
-from world.storyteller.exalted2.rules import STATS as EX2_STATS, TEMPLATES as EX2_TEMPLATES, POOLS as EX2_POOLS
-
-from world.storyteller.exalted3.rules import STATS as EX3_STATS, TEMPLATES as EX3_TEMPLATES, POOLS as EX3_POOLS, \
-    ANCESTORS as EX3_ANCESTORS, PARENTS as EX3_PARENTS, POWERS as EX3_POWERS, CUSTOM as EX3_CUSTOM, MERITS as EX3_MERITS
 from world.storyteller.exalted3.sheet import SECTION_LIST as EX3_SHEET
 
 class Character(DefaultCharacter):
@@ -218,46 +214,37 @@ class StorytellerCharacter(Character):
     """
     Base template for Storyteller characters. It's not meant to be used literally.
     """
-    storyteller_storage = dict()
-    storyteller_templates = list()
-    storyteller_stats = dict()
-    storyteller_pools = list()
-    storyteller_defaults = dict()
+    game_mode = 'storyteller'
+
+    def at_object_creation(self):
+        super(StorytellerCharacter, self).at_object_creation()
+        self.setup_storyteller()
 
 
-    @lazy_property
-    def storyteller(self):
-        return StorytellerHandler(self)
+    def at_post_puppet(self):
+        super(StorytellerCharacter, self).at_post_puppet()
+        self.setup_storyteller()
+
 
     def return_sheet(self, viewer):
         return self.storyteller.render_sheet(viewer=viewer)
+
+    def setup_storyteller(self):
+        obj, created = StGame.objects.get_or_create(key=self.game_mode)
+        obj.setup_storyteller()
+        template = obj.templates.filter(key='mortal').first()
+        template.characters.get_or_create(character=self)
 
 
 class Ex2Character(StorytellerCharacter):
     """
     For use with Exalted 2nd Edition characters.
     """
-
-    storyteller_storage = {'template': '_ex2_template', 'stat': '_ex2_stats', 'custom': '_ex2_custom',
-                            'pool': '_ex2_pools', 'merit': '_ex2_merits', 'power': '_ex2_powers'}
-    storyteller_templates = EX2_TEMPLATES
-    storyteller_stats = EX2_STATS
-    storyteller_pools = EX2_POOLS
+    game_mode = 'ex3'
 
 
 class Ex3Character(StorytellerCharacter):
     """
     For use with Exalted 3rd Edition characters.
     """
-
-    storyteller_storage = {'template': '_ex3_template', 'stat': '_ex3_stats', 'custom': '_ex3_custom',
-                            'pool': '_ex3_pools', 'merit': '_ex3_merits', 'power': '_ex3_powers'}
-    storyteller_templates = EX3_TEMPLATES
-    storyteller_stats = EX3_STATS
-    storyteller_pools = EX3_POOLS
-    storyteller_ancestors = EX3_ANCESTORS
-    storyteller_parents = EX3_PARENTS
-    storyteller_sheet = EX3_SHEET
-    storyteller_powers = EX3_POWERS
-    storyteller_custom = EX3_CUSTOM
-    storyteller_merits = EX3_MERITS
+    game_mode = 'ex3'

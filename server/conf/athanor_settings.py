@@ -121,6 +121,7 @@ INSTALLED_APPS = INSTALLED_APPS + ('world.database.communications',
                                    'world.database.experience',
                                    'world.database.bbs.apps.BBSConfig',
                                    'world.database.groups.apps.GroupConfig',
+                                   'world.database.storyteller.apps.StorytellerConfig',
                                    'world.database.grid.apps.GridConfig',
                                    'world.database.mushimport',)
 
