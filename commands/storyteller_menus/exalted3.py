@@ -12,7 +12,6 @@ def _args(raw_input):
     return cmd, args
 
 def start(caller):
-    caller.ndb._last_menu_node = 'start'
     text = "Let's do this thing."
     options = (
         # Template?
@@ -53,7 +52,6 @@ def start(caller):
     return text, options
 
 def menu_finish(caller):
-    del caller.ndb._last_menu_node
     return "Back to the game!", None
 
 def menu_attributes(caller, raw_input):
@@ -61,13 +59,6 @@ def menu_attributes(caller, raw_input):
     target = caller.ndb.editchar or caller
     sheet_section = target.storyteller.sheet_dict['attribute']
     stats = sheet_section.choices
-    if args:
-        stat = partial_match(cmd, stats)
-        if stat:
-            try:
-                stat.rating = args
-            except ValueError as err:
-                caller.error(unicode(err))
 
     message = list()
     message.append(header('Attributes Menu', viewer=caller))
@@ -83,11 +74,25 @@ def menu_attributes(caller, raw_input):
         option_dict['key'] = stat.key
         option_dict['desc'] = '(%s #) - Set your %s Attribute!' % (stat.key, stat.name)
         option_dict['goto'] = 'menu_attributes'
+        option_dict['exec'] = _set_attribute
         option_list.append(option_dict)
 
     option_list.append(BACK_DICT)
 
     return text, tuple(option_list)
+
+def _set_attribute(caller, raw_input):
+    cmd, args = _args(raw_input)
+    target = caller.ndb.editchar or caller
+    sheet_section = target.storyteller.sheet_dict['attribute']
+    stats = sheet_section.choices
+    if args:
+        stat = partial_match(cmd, stats)
+        if stat:
+            try:
+                stat.rating = args
+            except ValueError as err:
+                _error(caller, str(err))
 
 def menu_template(caller, raw_input):
     cmd, args = _args(raw_input)
@@ -100,52 +105,33 @@ def menu_template(caller, raw_input):
         {
             'key': 'change',
             'goto': 'menu_template',
-            'desc': '(change <choice>) Change to: %s' % ', '.join(dramatic_capitalize(name) for name in template_names)
+            'desc': '(change <choice>) Change to: %s' % ', '.join(dramatic_capitalize(name) for name in template_names),
+            'exec': _change_template
         },
         {
             'key': 'essence',
             'goto': 'menu_template',
-            'desc': '(essence #) Set your Essence.'
+            'desc': '(essence #) Set your Essence.',
+            'exec': _set_adv
         },
         {
             'key': 'willpower',
             'goto': 'menu_template',
-            'desc': '(willpower #) Set your Willpower.'
+            'desc': '(willpower #) Set your Willpower.',
+            'exec': _set_adv
         }
     ]
     for field in target.storyteller.template.info_choices.keys():
         field_dict = dict()
         field_dict['key'] = field.lower()
         field_dict['goto'] = 'menu_template'
+        field_dict['exec'] = _set_template_field
         if field in target.storyteller.template.info_choices:
             field_dict['desc'] = '(%s <text>) to set %s. Choices: %s' % (field, field,
                                                                          ', '.join(target.storyteller.template.info_choices[field]))
         else:
             field_dict['desc'] = '(%s <text>) to set %s' % (field, field)
         options.append(field_dict)
-    print options
-
-    if args and caller.ndb._last_menu_node == 'menu_template':
-        option_names = [op['key'] for op in options]
-        op_choice = partial_match(cmd, option_names)
-        if op_choice == 'change':
-            try:
-                target.storyteller.swap_template(key=args)
-            except ValueError as err:
-                target.error(str(err))
-
-        elif op_choice in ['essence', 'willpower']:
-            stat = target.storyteller.stats_dict[op_choice]
-            try:
-                stat.rating = args
-            except ValueError as err:
-                target.error(str(err))
-
-        else:
-            try:
-                target.storyteller.template.set(field=op_choice, value=args)
-            except ValueError as err:
-                target.error(str(err))
 
     options.append(BACK_DICT)
 
@@ -154,5 +140,38 @@ def menu_template(caller, raw_input):
     message.append(sheet_section.sheet_render())
     message.append('Here we shall try setting up the template!')
     text = '\n'.join(unicode(line) for line in message)
-    caller.ndb._last_menu_node = 'menu_template'
     return text, tuple(options)
+
+
+def _change_template(caller, raw_input):
+    cmd, args = _args(raw_input)
+    target = caller.ndb.editchar or caller
+    try:
+        target.storyteller.swap_template(key=args)
+    except ValueError as err:
+        _error(caller, str(err))
+
+
+def _set_adv(caller, raw_input):
+    cmd, args = _args(raw_input)
+    target = caller.ndb.editchar or caller
+    choice = partial_match(cmd, ['essence', 'willpower'])
+    stat = target.storyteller.stats_dict[choice]
+    try:
+        stat.rating = args
+    except ValueError as err:
+        _error(caller, str(err))
+
+
+def _set_template_field(caller, raw_input):
+    cmd, args = _args(raw_input)
+    target = caller.ndb.editchar or caller
+    try:
+        target.storyteller.template.set(field=cmd, value=args)
+    except ValueError as err:
+        _error(caller, str(err))
+    except KeyError as err:
+        _error(caller,str(err))
+
+def _error(target, message):
+    target.sys_msg(message, sys_name='EDITCHAR', error=True)
