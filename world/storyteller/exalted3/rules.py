@@ -359,13 +359,19 @@ STATS = {
         'name': 'Essence',
         'category': 'Advantage',
         'kind': 'advantage',
+        'list_order': 5,
         'start_rating': 1,
+        'features_add': (),
+        'features_remove': ('favor', 'supernal', 'caste', 'special'),
     },
     'willpower': {
         'name': 'Willpower',
         'kind': 'advantage',
         'category': 'Ability',
+        'list_order': 5,
         'start_rating': 5,
+        'features_add': (),
+        'features_remove': ('favor', 'supernal', 'caste', 'special'),
     }
 
 }
@@ -437,7 +443,7 @@ POOLS = {
         'name': 'Limit',
         'unit': 'Points of Limit',
         'kind': 'limit',
-        'category': 'Pool',
+        'category': 'Track',
         'refresh': 'empty'
     },
 
@@ -445,15 +451,15 @@ POOLS = {
 
 
 def universal_willpower(handler):
-    return handler.stats_dict['willpower']
+    return handler.stats_values['willpower']
 
 
 def solar_personal(handler):
-    return handler.stats_dict['essence']*3 + 10
+    return handler.stats_values['essence']*3 + 10
 
 
 def solar_peripheral(handler):
-    return handler.stats_dict['essence']*7 + 26
+    return handler.stats_values['essence']*7 + 26
 
 
 def solar_limit(handler):
@@ -473,11 +479,11 @@ def abyssal_resonance(handler):
 
 
 def terrestrial_personal(handler):
-    return handler.stats_dict['essence'] + 11
+    return handler.stats_values['essence'] + 11
 
 
 def terrestrial_peripheral(handler):
-    return handler.stats_dict['essence']*4 + 23
+    return handler.stats_values['essence']*4 + 23
 
 
 def terrestrial_limit(handler):
@@ -485,11 +491,11 @@ def terrestrial_limit(handler):
 
 
 def lunar_personal(handler):
-    return handler.stats_dict['essence'] + 15
+    return handler.stats_values['essence'] + 15
 
 
 def lunar_peripheral(handler):
-    return handler.stats_dict['essence']*4 + 34
+    return handler.stats_values['essence']*4 + 34
 
 
 def lunar_limit(handler):
@@ -497,11 +503,11 @@ def lunar_limit(handler):
 
 
 def sidereal_personal(handler):
-    return handler.stats_dict['essence']*2 + 9
+    return handler.stats_values['essence']*2 + 9
 
 
 def sidereal_peripheral(handler):
-    return handler.stats_dict['essence']*6 + 25
+    return handler.stats_values['essence']*6 + 25
 
 
 def sidereal_limit(handler):
@@ -509,11 +515,11 @@ def sidereal_limit(handler):
 
 
 def liminal_personal(handler):
-    return handler.stats_dict['essence']*3 + 10
+    return handler.stats_values['essence']*3 + 10
 
 
 def liminal_peripheral(handler):
-    return handler.stats_dict['essence']*4 + 23
+    return handler.stats_values['essence']*4 + 23
 
 
 def liminal_limit(handler):

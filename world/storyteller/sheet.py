@@ -7,7 +7,6 @@ from evennia.utils.ansi import ANSIString
 from commands.library import partial_match, sanitize_string, tabular_table, dramatic_capitalize
 from evennia.utils.utils import make_iter
 
-
 class SheetSection(object):
     name = 'DefaultSection'
     list_order = 0
@@ -161,7 +160,7 @@ class CustomSection(StatSection):
     kind = 'custom'
 
     def load(self):
-        self.existing = sorted([stat for stat in self.owner.storyteller.custom_stats.all() if stat.kind == self.kind],
+        self.existing = sorted([stat for stat in self.owner.storyteller.customs.all() if stat.stat.kind.key == self.kind],
                                key=lambda stat2: str(stat2))
 
     def set(self, skill, rating):
@@ -170,18 +169,17 @@ class CustomSection(StatSection):
         except ValueError:
             raise ValueError("That's not an acceptable rating!")
         find_stat = partial_match(skill, self.existing)
-        if find_stat:
-            if not find_stat.name.lower() == skill.lower():
-                find_stat = CustomStat((self.kind, skill), self.handler)
-        else:
-            find_stat = CustomStat((self.kind, skill), self.handler)
+        if not find_stat:
+            game = self.owner.storyteller.game
+            custom = game.custom_stats.filter(key=self.kind).first()
+            make_stat, created = custom.custom_stats.get_or_create(key=dramatic_capitalize(skill))
+            find_stat, created2 = make_stat.characters.get_or_create(character=self.owner.storyteller)
         if rating > 0:
             find_stat.rating = rating
             find_stat.save()
-            self.load()
         else:
-            del find_stat
-            self.save()
+            find_stat.delete()
+        self.load()
 
     def sheet_render(self, width=78):
         colors = self.sheet_colors
@@ -252,8 +250,8 @@ class Specialties(StatSection):
     kind = 'specialty'
 
     def load(self):
-        self.choices = [stat for stat in self.handler.stats if 'special' in stat.features]
-        self.specialized = [stat for stat in self.handler.stats if len(stat._specialties) > 0]
+        self.choices = [stat for stat in self.handler.stats_dict.values() if 'special' in stat.features]
+        self.specialized = [stat for stat in self.handler.stats_dict.values() if stat.specialties.count() > 0]
 
     def sheet_render(self, width=78):
         colors = self.sheet_colors
@@ -278,8 +276,8 @@ class Favored(StatSection):
     kind = 'favored'
 
     def load(self):
-        self.choices = [stat for stat in self.handler.stats if 'favor' in stat.features]
-        self.existing = [stat for stat in self.handler.stats if stat.is_favored]
+        self.choices = [stat for stat in self.handler.stats_dict.values() if 'favor' in stat.features]
+        self.existing = [stat for stat in self.handler.stats_dict.values() if stat.is_favored]
 
     def all(self):
         return self.existing
@@ -292,15 +290,29 @@ class MeritSection(SheetSection):
     kind = 'merit'
 
     def load(self):
-        self.existing = sorted([merit for merit in self.handler.merits if merit.kind == self.kind],
-                               key=lambda mer: mer.display_name)
+        self.existing = sorted([merit for merit in self.owner.storyteller.merits.all() if merit.kind.key == self.kind],
+                               key=lambda mer: str(mer))
 
-    def add(self, category, context, rating=None):
+    def find_merit(self, category=None, context=None):
+        pass
+
+    def add(self, category=None, context=None, rating=None):
+        if category is None:
+            raise ValueError("No Merit entered to set!")
+        category = dramatic_capitalize(category)
         if rating is None:
             rating = 0
-        new_merit = Merit(key=(self.kind, category, context), handler=self.handler)
-        new_merit.rating = rating
-        new_merit.save()
+        if context:
+            context = dramatic_capitalize(context)
+            if len([merit for merit in self.existing if merit.key == category and merit.context == context]):
+                raise ValueError("Cannot add new %s. Duplicate detected." % self.kind)
+        elif len([merit for merit in self.existing if merit.key == category]):
+            raise ValueError("Cannot add new %s. Duplicate detected." % self.kind)
+
+        game = self.owner.storyteller.game
+        merit_kind, created = game.merits.get_or_create(key=self.kind)
+        new_merit, created2 = merit_kind.characters.get_or_create(character=self.owner.storyteller,
+                                                                  key=category, context=context, rating=rating)
         self.load()
         return new_merit
 
@@ -311,8 +323,8 @@ class MeritSection(SheetSection):
         section = list()
         merit_section = list()
         section.append(self.sheet_header(self.name, width=width))
-        short_list = [merit for merit in self.existing if len(merit.display_name) <= 30]
-        long_list = [merit for merit in self.existing if len(merit.display_name) > 30]
+        short_list = [merit for merit in self.existing if len(str(merit)) <= 30]
+        long_list = [merit for merit in self.existing if len(str(merit)) > 30]
         short_format = [merit.sheet_format(colors=colors, width=36) for merit in short_list]
         long_format = [merit.sheet_format(width=width-4, colors=colors) for merit in long_list]
         if short_list:
@@ -330,7 +342,7 @@ class AdvantageStatSection(SheetSection):
     existing = tuple()
 
     def load(self):
-        self.existing = [power for power in self.handler.powers if power.kind == self.kind]
+        self.existing = [power for power in self.owner.storyteller.powers.all() if power.power.kind.key == self.kind]
 
     def sheet_render(self, width=78):
         powers = self.existing
@@ -347,9 +359,6 @@ class AdvantageStatSection(SheetSection):
     def all(self):
         return self.existing
 
-    def save(self):
-        self.handler.save_powers()
-        self.handler.load_powers()
 
 class AdvantageWordSection(AdvantageStatSection):
     name = 'DefaultAdvPower'
@@ -383,9 +392,9 @@ class TemplateSection(SheetSection):
         power = self.handler.stats_dict['essence']
         powername = 'Essence'
         column_1 = ['Name']
-        column_1 += self.handler.template.sheet_column_1
+        column_1 += self.owner.storyteller.sheet_column_1
         column_2 = [powername]
-        column_2 += self.handler.template.sheet_column_2
+        column_2 += self.owner.storyteller.sheet_column_2
         column_1_len = max([len(entry) for entry in column_1])
         column_2_len = max([len(entry) for entry in column_2])
         column_1_prep = list()
@@ -394,13 +403,13 @@ class TemplateSection(SheetSection):
             if entry == 'Name':
                 display = '%s: %s' % ('Name'.rjust(column_1_len), name)
             else:
-                display = '%s: %s' % (entry.rjust(column_1_len), self.handler.template.get(entry))
+                display = '%s: %s' % (entry.rjust(column_1_len), self.owner.storyteller.get(entry))
             column_1_prep.append(display)
         for entry in column_2:
             if entry == powername:
                 display = '%s: %s' % (powername.rjust(column_2_len), int(power))
             else:
-                display = '%s: %s' % (entry.rjust(column_2_len), self.handler.template.get(entry))
+                display = '%s: %s' % (entry.rjust(column_2_len), self.owner.storyteller.get(entry))
             column_2_prep.append(display)
         line4 = self.sheet_two_columns(['\n'.join(column_1_prep), '\n'.join(column_2_prep)], width=width)
         return '\n'.join(unicode(line) for line in [line1, line2, line3, line4])
@@ -423,8 +432,13 @@ class StorytellerHandler(object):
         'Owner' must be an instance of StorytellerCharacter.
         """
         self.owner = owner
-        stat_types = list()
+        self.load()
 
+
+    def load(self):
+
+        stat_types = list()
+        owner = self.owner
         for stat in owner.storyteller.stats.all():
             self.stats_dict[stat.stat.key] = stat
             self.stats_values[stat.stat.key] = stat.rating

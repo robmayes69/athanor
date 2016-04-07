@@ -1,6 +1,5 @@
 from __future__ import unicode_literals
 from django.db import models
-from evennia.utils.picklefield import PickledObjectField
 from evennia.utils.ansi import ANSIString
 from commands.library import partial_match, sanitize_string
 
@@ -53,23 +52,26 @@ class Template(models.Model):
     def rules(self):
         return self.game.rules['templates'][self.key]
 
+
 class CharacterTemplate(models.Model):
     template = models.ForeignKey('storyteller.Template', related_name='characters')
     character = models.OneToOneField('objects.ObjectDB', related_name='storyteller')
-    info_save = PickledObjectField(null=True)
     base_sheet_colors = {'title': 'n', 'border': 'n', 'textfield': 'n', 'texthead': 'n', 'colon': 'n',
                          'section_name': 'n', '3_column_name': 'n', 'advantage_name': 'n', 'advantage_border': 'n',
                          'slash': 'n', 'statdot': 'n', 'statfill': 'n', 'statname': 'n', 'damagename': 'n',
                          'damagetotal': 'n', 'damagetotalnum': 'n'}
 
+    class Meta:
+        unique_together = (("template", "character"),)
+
     def setup_character(self):
         game = self.template.game
         game_stats = game.stats.all()
-        rules = self.rules
+        rules = game.rules
         for stat in game_stats:
             obj, created = self.stats.get_or_create(stat=stat)
             if created:
-                rating = rules['stats'][stat.key].get('_rating', 0)
+                rating = rules['stats'][stat.key].get('start_rating', 0)
                 if rating:
                     obj.rating = rating
                     obj.save()
@@ -98,7 +100,7 @@ class CharacterTemplate(models.Model):
         return self.rules['list_order']
 
     @property
-    def pools(self):
+    def pool_dict(self):
         return self.rules['pools']
 
     @property
@@ -132,9 +134,11 @@ class CharacterTemplate(models.Model):
     @property
     def info(self):
         info_defaults = self.rules['info_defaults']
+        info_save = self.infos.all()
+        save_dict = {info.info.key: info.value for info in info_save}
         info_dict = dict()
         info_dict.update(info_defaults)
-        info_dict.update(self.info_save or {})
+        info_dict.update(save_dict)
         return info_dict
 
     def get(self, field=None):
@@ -154,12 +158,14 @@ class CharacterTemplate(models.Model):
         found_field = partial_match(field, info_fields)
         if not found_field:
             raise KeyError("Field '%s' not found." % field)
-        info_save = self.info_save or {}
+        info_save = self.infos.all()
         if not value:
-            try:
-                info_save.pop(found_field)
-            except KeyError:
-                return True
+            check = self.infos.filter(info__key=found_field)
+            if check:
+                check.delete()
+
+        info_kind, created = self.game.infos.get_or_create(key=found_field)
+        info_set, created2 = info_kind.characters.get_or_create(character=self)
 
         if found_field in info_choices:
             choices = info_choices[found_field]
@@ -167,11 +173,11 @@ class CharacterTemplate(models.Model):
             if not find_value:
                 raise KeyError("'%s' is not a valid entry for %s. Choices are: %s" % (value, found_field,
                                                                                       ', '.join(choices)))
-            info_save[found_field] = find_value
+            info_set.value = find_value
         else:
-            info_save[found_field] = sanitize_string(value)
-        self.info_save = info_save
-        self.save(update_fields=['info_save'])
+            info_set.value = sanitize_string(value)
+        info_set.save()
+
 
     def swap_template(self, key=None):
         if not key:
@@ -182,7 +188,27 @@ class CharacterTemplate(models.Model):
         self.template = find_template
         self.info_save = {}
         self.save(update_fields=['template', 'info_save'])
+        self.character.story.load()
 
+    def stat(self, key):
+        return self.stats.filter(stat__key=key).first()
+
+
+class TemplateInfo(models.Model):
+    key = models.CharField(max_length=40, db_index=True)
+    game = models.ForeignKey('storyteller.Game', related_name='infos')
+
+    class Meta:
+        unique_together = (("key", "game"),)
+        index_together = [['key', 'game'], ]
+
+class CharacterInfo(models.Model):
+    character = models.ForeignKey('storyteller.CharacterTemplate', related_name='infos')
+    info = models.ForeignKey('storyteller.TemplateInfo', related_name='characters')
+    value = models.CharField(max_length=255, db_index=True)
+
+    class Meta:
+        unique_together = (('character','info'),)
 
 class Stat(models.Model):
     key = models.CharField(max_length=40, db_index=True)
@@ -212,6 +238,12 @@ class CharacterStat(models.Model):
 
     def __int__(self):
         return self.rating
+
+    def __add__(self, other):
+        return int(self) + int(other)
+
+    def __radd__(self, other):
+        return int(self) + int(other)
 
     @property
     def game(self):
@@ -281,7 +313,7 @@ class CharacterStat(models.Model):
 
 
 class Specialty(models.Model):
-    stat = models.ForeignKey('storyteller.CharacterStat', related_name='specialties')
+    stat = models.ForeignKey('storyteller.CharacterStat', null=True, related_name='specialties', on_delete=models.CASCADE)
     key = models.CharField(max_length=40, db_index=True)
     rating = models.SmallIntegerField(default=0)
 
@@ -312,10 +344,25 @@ class CharacterCustom(models.Model):
     rating = models.SmallIntegerField(default=0, db_index=True)
 
     def __str__(self):
-        return self.rules['name']
+        return self.stat.key
 
     def __int__(self):
         return self.rating
+
+    def display(self):
+        return self.rating
+
+    @property
+    def is_favored(self):
+        return False
+
+    @property
+    def is_supernal(self):
+        return False
+
+    @property
+    def is_caste(self):
+        return False
 
     @property
     def game(self):
@@ -325,6 +372,27 @@ class CharacterCustom(models.Model):
     def rules(self):
         return self.game.rules['custom'][self.stat.kind.key]
 
+    def sheet_format(self, width=23, no_favored=False, fill_char='.', colors=None):
+        if not colors:
+            colors = {'statname': 'n', 'statfill': 'n', 'statdot': 'n'}
+        display_name = ANSIString('{%s%s{n' % (colors['statname'], self))
+        if self.is_supernal:
+            fav_dot = ANSIString('{r*{n')
+        elif self.is_caste:
+            fav_dot = ANSIString('{r+{n')
+        elif self.is_favored:
+            fav_dot = ANSIString('{r-{n')
+        else:
+            fav_dot = ANSIString(' ')
+        if not no_favored:
+            display_name = fav_dot + display_name
+        if self.rating > width - len(display_name) - 1:
+            dot_display = ANSIString('{%s%s{n' % (colors['statdot'], self.rating))
+        else:
+            dot_display = ANSIString('{%s%s{n' % (colors['statdot'], '*' * self.rating))
+        fill_length = width - len(display_name) - len(dot_display)
+        fill = ANSIString('{%s%s{n' % (colors['statfill'], fill_char * fill_length))
+        return display_name + fill + dot_display
 
 class PowerKind(models.Model):
     game = models.ForeignKey('storyteller.Game', related_name='powers')
@@ -335,7 +403,7 @@ class PowerKind(models.Model):
 
 
 class Power(models.Model):
-    kind = models.ForeignKey('storyteller.PowerKind')
+    kind = models.ForeignKey('storyteller.PowerKind', related_name='powers')
     category = models.CharField(max_length=70, db_index=True)
     key = models.CharField(max_length=255, db_index=True)
 
@@ -374,9 +442,9 @@ class CharacterPower(models.Model):
 
     def word_format(self, width, colors):
         if self.rating > 1:
-            return '%s (%s)' % (self.key, self._rating)
+            return '%s (%s)' % (self, self.rating)
         else:
-            return self.key
+            return str(self)
 
     def stat_format(self, width, colors):
         pass
@@ -399,7 +467,7 @@ class CharacterPool(models.Model):
         unique_together = (("character", "pool",),)
 
     def __str__(self):
-        return self.rules['name']
+        return self.name
 
     def __int__(self):
         return self.points
@@ -413,8 +481,24 @@ class CharacterPool(models.Model):
         return self.game.rules['pools'][self.pool.key]
 
     @property
+    def name(self):
+        return self.rules['name']
+
+    @property
+    def category(self):
+        return self.rules['category']
+
+    @property
+    def _func(self):
+        return self.character.pool_dict.get(self.pool.key, None)
+
+    @property
     def max(self):
-        return self._func(self.handler)
+        try:
+            value = self._func(self.character.character.story)
+            return value
+        except TypeError:
+            return 0
 
     @property
     def available(self):
@@ -484,11 +568,12 @@ class CharacterPool(models.Model):
             return
 
     def sheet_format(self, rjust=None, zfill=2):
-        val_string = '%s/%s' % (str(self._points).zfill(zfill), str(self.max).zfill(zfill))
+        val_string = '%s/%s' % (str(self.points).zfill(zfill), str(self.max).zfill(zfill))
         if rjust:
             return '%s: %s' % (self.name.rjust(rjust), val_string)
         else:
             return '%s: %s' % (self.name, val_string)
+
 
 class PoolCommits(models.Model):
     pool = models.ForeignKey('storyteller.CharacterPool', related_name='commitments')
@@ -513,6 +598,8 @@ class MeritCharacter(models.Model):
     key = models.CharField(max_length=120)
     context = models.CharField(max_length=120)
     rating = models.SmallIntegerField(default=0)
+    description = models.TextField(blank=True)
+    notes = models.TextField(blank=True)
 
     class Meta:
         unique_together = (("character", "key", 'context', 'kind'),)

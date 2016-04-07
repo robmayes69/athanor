@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 import datetime, pytz, random
 from django.conf import settings
 from commands.command import AthCommand
-from commands.library import partial_match
+from commands.library import partial_match, dramatic_capitalize
 from world.database.mushimport.models import MushObject, MushAttribute, cobj, MushAccount
 from world.database.mushimport.convpenn import read_penn
 from world.database.grid.models import District
@@ -392,9 +392,26 @@ class CmdImport(AthCommand):
                 int_value = 0
             stats_dict[name] = int(int_value)
 
+
+
+        character.setup_storyteller()
         character.storyteller.swap_template(template)
 
-        new_stats = character.storyteller.stats
+        new_stats = character.storyteller.stats.all()
+
+        special_string = character.mush.mushget('D`SPECIALTIES')
+        for special in special_string.split('|'):
+            stat_name, spec_name = special.split('/', 1)
+            spec_name, value = spec_name.split('~', 1)
+            value = int(value)
+            find_stat = partial_match(stat_name, new_stats)
+            if find_stat:
+                spec, created = find_stat.specialties.get_or_create(key=dramatic_capitalize(spec_name))
+                spec.rating = value
+                spec.save()
+
+        favored_string = character.mush.mushget('D`FAVORED`ABILITIES')
+
         for k, v in stats_dict.iteritems():
             find_stat = partial_match(k, new_stats)
             if not find_stat:
@@ -419,7 +436,7 @@ class CmdImport(AthCommand):
         self.ex3_spells(character)
 
     def ex3_merits(self, character, merit_type, merit_class):
-        sheet_section = character.storyteller.sheet_dict[merit_class]
+        sheet_section = character.story.sheet_dict[merit_class]
         for old_attrs in character.mush.lattr(merit_type):
             old_name = character.mush.mushget(old_attrs)
             old_context = character.mush.mushget(old_attrs + '`CONTEXT')
@@ -427,12 +444,12 @@ class CmdImport(AthCommand):
             old_description = character.mush.mushget(old_attrs + '`DESC')
             old_notes = character.mush.mushget(old_attrs + '`NOTES')
             new_merit = sheet_section.add(old_name, old_context, old_rank)
-            new_merit._description = old_description
-            new_merit._notes = old_notes
+            new_merit.description = old_description
+            new_merit.notes = old_notes
             new_merit.save()
 
     def ex3_custom(self, character, custom_attr, custom_kind):
-        sheet_section = character.storyteller.sheet_dict[custom_kind]
+        sheet_section = character.story.sheet_dict[custom_kind]
         customs = character.mush.mushget(custom_attr)
         if not customs:
             return
@@ -446,7 +463,7 @@ class CmdImport(AthCommand):
             sheet_section.set(k, v)
 
     def ex3_charms(self, character, attribute, charm_class):
-        sheet_section = character.storyteller.sheet_dict[charm_class]
+        sheet_section = character.story.sheet_dict[charm_class]
         for charm_attr in character.mush.lattr(attribute + '`*'):
             charm_type = charm_attr.split('`')[-1]
             charm_dict = dict()
@@ -460,7 +477,7 @@ class CmdImport(AthCommand):
                 sheet_section.add(charm_type, k, v)
 
     def ex3_martial(self, character, attribute, martial_class):
-        sheet_section = character.storyteller.sheet_dict[martial_class]
+        sheet_section = character.story.sheet_dict[martial_class]
         for count, charm_attr in enumerate(character.mush.lattr(attribute + '`*')):
             style_name = character.mush.mushget(charm_attr + '`NAME') or 'Unknown Style %s' % str(count + 1)
             charm_dict = dict()
@@ -481,7 +498,7 @@ class CmdImport(AthCommand):
             else:
                 kind = 'necromancy_spell'
             charm_dict = dict()
-            sheet_section = character.storyteller.sheet_dict[kind]
+            sheet_section = character.story.sheet_dict[kind]
             for charm in character.mush.mushget(attr).split('|'):
                 charm_name, charm_purchases = charm.split('~', 1)
                 charm_purchases = int(charm_purchases)

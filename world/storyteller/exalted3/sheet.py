@@ -67,10 +67,10 @@ class CharmSection(AdvantageWordSection):
 
     def load(self):
         super(CharmSection, self).load()
-        self.display_categories = sorted(list(set(stat.sub_category for stat in self.existing)))
+        self.display_categories = sorted(list(set(stat.power.category for stat in self.existing)))
         for category in self.display_categories:
-            self.charm_categorized[category] = sorted([power for power in self.existing if power.sub_category == category],
-                                                      key=lambda power2: power2.key)
+            self.charm_categorized[category] = sorted([power for power in self.existing if power.power.category == category],
+                                                      key=lambda power2: str(power2))
 
     def add(self, sub_category, key, amount=1):
         key = dramatic_capitalize(key)
@@ -84,15 +84,20 @@ class CharmSection(AdvantageWordSection):
             raise ValueError("That isn't an integer!")
         if not amount > 0:
             raise ValueError("%s must be raised by positive numbers.")
-        find_power = [power for power in self.existing if power.sub_category == found_category and power.key == key]
+        find_power = [power for power in self.existing if power.power.category == found_category and power.power.key == key]
         if find_power:
-            find_power[0]._rating += amount
+            find_power[0].rating += amount
             find_power[0].save()
             return
-        new_power = Power(key=(self.kind, found_category, key), handler=self.handler)
-        self.handler.powers.append(new_power)
+        game = self.owner.storyteller.game
+        power_kind, created = game.powers.get_or_create(key=self.kind)
+        power, created2 = power_kind.powers.get_or_create(category=found_category, key=key)
+        new_power, created3 = power.characters.get_or_create(character=self.owner.storyteller)
+        if created3:
+            new_power.rating = amount
+        else:
+            new_power.rating += amount
         new_power.save()
-        self.handler.load_powers()
         self.load()
 
     def sheet_render(self, width=78):
@@ -169,22 +174,22 @@ class PoolSection(SheetSection):
     experience = list()
 
     def load(self):
-        self.pools = [pool for pool in self.handler.pools if pool.category == 'Pool']
-        self.tracks = [pool for pool in self.handler.pools if pool.category == 'Track']
+        self.pools = [pool for pool in self.owner.storyteller.pools.all() if pool.category == 'Pool']
+        self.tracks = [pool for pool in self.owner.storyteller.pools.all() if pool.category == 'Track']
 
 
     def sheet_render(self, width=78):
         colors = self.sheet_colors
         line1 = self.sheet_header(width=width)
-        line2 = ' {%s\\{n%s{n{%s/{n' % (colors['border'], self.handler.template.sheet_footer.center(width - 4),
+        line2 = ' {%s\\{n%s{n{%s/{n' % (colors['border'], self.owner.storyteller.sheet_footer.center(width - 4),
                                         colors['border'])
         line3 = '  {%s.%s.{n' % (colors['border'], '-' * (width-6))
 
         section = list()
         section.append(self.sheet_triple_header(['Pools', 'Tracks', 'Experience'], width=width))
         col_widths = self.calculate_widths(width)
-        pools = '\n'.join([pool.sheet_format(rjust=12) for pool in self.pools])
-        tracks = '\n'.join([pool.sheet_format(rjust=13) for pool in self.tracks])
+        pools = '\n'.join([pool.sheet_format(rjust=12) for pool in self.pools if pool.max])
+        tracks = '\n'.join([pool.sheet_format(rjust=13) for pool in self.tracks if pool.max])
         experience = '\n'.join([pool.sheet_format() for pool in self.experience])
         section.append(self.sheet_columns([pools, tracks, experience], width=width))
         section.append(line1)

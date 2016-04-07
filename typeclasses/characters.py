@@ -230,8 +230,10 @@ class StorytellerCharacter(Character):
     def setup_storyteller(self):
         obj, created = StGame.objects.get_or_create(key=self.game_mode)
         obj.setup_storyteller()
-        template = obj.templates.filter(key='mortal').first()
-        template.characters.get_or_create(character=self)
+        if not obj.templates.filter(characters__character=self).count():
+            template = obj.templates.filter(key='mortal').first()
+            template, created = template.characters.get_or_create(character=self)
+        self.storyteller.setup_character()
 
     @lazy_property
     def story(self):
