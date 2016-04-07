@@ -91,8 +91,9 @@ class CharmSection(AdvantageWordSection):
             return
         game = self.owner.storyteller.game
         power_kind, created = game.powers.get_or_create(key=self.kind)
-        power, created2 = power_kind.powers.get_or_create(category=found_category, key=key)
-        new_power, created3 = power.characters.get_or_create(character=self.owner.storyteller)
+        power_category, created2 = power_kind.categories.get_or_create(key=found_category)
+        power, created3 = power_category.powers.get_or_create(key=key)
+        new_power, created4 = power.characters.get_or_create(character=self.owner.storyteller)
         if created3:
             new_power.rating = amount
         else:
@@ -174,8 +175,10 @@ class PoolSection(SheetSection):
     experience = list()
 
     def load(self):
-        self.pools = [pool for pool in self.owner.storyteller.pools.all() if pool.category == 'Pool']
-        self.tracks = [pool for pool in self.owner.storyteller.pools.all() if pool.category == 'Track']
+        self.pools = sorted([pool for pool in self.owner.storyteller.pools.all() if pool.category == 'Pool'],
+                            key=lambda po: po.list_order)
+        self.tracks = sorted([pool for pool in self.owner.storyteller.pools.all() if pool.category == 'Track'],
+                             key=lambda po: po.list_order)
 
 
     def sheet_render(self, width=78):

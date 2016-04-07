@@ -426,25 +426,29 @@ POOLS = {
         'kind': 'essence',
         'category': 'Pool',
         'unit': 'Motes of Personal Essence',
+        'list_order': 10,
     },
     'peripheral': {
         'name': 'Peripheral',
         'kind': 'essence',
         'category': 'Pool',
         'unit': 'Motes of Peripheral Essence',
+        'list_order': 15,
     },
     'willpower': {
         'name': 'Willpower',
         'kind': 'essence',
         'category': 'Pool',
         'unit': 'Points of Temporary Willpower',
+        'list_order': 16
     },
     'limit': {
         'name': 'Limit',
         'unit': 'Points of Limit',
         'kind': 'limit',
         'category': 'Track',
-        'refresh': 'empty'
+        'refresh': 'empty',
+        'list_order': 10
     },
 
 }
@@ -606,7 +610,6 @@ TEMPLATES = {
     },
     'liminimal': {
         'name': 'Liminal',
-        'parent': 'exalt',
         'list_order': 30,
         'pools': {'personal': liminal_personal, 'peripheral': liminal_peripheral, 'willpower': universal_willpower,
                   'limit': liminal_limit},
@@ -617,6 +620,19 @@ TEMPLATES = {
         'sheet_column_1': ('Aspect',),
         'sheet_column_2': (),
         'sheet_footer': ANSIString('{wLiminals: The Chernozem')
+    },
+    'jadeborn': {
+        'name': 'Jadeborn',
+        'list_order': 30,
+        'pools': {'personal': liminal_personal, 'willpower': universal_willpower,
+                  'limit': liminal_limit},
+        'charm_type': 'liminal_charm',
+        'info_defaults': {'Aspect': None},
+        'info_choices': {'Aspect': ('Blood', 'Breath', 'Flesh', 'Marrow', 'Soil')},
+        'extra_sheet_colors': {'border': 'Y', 'slash': 'r', 'section_name': 'y'},
+        'sheet_column_1': ('Aspect',),
+        'sheet_column_2': (),
+        'sheet_footer': ANSIString('{wJadeborn: The Mountain-Folk')
     },
 }
 

@@ -1,7 +1,8 @@
 from __future__ import unicode_literals
 from django.db import models
+from django.db.models import Q
 from evennia.utils.ansi import ANSIString
-from commands.library import partial_match, sanitize_string
+from commands.library import partial_match, sanitize_string, dramatic_capitalize
 
 from world.storyteller.exalted3.rules import EX3_RULES
 
@@ -186,12 +187,13 @@ class CharacterTemplate(models.Model):
         if not find_template:
             raise ValueError("Could not find a '%s' template." % key)
         self.template = find_template
-        self.info_save = {}
-        self.save(update_fields=['template', 'info_save'])
         self.character.story.load()
 
     def stat(self, key):
         return self.stats.filter(stat__key=key).first()
+
+    def specialties(self):
+        return Specialty.objects.filter(Q(stat__character=self) | Q(custom__character=self))
 
 
 class TemplateInfo(models.Model):
@@ -202,6 +204,7 @@ class TemplateInfo(models.Model):
         unique_together = (("key", "game"),)
         index_together = [['key', 'game'], ]
 
+
 class CharacterInfo(models.Model):
     character = models.ForeignKey('storyteller.CharacterTemplate', related_name='infos')
     info = models.ForeignKey('storyteller.TemplateInfo', related_name='characters')
@@ -209,6 +212,7 @@ class CharacterInfo(models.Model):
 
     class Meta:
         unique_together = (('character','info'),)
+
 
 class Stat(models.Model):
     key = models.CharField(max_length=40, db_index=True)
@@ -224,10 +228,10 @@ class CharacterStat(models.Model):
     stat = models.ForeignKey('storyteller.Stat', related_name='characters')
     rating = models.SmallIntegerField(default=0, db_index=True)
     is_favored = models.BooleanField(default=False)
-    is_epic = models.BooleanField(default=False)
+    is_asset = models.BooleanField(default=False)
     is_caste = models.BooleanField(default=False)
     is_supernal = models.BooleanField(default=False)
-    features_default = set(['dot', 'roll', 'favor', 'supernal', 'caste', 'special'])
+    features_default = ({'dot', 'roll', 'favor', 'supernal', 'caste', 'special'})
 
     class Meta:
         unique_together = (("character", "stat"),)
@@ -287,7 +291,25 @@ class CharacterStat(models.Model):
         return features.difference(self.features_remove)
 
     def display(self):
-        return int(self) or self.is_favored or self.is_supernal or self.is_caste or self.is_epic
+        return int(self) or self.is_favored or self.is_supernal or self.is_caste or self.is_asset
+
+    def specialize(self, key=None, rating=None):
+        if not key:
+            raise ValueError("What will be your specialty?")
+        key = dramatic_capitalize(key)
+        if not rating:
+            rating = 1
+        try:
+            rating = int(rating)
+        except ValueError:
+            raise ValueError("Enter a number!")
+        if rating < 1:
+            self.specialties.filter(key=key).delete()
+        else:
+            specialty, created = self.specialties.get_or_create(key=key)
+            specialty.rating = rating
+            specialty.save()
+
 
     def sheet_format(self, width=23, no_favored=False, fill_char='.', colors=None):
         if not colors:
@@ -297,7 +319,7 @@ class CharacterStat(models.Model):
             fav_dot = ANSIString('{r*{n')
         elif self.is_caste:
             fav_dot = ANSIString('{r+{n')
-        elif self.is_favored:
+        elif self.is_favored or self.is_asset:
             fav_dot = ANSIString('{r-{n')
         else:
             fav_dot = ANSIString(' ')
@@ -306,20 +328,39 @@ class CharacterStat(models.Model):
         if self.rating > width - len(display_name) - 1:
             dot_display = ANSIString('{%s%s{n' % (colors['statdot'], self.rating))
         else:
-            dot_display = ANSIString('{%s%s{n' % (colors['statdot'], '*' * self.rating))
+            dot_display = ANSIString('{%s%s{n' % (colors['statdot'], '*' * int(self)))
         fill_length = width - len(display_name) - len(dot_display)
         fill = ANSIString('{%s%s{n' % (colors['statfill'], fill_char * fill_length))
         return display_name + fill + dot_display
 
 
 class Specialty(models.Model):
-    stat = models.ForeignKey('storyteller.CharacterStat', null=True, related_name='specialties', on_delete=models.CASCADE)
+    stat = models.ForeignKey('storyteller.CharacterStat', null=True, related_name='specialties')
+    custom = models.ForeignKey('storyteller.CharacterCustom', null=True, related_name='specialties')
     key = models.CharField(max_length=40, db_index=True)
     rating = models.SmallIntegerField(default=0)
 
     class Meta:
-        unique_together = (("stat", "key"),)
+        unique_together = (("stat", "key"), ('custom', 'key'),)
 
+    def __str__(self):
+        parent = self.stat or self.custom
+        return '%s/%s' % (parent, self.key)
+
+    def __int__(self):
+        return self.rating
+
+    def sheet_format(self, width=23, fill_char='.', colors=None):
+        if not colors:
+            colors = {'statname': 'n', 'statfill': 'n', 'statdot': 'n'}
+        display_name = ANSIString('{%s%s{n' % (colors['statname'], self))
+        if self.rating > width - len(display_name) - 1:
+            dot_display = ANSIString('{%s%s{n' % (colors['statdot'], self.rating))
+        else:
+            dot_display = ANSIString('{%s%s{n' % (colors['statdot'], '*' * self.rating))
+        fill_length = width - len(display_name) - len(dot_display)
+        fill = ANSIString('{%s%s{n' % (colors['statfill'], fill_char * fill_length))
+        return display_name + fill + dot_display
 
 class CustomKind(models.Model):
     key = models.CharField(max_length=30, db_index=True)
@@ -333,18 +374,21 @@ class CustomStat(models.Model):
     kind = models.ForeignKey('storyteller.CustomKind', related_name='custom_stats')
     key = models.CharField(max_length=40, db_index=True)
 
-
     class Meta:
         unique_together = (("key", 'kind'),)
+
+    def __str__(self):
+        return self.key
 
 
 class CharacterCustom(models.Model):
     character = models.ForeignKey('storyteller.CharacterTemplate', related_name='customs')
     stat = models.ForeignKey('storyteller.CustomStat', related_name='characters')
     rating = models.SmallIntegerField(default=0, db_index=True)
+    features = ({'special', 'dot', 'roll'})
 
     def __str__(self):
-        return self.stat.key
+        return str(self.stat)
 
     def __int__(self):
         return self.rating
@@ -394,6 +438,7 @@ class CharacterCustom(models.Model):
         fill = ANSIString('{%s%s{n' % (colors['statfill'], fill_char * fill_length))
         return display_name + fill + dot_display
 
+
 class PowerKind(models.Model):
     game = models.ForeignKey('storyteller.Game', related_name='powers')
     key = models.CharField(max_length=30, db_index=True)
@@ -401,14 +446,25 @@ class PowerKind(models.Model):
     class Meta:
         unique_together = (("key", "game", ),)
 
+    def __str__(self):
+        return self.key
 
-class Power(models.Model):
-    kind = models.ForeignKey('storyteller.PowerKind', related_name='powers')
-    category = models.CharField(max_length=70, db_index=True)
+class PowerCategory(models.Model):
+    kind = models.ForeignKey('storyteller.PowerKind', related_name='categories')
     key = models.CharField(max_length=255, db_index=True)
 
     class Meta:
-        unique_together = (("kind", "category", 'key'),)
+        unique_together = (("key", 'kind'),)
+
+    def __str__(self):
+        return self.key
+
+class Power(models.Model):
+    category = models.ForeignKey('storyteller.PowerCategory', related_name='powers')
+    key = models.CharField(max_length=255, db_index=True)
+
+    class Meta:
+        unique_together = (("category", 'key'),)
 
 
 class CharacterPower(models.Model):
@@ -487,6 +543,10 @@ class CharacterPool(models.Model):
     @property
     def category(self):
         return self.rules['category']
+
+    @property
+    def list_order(self):
+        return self.rules['list_order']
 
     @property
     def _func(self):

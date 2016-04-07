@@ -393,24 +393,29 @@ class CmdImport(AthCommand):
             stats_dict[name] = int(int_value)
 
 
-
+        print character
         character.setup_storyteller()
         character.storyteller.swap_template(template)
 
         new_stats = character.storyteller.stats.all()
 
+        custom_dict = {'D`CRAFTS': 'craft', 'D`STYLES': 'style'}
+        for k, v in custom_dict.iteritems():
+            self.ex3_custom(character, k, v)
+
         special_string = character.mush.mushget('D`SPECIALTIES')
+
         for special in special_string.split('|'):
+            if not len(special) > 2:
+                continue
             stat_name, spec_name = special.split('/', 1)
             spec_name, value = spec_name.split('~', 1)
-            value = int(value)
             find_stat = partial_match(stat_name, new_stats)
             if find_stat:
-                spec, created = find_stat.specialties.get_or_create(key=dramatic_capitalize(spec_name))
-                spec.rating = value
-                spec.save()
+                find_stat.specialize(dramatic_capitalize(spec_name), value)
 
-        favored_string = character.mush.mushget('D`FAVORED`ABILITIES')
+        favored_string = character.mush.mushget('D`FAVORED`ABILITIES') + '|' + character.mush.mushget('D`FAVORED`ATTRIBUTES')
+        supernal_string = character.mush.mushget('D`SUPERNAL`ABILITIES')
 
         for k, v in stats_dict.iteritems():
             find_stat = partial_match(k, new_stats)
@@ -418,10 +423,6 @@ class CmdImport(AthCommand):
                 continue
             find_stat.rating = v
             find_stat.save()
-
-        custom_dict = {'D`CRAFTS': 'craft', 'D`STYLES': 'style'}
-        for k, v in custom_dict.iteritems():
-            self.ex3_custom(character, k, v)
 
         merits_dict = {'D`MERITS`*': 'merit', 'D`FLAWS`*': 'flaw'}
         for k, v in merits_dict.iteritems():

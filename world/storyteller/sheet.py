@@ -231,7 +231,7 @@ class Skills(StatSection):
 
     def sheet_render(self, width=78):
         colors = self.sheet_colors
-        skills = [stat for stat in self.choices if stat.display()]
+        skills = sorted([stat for stat in self.choices if stat.display()], key=lambda stat2: str(stat2))
         if not skills:
             return
         section = list()
@@ -251,22 +251,27 @@ class Specialties(StatSection):
 
     def load(self):
         self.choices = [stat for stat in self.handler.stats_dict.values() if 'special' in stat.features]
-        self.specialized = [stat for stat in self.handler.stats_dict.values() if stat.specialties.count() > 0]
+        self.choices += [stat for stat in self.owner.storyteller.customs.all() if 'sepcial' in stat.features]
+        self.specialties = sorted(self.owner.storyteller.specialties(), key=lambda spec: str(spec))
 
     def sheet_render(self, width=78):
         colors = self.sheet_colors
-        specialized = self.specialized
-        if not specialized:
+        specialties = self.specialties
+        if not specialties:
             return
         section = list()
-        skill_display = list()
+        spec_section = list()
         section.append(self.sheet_header(self.name, width=width))
-        for stat in specialized:
-            skill_display += stat.sheet_specialties(colors=colors)
-        skill_table = tabular_table(skill_display, field_width=23, line_length=width-2)
-        section.append(self.sheet_border(skill_table, width=width))
+        short_list = [spec for spec in specialties if len(str(spec)) <= 30]
+        long_list = [spec for spec in specialties if len(str(spec)) > 30]
+        short_format = [spec.sheet_format(colors=colors, width=36) for spec in short_list]
+        long_format = [spec.sheet_format(width=width - 4, colors=colors) for spec in long_list]
+        if short_list:
+            spec_section.append(tabular_table(short_format, field_width=36, line_length=width - 4))
+        if long_list:
+            spec_section.append('\n'.join(long_format))
+        section.append(self.sheet_border('\n'.join(spec_section), width=width))
         return '\n'.join(unicode(line) for line in section)
-
 
 class Favored(StatSection):
     base_name = 'Favored'
@@ -342,7 +347,7 @@ class AdvantageStatSection(SheetSection):
     existing = tuple()
 
     def load(self):
-        self.existing = [power for power in self.owner.storyteller.powers.all() if power.power.kind.key == self.kind]
+        self.existing = [power for power in self.owner.storyteller.powers.all() if power.power.category.kind.key == self.kind]
 
     def sheet_render(self, width=78):
         powers = self.existing
