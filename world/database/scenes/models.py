@@ -12,7 +12,7 @@ class Plot(models.Model):
     status = models.SmallIntegerField(default=0, db_index=True)
 
     def display_plot(self, viewer):
-        message = []
+        message = list()
         message.append(header('Plot ID %i: %s' % (self.id, self.title)))
         message.append('Runner: %s' % self.owner)
         message.append('Schedule: %s to %s' % (viewer.display_local_time(date=self.date_start),
@@ -49,7 +49,7 @@ class Scene(models.Model):
     owner = models.ForeignKey('communications.ObjectStub', related_name='scenes')
     title = models.CharField(max_length=150)
     description = models.TextField(blank=True)
-    date_created = models.DateTimeField(default=utcnow())
+    date_created = models.DateTimeField()
     date_finished = models.DateTimeField(null=True)
     plot = models.ForeignKey('Plot', null=True, related_name='scenes')
     status = models.SmallIntegerField(default=0, db_index=True)
@@ -110,7 +110,7 @@ class Participant(models.Model):
 class Pose(models.Model):
     owner = models.ForeignKey('scenes.Participant', related_name='poses')
     ignore = models.BooleanField(default=False, db_index=True)
-    date_made = models.DateTimeField(default=utcnow())
+    date_made = models.DateTimeField()
     text = models.TextField(blank=True)
     location = models.ForeignKey('communications.ObjectStub', related_name='poses_here')
 

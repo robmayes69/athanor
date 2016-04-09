@@ -1,9 +1,9 @@
 from __future__ import unicode_literals
-import datetime, pytz, random
+import datetime, pytz, random, MySQLdb, MySQLdb.cursors as cursors
 from django.conf import settings
 from commands.command import AthCommand
 from commands.library import partial_match, dramatic_capitalize
-from world.database.mushimport.models import MushObject, MushAttribute, cobj, MushAccount
+from world.database.mushimport.models import MushObject, MushAttribute, cobj, MushAccount, pmatch
 from world.database.mushimport.convpenn import read_penn
 from world.database.grid.models import District
 from evennia.utils import create
@@ -28,7 +28,7 @@ class CmdImport(AthCommand):
     key = '+import'
     system_name = 'IMPORT'
     locks = 'cmd:perm(Immortals)'
-    admin_switches = ['initialize', 'grid', 'accounts', 'groups', 'boards', 'ex2', 'ex3']
+    admin_switches = ['initialize', 'grid', 'accounts', 'groups', 'boards', 'ex2', 'ex3', 'experience']
 
     def func(self):
         if not self.final_switches:
@@ -366,6 +366,8 @@ class CmdImport(AthCommand):
         for char in characters:
             self.convert_ex3(char)
 
+        self.ex3_experience()
+
     def convert_ex3(self, character):
         # First, let's convert templates.
         template = character.mush.getstat('D`INFO', 'Class') or 'Mortal'
@@ -373,7 +375,7 @@ class CmdImport(AthCommand):
         sub_class = character.mush.getstat('D`INFO', 'Caste') or None
         attribute_string = character.mush.mushget('D`ATTRIBUTES') or ''
         skill_string = character.mush.mushget('D`ABILITIES') or ''
-        specialties_string = character.mush.mushget('D`SPECIALTIES')
+        special_string = character.mush.mushget('D`SPECIALTIES')
         power = character.mush.getstat('D`INFO', 'POWER') or 1
         power_string = 'POWER~%s' % power
         willpower = character.mush.getstat('D`INFO', 'WILLPOWER')
@@ -396,14 +398,16 @@ class CmdImport(AthCommand):
         print character
         character.setup_storyteller()
         character.storyteller.swap_template(template)
+        try:
+            character.storyteller.set('Caste', sub_class)
+        except:
+            pass
 
         new_stats = character.storyteller.stats.all()
 
         custom_dict = {'D`CRAFTS': 'craft', 'D`STYLES': 'style'}
         for k, v in custom_dict.iteritems():
             self.ex3_custom(character, k, v)
-
-        special_string = character.mush.mushget('D`SPECIALTIES')
 
         for special in special_string.split('|'):
             if not len(special) > 2:
@@ -506,3 +510,40 @@ class CmdImport(AthCommand):
                 charm_dict[charm_name] = charm_purchases
             for k, v in charm_dict.iteritems():
                 sheet_section.add(category, k, v)
+
+    def ex3_experience(self):
+        from commands.mysql import sql_dict
+        from world.database.storyteller.models import Game
+        db = MySQLdb.connect(host=sql_dict['site'], user=sql_dict['username'],
+                             passwd=sql_dict['password'], db=sql_dict['database'], cursorclass=cursors.Cursor)
+        c = db.cursor()
+        c.execute("""SELECT DISTINCT xp_admin from mushcode_experience""")
+        source_tuple = c.fetchall()
+        c.execute("""SELECT DISTINCT xp_objid from mushcode_experience""")
+        char_tuple = c.fetchall()
+        source_check = {source: pmatch(source) for source in [field[0] for field in source_tuple] if pmatch(source)}
+        char_check = {char: pmatch(char) for char in [field[0] for field in char_tuple] if pmatch(char)}
+        kind_dict = {'XP': 'xp', 'SOLXP': 'solar_xp', 'WHIXP': 'white_xp', 'SILXP': 'silver_xp', 'GOLXP': 'gold_xp'}
+        game = Game.objects.filter(key='ex3').first()
+        kind_models = {}
+        for k, v in kind_dict.iteritems():
+            kind, created = game.experiences.get_or_create(key=v)
+            kind_models[k] = kind
+        db.close()
+        db = MySQLdb.connect(host=sql_dict['site'], user=sql_dict['username'],
+                             passwd=sql_dict['password'], db=sql_dict['database'], cursorclass=cursors.DictCursor)
+        c = db.cursor()
+        for k, v in char_check.iteritems():
+            c.execute("""SELECT * from mushcode_experience WHERE xp_objid=%s""", (k,))
+            sql_results = c.fetchall()
+            for row in sql_results:
+                source = source_check.get(row['xp_admin'], None)
+                if source:
+                    source = source.stub
+                date = row['xp_date'].replace(tzinfo=pytz.utc)
+                reason = row['xp_reason']
+                type = kind_models[row['xp_type']]
+                amount = row['xp_amount']
+                link, created = type.exp_links.get_or_create(character=v.storyteller)
+                new_xp = link.entries.create(amount=amount, reason=reason, source=source, date_awarded=date)
+                new_xp.save()

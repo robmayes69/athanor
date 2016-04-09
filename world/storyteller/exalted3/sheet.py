@@ -179,6 +179,8 @@ class PoolSection(SheetSection):
                             key=lambda po: po.list_order)
         self.tracks = sorted([pool for pool in self.owner.storyteller.pools.all() if pool.category == 'Track'],
                              key=lambda po: po.list_order)
+        self.experience = sorted([exp for exp in self.owner.storyteller.exp_kinds.all() if exp.entries.count()],
+                                 key=lambda xp: xp.list_order)
 
 
     def sheet_render(self, width=78):
@@ -193,7 +195,7 @@ class PoolSection(SheetSection):
         col_widths = self.calculate_widths(width)
         pools = '\n'.join([pool.sheet_format(rjust=12) for pool in self.pools if pool.max])
         tracks = '\n'.join([pool.sheet_format(rjust=13) for pool in self.tracks if pool.max])
-        experience = '\n'.join([pool.sheet_format() for pool in self.experience])
+        experience = '\n'.join([xp.sheet_format(rjust=13) for xp in self.experience])
         section.append(self.sheet_columns([pools, tracks, experience], width=width))
         section.append(line1)
         section.append(line2)

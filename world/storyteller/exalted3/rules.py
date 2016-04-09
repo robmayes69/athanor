@@ -636,11 +636,35 @@ TEMPLATES = {
     },
 }
 
+EXPERIENCE = {
+    'xp': {
+        'name': 'XP',
+        'list_order': 1,
+    },
+    'solar_xp': {
+        'name': 'Solar XP',
+        'list_order': 2,
+    },
+    'silver_xp': {
+        'name': 'Silver XP',
+        'list_order': 20,
+    },
+    'gold_xp': {
+        'name': 'Gold XP',
+        'list_order': 30,
+    },
+    'white_xp': {
+        'name': 'White XP',
+        'list_order': 40
+    }
+}
+
 EX3_RULES = {
     'stats': STATS,
     'powers': POWERS,
     'merits': MERITS,
     'custom': CUSTOM,
     'pools': POOLS,
-    'templates': TEMPLATES
+    'templates': TEMPLATES,
+    'experience': EXPERIENCE
 }

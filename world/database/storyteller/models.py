@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
+from decimal import Decimal
 from django.db import models
-from django.db.models import Q
+from django.db.models import Q, Sum
 from evennia.utils.ansi import ANSIString
 from commands.library import partial_match, sanitize_string, dramatic_capitalize
 
@@ -136,7 +137,7 @@ class CharacterTemplate(models.Model):
     def info(self):
         info_defaults = self.rules['info_defaults']
         info_save = self.infos.all()
-        save_dict = {info.info.key: info.value for info in info_save}
+        save_dict = {info.info.kind.key: info.info.key for info in info_save}
         info_dict = dict()
         info_dict.update(info_defaults)
         info_dict.update(save_dict)
@@ -166,7 +167,6 @@ class CharacterTemplate(models.Model):
                 check.delete()
 
         info_kind, created = self.game.infos.get_or_create(key=found_field)
-        info_set, created2 = info_kind.characters.get_or_create(character=self)
 
         if found_field in info_choices:
             choices = info_choices[found_field]
@@ -174,10 +174,11 @@ class CharacterTemplate(models.Model):
             if not find_value:
                 raise KeyError("'%s' is not a valid entry for %s. Choices are: %s" % (value, found_field,
                                                                                       ', '.join(choices)))
-            info_set.value = find_value
+            final_value = find_value
         else:
-            info_set.value = sanitize_string(value)
-        info_set.save()
+            final_value = dramatic_capitalize(sanitize_string(value))
+        info_set, created2 = info_kind.values.get_or_create(key=final_value)
+        info_character, created3 = info_set.characters.get_or_create(character=self)
 
 
     def swap_template(self, key=None):
@@ -187,6 +188,7 @@ class CharacterTemplate(models.Model):
         if not find_template:
             raise ValueError("Could not find a '%s' template." % key)
         self.template = find_template
+        self.save()
         self.character.story.load()
 
     def stat(self, key):
@@ -196,7 +198,7 @@ class CharacterTemplate(models.Model):
         return Specialty.objects.filter(Q(stat__character=self) | Q(custom__character=self))
 
 
-class TemplateInfo(models.Model):
+class InfoKind(models.Model):
     key = models.CharField(max_length=40, db_index=True)
     game = models.ForeignKey('storyteller.Game', related_name='infos')
 
@@ -204,15 +206,25 @@ class TemplateInfo(models.Model):
         unique_together = (("key", "game"),)
         index_together = [['key', 'game'], ]
 
+class Info(models.Model):
+    kind = models.ForeignKey('storyteller.InfoKind', related_name='values')
+    key = models.CharField(max_length=255, db_index=True)
+
+    class Meta:
+        unique_together = (("key", "kind"),)
+
+    def __str__(self):
+        return self.key
 
 class CharacterInfo(models.Model):
     character = models.ForeignKey('storyteller.CharacterTemplate', related_name='infos')
-    info = models.ForeignKey('storyteller.TemplateInfo', related_name='characters')
-    value = models.CharField(max_length=255, db_index=True)
+    info = models.ForeignKey('storyteller.Info', related_name='characters')
 
     class Meta:
         unique_together = (('character','info'),)
 
+    def __str__(self):
+        return str(self.info)
 
 class Stat(models.Model):
     key = models.CharField(max_length=40, db_index=True)
@@ -692,3 +704,78 @@ class MeritCharacter(models.Model):
         fill_length = width - len(display_name) - len(dot_display)
         fill = ANSIString('{%s%s{n' % (colors['statfill'], fill_char * fill_length))
         return display_name + fill + dot_display
+
+class ExpKind(models.Model):
+    game = models.ForeignKey('storyteller.Game', related_name='experiences')
+    key = models.CharField(max_length=50, db_index=True)
+
+    class Meta:
+        unique_together = (("game", "key"),)
+
+    @property
+    def rules(self):
+        return self.game.rules['experience'][self.key]
+
+    def __str__(self):
+        return self.rules['name']
+
+    @property
+    def list_order(self):
+        return self.rules['list_order']
+
+class ExpLink(models.Model):
+    kind = models.ForeignKey('storyteller.ExpKind', related_name='exp_links')
+    character = models.ForeignKey('storyteller.CharacterTemplate', related_name='exp_kinds')
+
+    class Meta:
+        unique_together = (("kind", "character"),)
+
+    def __str__(self):
+        return str(self.kind)
+
+    def sheet_format(self, rjust=None):
+        gained = self.gained()
+        spent = self.spent()
+        val_string = '%s/%i' % (str(int(gained + spent)).rjust(2), gained)
+        if rjust:
+            return '%s: %s' % (str(self).rjust(rjust), val_string)
+        else:
+            return '%s: %s' % (self, val_string)
+
+    @property
+    def list_order(self):
+        return self.kind.list_order
+
+    def spent(self):
+        spent = self.entries.filter(amount__lt=0).aggregate(spent=Sum('amount'))
+        num = spent['spent']
+        if num is None:
+            return Decimal(0.0)
+        return num
+
+    def gained(self):
+        gained = self.entries.filter(amount__gt=0).aggregate(gained=Sum('amount'))
+        num = gained['gained']
+        if num is None:
+            return Decimal(0.0)
+        return num
+
+    def available(self):
+        available = self.entries.aggregate(available=Sum('amount'))
+        num = available['available']
+        if num is None:
+            return Decimal(0.0)
+        return num
+
+class Exp(models.Model):
+    link = models.ForeignKey('storyteller.ExpLink', related_name='entries')
+    amount = models.DecimalField(default=0.0, db_index=True)
+    reason = models.CharField(max_length=200)
+    source = models.ForeignKey('communications.ObjectStub', null=True)
+    date_awarded = models.DateTimeField()
+
+    def __int__(self):
+        return int(self.amount)
+
+    def __str__(self):
+        return self.reason

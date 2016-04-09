@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 import re, hashlib
 from django.db import models
+from django.db.models import Q
 from commands.library import partial_match
 
 # Create your models here.
@@ -107,22 +108,16 @@ def cobj(abbr=None):
     found_attr = code_object.attrs.filter(name=search_name).first()
     if not found_attr:
         raise ValueError("COBJ`%s not found!" % abbr.upper())
-    if ':' in found_attr.value:
-        dbref, discard = found_attr.value.split(':', 1)
-    else:
-        dbref = found_attr.value
+    dbref = found_attr.value
     if not dbref:
         raise ValueError("Cannot find DBREF of %s" % abbr.upper())
-    return MushObject.objects.filter(dbref=dbref).first()
+    return objmatch(dbref)
 
 
 def pmatch(dbref=None):
     if not dbref:
         return False
-    find = MushObject.objects.filter(dbref=dbref).exclude(obj=None).first()
-    if find:
-        return find.obj
-    find = MushObject.objects.filter(objid=dbref).exclude(obj=None).first()
+    find = MushObject.objects.filter(Q(dbref=dbref) | Q(objid=dbref)).exclude(obj=None).first()
     if find:
         return find.obj
     return False
@@ -131,10 +126,7 @@ def pmatch(dbref=None):
 def objmatch(dbref=None):
     if not dbref:
         return False
-    find = MushObject.objects.filter(dbref=dbref).first()
-    if find:
-        return find
-    find = MushObject.objects.filter(objid=dbref).first()
+    find = MushObject.objects.filter(Q(dbref=dbref) | Q(objid=dbref)).first()
     if find:
         return find
     return False

@@ -118,9 +118,9 @@ IDLE_TIMEOUT = -1
 INSTALLED_APPS = INSTALLED_APPS + ('world.database.communications',
                                    'world.database.logins',
                                    'world.database.info',
-                                   'world.database.experience',
                                    'world.database.bbs.apps.BBSConfig',
                                    'world.database.groups.apps.GroupConfig',
+                                   'world.database.scenes.apps.SceneConfig',
                                    'world.database.storyteller.apps.StorytellerConfig',
                                    'world.database.grid.apps.GridConfig',
                                    'world.database.mushimport',)
