@@ -227,10 +227,9 @@ class GroupIC(GroupChannel):
     def get_group(self):
         return self.group_ic.all().first()
 
-    def init_locks(self, group=None):
-        if not group:
-            group = self.get_group()
-        lockstring = "control:perm(Wizards) or group(##,1);send:perm(Wizards) or gperm(##,ic);listen:perm(Wizards) or gperm(##,ic)"
+    def init_locks(self):
+        group = self.group
+        lockstring = "control:group(##,1);send:gperm(##,ic);listen:gperm(##,ic)"
         self.locks.add(lockstring.replace('##', str(group.id)))
 
     def channel_prefix(self, viewer, slot=None):
@@ -253,10 +252,9 @@ class GroupIC(GroupChannel):
 
 class GroupOOC(GroupChannel):
 
-    def init_locks(self, group=None):
-        if not group:
-            group = self.get_group()
-        lockstring = "control:perm(Wizards) or group(##,1);send:perm(Wizards) or gperm(##,ooc);listen:perm(Wizards) or gperm(##,ooc)"
+    def init_locks(self):
+        group = self.group
+        lockstring = "control:group(##,1);send:gperm(##,ooc);listen:gperm(##,ooc)"
         self.locks.add(lockstring.replace('##', str(group.id)))
 
     def get_group(self):

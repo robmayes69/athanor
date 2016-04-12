@@ -63,18 +63,26 @@ class WatchFor(models.Model):
 
 
 class Gag(models.Model):
-    object = models.OneToOneField('objects.ObjectDB', related_name='channel_gags')
+    character = models.OneToOneField('objects.ObjectDB', related_name='channel_gags')
     channel = models.ManyToManyField('comms.ChannelDB', related_name='gagging')
 
+    class Meta:
+        unique_together = (('character', 'channel'),)
 
 class Muzzle(models.Model):
     channel = models.ForeignKey('comms.ChannelDB', related_name='muzzles', null=True)
-    object = models.ForeignKey('objects.ObjectDB', related_name='muzzles', null=True)
+    character = models.ForeignKey('objects.ObjectDB', related_name='muzzles', null=True)
     player = models.ForeignKey('players.PlayerDB', related_name='muzzles', null=True)
     setby = models.ForeignKey('communications.ObjectStub', null=True, on_delete=models.SET_NULL)
     is_global = models.BooleanField(default=False)
-    expires = models.DateTimeField()
+    creation_date = models.DateTimeField(auto_now_add=True)
+    expires = models.DurationField()
 
+    class Meta:
+        unique_together = (('channel', 'character'),('channel', 'player'),)
+
+    def expired(self):
+        return (self.creation_date + self.expires) < utcnow()
 
 class Message(models.Model):
     player = models.ForeignKey('communications.PLayerStub', null=True)

@@ -31,15 +31,22 @@ class CmdGroupList(GroupCommand):
 
     def func(self):
         message = list()
-        message.append(header("Groups", viewer=self.caller))
-        minortable = make_table("ID", "Name", "Leader", "Second", "Conn", width=[4, 27, 20, 20, 7], viewer=self.caller)
-        for group in Group.objects.all().order_by('key'):
-            minortable.add_row(group.id, group.key,
-                               ", ".join('%s' % char for char in group.members.filter(rank__num=1)),
-                               ", ".join('%s' % char for char in group.members.filter(rank__num=2)),
-                               group.members.count())
-        message.append(minortable)
-        message.append(header(viewer=self.caller))
+        tiers = Group.objects.all().values_list('tier', flat=True).order_by('tier').distinct()
+        for tier in tiers:
+            groups = Group.objects.filter(tier=tier).order_by('order')
+            if groups:
+                message.append(header("Tier %s Groups" % tier, viewer=self.character))
+                group_table = make_table("ID", "Name", "Leader", "Second", "Conn", width=[4, 27, 20, 20, 7], viewer=self.character)
+                for group in groups:
+                    group_table.add_row(group.id, group.key,
+                                       ", ".join('%s' % char for char in group.members.filter(rank__num=1)),
+                                       ", ".join('%s' % char for char in group.members.filter(rank__num=2)),
+                                       group.members.count())
+                message.append(group_table)
+        if not len(message):
+            self.sys_msg("No groups to display.")
+            return
+        message.append(header(viewer=self.character))
         self.msg_lines(message)
 
 
@@ -56,15 +63,9 @@ class CmdGroupFocus(GroupCommand):
     def func(self):
         lhs = self.lhs
         try:
-            if self.is_admin:
-                group = find_group(search_name=lhs, exact=False, member=False)
-            else:
-                group = find_group(search_name=lhs, exact=False, member=True, checker=self.character)
+            group = find_group(search_name=lhs, exact=False, checker=self.character)
         except ValueError as err:
             self.error(str(err))
-            return
-        if not group.is_member(self.character):
-            self.error("You are not a member of that group.")
             return
         self.sys_msg("Focus changed to: %s" % group)
         self.character.db.group = group
@@ -85,7 +86,7 @@ class CmdGroupDisplay(GroupCommand):
         lhs = self.lhs
         try:
             if lhs:
-                group = find_group(search_name=lhs, exact=False, member=False)
+                group = find_group(search_name=lhs, exact=False)
             else:
                 group = self.get_focus()
         except ValueError as err:
@@ -113,24 +114,24 @@ class CmdGroupCreate(GroupCommand):
         lhs = self.lhs
 
         try:
-            groupname = valid_groupname(lhs)
+            group_name = valid_groupname(lhs)
         except ValueError as err:
             self.error(str(err))
             return
-        if Group.objects.filter(key__iexact=groupname):
+        if Group.objects.filter(key__iexact=group_name):
             self.error("That name is already in use.")
             return
-        newgroup = Group.objects.create(key=groupname)
-        self.sys_msg("Group '%s' Created!" % newgroup)
+        new_group = Group.objects.create(key=group_name)
+        self.sys_msg("Group '%s' Created!" % new_group)
         if rhs:
             try:
                 target = self.character.search_character(rhs)
-                newgroup.add_member(target, setrank=1)
-                self.sys_msg("You have been made leader of the new '%s' Group." % newgroup, target)
+                new_group.add_member(target, setrank=1)
+                self.sys_msg("You have been made leader of the new '%s' Group." % new_group, target)
             except ValueError as err:
                 self.error(str(err))
-        self.character.db.group = newgroup
-        self.sys_msg("Focus changed to: %s" % newgroup)
+        self.character.db.group = new_group
+        self.sys_msg("Focus changed to: %s" % new_group)
 
 
 class CmdGroupDescribe(GroupCommand):
@@ -150,11 +151,12 @@ class CmdGroupDescribe(GroupCommand):
             return
         try:
             group = self.get_focus()
-            group.check_permission(self.character, "admin")
+            group.check_permission_error(self.character, "admin")
         except ValueError as err:
             self.error(str(err))
             return
-        group.set_desc(desc)
+        group.description = desc
+        group.save(update_fields=['description'])
         group.sys_msg("%s changed the group desc." % self.character.key, sender=self.character)
         self.sys_msg("You change the desc for the %s Group" % group)
 
@@ -165,6 +167,7 @@ class CmdGroupDisband(GroupCommand):
 
     Usage:
         +gdisband <name>
+        Unlike other commands, this one requires exact spelling (case insensitive) for security reasons.
     """
     key = '+gdisband'
     locks = "cmd:perm(Wizards)"
@@ -172,7 +175,7 @@ class CmdGroupDisband(GroupCommand):
     def func(self):
         lhs = self.lhs
         try:
-            group = find_group(search_name=lhs, exact=False, member=False)
+            group = find_group(search_name=lhs, exact=True)
         except ValueError as err:
             self.error(str(err))
             return
@@ -213,10 +216,10 @@ class CmdGroupRank(GroupCommand):
 
     Only the group leader or admin may change anything. Anyone can view the rank structure.
 
-    It's important to note that numerically lesser numbers are superior ranks. Rank 2 is 'better' than Rank 3.
+    Numerically lesser numbers are superior ranks. Rank 2 is 'better' than Rank 3.
     This allows a rank structure to be extended as far as a group leader wishes.
 
-    Ranks 1-4 are system protected and cannot be modified much.
+    Ranks 1-4 cannot be deleted or assigned different permissions.
 
     Usage:
         +grank
@@ -248,12 +251,12 @@ class CmdGroupRank(GroupCommand):
             return
         try:
             group = self.get_focus()
-            group.check_permission(self.character, "manage")
+            group.check_permission_error(self.character, "manage")
             target = self.character.search_character(lhs)
         except ValueError as err:
             self.error(str(err))
             return
-        found = group.members.filter(character_obj=target)
+        found = group.members.filter(character_obj=target).first()
         if not found:
             self.error("%s is not a group member of the %s Group." % (target.key, group))
             return
@@ -282,7 +285,7 @@ class CmdGroupRank(GroupCommand):
         except ValueError as err:
             self.error(str(err))
             return
-        self.caller.msg(group.display_ranks(self.character))
+        self.caller.msg(group.display_ranks(self.player))
 
     def group_addrank(self, lhs=None, rhs=None):
         try:
@@ -333,6 +336,7 @@ class CmdGroupPerm(GroupCommand):
         manage - can manage memberships. Covers inviting and removing members.
         moderate - can use muzzle on group channels.
         gbadmin - is able to administrate the Group Boards. Add and remove boards, modify locks, and edit posts.
+        board - can use group board commands and access unrestricted boards.
         titleself - can change one's own title.
         titleother - can change another's title.
         ic - can speak on the IC channel.
@@ -382,7 +386,6 @@ class CmdGroupPerm(GroupCommand):
             group.add_perm(found)
         else:
             rank.perms.add(*found)
-        group.clear_perm_cache()
         self.sys_msg("Permissions added!")
 
     def group_delperm(self, lhs, rhs):
@@ -414,7 +417,6 @@ class CmdGroupPerm(GroupCommand):
             group.del_perm(found)
         else:
             rank.perms.remove(*found)
-        group.clear_perm_cache()
         self.sys_msg("Permissions removed!")
 
 
@@ -438,7 +440,7 @@ class CmdGroupTitle(GroupCommand):
             group = self.get_focus()
             target = self.character.search_character(lhs)
             identical = (target == self.character)
-            group.check_permission(self.character, "titleself" if identical else 'titleother')
+            group.check_permission_error(self.character, "titleself" if identical else 'titleother')
         except ValueError as err:
             self.error(str(err))
             return
@@ -449,7 +451,7 @@ class CmdGroupTitle(GroupCommand):
             self.error("Permission denied. They outrank you!")
             return
         new_title = sanitize_string(rhs, length=40)
-        option, created = group.options.get_or_create(character_obj=target)
+        option, created = group.participants.get_or_create(character=target)
         if not new_title:
             self.sys_msg("Title cleared for %s!" % group)
             if not identical:
@@ -461,7 +463,7 @@ class CmdGroupTitle(GroupCommand):
                 self.sys_msg("Your %s Group Title was set by %s to: %s" % (group, self.character, new_title),
                              target=target)
             option.title = new_title
-        option.save()
+        option.save(update_fields=['title'])
 
 class CmdGroupSet(GroupCommand):
     """
@@ -479,6 +481,7 @@ class CmdGroupSet(GroupCommand):
         ic - Whether the IC group channel is enabled or not. 1 (true) or 0 (false.)
         ooc - Whether the OOC group channel is enabled or not.
         color - What color the group's name should appear in. Use an Evennia color code!
+        timeout - Default timeout for Group Boards. Value should be entered like '45d' for 45 days.
 
     Admin Options:
         faction - Whether the group is considered a 'faction.' Factions are listed
@@ -487,6 +490,7 @@ class CmdGroupSet(GroupCommand):
         order - Display order. Integer. Affects listing order in +groups and determines
                 primacy for displays.
         display - Alternate display modes. Not currently implemented.
+        tier - The 'tier' of the group. Affects display category. Must be a positive number.
 
     """
     key = '+gset'
@@ -504,7 +508,7 @@ class CmdGroupSet(GroupCommand):
             self.change_settings(group)
 
     def display_settings(self, group):
-        message = []
+        message = list()
         message.append(header('%s Settings' % group, viewer=self.character))
         message.append('Start: %s' % group.start_rank.num)
         message.append('Alert: %s' % group.alert_rank.num)
@@ -515,14 +519,15 @@ class CmdGroupSet(GroupCommand):
         message.append('Faction: %s' % group.faction)
         message.append('Abbreviation: %s' % group.abbreviation)
         message.append('Display: %s' % group.display_type)
+        message.append('Tier: %s' % group.tier)
+        message.append('Timeout: %s' % group.timeout)
         message.append(header(viewer=self.character))
         self.msg("\n".join([unicode(line) for line in message]))
 
-
     def change_settings(self, group):
-        options = ['start', 'alert', 'ic', 'ooc', 'color']
+        options = ['start', 'alert', 'ic', 'ooc', 'color', 'timeout']
         if self.is_admin:
-            options = options + ['faction', 'abbreviation', 'order', 'display']
+            options +=  ['faction', 'abbreviation', 'order', 'display', 'tier']
         if not self.lhs:
             self.error("Nothing entered to set!")
             return
@@ -536,9 +541,6 @@ class CmdGroupSet(GroupCommand):
             group.save()
         except ValueError as err:
             self.error(str(err))
-            return
-        except ValueError as err:
-            self.error("That option must be an integer.")
             return
         self.sys_msg("Setting changed.")
         group.sys_msg("Setting '%s' changed to: %s" % (choice, new_value))
@@ -595,6 +597,24 @@ class CmdGroupSet(GroupCommand):
         group.abbreviation = validate
         return validate
 
+    def setting_tier(self, group):
+        try:
+            validate = int(self.rhs)
+        except ValueError:
+            raise ValueError("Tier must be a positive integer.")
+        group.tier = validate
+        return validate
+
+    def setting_timeout(self, group):
+        validate = duration_from_string(self.rhs)
+        if validate.total_seconds():
+            group.timeout = validate
+            return validate
+        else:
+            group.timeout = None
+            return None
+
+
 class CmdGroupMuzzle(GroupCommand):
     """
     Used to restrict specific characters from using the Group's channels.
@@ -630,7 +650,7 @@ class CmdGroupMuzzle(GroupCommand):
             self.error("%s is not a group member." % target)
             return
         try:
-            group.check_permission(self.character, "moderate")
+            group.check_permission_error(self.character, "moderate")
         except ValueError as err:
             self.error(str(err))
             return
@@ -653,27 +673,36 @@ class CmdGroupMuzzle(GroupCommand):
         if not muzzle_date > utcnow():
             self.error("Muzzle must end in the future.")
             return
+        existing = group.ic_channel.muzzles.filter(character=target).first()
+        if existing:
+            if existing.expired():
+                existing.delete()
+                group.ooc_channel.muzzles.filter(character=target).delete()
+            else:
+                self.error("They are already muzzled.")
+                return
         message = "'%s' muzzled from %s channels until %s."
         self.sys_msg(message % (target, group, self.character.em_localtime(muzzle_date)))
         message = "You were muzzled from %s Channels by %s until %s."
         self.sys_msg(message % (group, self.character, target.em_localtime(muzzle_date)), target=target)
         group.sys_msg("'%s' was muzzled by %s until %s." % (target, self.character, muzzle_date))
-        muzzle_script = script_muzzle()
-        muzzle_script.group_muzzle(group, target, set_mode=True, value=muzzle_date)
+        for channel in [group.ic_channel, group.ooc_channel]:
+            channel.muzzles.create(character=target, expires=duration)
+
 
     def group_unmuzzle(self, target, rhs, group):
-        muzzle_script = script_muzzle()
-        muzzle_date = muzzle_script.group_muzzle(group, target)
-        if not muzzle_date:
+        existing = group.ic_channel.muzzles.filter(character=target).first()
+        if not existing:
             self.error("%s is not muzzled.")
             return
-        if not muzzle_date > utcnow():
+        if existing.expired():
             self.error("%s is not muzzled.")
+            existing.delete()
             return
         self.sys_msg("'%s' unmuzzled from %s channels." % (target, group))
         self.sys_msg("You were unmuzzled from %s Channels by %s." % (group, self.character), target=target)
         group.sys_msg("'%s' was unmuzzled by %s." % (target, self.character))
-        muzzle_script.group_muzzle(group, target, set_mode=True, value=None)
+        existing.delete()
 
 
 class CmdGroupAdd(GroupCommand):
@@ -691,7 +720,7 @@ class CmdGroupAdd(GroupCommand):
         lhs = self.lhs
         try:
             group = self.get_focus()
-            group.check_permission(self.character, "add")
+            group.check_permission_error(self.character, "add")
             target = self.character.search_character(lhs)
             group.add_member(target=target, setrank=rhs)
         except ValueError as err:
@@ -715,7 +744,7 @@ class CmdGroupKick(GroupCommand):
         lhs = self.lhs
         try:
             group = self.get_focus()
-            group.check_permission(self.character, "manage")
+            group.check_permission_error(self.character, "manage")
             target = self.character.search_character(lhs)
         except ValueError as err:
             self.error(str(err))
@@ -728,7 +757,7 @@ class CmdGroupKick(GroupCommand):
             self.error("Cannot kick higher ranked characters.")
             return
         try:
-            group.del_member(target)
+            group.remove_member(target)
         except ValueError as err:
             self.error(str(err))
             return
@@ -759,12 +788,12 @@ class CmdGroupInvite(GroupCommand):
         lhs = self.lhs
         try:
             group = self.get_focus()
-            group.check_permission(self.character, "manage")
+            group.check_permission_error(self.character, "manage")
             target = self.character.search_character(lhs)
         except ValueError as err:
             self.error(str(err))
             return
-        if group.is_member(target, ignore_admin=True):
+        if group.members.filter(character=target).count():
             self.error("They are already a member!")
             return
         if 'withdraw' in self.final_switches:
@@ -813,7 +842,6 @@ class CmdGroupJoin(GroupCommand):
             return
         try:
             found.add_member(self.character, reason='accepted invite')
-            found.invites.remove(self.character)
         except ValueError as err:
             self.error(str(err))
             return
@@ -835,10 +863,11 @@ class CmdGroupLeave(GroupCommand):
         except ValueError as err:
             self.error(str(err))
             return
-        if group.is_member(self.character, ignore_admin=True):
+        membership = group.members.filter(character=self.character).first()
+        if not membership:
             self.error("You are not a member!")
             return
-        if group.get_rank(self.character, ignore_admin=True) < 2:
+        if group.membership.rank.num < 2:
             self.error('Group leaders cannot leave. Contact admin to do this for you.')
             return
         if not self.verify('group leave %s' % group.id):
@@ -887,7 +916,7 @@ class CmdGroupChan(GroupCommand):
             if group_match:
                 try:
                     group_name = group_match.group(2)
-                    group = find_group(search_name=group_name, exact=False, member=True)
+                    group = find_group(search_name=group_name, exact=False)
                 except ValueError as err:
                     self.error(str(err))
                     return

@@ -3,6 +3,9 @@ from django.db import models
 from commands.library import utcnow, sanitize_string, partial_match, connected_characters
 from commands.library import header, make_table
 from evennia.utils.ansi import ANSIString
+from evennia.utils.create import create_channel
+from evennia.utils.utils import lazy_property
+from evennia.locks.lockhandler import LockHandler
 
 # Create your models here.
 
@@ -10,41 +13,86 @@ from evennia.utils.ansi import ANSIString
 class Group(models.Model):
     key = models.CharField(max_length=60, unique=True)
     order = models.IntegerField(default=0)
-    faction = models.BooleanField(default=False)
+    tier = models.PositiveSmallIntegerField(default=1)
+    lock_storage = models.TextField('locks', blank=True)
     abbreviation = models.CharField(max_length=10)
     color = models.CharField(max_length=20, null=True)
-    default_permissions = models.ManyToManyField('GroupPermissions')
+    member_permissions = models.ManyToManyField('GroupPermissions')
+    guest_permissions = models.ManyToManyField('GroupPermissions')
     start_rank = models.ForeignKey('GroupRank', null=True)
     alert_rank = models.ForeignKey('GroupRank', null=True)
     description = models.TextField(blank=True)
-    ic_channel = models.ForeignKey('comms.ChannelDB', null=True, related_name='group_ic')
-    ooc_channel = models.ForeignKey('comms.ChannelDB', null=True, related_name='group_ooc')
+    ic_channel = models.OneToOneField('comms.ChannelDB', null=True, related_name='group')
+    ooc_channel = models.OneToOneField('comms.ChannelDB', null=True, related_name='group')
     invites = models.ManyToManyField('objects.ObjectDB', related_name='group_invites')
     ic_enabled = models.BooleanField(default=True)
     ooc_enabled = models.BooleanField(default=True)
     display_type = models.SmallIntegerField(default=0)
+    timeout = models.DurationField(null=True)
+
+    def __str__(self):
+        return str(self.key)
 
     def __unicode__(self):
-        return self.key
+        return unicode(self.key)
 
-    def display_name(self):
+    @lazy_property
+    def locks(self):
+        return LockHandler(self)
+
+    def delete(self, *args, **kwargs):
+        """
+        Overloading .delete() is done so that the Group Channels will also be deleted if the group is.
+
+        Args:
+            *args ():
+            **kwargs ():
+
+        Returns:
+            Whatever .delete() normally returns.
+        """
+        if self.ic_channel:
+            self.ic_channel.delete()
+        if self.ooc_channel:
+            self.ooc_channel.delete()
+        return super(Group, self).delete(*args, **kwargs)
+
+    @property
+    def name(self):
         color = self.color or 'n'
-        return ANSIString('{%s%s{n' % (color, self))
+        return ANSIString('|%s%s|n' % (color, self))
 
-    def display_abbreviation(self):
+    @property
+    def abbr(self):
         color = self.color or 'n'
-        return ANSIString('{%s%s{n' % (color, self.abbreviation))
+        return ANSIString('|%s%s|n' % (color, self.abbreviation))
 
-    def do_rename(self, new_name=None):
+    def rename(self, new_name=None):
         new_name = valid_groupname(new_name)
-        if Group.objects.filter(key__iexact=new_name).exclude(id=self.id):
+        if Group.objects.filter(key__iexact=new_name).exclude(id=self.id).count():
             raise ValueError("That name is already in use.")
         self.key = new_name
         if self.ic_channel:
             self.ic_channel.key = 'group_%s_ic' % self.key
         if self.ooc_channel:
             self.ooc_channel.key = 'group_%s_ooc' % self.key
-        self.save()
+        self.save(update_fields=['key'])
+
+    def setup_channels(self):
+        if self.ic_channel:
+            ic_channel = self.ic_channel
+            ic_channel.key = 'group_%s_ic' % self.key
+        else:
+            ic_channel = create_channel('group_%s_ooc' % self.key, typeclass='typeclasses.channels.GroupOOC')
+            self.save(update_fields=['ic_channel'])
+            ic_channel.init_locks()
+        if self.ooc_channel:
+            ooc_channel = self.ooc_channel
+            ooc_channel.key = 'group_%s_ooc' % self.key
+        else:
+            ooc_channel = create_channel('group_%s_ooc' % self.key, typeclass='typeclasses.channels.GroupIC')
+            self.save(update_fields=['ooc_channel'])
+            ooc_channel.init_locks()
 
     def add_member(self, target=None, setrank=None, reason='accepted invite'):
         if not target:
@@ -56,43 +104,54 @@ class Group(models.Model):
         else:
             setrank = self.settings.start_rank
         self.options.create(character_obj=target)
-        if self.check_permission(target, 'ic'):
-            self.ic_channel.connect(target)
-        if self.check_permission(target, 'ooc'):
-            self.ooc_channel.connect(target)
+        for channel in [self.ic_channel, self.ooc_channel]:
+            if channel:
+                if channel.locks.check(target, 'listen'):
+                    channel.connect(target)
         self.sys_msg('%s joined the group. Method: %s' % (target, reason))
+        self.invites.remove(target)
         return self.members.create(character_obj=target, rank=setrank)
 
     def remove_member(self, target=None, reason='left'):
         if not target:
             raise ValueError("No target to remove.")
-        if not self.em_group_members.filter(character_obj=target):
+        membership = self.members.filter(character_obj=target).first()
+        if not membership:
             raise ValueError("'%s' is not a member of '%s'" % (target.key, self.key))
-        self.members.filter(character_obj=target).delete()
+        membership.rank = None
+        membership.save(update_fields=['rank'])
+        for k, v in {'ic': self.ic_channel, 'ooc': self.ooc_channel}.iteritems():
+            if not self.check_permission(target, k):
+                v.disconnect(target)
+        if not self.check_permission(target, 'member'):
+            membership.delete()
         self.sys_msg("%s is no longer a group member. Reason: %s" % (target, reason))
-        if not target.is_admin():
-            self.options.filter(character_obj=target).delete()
 
-    def check_permission(self, checker, check, give_bool=False, ignore_admin=False):
+    def check_permission(self, checker, check, ignore_admin=False):
         if not ignore_admin and checker.is_admin():
             return True
-        membership = self.members.filter(character_obj=checker).first()
-        if not membership and give_bool:
-            return False
-        elif not membership and not give_bool:
-            raise ValueError("Checker is not a Group member.")
-        permissions = set([perm.name for perm in self.default_permissions.all()] +
-                          [perm.name for perm in membership.rank.perms.all()])
-        if check.lower in permissions:
-            return True
-        if bool:
-            return False
+        membership = self.members.filter(character=checker).first()
+        if not membership:
+            member = self.locks.check(checker, 'member')
         else:
+            member = False
+        all_permissions = list()
+        if membership:
+            all_permissions += self.member_permissions.all()
+            all_permissions += membership.rank.permissions.all()
+            all_permissions += membership.permissions.all()
+        if member:
+            all_permissions += self.guest_permissions.all()
+            all_permissions += membership.permissions.all()
+        return check.lower() in set(all_permissions)
+
+    def check_permission_error(self, checker, check, ignore_admin=False):
+        if not self.check_permission(checker, check, ignore_admin):
             raise ValueError("Permission denied.")
 
     def add_rank(self, rank=None, name=None):
         rank = valid_ranknum(rank)
-        if self.ranks.filter(num=rank):
+        if self.ranks.filter(num=rank).count():
             raise ValueError("Rank already exists.")
         if self.ranks.filter(name__iexact=name):
             raise ValueError("Rank names must be unique per-group.")
@@ -112,7 +171,11 @@ class Group(models.Model):
             return False
         if checker.is_admin() and not ignore_admin:
             return 0
-        return self.members.filter(character_obj=checker).first().rank.num
+        rank_check = self.members.filter(character=checker, rank__num__gt=0).first()
+        if rank_check:
+            return int(rank_check)
+        else:
+            return 999999999
 
     def find_rank(self, rank):
         try:
@@ -135,18 +198,24 @@ class Group(models.Model):
         if not isinstance(rank, GroupRank):
             rank = self.find_rank(rank)
         member.rank = rank
-        member.save()
+        member.save(update_fields=['rank'])
         return rank
 
     def is_member(self, target, ignore_admin=False):
         if target.is_admin() and not ignore_admin:
             return True
-        return self.members.filter(character_obj=target).first()
+        if self.members.filter(character=target).count():
+            return True
+        return self.locks.check(target, 'member')
+
+    @property
+    def members(self):
+        return self.participants.filter(rank__num__gt=0)
 
     def display_group(self, viewer):
         message = list()
         message.append(header("Group: %s" % self))
-        grouptable = make_table("Name", "Rank", "Title", "Idle", width=[24, 23, 23, 8])
+        grouptable = make_table("Name", "Rank", "Title", "Idle", width=[24, 23, 23, 8], viewer=viewer)
         for member in self.members.order_by('rank__num'):
             options, created = self.options.get_or_create(character_obj=member.character_obj)
             title = options.title
@@ -166,12 +235,6 @@ class Group(models.Model):
         message.append(header(viewer=viewer))
         return "\n".join([unicode(line) for line in message])
 
-    def delete(self, *args, **kwargs):
-        if self.ic_channel:
-            self.ic_channel.delete()
-        if self.ooc_channel:
-            self.ooc_channel.delete()
-        super(Group, self).delete(*args, **kwargs)
 
     def sys_msg(self, text, *args, **kwargs):
         members = [char for char in connected_characters() if self.is_member(char)]
@@ -187,34 +250,38 @@ class GroupRank(models.Model):
     name = models.CharField(max_length=35)
     perms = models.ManyToManyField('GroupPermissions')
 
-    def __unicode__(self):
+    def __str__(self):
         return self.name
+
+    def __unicode__(self):
+        return unicode(self.name)
 
     def __int__(self):
         return self.num
 
     class Meta:
-        unique_together = (("num", "group"),)
+        unique_together = (("num", "group"), ('name', 'group'))
 
     def do_rename(self, newname=None):
         newname = valid_rankname(newname)
-        if self.group.ranks.objects.filter(name__iexact=newname).exclude(id=self.id).count():
+        if self.group.ranks.filter(name__iexact=newname).exclude(id=self.id).count():
             raise ValueError("Rank names must be unique per group.")
         self.name = newname
-        self.save()
+        self.save(update_fields=['name'])
 
 
-class GroupMember(models.Model):
-    character_obj = models.ForeignKey('objects.ObjectDB', related_name='groups')
-    group = models.ForeignKey(Group, related_name='members')
-    rank = models.ForeignKey('GroupRank')
+class GroupParticipant(models.Model):
+    character = models.ForeignKey('objects.ObjectDB', related_name='groups')
+    group = models.ForeignKey(Group, related_name='participants')
+    rank = models.ForeignKey('GroupRank', null=True, related_name='holders')
     perms = models.ManyToManyField('GroupPermissions')
+    title = models.CharField(max_length=120, blank=True)
 
     def __unicode__(self):
         return self.character_obj.key
 
     class Meta:
-        unique_together = (("character_obj", "group"),)
+        unique_together = (("character", "group"),)
 
 
 class GroupPermissions(models.Model):
@@ -222,15 +289,6 @@ class GroupPermissions(models.Model):
 
     def __unicode__(self):
         return self.name
-
-
-class GroupOptions(models.Model):
-    group = models.ForeignKey('Group', related_name='options')
-    character_obj = models.ForeignKey('objects.ObjectDB', related_name='group_options')
-    title = models.CharField(max_length=120, blank=True)
-
-    class Meta:
-        unique_together = (("character_obj", "group"),)
 
 
 def valid_groupname(newname=None):
@@ -257,14 +315,14 @@ def valid_ranknum(newrank=None):
     try:
         rank_num = int(newrank)
     except ValueError:
-        raise ValueError("Ranks must be numeric.")
+        raise ValueError("Ranks must be positive numbers.")
     if not rank_num > 4:
         raise ValueError("Cannot interfere with default ranks 1-4.")
     return rank_num
 
 
-def find_group(search_name=None, exact=False, member=False, checker=None):
-    if member and checker:
+def find_group(search_name=None, exact=False, checker=None):
+    if checker:
         group_ids = [group.id for group in Group.objects.all() if group.is_member(checker)]
         groups = Group.objects.filter(id__in=group_ids)
     else:

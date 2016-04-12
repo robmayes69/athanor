@@ -170,10 +170,12 @@ class AthCommand(MuxCommand):
 
     def parse(self):
         super(AthCommand, self).parse()
+        if self.args:
+            self.args = unicode(self.args)
         if self.rhs:
-            self.rhs = self.rhs.strip()
+            self.rhs = unicode(self.rhs.strip())
         if self.lhs:
-            self.lhs = self.lhs.strip()
+            self.lhs = unicode(self.lhs.strip())
         if hasattr(self.caller, "player"):
             self.player = self.caller.player
             self.character = self.caller
@@ -187,7 +189,6 @@ class AthCommand(MuxCommand):
 
     def parse_switches(self):
         self.final_switches = []
-        found_switches = []
         total_switches = []
         if self.is_admin and self.admin_switches:
             total_switches += self.admin_switches

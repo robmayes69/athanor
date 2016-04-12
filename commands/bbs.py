@@ -1,13 +1,11 @@
 from __future__ import unicode_literals
 
-import re
-from django.conf import settings
 from evennia.locks.lockhandler import LockException
-from world.database.bbs.models import Board, list_all_boards, list_boards
+from world.database.bbs.models import BoardGroup
 from world.database.groups.models import Group
 from commands.command import AthCommand
 from commands.library import header, make_table, mxp_send
-from commands.library import duration_from_string, sanitize_string, penn_substitutions
+from commands.library import duration_from_string, sanitize_string, penn_substitutions, utcnow
 from typeclasses.scripts import BoardTimeout
 from evennia import create_script
 from evennia.utils.utils import time_format
@@ -22,31 +20,10 @@ class BBCommand(AthCommand):
     locks = "cmd:all()"
     arg_rexex = r"\s+"
 
-    def board_header(self, group=None):
-        if not group:
-            group = self.group
-        if group:
-            return header("(GBS) %s Boards" % group.name, viewer=self.caller)
-        else:
-            return header("(BBS) %s Boards" % settings.SERVERNAME, viewer=self.caller)
-
-    def find_board(self, find_name=None, group=None, checker=None):
-        if not checker:
-            checker = self.character
-        boards = list_boards(group=group, type='read', checker=checker)
-        if not boards:
-            raise ValueError("No applicable boards.")
-        try:
-            find_num = int(find_name)
-        except ValueError:
-            find_board = self.partial(find_name, boards)
-            if not find_board:
-                raise ValueError("Board '%s' not found." % find_name)
-            return find_board
-        else:
-            if find_num not in [board.order for board in boards]:
-                raise ValueError("Board '%s' not found." % find_name)
-            return [board for board in boards if board.order == find_num][0]
+    @property
+    def board_group(self):
+        board_group, created_check = BoardGroup.objects.get_or_create(main=1).first()
+        return board_group
 
     def func(self):
 
@@ -149,30 +126,6 @@ class BBCommand(AthCommand):
     def get_focus(self):
         return self.caller.db.group
 
-    def parse_postnums(self, check=None, board=None, player=None):
-        if not player:
-            player = self.player
-        if not board:
-            raise ValueError("No board entered to check.")
-        if not check:
-            raise ValueError("No posts entered to check.")
-        fullnums = []
-        for arg in check.split(','):
-            arg = arg.strip()
-            if re.match("^\d+-\d+$", arg):
-                numsplit = arg.split('-')
-                numsplit2 = []
-                for num in numsplit:
-                    numsplit2.append(int(num))
-                lo, hi = min(numsplit2), max(numsplit2)
-                fullnums += range(lo, hi + 1)
-            if re.match("^\d+$", arg):
-                fullnums.append(int(arg))
-            if re.match("^U$", arg.upper()):
-                fullnums += board.posts.exclude(read__contains=self.player)
-                fullnums += player.get_board_unread(board=board, num=True)
-        return board.posts.filter(order__in=fullnums).order_by('order')
-
 
 class CmdBBList(BBCommand):
     """
@@ -190,23 +143,16 @@ class CmdBBList(BBCommand):
     aliases = ['+bbleave', '+bbjoin']
 
     def board_list(self):
-        message = list()
-        message.append(self.board_header())
-        bbtable = make_table("ID", "RWA", "Name", "Locks", "On", width=[4, 4, 23, 43, 4], viewer=self.character)
-        for board in list_boards(group=self.group, checker=self.character):
-            if self.player in board.ignorelist.all():
-                member = "No"
-            else:
-                member = "Yes"
-            bbtable.add_row(mxp_send(board.order, "+bbread %s" % board.order), board.rwastring(self.character),
-                            mxp_send(board, "+bbread %s" % board.order), board.lock_storage, member)
-        message.append(bbtable)
-        message.append(header(viewer=self.character))
-        self.msg_lines(message)
+        try:
+            board_group = self.board_group
+        except ValueError as err:
+            self.error(unicode(err))
+        self.msg(board_group.boards_list(checker=self.character, viewer=self.character))
 
     def board_leave(self, lhs=None, rhs=None):
         try:
-            board = self.find_board(find_name=lhs.strip(), group=self.group, checker=self.character)
+            board_group = self.board_group
+            board = board_group.find_board(find_name=lhs.strip(), checker=self.character)
         except ValueError as err:
             self.error(unicode(err))
             return
@@ -218,7 +164,8 @@ class CmdBBList(BBCommand):
 
     def board_join(self, lhs=None, rhs=None):
         try:
-            board = self.find_board(find_name=lhs.strip(), group=self.group, checker=self.character)
+            board_group = self.board_group
+            board = board_group.find_board(find_name=lhs.strip(), checker=self.character)
         except ValueError as err:
             self.error(unicode(err))
             return
@@ -265,45 +212,29 @@ class CmdBBAdmin(BBCommand):
 
     locks = "cmd:pperm(Wizards)"
 
-    def board_newgroup(self, lhs):
-        if self.group:
-            try:
-                self.group.check_permission(checker=self.character, check="gbadmin")
-                board = self.create_board(lhs)
-            except ValueError as err:
-                self.error(unicode(err))
-                return
-        else:
-            if not self.is_admin:
-                self.error("Permission denied.")
-                return
-            try:
-                board = self.create_board(lhs)
-            except ValueError as err:
-                self.error(unicode(err))
-                return
-        self.sys_msg("Board '%s' created!" % board)
-        if not BoardTimeout.objects.all():
-            create_script(BoardTimeout, obj=None)
-
-    def create_board(self, lhs):
-        if not lhs:
-            raise ValueError("Board requires a name.")
-        new_name = sanitize_string(lhs, strip_ansi=True)
+    def board_newgroup(self, lhs=None):
         try:
-            new_num = max([board.order for board in list_all_boards(group=self.group)]) + 1
-        except ValueError:
-            new_num = 1
-        if self.group:
-            board = Board.objects.create(key=new_name, main=False, group=self.group, order=new_num)
-        else:
-            board = Board.objects.create(key=new_name, main=True, order=new_num)
-        board.save()
-        return board
+            board_group = self.board_group
+            if self.group:
+                if not self.group.check_permission(checker=self.character, check="gbadmin"):
+                    self.error("Permission denied.")
+                    return
+            else:
+                if not self.is_admin:
+                    self.error("Permission denied.")
+                    return
+            new_board = board_group.make_board(key=lhs)
+        except ValueError as err:
+            self.error(unicode(err))
+            return
+        self.sys_msg("Board '%s' created!" % new_board)
+        if not BoardTimeout.objects.all().count():
+            create_script(BoardTimeout, obj=None)
 
     def board_cleargroup(self, name):
         try:
-            board = self.find_board(find_name=name.strip(), group=self.group, checker=self.character)
+            board_group = self.board_group
+            board = board_group.find_board(find_name=name.strip(), checker=self.character)
         except ValueError as err:
             self.error(unicode(err))
             return
@@ -319,24 +250,26 @@ class CmdBBAdmin(BBCommand):
 
     def board_order(self, lhs=None, rhs=None):
         try:
-            board = self.find_board(find_name=lhs.strip(), group=self.group, checker=self.character)
+            board_group = self.board_group
+            board = board_group.find_board(find_name=lhs.strip(), checker=self.character)
             new_order = int(rhs)
         except ValueError as err:
             self.error(unicode(err))
             return
-        except ValueError:
-            self.error("Board order must be an integer.")
-            return
         if new_order < 1:
             self.error("Board orders must be positive.")
             return
+        if board_group.boards.filter(order=new_order).count():
+            self.error("Board orders must be unique.")
+            return
         board.order = new_order
-        board.save()
+        board.save(update_fields=['order'])
         self.sys_msg("Board re-ordered.")
 
     def board_lock(self, lhs=None, rhs=None):
         try:
-            board = self.find_board(find_name=lhs.strip(), group=self.group, checker=self.character)
+            board_group = self.board_group
+            board = board_group.find_board(find_name=lhs.strip(), checker=self.character)
         except ValueError as err:
             self.error(unicode(err))
             return
@@ -361,8 +294,8 @@ class CmdBBAdmin(BBCommand):
             ok = False
             try:
                 ok = board.locks.add(rhs)
-                board.save()
-            except LockException, e:
+                board.save(update_fields=['lock_storage'])
+            except LockException as e:
                 self.error(unicode(e))
             if ok:
                 self.sys_msg("Added lock '%s' to %s." % (rhs, board))
@@ -409,7 +342,7 @@ class CmdBBWrite(BBCommand):
         if not self.character.db.curpost:
             self.error("You do not have a post in progress.")
             return
-        curpost = dict(self.character.db.curpost)
+        curpost = self.character.db.curpost
         curpost['text'] = curpost.get('text', "") + penn_substitutions(lhs)
         self.character.db.curpost = curpost
         self.sys_msg("Text added to post in progress.")
@@ -420,7 +353,7 @@ class CmdBBWrite(BBCommand):
             return
         curpost = dict(self.character.db.curpost)
         message = list()
-        message.append(header("Post in Progress"), viewer=self.character)
+        message.append(header("Post in Progress", viewer=self.character))
         message.append('Board: %s, Group: %s' % (curpost['board'], curpost['group']))
         message.append("Subject: %s" % curpost['subject'])
         message.append(curpost['text'])
@@ -480,17 +413,15 @@ class CmdBBWrite(BBCommand):
             self.error("No subject entered.")
             return
         try:
-            board = self.find_board(find_name=findname.strip(), group=self.group, checker=self.character)
+            board_group = self.board_group
+            board = board_group.find_board(find_name=findname.strip(), checker=self.character)
         except ValueError as err:
             self.error(unicode(err))
             return
         if not board.perm_check(self.character, 'write'):
             self.error("Permission denied.")
             return
-        curpost = dict()
-        curpost['subject'] = sanitize_string(subject)
-        curpost['board'] = board
-        curpost['group'] = self.group
+        curpost = {'subject': sanitize_string(subject), 'board': board, 'group': self.group}
         self.character.db.curpost = curpost
         self.sys_msg("You have begun writing a post. Use %s to add text." % bb_type)
 
@@ -509,7 +440,8 @@ class CmdBBWrite(BBCommand):
             self.error("No post text entered.")
             return
         try:
-            board = self.find_board(find_name=findname.strip(), group=self.group, checker=self.character)
+            board_group = self.board_group
+            board = board_group.find_board(find_name=findname.strip(), checker=self.character)
         except ValueError as err:
             self.error(unicode(err))
             return
@@ -558,8 +490,9 @@ class CmdBBWrite(BBCommand):
             return
         boardname, postnums = lhs.split('/', 1)
         try:
-            board = self.find_board(find_name=boardname, group=self.group, checker=self.character)
-            posts = self.parse_postnums(check=postnums, board=board)
+            board_group = self.board_group
+            board = board_group.find_board(find_name=boardname, group=self.group, checker=self.character)
+            posts = board.parse_postnums(player=self.player, check=postnums)
         except ValueError as err:
             self.error(unicode(err))
             return
@@ -586,9 +519,10 @@ class CmdBBWrite(BBCommand):
             self.error("No board to move to!")
             return
         try:
-            board = self.find_board(find_name=boardname, group=self.group, checker=self.character)
-            posts = self.parse_postnums(check=postnums, board=board)
-            board2 = self.find_board(find_name=rhs, group=self.group, checker=self.character)
+            board_group = self.board_group
+            board = board_group.find_board(find_name=boardname, checker=self.character)
+            posts = board.parse_postnums(check=postnums, board=board)
+            board2 = board_group.find_board(find_name=rhs, checker=self.character)
         except ValueError as err:
             self.error(unicode(err))
             return
@@ -605,7 +539,7 @@ class CmdBBWrite(BBCommand):
                 self.sys_msg("%s moved!" % post)
                 post.order = newnum
                 post.board = board2
-                post.save()
+                post.save(update_fields=['order', 'board'])
             else:
                 self.error("Permission denied for %s" % post)
         board.squish_posts()
@@ -616,8 +550,9 @@ class CmdBBWrite(BBCommand):
             return
         boardname, postnums = lhs.split('/', 1)
         try:
-            board = self.find_board(find_name=boardname, group=self.group, checker=self.character)
-            posts = self.parse_postnums(check=postnums, board=board)
+            board_group = self.board_group
+            board = board_group.find_board(find_name=boardname, checker=self.character)
+            posts = board.parse_postnums(player=self.player, check=postnums)
         except ValueError as err:
             self.error(unicode(err))
             return
@@ -625,7 +560,7 @@ class CmdBBWrite(BBCommand):
             self.sys_msg("WARNING: This will delete posts. They cannot be recovered. "
                          "Are you sure? Enter the same command again to verify.")
             return
-        postdel = []
+        postdel = list()
         for post in posts:
             if post.can_edit(checker=self.player):
                 self.sys_msg("%s deleted!" % post)
@@ -633,6 +568,7 @@ class CmdBBWrite(BBCommand):
             else:
                 self.error("Permission denied for %s" % post)
         board.posts.filter(id__in=postdel).delete()
+        board.squish_posts()
 
     def board_timeout(self, lhs, rhs):
         if '/' in lhs:
@@ -645,8 +581,9 @@ class CmdBBWrite(BBCommand):
         boardname.strip()
         postnums.strip()
         try:
-            board = self.find_board(find_name=boardname, group=self.group, checker=self.character)
-            posts = self.parse_postnums(check=postnums, board=board)
+            board_group = self.board_group
+            board = board_group.find_board(find_name=boardname, checker=self.character)
+            posts = board.parse_postnums(player=self.player, check=postnums)
         except ValueError as err:
             self.error(unicode(err))
             return
@@ -654,8 +591,8 @@ class CmdBBWrite(BBCommand):
             self.error("'%s' has disabled timeouts." % board)
             return
         admin = board.perm_check(self.caller, 'admin')
-        new_timeout = int(duration_from_string(rhs).total_seconds())
-        if new_timeout == 0 and not admin:
+        new_timeout = duration_from_string(rhs)
+        if new_timeout.total_seconds() == 0 and not admin:
             self.error("Only board admins may sticky a post.")
             return
         if new_timeout > board.timeout and not admin:
@@ -666,7 +603,7 @@ class CmdBBWrite(BBCommand):
                 self.error("Cannot Edit post '%s: %s' - Permission denied." % (post.order, post.post_subject))
             else:
                 post.timeout = new_timeout
-                post.save()
+                post.save(update_fields=['timeout'])
                 self.sys_msg("Timeout set for post '%s: %s' - now %s" % (post.order, post.post_subject,
                                                                          time_format(new_timeout, style=1)))
 
@@ -685,20 +622,25 @@ class CmdBBWrite(BBCommand):
         if not board.perm_check(self.player, 'admin'):
             self.error("Permission denied.")
             return
-        new_timeout = int(duration_from_string(rhs).total_seconds())
-        timeout_string = time_format(new_timeout, style=1) if new_timeout else '0 - Permanent'
+        new_timeout = duration_from_string(rhs)
+        timeout_string = time_format(new_timeout.total_seconds(), style=1) if new_timeout else '0 - Permanent'
         board.timeout = new_timeout
-        board.save()
+        board.save(update_fields=['timeout'])
         self.sys_msg("'%s' timeout set to: %s" % (board, timeout_string))
 
     def board_timeout_list(self, lhs, rhs):
+        try:
+            board_group = self.board_group
+        except ValueError as err:
+            self.error(unicode(err))
+            return
         message = list()
         message.append(self.board_header())
         bbtable = make_table("ID", "RWA", "Name", "Timeout", width=[4, 4, 23, 47], viewer=self.character)
-        for board in list_boards(group=self.group, checker=self.player):
+        for board in board_group.visible_boards(checker=self.player):
             bbtable.add_row(mxp_send(board.order, "+bbread %s" % board.order),
                             board.display_permissions(self.character), mxp_send(board, "+bbread %s" % board.order),
-                            time_format(board.timeout) if board.timeout else '0 - Permanent')
+                            time_format(board.timeout.total_seconds()) if board.timeout else '0 - Permanent')
         message.append(bbtable)
         message.append(header(viewer=self.character))
         self.msg_lines(message)
@@ -739,18 +681,12 @@ class CmdBBRead(BBCommand):
             self.board_read_board(lhs, rhs)
 
     def board_read_list(self):
-        message = list()
-        message.append(self.board_header())
-        bbtable = make_table("ID", "RWA", "Name", "Last Post", "#", "U", width=[4, 4, 37, 23, 5, 5],
-                             viewer=self.character)
-        for board in list_boards(group=self.group, checker=self.character) or []:
-            bbtable.add_row(mxp_send(board.order, "+bbread %s" % board.order),
-                            board.display_permissions(self.character), mxp_send(board, "+bbread %s" % board.order),
-                            board.last_post(self.character), board.posts.all().count(),
-                            board.posts.exclude(read=self.player).count())
-        message.append(bbtable)
-        message.append(header(viewer=self.character))
-        self.msg_lines(message)
+        try:
+            board_group = self.board_group
+        except ValueError as err:
+            self.error(unicode(err))
+            return
+        self.msg(board_group.display_boards(self.character, self.player))
 
     def board_read_post(self, lhs=None, rhs=None):
         if not lhs:
@@ -758,8 +694,9 @@ class CmdBBRead(BBCommand):
             return
         boardname, postnums = lhs.split('/', 1)
         try:
-            board = self.find_board(find_name=boardname, group=self.group, checker=self.character)
-            posts = self.parse_postnums(check=postnums, board=board)
+            board_group = self.board_group
+            board = board_group.find_board(find_name=boardname, checker=self.character)
+            posts = board.parse_postnums(player=self.player, check=postnums)
         except ValueError as err:
             self.error(unicode(err))
             return
@@ -767,7 +704,7 @@ class CmdBBRead(BBCommand):
             self.error("No posts to view.")
             return
         for post in posts:
-            self.caller.msg(post.show_post(self.character))
+            self.caller.msg(post.display_post(self.player))
 
     def board_read_board(self, lhs=None, rhs=None):
         if not lhs:
@@ -781,46 +718,64 @@ class CmdBBRead(BBCommand):
         self.caller.msg(board.show_board(self.player))
 
     def read_next(self):
-        for board in list_boards(group=self.group, checker=self.character):
-            unread = board.posts.all().exclude(read=self.player).first()
+        try:
+            board_group = self.board_group
+        except ValueError as err:
+            self.error(unicode(err))
+            return
+        for board in board_group.visible_boards(checker=self.character):
+            unread = board.posts.all().exclude(read=self.player).order_by('order').first()
             if unread:
                 self.caller.msg(unread.show_post(self.player))
                 return
         self.sys_msg("There are no unread posts to see.")
 
     def read_catchup(self, lhs=None, rhs=None):
+        try:
+            board_group = self.board_group
+        except ValueError as err:
+            self.error(unicode(err))
+            return
         if not lhs:
             self.error("What do you want to catch up on? Give a board or 'ALL' (case sensitive)")
             return
         if lhs.upper() == 'ALL':
-            for board in list_boards(group=self.group, checker=self.player):
-                for post in board.posts.all():
-                    post.read.add(self.player)
+            for board in board_group.visible_boards(checker=self.player):
+                if not board.mandatory:
+                    for post in board.posts.all():
+                        post.read.add(self.player)
             self.sys_msg("All posts for all boards marked read.")
             return
         else:
             try:
-                board = self.find_board(find_name=lhs.strip(), group=self.group, checker=self.character)
+                board = board_group.find_board(find_name=lhs.strip(), checker=self.character)
             except ValueError as err:
                 self.error(unicode(err))
+                return
+            if board.mandatory:
+                self.sys_msg("Mandatory boards cannot be skipped!")
                 return
             for post in board.posts.all():
                 post.read.add(self.player)
             self.sys_msg("All posts for Board %s: %s marked read." % (board.order, board.key))
-        return
 
     def read_scan(self):
         if self.group:
             self.read_scan_gb()
             return
+        try:
+            board_group = self.board_group
+        except ValueError as err:
+            self.error(unicode(err))
+            return
         message = list()
         message.append(self.board_header())
         bbs = make_table("ID", "Board", "U", "Posts", width=[4, 30, 4, 39], viewer=self.character)
-        boards = list_boards(checker=self.player)
+        boards = board_group.visible_boards(checker=self.player)
         show = False
         if boards:
             for board in boards:
-                unread = board.posts.all().exclude(read=self.player)
+                unread = board.posts.all().exclude(read=self.player).order_by('order')
                 if unread:
                     show = True
                     bbs.add_row(board.order, board, len(unread), ", ".join(str(n.order) for n in unread))
@@ -837,14 +792,22 @@ class CmdBBRead(BBCommand):
     def read_scan_gb(self, group=None, standalone=True):
         if not group:
             group = self.group
+        try:
+            if not standalone:
+                board_group, created = BoardGroup.objects.get_or_create(main=2, group=group)
+            else:
+                board_group = self.board_group
+        except ValueError as err:
+            self.error(unicode(err))
+            return
         message = list()
-        message.append(self.board_header(group=group))
+        message.append(self.board_group.name)
         bbs = make_table("ID", "Board", "U", "Posts", width=[4, 30, 4, 39], viewer=self.character)
-        boards = list_boards(group=group, checker=self.character)
+        boards = board_group.visible_boards(checker=self.character)
         show = False
         if boards:
             for board in boards:
-                unread = board.posts.all().exclude(read=self.character)
+                unread = board.posts.all().exclude(read=self.character).order_by('order')
                 if unread:
                     show = True
                     bbs.add_row(board.order, board, len(unread), ", ".join(str(n.order) for n in unread))
@@ -883,6 +846,10 @@ class GBCommand(BBCommand):
 
         self.choose_command(lhs, rhs, cstr)
 
+    @property
+    def board_group(self):
+        board_group, created_check = BoardGroup.objects.get_or_create(main=2, group=self.group).first()
+        return board_group
 
 class CmdGBList(GBCommand, CmdBBList):
     """

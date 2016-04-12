@@ -4,18 +4,119 @@ from django.db import models
 from django.conf import settings
 from evennia.locks.lockhandler import LockHandler
 from evennia.utils.utils import lazy_property
-from commands.library import utcnow, mxp_send, connected_characters, header, separator, make_table
+from commands.library import utcnow, mxp_send, connected_characters, header, separator, make_table, sanitize_string
 
 # Create your models here.
+
+
+class BoardGroup(models.Model):
+    group = models.OneToOneField('groups.Group', null=True, related_name='board')
+    main = models.BooleanField(default=1)
+
+    class Meta:
+        unique_together = (('group', 'main'),)
+
+    @property
+    def list(self):
+        return self.boards.all().order_by('order')
+
+    @property
+    def timeout(self):
+        pass
+
+    @property
+    def posts(self):
+        return Post.objects.filter(board__category=self)
+
+    @property
+    def name(self):
+        if self.category.group:
+            return "(GBS) %s Boards" % self.category.group
+        return "(BBS) %s Boards" % settings.SERVERNAME
+
+    def usable_boards(self, checker, checkadmin=True):
+        return [board for board in self.list if board.check_permission(checker, checkadmin=checkadmin)]
+
+    def visible_boards(self, checker, checkadmin=True):
+        return [board for board in self.usable_boards(checker, checkadmin) if checker not in board.ignore_list.all()]
+
+    def boards_list(self, checker, viewer=None):
+        message = list()
+        message.append(header(self.name, viewer=viewer))
+        bbtable = make_table("ID", "RWA", "Name", "Locks", "On", width=[4, 4, 23, 43, 4], viewer=viewer)
+        for board in self.usable_boards(checker=checker):
+            if checker in board.ignore_list.all():
+                member = "No"
+            else:
+                member = "Yes"
+            bbtable.add_row(mxp_send(board.order, "+bbread %s" % board.order), board.rwastring(checker),
+                            mxp_send(board, "+bbread %s" % board.order), board.lock_storage, member)
+        message.append(bbtable)
+        message.append(header(viewer=viewer))
+        return '\n'.join(unicode(line) for line in message)
+
+    def find_board(self, find_name=None, checker=None, visible_only=True):
+        if checker:
+            if visible_only:
+                boards = self.visible_boards(checker)
+            else:
+                boards = self.usable_boards(checker)
+        else:
+            boards = self.list
+        if not boards:
+            raise ValueError("No applicable boards.")
+        try:
+            find_num = int(find_name)
+        except ValueError:
+            find_board = self.partial(find_name, boards)
+            if not find_board:
+                raise ValueError("Board '%s' not found." % find_name)
+            return find_board
+        else:
+            if find_num not in [board.order for board in boards]:
+                raise ValueError("Board '%s' not found." % find_name)
+            return [board for board in boards if board.order == find_num][0]
+
+    def process_timeout(self):
+        if self.timeout:
+            for board in self.boards.all():
+                board.process_timeout()
+
+    def make_board(self, key=None):
+        if not key:
+            raise ValueError("Board requires a name.")
+        new_name = sanitize_string(key, strip_ansi=True)
+        try:
+            new_num = max([board.order for board in self.boards.all()]) + 1
+        except ValueError:
+            new_num = 1
+        board = Board.objects.create(key=new_name, order=new_num)
+        board.init_locks()
+        return board
+
+    def display_boards(self, checker, viewer):
+        message = list()
+        message.append(header(self.name, viewer=viewer))
+        bbtable = make_table("ID", "RWA", "Name", "Last Post", "#", "U", width=[4, 4, 37, 23, 5, 5],
+                             viewer=self.character)
+        for board in self.visible_boards(checker=checker):
+            bbtable.add_row(mxp_send(board.order, "+bbread %s" % board.order),
+                            board.display_permissions(self.character), mxp_send(board, "+bbread %s" % board.order),
+                            board.last_post(self.character), board.posts.all().count(),
+                            board.posts.exclude(read=viewer).count())
+        message.append(bbtable)
+        message.append(header(viewer=viewer))
+        return '\n'.join(unicode(line) for line in message)
+
+
 class Board(models.Model):
+    category = models.ForeignKey('bbs.BoardGroup', related_name='boards')
     key = models.CharField(max_length=40)
-    order = models.IntegerField()
-    main = models.BooleanField(default=True)
-    group = models.ForeignKey('groups.Group', null=True, related_name='boards')
+    order = models.PositiveSmallIntegerField(default=0)
     lock_storage = models.TextField('locks', blank=True)
     ignore_list = models.ManyToManyField('objects.ObjectDB')
     anonymous = models.CharField(max_length=80, null=True)
-    timeout = models.IntegerField(default=0, null=True)
+    timeout = models.DurationField(null=True)
     mandatory = models.BooleanField(default=False)
 
     def __unicode__(self):
@@ -24,14 +125,44 @@ class Board(models.Model):
     def __int__(self):
         return self.order
 
+    class Meta:
+        unique_together = (('category', 'key'), ('category', 'order'))
+
+    def init_locks(self):
+        if self.category.group:
+            group_id = self.category.group.id
+            locks = 'read:group(%i);write:group(%i);admin:gbadmin(%i)' % (group_id, group_id, group_id)
+        else:
+            locks = 'read:all();write:all();admin:perm(Wizards)'
+        self.lock_storage = locks
+        self.save(update_fields=['lock_storage'])
+
+    @property
+    def group(self):
+        return self.category.group
+
     @lazy_property
     def locks(self):
         return LockHandler(self)
 
-    def display_name(self):
-        if self.group:
-            return "(GBS) %s Boards - %s" % (self.group, self)
-        return "(BBS) %s Boards - %s" % (settings.SERVERNAME, self)
+    def parse_postnums(self, player, check=None):
+        if not check:
+            raise ValueError("No posts entered to check.")
+        fullnums = []
+        for arg in check.split(','):
+            arg = arg.strip()
+            if re.match(r"^\d+-\d+$", arg):
+                numsplit = arg.split('-')
+                numsplit2 = []
+                for num in numsplit:
+                    numsplit2.append(int(num))
+                lo, hi = min(numsplit2), max(numsplit2)
+                fullnums += range(lo, hi + 1)
+            if re.match(r"^\d+$", arg):
+                fullnums.append(int(arg))
+            if re.match(r"^U$", arg.upper()):
+                fullnums += self.posts.exclude(read__contains=player).values_list('order', flat=True)
+        return self.posts.filter(order__in=fullnums).order_by('order')
 
     def check_permission(self, checker=None, type="read", checkadmin=True):
         if checker.is_admin():
@@ -70,17 +201,16 @@ class Board(models.Model):
         return [char for char in connected_characters() if self.check_permission(checker=char)
                 and not char in self.ignore_list.all()]
 
-    def make_post(self, actor=None, subject=None, text=None, announce=True, date=utcnow()):
-        if not actor:
+    def make_post(self, stub=None, subject=None, text=None, announce=True, date=utcnow()):
+        if not stub:
             raise ValueError("No player data to use.")
         if not text:
             raise ValueError("Text field empty.")
         if not subject:
             raise ValueError("Subject field empty.")
         order = self.posts.all().count() + 1
-        post = self.posts.create(actor=actor, post_subject=subject, post_text=text, post_date=date,
-                                 modify_date=date, timeout=self.timeout,
-                                 remaining_timeout=self.timeout, order=order)
+        post = self.posts.create(owner=stub, subject=subject, text=text, creation_date=date,
+                                 modify_date=date, timeout=self.timeout, order=order)
         if announce:
             self.announce_post(post)
 
@@ -102,47 +232,71 @@ class Board(models.Model):
                 character.msg(message)
 
     def squish_posts(self):
-        for count, post in enumerate(self.posts.order_by('post_date')):
-            if not post.order == count +1:
+        for count, post in enumerate(self.posts.order_by('order')):
+            if post.order != count +1:
                 post.order = count + 1
-                post.save()
+                post.save(update_fields=['order'])
 
-    def show_board(self, viewer):
+    def display_board(self, viewer):
         """
         Viewer is meant to be a PlayerDB instance in this case! Since it needs to pull from Player read/unread.
         """
-        message = []
-        message.append(header(self.display_name()))
+        message = list()
+        message.append(header('%s - %s' % (self.category.name, self.key)))
         board_table = make_table("ID", "Subject", "Date", "Poster", width=[6, 29, 22, 21])
         for post in self.posts.all().order_by('post_date'):
-            board_table.add_row(post.order, post.post_subject,
-                                viewer.display_local_time(date=post.post_date, format='%X %x %Z'),
+            board_table.add_row(post.order, post.subject,
+                                viewer.display_local_time(date=post.creation_date, format='%X %x %Z'),
                                 post.display_poster(viewer))
         message.append(board_table)
         message.append(header())
         return "\n".join([unicode(line) for line in message])
 
     def last_post(self, viewer):
-        find = self.posts.all().order_by('post_date').first()
+        find = self.posts.all().order_by('creation_date').first()
         if find:
-            return viewer.display_local_time(date=find.post_date, format='%X %x %Z')
+            return viewer.display_local_time(date=find.creation_date, format='%X %x %Z')
         else:
             return "None"
 
+    def process_timeout(self):
+        if not self.timeout:
+            return
+        check_list = [post.process_timeout() for post in self.posts.all()]
+        if True in check_list:
+            self.squish_posts()
+
 class Post(models.Model):
     board = models.ForeignKey('Board', related_name='posts')
-    poster = models.ForeignKey('communications.ObjectStub')
-    post_date = models.DateTimeField()
-    modify_date = models.DateTimeField()
-    post_text = models.TextField()
-    post_subject = models.CharField(max_length=30)
-    timeout = models.FloatField(null=True)
+    owner = models.ForeignKey('communications.ObjectStub', related_name='posts')
+    creation_date = models.DateTimeField(null=True)
+    timeout_date = models.DateTimeField(null=True)
+    modify_date = models.DateTimeField(null=True)
+    text = models.TextField(blank=True)
+    subject = models.CharField(max_length=30)
+    timeout = models.DurationField(null=True)
     remaining_timeout = models.FloatField(null=True)
     read = models.ManyToManyField('players.PlayerDB')
-    order = models.IntegerField(null=True)
+    order = models.PositiveSmallIntegerField(null=True)
 
     def __unicode__(self):
-        return unicode("Post %s: %s" % (self.order, self.post_subject))
+        return unicode(self.subject)
+
+    def __str__(self):
+        return self.post_subject
+
+    def remaining_time(self):
+        if not self.timeout:
+            return '(No Timeout)'
+        rem_time = (self.timeout_date or self.creation_date) + self.timeout
+        if rem_time > utcnow():
+            rem_time = 'Timed out!'
+        if not self.board.timeout:
+            return '(Board Timeouts Disabled - %s)' % rem_time
+        if not self.board.category.timeout:
+            return '(Timeouts Disabled - %s)' % rem_time
+        else:
+            return '(Time Left: %s)' % rem_time
 
     def can_edit(self, checker=None):
         if self.actor.object == checker:
@@ -156,44 +310,30 @@ class Post(models.Model):
             replace = ''
         self.modify_date = utcnow()
         self.post_text = self.post_text.replace(find, replace)
-        self.save()
+        self.save(update_fields=['post_text', 'modify_date'])
 
     def display_poster(self, viewer):
         anon = self.board.anonymous
         if anon and viewer.is_admin():
             return "(%s)" % self.actor
-        return anon or self.actor
+        return anon or str(self.actor)
 
-    def show_post(self, viewer):
-        message = []
-        message.append(header(self.board.display_name()))
-        message.append("Message: %s/%s - By %s on %s" % (self.board.order, self.order, self.actor,
-                                                         viewer.display_local_time(date=self.post_date,format='%X %x %Z')))
+    def process_timeout(self):
+        if not self.timeout:
+            return
+        start_date = self.timeout_date or self.creation_date
+        check_date = start_date + self.timeout
+        if check_date < utcnow():
+            self.delete()
+            return True
+
+    def display_post(self, viewer):
+        message = list()
+        message.append(header(self.board.category.name, viewer=viewer))
+        message.append("Message: %s/%s - By %s on %s" % (self.board.order, self.order, self.display_poster(viewer),
+                                                         viewer.display_local_time(date=self.creation_date,format='%X %x %Z')))
         message.append(separator())
         message.append(self.post_text)
-        message.append(header())
+        message.append(header(viewer=viewer))
         self.read.add(viewer)
         return "\n".join([unicode(line) for line in message])
-
-
-
-def list_all_boards(group=None):
-    if group:
-        boardlist = group.boards.all().order_by('order')
-    else:
-        boardlist = Board.objects.filter(main=True).order_by('order')
-    return boardlist
-
-def list_boards(group=None, type="read", checker=None):
-    if not re.match(r'^read|write|admin$', type):
-        raise ValueError("Invalid access type.")
-    if not checker:
-        raise ValueError("Who is doing the checking?")
-    if group:
-        boards = group.boards.all().order_by('order')
-    else:
-        boards = Board.objects.filter(main=True).order_by('order')
-    if not boards:
-        return []
-    boardlist = [bb for bb in boards if bb.check_permission(type=type, checker=checker)]
-    return boardlist

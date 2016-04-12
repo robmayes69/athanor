@@ -99,17 +99,13 @@ class BoardTimeout(Script):
         self.persistent = True
 
     def at_repeat(self):
-        boards = self.em_get_boards()
+        boards = self.boards()
         for board in boards:
-            board.run_timeout(self.interval)
+            board.process_timeout()
 
     def is_valid(self):
-        boards = self.em_get_boards()
-        if boards:
-            return True
-        return False
+        return bool(self.boards().count())
 
-    def em_get_boards(self):
+    def boards(self):
         from world.database.bbs.models import Board
-        boards = Board.objects.all()
-        return boards
+        return Board.objects.all()
