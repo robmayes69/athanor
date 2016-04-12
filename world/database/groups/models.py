@@ -83,39 +83,38 @@ class Group(models.Model):
             ic_channel = self.ic_channel
             ic_channel.key = 'group_%s_ic' % self.key
         else:
-            ic_channel = create_channel('group_%s_ooc' % self.key, typeclass='typeclasses.channels.GroupOOC')
+            self.ic_channel = create_channel('group_%s_ic' % self.key, typeclass='typeclasses.channels.GroupIC')
             self.save(update_fields=['ic_channel'])
-            ic_channel.init_locks()
+            self.ic_channel.init_locks(group=self)
         if self.ooc_channel:
             ooc_channel = self.ooc_channel
             ooc_channel.key = 'group_%s_ooc' % self.key
         else:
-            ooc_channel = create_channel('group_%s_ooc' % self.key, typeclass='typeclasses.channels.GroupIC')
+            self.ooc_channel = create_channel('group_%s_ooc' % self.key, typeclass='typeclasses.channels.GroupOOC')
             self.save(update_fields=['ooc_channel'])
-            ooc_channel.init_locks()
+            self.ooc_channel.init_locks(group=self)
 
     def add_member(self, target=None, setrank=None, reason='accepted invite'):
         if not target:
             raise ValueError("No target to add.")
-        if self.members.filter(character_obj=target):
+        if self.members.filter(character=target):
             raise ValueError("'%s' is already a member of '%s'" % (target.key, self.key))
         if setrank:
             setrank = self.find_rank(setrank)
         else:
             setrank = self.settings.start_rank
-        self.options.create(character_obj=target)
         for channel in [self.ic_channel, self.ooc_channel]:
             if channel:
                 if channel.locks.check(target, 'listen'):
                     channel.connect(target)
         self.sys_msg('%s joined the group. Method: %s' % (target, reason))
         self.invites.remove(target)
-        return self.members.create(character_obj=target, rank=setrank)
+        return self.participants.create(character=target, rank=setrank)
 
     def remove_member(self, target=None, reason='left'):
         if not target:
             raise ValueError("No target to remove.")
-        membership = self.members.filter(character_obj=target).first()
+        membership = self.members.filter(character=target).first()
         if not membership:
             raise ValueError("'%s' is not a member of '%s'" % (target.key, self.key))
         membership.rank = None
@@ -192,7 +191,7 @@ class Group(models.Model):
             raise ValueError("Target field empty.")
         if not rank:
             raise ValueError("Rank field empty.")
-        member = self.members.filter(character_obj=target).first()
+        member = self.members.filter(character=target).first()
         if not member:
             raise ValueError("Target is not a member of this group.")
         if not isinstance(rank, GroupRank):
@@ -217,9 +216,8 @@ class Group(models.Model):
         message.append(header("Group: %s" % self))
         grouptable = make_table("Name", "Rank", "Title", "Idle", width=[24, 23, 23, 8], viewer=viewer)
         for member in self.members.order_by('rank__num'):
-            options, created = self.options.get_or_create(character_obj=member.character_obj)
-            title = options.title
-            grouptable.add_row(member, member.rank.name, title or '', member.character_obj.last_or_idle_time(viewer))
+            title = member.title
+            grouptable.add_row(member, member.rank.display, title or '', member.character.last_or_idle_time(viewer))
         message.append(grouptable)
         message.append(header(viewer=viewer))
         return "\n".join([unicode(line) for line in message])
@@ -230,18 +228,19 @@ class Group(models.Model):
         ranktable = make_table("#", "Name", "Permissions", width=[5, 24, 49], viewer=viewer)
         for rank in self.ranks.order_by('num'):
             ranktable.add_row(rank.num, rank.name, ", ".join('%s' % perm for perm in rank.perms.all()))
-        ranktable.add_row("ALL", "", ", ".join('%s' % perm for perm in self.default_permissions.all()))
+        ranktable.add_row("MEM", "", ", ".join('%s' % perm for perm in self.member_permissions.all()))
+        ranktable.add_row("GST", "", ", ".join('%s' % perm for perm in self.guest_permissions.all()))
         message.append(ranktable)
         message.append(header(viewer=viewer))
         return "\n".join([unicode(line) for line in message])
 
 
     def sys_msg(self, text, *args, **kwargs):
-        members = [char for char in connected_characters() if self.is_member(char)]
-        listeners = [char for char in members if self.get_rank(char) <= self.alert_rank.num]
-        message = '{C<{n{x%s{n{C-{n{rSYS{n{C>{n %s' % (self.key, text)
-        for char in listeners:
-            char.msg(message)
+        rank_num = self.alert_rank.num
+        members = self.members.filter(rank__num__lte=rank_num)
+        message = '|C<|n|x%s|n|C-|n|rSYS|n|C>|n %s' % (self.key, text)
+        for char in members:
+            char.character.msg(message)
 
 
 class GroupRank(models.Model):
@@ -269,6 +268,9 @@ class GroupRank(models.Model):
         self.name = newname
         self.save(update_fields=['name'])
 
+    @property
+    def display(self):
+        return '%s-%s' % (self.num, self.name)
 
 class GroupParticipant(models.Model):
     character = models.ForeignKey('objects.ObjectDB', related_name='groups')
@@ -278,7 +280,7 @@ class GroupParticipant(models.Model):
     title = models.CharField(max_length=120, blank=True)
 
     def __unicode__(self):
-        return self.character_obj.key
+        return self.character.key
 
     class Meta:
         unique_together = (("character", "group"),)

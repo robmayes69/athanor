@@ -34,6 +34,6 @@ def setup_group(sender, **kwargs):
         instance.start_rank = rank4
         instance.alert_rank = rank3
         locks = 'member:group(##)'
-        instance.lock_storage = locks.replace('##', instance.id)
+        instance.lock_storage = locks.replace('##', str(instance.id))
         instance.save()
         instance.setup_channels()

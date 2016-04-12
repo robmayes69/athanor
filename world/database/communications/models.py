@@ -66,8 +66,6 @@ class Gag(models.Model):
     character = models.OneToOneField('objects.ObjectDB', related_name='channel_gags')
     channel = models.ManyToManyField('comms.ChannelDB', related_name='gagging')
 
-    class Meta:
-        unique_together = (('character', 'channel'),)
 
 class Muzzle(models.Model):
     channel = models.ForeignKey('comms.ChannelDB', related_name='muzzles', null=True)
@@ -119,3 +117,10 @@ class Message(models.Model):
     def save(self, *args, **kwargs):
         self.creation_date = utcnow()
         return super(Message, self).save(*args, **kwargs)
+
+class Login(models.Model):
+    player = models.ForeignKey('players.PlayerDB',related_name='logins')
+    date = models.DateTimeField(auto_now_add=True)
+    ip = models.GenericIPAddressField()
+    site = models.CharField(max_length=300)
+    result = models.CharField(max_length=200)

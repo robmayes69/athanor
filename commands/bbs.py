@@ -5,7 +5,7 @@ from world.database.bbs.models import BoardGroup
 from world.database.groups.models import Group
 from commands.command import AthCommand
 from commands.library import header, make_table, mxp_send
-from commands.library import duration_from_string, sanitize_string, penn_substitutions, utcnow
+from commands.library import duration_from_string, sanitize_string, penn_substitutions, partial_match
 from typeclasses.scripts import BoardTimeout
 from evennia import create_script
 from evennia.utils.utils import time_format
@@ -22,7 +22,7 @@ class BBCommand(AthCommand):
 
     @property
     def board_group(self):
-        board_group, created_check = BoardGroup.objects.get_or_create(main=1).first()
+        board_group, created_check = BoardGroup.objects.get_or_create(main=1)
         return board_group
 
     def func(self):
@@ -249,6 +249,9 @@ class CmdBBAdmin(BBCommand):
         pass
 
     def board_order(self, lhs=None, rhs=None):
+        if not rhs:
+            self.error("No new order entered!")
+            return
         try:
             board_group = self.board_group
             board = board_group.find_board(find_name=lhs.strip(), checker=self.character)
@@ -284,7 +287,7 @@ class CmdBBAdmin(BBCommand):
             if not access_type:
                 self.error("Must enter an access type: read, write, or admin.")
                 return
-            accmatch = self.partial(access_type, ['read', 'write', 'admin'])
+            accmatch = partial_match(access_type, ['read', 'write', 'admin'])
             if not accmatch:
                 self.error("Access type must be read, write, or admin.")
                 return
@@ -393,7 +396,7 @@ class CmdBBWrite(BBCommand):
         if not board.check_permission(self.character, 'write'):
             self.error("Permission denied.")
             return
-        board.make_post(actor=self.character.actor, subject=curpost['subject'], text=curpost['text'])
+        board.make_post(stub=self.character.stub, subject=curpost['subject'], text=curpost['text'])
         del self.character.db.curpost
 
     def board_post_startpost(self, lhs=None, rhs=None):
@@ -445,7 +448,7 @@ class CmdBBWrite(BBCommand):
         except ValueError as err:
             self.error(unicode(err))
             return
-        board.make_post(actor=self.character.actor, subject=sanitize_string(subject),
+        board.make_post(stub=self.character.stub, subject=sanitize_string(subject),
                         text=penn_substitutions(rhs.strip()))
 
     def post_edit(self, lhs, rhs):
@@ -469,7 +472,7 @@ class CmdBBWrite(BBCommand):
         if not lhs:
             self.error("Must choose to edit subject or text.")
             return
-        choice = self.partial(lhs, ['subject', 'text'])
+        choice = partial_match(lhs, ['subject', 'text'])
         if not choice:
             self.error("Must choose to edit subject or text.")
             return
@@ -506,9 +509,9 @@ class CmdBBWrite(BBCommand):
         for post in posts:
             if post.can_edit(checker=self.character):
                 post.edit_post(find, replace)
-                self.sys_msg("Post %s: %s edited!" % (post.num, post.post_subject))
+                self.sys_msg("Post %s: %s edited!" % (post.num, post.subject))
             else:
-                self.error("Permission denied for Post %s: %s" % (post.num, post.post_subject))
+                self.error("Permission denied for Post %s: %s" % (post.num, post.subject))
 
     def post_move(self, lhs, rhs):
         if not lhs:
@@ -600,11 +603,11 @@ class CmdBBWrite(BBCommand):
             return
         for post in posts:
             if not post.can_edit(self.player):
-                self.error("Cannot Edit post '%s: %s' - Permission denied." % (post.order, post.post_subject))
+                self.error("Cannot Edit post '%s: %s' - Permission denied." % (post.order, post.subject))
             else:
                 post.timeout = new_timeout
                 post.save(update_fields=['timeout'])
-                self.sys_msg("Timeout set for post '%s: %s' - now %s" % (post.order, post.post_subject,
+                self.sys_msg("Timeout set for post '%s: %s' - now %s" % (post.order, post.subject,
                                                                          time_format(new_timeout, style=1)))
 
     def board_timeout_board(self, lhs, rhs):
@@ -615,7 +618,8 @@ class CmdBBWrite(BBCommand):
 
     def board_timeout_board_set(self, lhs, rhs):
         try:
-            board = self.find_board(find_name=lhs, group=self.group, checker=self.character)
+            board_group = self.board_group
+            board = board_group.find_board(find_name=lhs, group=self.group, checker=self.character)
         except ValueError as err:
             self.error(unicode(err))
             return
@@ -711,11 +715,12 @@ class CmdBBRead(BBCommand):
             self.error("No board to read!")
             return
         try:
-            board = self.find_board(find_name=lhs, group=self.group, checker=self.character)
+            board_group = self.board_group
+            board = board_group.find_board(find_name=lhs, checker=self.character)
         except ValueError as err:
             self.error(unicode(err))
             return
-        self.caller.msg(board.show_board(self.player))
+        self.caller.msg(board.display_board(self.player))
 
     def read_next(self):
         try:

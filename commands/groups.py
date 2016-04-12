@@ -36,12 +36,12 @@ class CmdGroupList(GroupCommand):
             groups = Group.objects.filter(tier=tier).order_by('order')
             if groups:
                 message.append(header("Tier %s Groups" % tier, viewer=self.character))
-                group_table = make_table("ID", "Name", "Leader", "Second", "Conn", width=[4, 27, 20, 20, 7], viewer=self.character)
+                group_table = make_table("Name", "Leader", "Second", "Conn", width=[30, 20, 20, 8], viewer=self.character)
                 for group in groups:
-                    group_table.add_row(group.id, group.key,
+                    group_table.add_row(group.name,
                                        ", ".join('%s' % char for char in group.members.filter(rank__num=1)),
                                        ", ".join('%s' % char for char in group.members.filter(rank__num=2)),
-                                       group.members.count())
+                                       "%s/%s" % ('??', group.members.count()))
                 message.append(group_table)
         if not len(message):
             self.sys_msg("No groups to display.")
@@ -330,7 +330,8 @@ class CmdGroupPerm(GroupCommand):
         +gperm[/delete] <rank>=<permission1>[,<permission>,,,]
             Adds or removes (if /delete is used) the given permissions.
 
-            <rank> may be ALL, in which case it applies to all members of the group.
+            <rank> may be MEM, in which case it applies to all members of the group.
+                    It can also be GST, in which case it applies to 'guest' members of the group. (not yet implemented)
 
     Permissions:
         manage - can manage memberships. Covers inviting and removing members.
@@ -366,7 +367,7 @@ class CmdGroupPerm(GroupCommand):
         if not group.get_rank(self.character) <= 1:
             self.error("Only the Group Leader may alter ranks.")
             return
-        if "all" not in lhs:
+        if "mem" not in lhs:
             try:
                 rank = group.find_rank(lhs)
                 set_all = False
@@ -383,7 +384,7 @@ class CmdGroupPerm(GroupCommand):
             self.error("No entered permissions were found.")
             return
         if set_all:
-            group.add_perm(found)
+            group.member_permissions.add(*found)
         else:
             rank.perms.add(*found)
         self.sys_msg("Permissions added!")
@@ -397,7 +398,7 @@ class CmdGroupPerm(GroupCommand):
         if not group.get_rank(self.character) <= 1:
             self.error("Only the Group Leader may alter ranks.")
             return
-        if "all" not in lhs:
+        if "mem" not in lhs:
             try:
                 rank = group.find_rank(lhs)
                 set_all = False
@@ -414,7 +415,7 @@ class CmdGroupPerm(GroupCommand):
             self.error("No entered permissions were found.")
             return
         if set_all:
-            group.del_perm(found)
+            group.member_permissions.remove(*found)
         else:
             rank.perms.remove(*found)
         self.sys_msg("Permissions removed!")
@@ -465,6 +466,7 @@ class CmdGroupTitle(GroupCommand):
             option.title = new_title
         option.save(update_fields=['title'])
 
+
 class CmdGroupSet(GroupCommand):
     """
     Used to configure per-Group options. Only the group leader or admin can change settings.
@@ -484,14 +486,14 @@ class CmdGroupSet(GroupCommand):
         timeout - Default timeout for Group Boards. Value should be entered like '45d' for 45 days.
 
     Admin Options:
-        faction - Whether the group is considered a 'faction.' Factions are listed
-                before groups and appear in various commands like +finger or +fclist.
         abbreviation - A short (Preferably 3 letters) code to represent the Group.
         order - Display order. Integer. Affects listing order in +groups and determines
                 primacy for displays.
         display - Alternate display modes. Not currently implemented.
         tier - The 'tier' of the group. Affects display category. Must be a positive number.
 
+    Extra:
+        id - Cannot be set. The group's unique ID. Useful for setting locks.
     """
     key = '+gset'
 
@@ -516,18 +518,18 @@ class CmdGroupSet(GroupCommand):
         message.append('Color: %s' % group.color)
         message.append('IC: %s' % group.ic_enabled)
         message.append('OOC: %s' % group.ooc_enabled)
-        message.append('Faction: %s' % group.faction)
         message.append('Abbreviation: %s' % group.abbreviation)
         message.append('Display: %s' % group.display_type)
         message.append('Tier: %s' % group.tier)
         message.append('Timeout: %s' % group.timeout)
+        message.append('ID: %s' % group.id)
         message.append(header(viewer=self.character))
         self.msg("\n".join([unicode(line) for line in message]))
 
     def change_settings(self, group):
         options = ['start', 'alert', 'ic', 'ooc', 'color', 'timeout']
         if self.is_admin:
-            options +=  ['faction', 'abbreviation', 'order', 'display', 'tier']
+            options += ['faction', 'abbreviation', 'order', 'display', 'tier']
         if not self.lhs:
             self.error("Nothing entered to set!")
             return
@@ -722,7 +724,7 @@ class CmdGroupAdd(GroupCommand):
             group = self.get_focus()
             group.check_permission_error(self.character, "add")
             target = self.character.search_character(lhs)
-            group.add_member(target=target, setrank=rhs)
+            group.add_member(target=target, setrank=rhs, reason='added by admin.')
         except ValueError as err:
             self.error(str(err))
             return
@@ -892,7 +894,7 @@ class CmdGroupChan(GroupCommand):
         cstr = self.cmdstring.lower()
         lhs = self.lhs
         rhs = self.rhs
-        type = None
+        chan = None
         switches = self.final_switches
 
         if cstr == '+gchat':
@@ -902,13 +904,13 @@ class CmdGroupChan(GroupCommand):
                 self.error(str(err))
                 return
             if not lhs:
-                self.error("No type entered to send the message to. Your choices are: OOC, IC")
+                self.error("No chan entered to send the message to. Your choices are: OOC, IC")
                 return
             check_partial = partial_match(lhs, ['ooc', 'ic'])
             if not check_partial:
-                self.error("Entered type invalid. Choices are: OOC, IC")
+                self.error("Entered chan invalid. Choices are: OOC, IC")
                 return
-            type = check_partial
+            chan = check_partial
             message = rhs
 
         elif cstr == '=' or cstr == '-':
@@ -929,15 +931,15 @@ class CmdGroupChan(GroupCommand):
                     return
                 message = self.args
             if cstr == '=':
-                type = 'ooc'
+                chan = 'ooc'
             else:
-                type = 'ic'
+                chan = 'ic'
 
         else:
             if cstr == '+gooc':
-                type = 'ooc'
+                chan = 'ooc'
             elif cstr == '+gic':
-                type = 'ic'
+                chan = 'ic'
             try:
                 group = self.get_focus()
             except ValueError as err:
@@ -949,32 +951,30 @@ class CmdGroupChan(GroupCommand):
             self.error("Group not valid.")
             return
 
-        self.character.db.group = group
+        #self.character.db.group = group
         message.strip()
 
-        if type == 'ic':
-            channel = group.ic_channel
-        else:
-            channel = group.ooc_channel
+        channels = {'ic': group.ic_channel, 'ooc': group.ooc_channel}
+        channel = channels[chan]
 
         if 'on' in switches:
             if channel.has_connection(self.character):
-                self.error("You are already listening to the %s channel!" % type)
+                self.error("You are already listening to the %s channel!" % chan)
                 return
             if not channel.connect(self.character):
                 self.error("Could not connect. Do you have permission?")
                 return
-            self.sys_msg("%s %s channel enabled." % (group.key, type))
+            self.sys_msg("%s %s channel enabled." % (group.key, chan))
             return
 
         if 'off' in switches:
             if not channel.has_connection(self.character):
-                self.error("You are not listening to the %s channel!" % type)
+                self.error("You are not listening to the %s channel!" % chan)
                 return
             if not channel.disconnect(self.character):
                 self.error("Could not disconnect.")
                 return
-            self.sys_msg("%s %s channel enabled." % (group.key, type))
+            self.sys_msg("%s %s channel enabled." % (group.key, chan))
             return
 
         if 'recall' in switches:
@@ -982,7 +982,7 @@ class CmdGroupChan(GroupCommand):
                 lines = 10
             else:
                 lines = int(message)
-            full_recall = group.messages.filter(type=type)
+            full_recall = group.messages.filter(chan=chan)
             recall = list(full_recall)
             recall.reverse()
             show_recall = recall[:lines]
@@ -990,7 +990,7 @@ class CmdGroupChan(GroupCommand):
             if not recall:
                 self.sys_msg("No lines to recall.")
             recall_buffer = list()
-            recall_buffer.append(header('%s %s Chat Recall - %s Lines' % (group, type.upper(), lines)))
+            recall_buffer.append(header('%s %s Chat Recall - %s Lines' % (group, chan.upper(), lines)))
             for line in show_recall:
                 recall_buffer.append(line.format_msg(self.character, date_prefix=True))
             recall_buffer.append(header('%s Lines in Buffer' % full_recall.count()))
@@ -998,7 +998,7 @@ class CmdGroupChan(GroupCommand):
             return
 
         if not channel.has_connection(self.character):
-            self.error("You are not listening to %s %s!" % (group.key, type))
+            self.error("You are not listening to %s %s!" % (group.key, chan))
             return
 
         if not len(message):

@@ -173,7 +173,7 @@ class Player(DefaultPlayer):
             format = '%b %d %I:%M%p %Z'
         if not date:
             date = utcnow()
-        tz = self.settings.get('system_timezone')
+        tz = self.settings.get('timezone')
         time = date.astimezone(tz)
         return time.strftime(format)
 

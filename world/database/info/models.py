@@ -27,8 +27,8 @@ class InfoType(models.Model):
 class InfoFile(models.Model):
     info_type = models.ForeignKey('info.InfoType', related_name='files')
     title = models.CharField(max_length=30, db_index=True)
-    date_created = models.DateTimeField(default=utcnow())
-    date_modified = models.DateTimeField(default=utcnow())
+    date_created = models.DateTimeField(auto_now_add=True)
+    date_modified = models.DateTimeField(null=True)
     text = models.TextField()
     set_by = models.ForeignKey('communications.ObjectStub', null=True, on_delete=models.SET_NULL)
     date_approved = models.DateTimeField(null=True)

@@ -116,7 +116,6 @@ IDLE_TIMEOUT = -1
 
 # Enabling some extra Django apps!
 INSTALLED_APPS = INSTALLED_APPS + ('world.database.communications',
-                                   'world.database.logins',
                                    'world.database.info',
                                    'world.database.bbs.apps.BBSConfig',
                                    'world.database.groups.apps.GroupConfig',

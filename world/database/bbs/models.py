@@ -4,7 +4,7 @@ from django.db import models
 from django.conf import settings
 from evennia.locks.lockhandler import LockHandler
 from evennia.utils.utils import lazy_property
-from commands.library import utcnow, mxp_send, connected_characters, header, separator, make_table, sanitize_string
+from commands.library import utcnow, mxp_send, connected_characters, header, separator, make_table, sanitize_string, partial_match
 
 # Create your models here.
 
@@ -30,8 +30,8 @@ class BoardGroup(models.Model):
 
     @property
     def name(self):
-        if self.category.group:
-            return "(GBS) %s Boards" % self.category.group
+        if self.group:
+            return "(GBS) %s Boards" % self.group
         return "(BBS) %s Boards" % settings.SERVERNAME
 
     def usable_boards(self, checker, checkadmin=True):
@@ -49,13 +49,15 @@ class BoardGroup(models.Model):
                 member = "No"
             else:
                 member = "Yes"
-            bbtable.add_row(mxp_send(board.order, "+bbread %s" % board.order), board.rwastring(checker),
+            bbtable.add_row(mxp_send(board.order, "+bbread %s" % board.order), board.display_permissions(checker),
                             mxp_send(board, "+bbread %s" % board.order), board.lock_storage, member)
         message.append(bbtable)
         message.append(header(viewer=viewer))
         return '\n'.join(unicode(line) for line in message)
 
     def find_board(self, find_name=None, checker=None, visible_only=True):
+        if not find_name:
+            raise ValueError("No board entered to find!")
         if checker:
             if visible_only:
                 boards = self.visible_boards(checker)
@@ -68,7 +70,7 @@ class BoardGroup(models.Model):
         try:
             find_num = int(find_name)
         except ValueError:
-            find_board = self.partial(find_name, boards)
+            find_board = partial_match(find_name, boards)
             if not find_board:
                 raise ValueError("Board '%s' not found." % find_name)
             return find_board
@@ -90,7 +92,7 @@ class BoardGroup(models.Model):
             new_num = max([board.order for board in self.boards.all()]) + 1
         except ValueError:
             new_num = 1
-        board = Board.objects.create(key=new_name, order=new_num)
+        board = self.boards.create(key=new_name, order=new_num)
         board.init_locks()
         return board
 
@@ -98,11 +100,11 @@ class BoardGroup(models.Model):
         message = list()
         message.append(header(self.name, viewer=viewer))
         bbtable = make_table("ID", "RWA", "Name", "Last Post", "#", "U", width=[4, 4, 37, 23, 5, 5],
-                             viewer=self.character)
+                             viewer=viewer)
         for board in self.visible_boards(checker=checker):
             bbtable.add_row(mxp_send(board.order, "+bbread %s" % board.order),
-                            board.display_permissions(self.character), mxp_send(board, "+bbread %s" % board.order),
-                            board.last_post(self.character), board.posts.all().count(),
+                            board.display_permissions(checker), mxp_send(board, "+bbread %s" % board.order),
+                            board.last_post(checker), board.posts.all().count(),
                             board.posts.exclude(read=viewer).count())
         message.append(bbtable)
         message.append(header(viewer=viewer))
@@ -219,15 +221,15 @@ class Board(models.Model):
         if self.group:
             clickable = mxp_send(text=postid, command='+gbread %s=%s' % (postid, self.group.name))
             text_message = "{cM<GROUP BB>{n New GB Message (%s) posted to '%s' '%s' by %s: %s"
-            message = text_message % (clickable, self.group, self, post.actor if not self.anonymous else self.anonymous,
-                                                                                             post.post_subject)
+            message = text_message % (clickable, self.group, self, post.owner if not self.anonymous else self.anonymous,
+                                                                                             post.subject)
             for character in self.listeners():
                 character.msg(message)
         else:
             clickable = mxp_send(text=postid, command='+bbread %s' % postid)
             text_message = "(New BB Message (%s) posted to '%s' by %s: %s)"
-            message = text_message % (clickable, self, post.actor if not self.anonymous else self.anonymous,
-                                      post.post_subject)
+            message = text_message % (clickable, self, post.owner if not self.anonymous else self.anonymous,
+                                      post.subject)
             for character in self.listeners():
                 character.msg(message)
 
@@ -243,10 +245,10 @@ class Board(models.Model):
         """
         message = list()
         message.append(header('%s - %s' % (self.category.name, self.key)))
-        board_table = make_table("ID", "Subject", "Date", "Poster", width=[6, 29, 22, 21])
-        for post in self.posts.all().order_by('post_date'):
-            board_table.add_row(post.order, post.subject,
-                                viewer.display_local_time(date=post.creation_date, format='%X %x %Z'),
+        board_table = make_table("ID", 'S', "Subject", "Date", "Poster", width=[7, 2, 33, 9, 27])
+        for post in self.posts.all().order_by('creation_date'):
+            board_table.add_row("%s/%s" % (self.order, post.order), 'U' if viewer not in post.read.all() else '',
+                                post.subject, viewer.display_local_time(date=post.creation_date, format='%x'),
                                 post.display_poster(viewer))
         message.append(board_table)
         message.append(header())
@@ -283,7 +285,7 @@ class Post(models.Model):
         return unicode(self.subject)
 
     def __str__(self):
-        return self.post_subject
+        return self.subject
 
     def remaining_time(self):
         if not self.timeout:
@@ -299,7 +301,7 @@ class Post(models.Model):
             return '(Time Left: %s)' % rem_time
 
     def can_edit(self, checker=None):
-        if self.actor.object == checker:
+        if self.owner.object == checker:
             return True
         return self.board.check_permission(checker=checker, type="admin")
 
@@ -309,14 +311,14 @@ class Post(models.Model):
         if not replace:
             replace = ''
         self.modify_date = utcnow()
-        self.post_text = self.post_text.replace(find, replace)
-        self.save(update_fields=['post_text', 'modify_date'])
+        self.text = self.text.replace(find, replace)
+        self.save(update_fields=['text', 'modify_date'])
 
     def display_poster(self, viewer):
         anon = self.board.anonymous
         if anon and viewer.is_admin():
-            return "(%s)" % self.actor
-        return anon or str(self.actor)
+            return "(%s)" % self.owner
+        return anon or str(self.owner)
 
     def process_timeout(self):
         if not self.timeout:
@@ -333,7 +335,7 @@ class Post(models.Model):
         message.append("Message: %s/%s - By %s on %s" % (self.board.order, self.order, self.display_poster(viewer),
                                                          viewer.display_local_time(date=self.creation_date,format='%X %x %Z')))
         message.append(separator())
-        message.append(self.post_text)
+        message.append(self.text)
         message.append(header(viewer=viewer))
         self.read.add(viewer)
         return "\n".join([unicode(line) for line in message])

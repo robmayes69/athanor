@@ -45,7 +45,7 @@ class Character(DefaultCharacter):
         super(Character, self).at_object_creation()
         from world.database.communications.models import ObjectStub, Gag
         ObjectStub.objects.get_or_create(object=self, key=self.key)
-        Gag.objects.get_or_create(object=self)
+        Gag.objects.get_or_create(character=self)
         self.last_played(update=True)
 
     def at_post_unpuppet(self, player, session=None):

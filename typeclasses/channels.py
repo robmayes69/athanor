@@ -212,7 +212,7 @@ class GroupChannel(AthanorChannel):
     def sender_title(self, sender=None, slot=None):
         title = None
         try:
-            options = sender.group_option.filter(group=self.db.group).first()
+            options, created = self.group.participants.get_or_create(character=sender)
             if options:
                 title = options.title
         except:
@@ -224,11 +224,7 @@ class GroupChannel(AthanorChannel):
 
 class GroupIC(GroupChannel):
 
-    def get_group(self):
-        return self.group_ic.all().first()
-
-    def init_locks(self):
-        group = self.group
+    def init_locks(self, group):
         lockstring = "control:group(##,1);send:gperm(##,ic);listen:gperm(##,ic)"
         self.locks.add(lockstring.replace('##', str(group.id)))
 
@@ -236,7 +232,7 @@ class GroupIC(GroupChannel):
         """
         Slot is only here for future compatability with a radio channel.
         """
-        group = self.get_group()
+        group = self.group
         try:
             personal_color = viewer.settings.get_color_name(group, no_default=True)
         except:
@@ -252,19 +248,15 @@ class GroupIC(GroupChannel):
 
 class GroupOOC(GroupChannel):
 
-    def init_locks(self):
-        group = self.group
+    def init_locks(self, group):
         lockstring = "control:group(##,1);send:gperm(##,ooc);listen:gperm(##,ooc)"
         self.locks.add(lockstring.replace('##', str(group.id)))
-
-    def get_group(self):
-        return self.group_ooc.all().first()
 
     def channel_prefix(self, viewer, slot=None):
         """
         Slot is only here for future compatability with a radio channel.
         """
-        group = self.get_group()
+        group = self.group
         try:
             personal_color = viewer.settings.get_color_name(group, no_default=True)
         except:
