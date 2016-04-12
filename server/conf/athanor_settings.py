@@ -129,3 +129,28 @@ LOCK_FUNC_MODULES = LOCK_FUNC_MODULES + ("world.database.groups.locks",)
 
 # TYPECLASS STUFF
 BASE_CHANNEL_TYPECLASS = "typeclasses.channels.PublicChannel"
+
+
+# PLAYER SETTINGS
+PLAYER_SETTING_DEFAULTS = {
+    'look_alert': True,
+    'finger_alert': True,
+    'bbscan_alert': True,
+    'mail_alert': True,
+    'scenes_alert': True,
+    'namelink_channel': True,
+    'quotes_channel': 'n',
+    'speech_channel': 'n',
+    'border_color': 'M',
+    'columnname_color': 'G',
+    'headerstar_color': 'm',
+    'headertext_color': 'w',
+    'msgborder_color': 'm',
+    'msgtext_color': 'w',
+    'oocborder_color': 'x',
+    'ooctext_color': 'r',
+    'page_color': 'n',
+    'outpage_color': 'n',
+    'exitname_color': 'n',
+    'exitalias_color': 'n',
+}

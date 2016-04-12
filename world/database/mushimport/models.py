@@ -9,6 +9,9 @@ from commands.library import partial_match
 
 class MushObject(models.Model):
     obj = models.OneToOneField('objects.ObjectDB', related_name='mush', null=True)
+    account = models.OneToOneField('players.PlayerDB', related_name='mush', null=True)
+    group = models.OneToOneField('groups.Group', related_name='mush', null=True)
+    board = models.OneToOneField('bbs.Board', related_name='mush', null=True)
     dbref = models.CharField(max_length=15, unique=True, db_index=True)
     objid = models.CharField(max_length=30, unique=True, db_index=True)
     type = models.PositiveSmallIntegerField(db_index=True)
@@ -29,7 +32,7 @@ class MushObject(models.Model):
     def mushget(self, attrname):
         if not attrname:
             return False
-        attr = self.attrs.filter(name__iexact=attrname).first()
+        attr = self.attrs.filter(attr__key__iexact=attrname).first()
         if attr:
             return attr.value.replace('%r', '%R').replace('%t', '%T')
         if self.parent:
@@ -40,27 +43,32 @@ class MushObject(models.Model):
     def hasattr(self, attrname):
         if not attrname:
             return False
-        attr = self.attrs.filter(name__iexact=attrname).first()
+        attr = self.attrs.filter(attr__key__iexact=attrname).first()
         return bool(attr)
 
     def lattr(self, attrpattern):
         if not attrpattern:
-            return []
+            return list()
         attrpattern = attrpattern.replace('`**','`\S+')
         attrpattern = r'^%s$' % attrpattern.replace('*','\w+')
-        check = self.attrs.filter(name__iregex=attrpattern).values_list('name', flat=True).distinct()
+        check = [attr.attr.key for attr in self.attrs.filter(attr__key__iregex=attrpattern)]
         if not check:
-            return []
+            return list()
         return check
 
-    def lattrp(self, attrpattern, attrset=None):
-        if not attrset:
-            attrset = []
+    def lattrp(self, attrpattern):
+        attrset = list()
         attrset += self.lattr(attrpattern)
         if self.parent:
-            attrset += self.parent.lattrp(attrpattern, attrset)
-        else:
-            return set(attrset)
+            attrset += self.parent.lattrp(attrpattern)
+        return list(set(attrset))
+
+    def lattrp2(self, attrpattern):
+        attrset = list()
+        attrset += self.lattr(attrpattern)
+        if self.parent:
+            attrset += self.parent.lattrp2(attrpattern)
+        return attrset
 
     def getstat(self, attrname, stat):
         attr = self.mushget(attrname)
@@ -105,7 +113,7 @@ def cobj(abbr=None):
     if not code_object:
         raise ValueError("Master Code Object <MCO> not found!")
     search_name = 'COBJ`%s' % abbr.upper()
-    found_attr = code_object.attrs.filter(name=search_name).first()
+    found_attr = code_object.attrs.filter(attr__key=search_name).first()
     if not found_attr:
         raise ValueError("COBJ`%s not found!" % abbr.upper())
     dbref = found_attr.value
@@ -132,94 +140,16 @@ def objmatch(dbref=None):
     return False
 
 
+class MushAttributeName(models.Model):
+    key = models.CharField(max_length=200, unique=True, db_index=True)
+
+
 class MushAttribute(models.Model):
     dbref = models.ForeignKey(MushObject, related_name='attrs')
-    name = models.CharField(max_length=200)
+    attr = models.ForeignKey('mushimport.MushAttributeName', related_name='characters')
     value = models.TextField(blank=True)
 
 
     class Meta:
-        unique_together = (("dbref", "name"),)
+        unique_together = (("dbref", "attr"),)
 
-
-class MushAccount(models.Model):
-    player = models.OneToOneField('players.PlayerDB', null=True, related_name='mush_account')
-    dbref = models.OneToOneField(MushObject, null=True, related_name='mush_account')
-    objids = models.CharField(max_length=400)
-    characters = models.ManyToManyField(MushObject)
-
-    def setup_account(self):
-        if not self.id:
-            return False
-        charids = MushAttribute.objects.filter(name='D`ACCOUNT', value=str(self.id)).values_list('dbref', flat=True).distinct()
-        charlist = MushObject.objects.filter(id__in=charids)
-        if not charlist:
-            return False
-        objidlist = []
-        for char in charlist:
-            objidlist.append(char.objid)
-            self.chars.add(char)
-        self.objids = " ".join(objidlist)
-        self.save()
-
-    def setup_laf(self):
-        charlist = MushObject.objects.filter(type=8, obj=None)
-        if not charlist:
-            return False
-        objidlist = []
-        for char in charlist:
-            objidlist.append(char.objid)
-            self.chars.add(char)
-        self.objids = " ".join(objidlist)
-        self.save()
-
-class MushGroups(models.Model):
-    dbref = models.OneToOneField(MushObject, primary_key=True, related_name='mushgroup')
-    group = models.OneToOneField('groups.Group', related_name='mushgroup', null=True)
-
-    def setup_group(self):
-        ranknums = []
-        for rnum in range(1,5):
-            ranknums.append(rnum)
-        for attr in self.dbref.lattr('RANK`\d+'):
-            rattr, num = self.dbref.get(attr).split('`')
-            if int(num) > 4:
-                ranknums.append(int(num))
-        for ranknum in ranknums:
-            prankname = self.dbref.mushget('RANK`%s`NAME' % ranknum)
-            self.ranks.create(num=ranknum, name=prankname)
-        memberobjids = self.dbref.mushget('MEMBERS').split(' ')
-        memberobjs = {}
-        rankdict = {}
-        for entry in self.dbref.mushget('RANK').split('|'):
-            find = objmatch(entry.split('~')[0])
-            if find:
-                rankdict[find] = int(entry.split('~')[1])
-        for pmember in memberobjids:
-            find = objmatch(pmember)
-            if find:
-                findrank = find.mushget('D`GROUP`%s`RANK' % self.dbref.dbref)
-                if findrank:
-                    if re.match('^\d+$',findrank):
-                        findrank = int(findrank)
-                elif find in rankdict.keys():
-                    findrank = rankdict[find]
-                else:
-                    findrank = 4
-                memberobjs[find] = findrank
-        if memberobjs:
-            for pmember, ranknum in memberobjs.items():
-                ptitle = pmember.mushget('D`GROUPS`%s`TITLE' % self.dbref.dbref)
-                rank = self.ranks.filter(num=ranknum).first()
-                rank.holders.create(group=self, char=pmember, title=ptitle)
-
-class MushGroupRanks(models.Model):
-    group = models.ForeignKey(MushGroups,related_name='ranks')
-    num = models.PositiveSmallIntegerField()
-    name = models.CharField(max_length=50)
-
-class MushGroupMemberships(models.Model):
-    group = models.ForeignKey(MushGroups,related_name='members')
-    char = models.ForeignKey(MushObject, related_name='memberships')
-    title = models.CharField(max_length=200)
-    rank = models.ForeignKey(MushGroupRanks,related_name='holders')

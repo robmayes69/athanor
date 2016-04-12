@@ -2,9 +2,12 @@ from __future__ import unicode_literals
 import datetime, pytz, random, MySQLdb, MySQLdb.cursors as cursors
 from django.conf import settings
 from commands.command import AthCommand
-from commands.library import partial_match, dramatic_capitalize
-from world.database.mushimport.models import MushObject, MushAttribute, cobj, MushAccount, pmatch
+from commands.library import partial_match, dramatic_capitalize, sanitize_string
+from world.database.mushimport.models import MushObject, cobj, pmatch, objmatch, MushAttributeName
+from world.database.communications.models import ObjectStub
+from world.database.bbs.models import Board, BoardGroup
 from world.database.mushimport.convpenn import read_penn
+from world.database.groups.models import Group
 from world.database.grid.models import District
 from evennia.utils import create
 from typeclasses.characters import Ex2Character, Ex3Character
@@ -28,7 +31,7 @@ class CmdImport(AthCommand):
     key = '+import'
     system_name = 'IMPORT'
     locks = 'cmd:perm(Immortals)'
-    admin_switches = ['initialize', 'grid', 'accounts', 'groups', 'boards', 'ex2', 'ex3', 'experience']
+    admin_switches = ['initialize', 'grid', 'accounts', 'groups', 'bbs', 'ex2', 'ex3', 'experience']
 
     def func(self):
         if not self.final_switches:
@@ -88,10 +91,10 @@ class CmdImport(AthCommand):
                 if penn_data['location'] in obj_dict:
                     entry.location = obj_dict[penn_data['location']]
             entry.save()
-
             for attr, value in penn_data['attributes'].items():
-                attr_entry, created2 = entry.attrs.get_or_create(name=attr, value=value)
-                if created2:
+                attr_name, created = MushAttributeName.objects.get_or_create(key=attr.upper())
+                attr_entry, created2 = entry.attrs.get_or_create(attr=attr_name, value=value)
+                if not created2:
                     attr_entry.save()
 
         self.sys_msg("Import initialization complete.")
@@ -135,9 +138,9 @@ class CmdImport(AthCommand):
         return new_room
 
     def update_room(self, mush_room):
-        describe = mush_room.attrs.filter(name__iexact='describe').first()
+        describe = mush_room.mushget('DESCRIBE')
         if describe:
-            mush_room.obj.db.desc = describe.value
+            mush_room.obj.db.desc = describe
         return
 
     def create_exit(self, mush_exit):
@@ -168,26 +171,125 @@ class CmdImport(AthCommand):
 
     def switch_accounts(self):
         char_typeclass = settings.BASE_CHARACTER_TYPECLASS
-        account_parent = cobj(abbr='accounts')
-        for acc_obj in sorted(account_parent.children.all(), key=lambda acc: int(acc.name.split(' ')[1])):
-            mush_acc = MushAccount.objects.create(dbref=acc_obj)
+        accounts = cobj(abbr='accounts').children.all()
+        account_objids = accounts.values_list('objid', flat=True)
+        for acc_obj in sorted(accounts, key=lambda acc: int(acc.name.split(' ')[1])):
             name = 'MushAcc %s' % acc_obj.name.split(' ')[1]
             password = str(random.randrange(5000000,1000000000))
             email = acc_obj.mushget('email') or None
             new_player = create.create_player(name, email, password)
-            mush_acc.player = new_player
-            mush_acc.save()
-            mush_acc.objids = acc_obj.mushget('characters')
             objids = acc_obj.mushget('characters').split(' ')
             mush_chars = MushObject.objects.filter(objid__in=objids)
             for char in mush_chars:
-                mush_acc.characters.add(char)
                 new_char = create.create_object(typeclass=char_typeclass, key=char.name)
                 new_char.db.prelogout_location = char.location.obj
                 char.obj = new_char
-                char.save()
+                char.save(update_fields=['obj'])
+                new_player.bind_character(new_char)
+        unbound = MushObject.objects.filter(type=8, obj=None)
+        if unbound:
+            name = 'Lost and Found'
+            password = str(random.randrange(5000000,1000000000))
+            email = None
+            new_player = create.create_player(name, email, password)
+            for char in unbound:
+                new_char = create.create_object(typeclass=char_typeclass, key=char.name)
+                new_char.db.prelogout_location = char.location.obj
+                char.obj = new_char
+                char.save(update_fields=['obj'])
                 new_player.bind_character(new_char)
         self.sys_msg("Finished importing characters!")
+
+
+    def switch_groups(self):
+        penn_groups = cobj('gop').children.all()
+        for old_group in penn_groups:
+            if not old_group.group:
+                old_group.group, created = Group.objects.get_or_create(key=old_group.name)
+                old_group.save(update_fields=['group'])
+            new_group = old_group.group
+            new_group.description = old_group.mushget('DESCRIBE')
+            old_ranks = old_group.lattrp('RANK`\d+')
+            old_rank_nums = [old_rank.split('`', 1)[1] for old_rank in old_ranks]
+            rank_dict = dict()
+            for num in old_rank_nums:
+                new_rank, created = new_group.ranks.get_or_create(num=int(num))
+                rank_name = old_group.mushget('RANK`%s`NAME' % num)
+                if rank_name:
+                    new_rank.name = sanitize_string(rank_name)
+                    new_rank.save(update_fields=['name'])
+                rank_dict[int(num)] = new_rank
+            old_members = [objmatch(member) for member in old_group.mushget('MEMBERS').split(' ') if objmatch(member)]
+            for old_member in old_members:
+                if not old_member.obj:
+                    continue
+                old_num = int(old_member.mushget('D`GROUP`%s`RANK' % old_group.dbref)) or 4
+                title = old_member.mushget('D`GROUP`%s`NAME' % old_group.dbref)
+                if not title:
+                    title = None
+                new_member, created = new_group.participants.get_or_create(character=old_member.obj, title=title,
+                                                                           rank=rank_dict[old_num])
+                for channel in [new_group.ic_channel, new_group.ooc_channel]:
+                    if channel:
+                        if channel.locks.check(new_member.character, 'listen'):
+                            channel.connect(new_member.character)
+            new_group.save()
+            board_group, created = BoardGroup.objects.get_or_create(main=2, group=new_group)
+            for old_board in old_group.contents.all():
+                if not old_board.board:
+                    old_board.board = board_group.make_board(key=old_board.name)
+                    old_board.save(update_fields=['board'])
+                new_board = old_board.board
+                old_order = int(old_board.mushget('ORDER'))
+                new_board.order = old_order
+                new_board.save()
+                self.convert_board(new_board)
+
+    def switch_bbs(self):
+        penn_boards = cobj('bbs').contents.all()
+        print penn_boards
+        board_group, created5 = BoardGroup.objects.get_or_create(main=1, group=None)
+        for old_board in penn_boards:
+            print old_board
+            if not old_board.board:
+                old_board.board = board_group.make_board(key=old_board.name)
+                old_board.save(update_fields=['board'])
+            new_board = old_board.board
+            old_order = int(old_board.mushget('ORDER'))
+            new_board.order = old_order
+            new_board.save()
+            self.convert_board(new_board)
+
+    def convert_board(self, new_board):
+        old_board = new_board.mush
+        old_posts = new_board.mush.lattr('~`*')
+        old_dict = dict()
+        for old_post in old_posts:
+            post_details = old_board.mushget(old_post + '`DETAILS').split('|')
+            poster_name = post_details[0]
+            poster_objid = post_details[1]
+            poster_obj = objmatch(poster_objid)
+            owner = None
+            if poster_obj:
+                if poster_obj.obj:
+                    if poster_obj.obj.stub:
+                        owner = poster_obj.obj.stub
+                    else:
+                        owner = ObjectStub.objects.create(object=poster_obj.obj, key=poster_obj.obj.key)
+            if not owner:
+                owner = ObjectStub.objects.create(key=poster_name)
+            post_date = from_unixtimestring(post_details[2])
+            text = old_board.mushget(old_post)
+            timeout_secs = int(old_board.mushget(old_post + '`TIMEOUT'))
+            new_timeout = datetime.timedelta(0, timeout_secs, 0, 0, 0, 0, 0)
+            subject = old_board.mushget(old_post + '`HDR')
+            old_dict[old_post] = {'subject': subject, 'owner': owner, 'timeout': new_timeout,
+                                  'creation_date': post_date, 'text': text}
+        for num, old_post in enumerate(sorted(old_posts, key=lambda old: old_dict[old]['creation_date'])):
+            old_data = old_dict[old_post]
+            new_board.posts.create(subject=old_data['subject'], owner=old_data['owner'],
+                                   creation_date=old_data['creation_date'], timeout=old_data['timeout'],
+                                   text=old_data['text'], order=num+1)
 
 
     def switch_ex2(self):
@@ -393,7 +495,6 @@ class CmdImport(AthCommand):
             except ValueError:
                 int_value = 0
             stats_dict[name] = int(int_value)
-
 
         print character
         character.setup_storyteller()

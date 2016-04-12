@@ -1,9 +1,11 @@
 from __future__ import unicode_literals
 
+from django.conf import settings
 import pytz
 from commands.library import duration_from_string, partial_match, make_table, header, separator
 from evennia.utils.ansi import ANSIString
 
+DEFAULTS = settings.PLAYER_SETTING_DEFAULTS
 
 class SettingHandler(object):
     settings = list()
@@ -129,6 +131,8 @@ class Setting(object):
         self.saver = saver
         for k, v in ALL_SETTINGS[key].iteritems():
             setattr(self, k, v)
+        if self.default_value is None:
+            self.default_value = DEFAULTS[key]
         self.custom_value = saver.get(key, None)
 
     def save(self):
@@ -182,7 +186,6 @@ ALL_SETTINGS = {
     'look_alert': {
         'category': 'Alerts',
         'description': 'Show alert when looked at?',
-        'default_value': True,
         'kind': 'Bool'
     },
 
@@ -190,7 +193,6 @@ ALL_SETTINGS = {
     'finger_alert': {
         'category': 'Alerts',
         'description': 'Show alert when targeted by +finger?',
-        'default_value': True,
         'kind': 'Bool'
     },
 
@@ -198,7 +200,6 @@ ALL_SETTINGS = {
     'bbscan_alert': {
         'category': 'Alerts',
         'description': 'Logon: Run +bbscan?',
-        'default_value': True,
         'kind': 'Bool'
     },
 
@@ -213,14 +214,12 @@ ALL_SETTINGS = {
     'mail_alert': {
         'category': 'Alerts',
         'description': 'Logon: Notify about unread mail?',
-        'default_value': True,
         'kind': 'Bool'
     },
 
     'scenes_alert': {
         'category': 'Alerts',
         'description': 'Logon: Notify about upcoming scenes?',
-        'default_value': True,
         'kind': 'Bool'
     },
 
@@ -228,21 +227,18 @@ ALL_SETTINGS = {
     'namelink_channel': {
         'category': 'Channel',
         'description': 'Make speaker name clickable?',
-        'default_value': True,
         'kind': 'Bool'
     },
 
     'quotes_channel': {
         'category': 'Channel',
         'description': 'Color of " characters?',
-        'default_value': 'n',
         'kind': 'Color'
     },
 
     'speech_channel': {
         'category': 'Channel',
         'description': 'Color of channel dialogue?',
-        'default_value': 'n',
         'kind': 'Color'
     },
 
@@ -250,28 +246,24 @@ ALL_SETTINGS = {
     'border_color': {
         'category': 'Color',
         'description': 'Color of borders, headers, etc?',
-        'default_value': 'M',
         'kind': 'Color'
     },
 
     'columnname_color': {
         'category': 'Color',
         'description': 'Color of table column names?',
-        'default_value': 'G',
         'kind': 'Color'
     },
 
     'headerstar_color': {
         'category': 'Color',
         'description': 'Color of * in headers?',
-        'default_value': 'm',
         'kind': 'Color'
     },
 
     'headertext_color': {
         'category': 'Color',
         'description': 'Color of text in headers?',
-        'default_value': 'w',
         'kind': 'Color'
     },
 
@@ -279,42 +271,36 @@ ALL_SETTINGS = {
     'msgborder_color': {
         'category': 'Message',
         'description': 'Color of system message bracing?',
-        'default_value': 'm',
         'kind': 'Color'
     },
 
     'msgtext_color': {
         'category': 'Message',
         'description': 'Color of name in system messages?',
-        'default_value': 'w',
         'kind': 'Color'
     },
 
     'oocborder_color': {
         'category': 'Message',
         'description': 'Color of OOC message bracing?',
-        'default_value': 'x',
         'kind': 'Color'
     },
 
     'ooctext_color': {
         'category': 'Message',
         'description': 'Color of OOC tag?',
-        'default_value': 'r',
         'kind': 'Color'
     },
 
     'page_color': {
         'category': 'Message',
         'description': 'Color of incoming pages?',
-        'default_value': 'n',
         'kind': 'Color'
     },
 
     'outpage_color': {
         'category': 'Message',
         'description': 'Color of sent pages?',
-        'default_value': 'n',
         'kind': 'Color'
     },
 
@@ -322,14 +308,12 @@ ALL_SETTINGS = {
     'exitname_color': {
         'category': 'Room',
         'description': 'Color of exit names?',
-        'default_value': 'n',
         'kind': 'Color'
     },
 
     'exitalias_color': {
         'category': 'Room',
         'description': 'Color of exit aliases?',
-        'default_value': 'n',
         'kind': 'Color'
     },
 

@@ -23,11 +23,11 @@ def setup_group(sender, **kwargs):
         rank_all_perms = ['ic', 'ooc', 'board']
         rank_guest_perms = ['ic', 'ooc', 'board']
         rank1 = instance.ranks.create(num=1, name="Leader")
-        rank1.perms.add(*GroupPermissions.objects.filter(name__in=rank_1_perms))
+        rank1.permissions.add(*GroupPermissions.objects.filter(name__in=rank_1_perms))
         rank2 = instance.ranks.create(num=2, name="Second in Command")
-        rank2.perms.add(*GroupPermissions.objects.filter(name__in=rank_2_perms))
+        rank2.permissions.add(*GroupPermissions.objects.filter(name__in=rank_2_perms))
         rank3 = instance.ranks.create(num=3, name="Officer")
-        rank3.perms.add(*GroupPermissions.objects.filter(name__in=rank_3_perms))
+        rank3.permissions.add(*GroupPermissions.objects.filter(name__in=rank_3_perms))
         rank4 = instance.ranks.create(num=4, name="Member")
         instance.member_permissions.add(*GroupPermissions.objects.filter(name__in=rank_all_perms))
         instance.guest_permissions.add(*GroupPermissions.objects.filter(name__in=rank_guest_perms))

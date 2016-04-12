@@ -40,7 +40,7 @@ def gperm(accessing_obj, accessed_obj, *args, **kwargs):
     grp = Group.objects.filter(id=group_id).first()
     if not grp:
         return False
-    return grp.check_permission(accessing_obj, args[1], bool=True)
+    return grp.check_permission(accessing_obj, args[1])
 
 def gbmanage(accessing_obj, accessed_obj, *args, **kwargs):
     """
@@ -50,6 +50,6 @@ def gbmanage(accessing_obj, accessed_obj, *args, **kwargs):
     if accessing_obj.is_admin():
         return True
     for group in [membership.group for membership in accessing_obj.groups.all()]:
-            if group.group.check_permission(accessing_obj, 'gbmanage', bool=True):
+            if group.group.check_permission(accessing_obj, 'gbmanage'):
                 return True
     return False

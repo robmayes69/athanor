@@ -247,7 +247,7 @@ class GroupRank(models.Model):
     num = models.IntegerField(default=0)
     group = models.ForeignKey(Group, related_name='ranks')
     name = models.CharField(max_length=35)
-    perms = models.ManyToManyField('GroupPermissions')
+    permissions = models.ManyToManyField('GroupPermissions')
 
     def __str__(self):
         return self.name
@@ -276,8 +276,8 @@ class GroupParticipant(models.Model):
     character = models.ForeignKey('objects.ObjectDB', related_name='groups')
     group = models.ForeignKey(Group, related_name='participants')
     rank = models.ForeignKey('GroupRank', null=True, related_name='holders')
-    perms = models.ManyToManyField('GroupPermissions')
-    title = models.CharField(max_length=120, blank=True)
+    permissions = models.ManyToManyField('GroupPermissions')
+    title = models.CharField(max_length=120, blank=True, null=True)
 
     def __unicode__(self):
         return self.character.key
