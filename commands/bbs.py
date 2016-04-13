@@ -22,7 +22,7 @@ class BBCommand(AthCommand):
 
     @property
     def board_group(self):
-        board_group, created_check = BoardGroup.objects.get_or_create(main=1)
+        board_group, created_check = BoardGroup.objects.get_or_create(main=1, group=None)
         return board_group
 
     def func(self):
@@ -842,8 +842,6 @@ class GBCommand(BBCommand):
 
         cstr = cstr[2:]
 
-        self.init_player()
-
         self.group = self.get_focus()
         if not self.group:
             self.error("No group focused on to check.")
@@ -853,7 +851,7 @@ class GBCommand(BBCommand):
 
     @property
     def board_group(self):
-        board_group, created_check = BoardGroup.objects.get_or_create(main=2, group=self.group).first()
+        board_group, created_check = BoardGroup.objects.get_or_create(main=0, group=self.group).first()
         return board_group
 
 class CmdGBList(GBCommand, CmdBBList):

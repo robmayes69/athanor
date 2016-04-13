@@ -14,18 +14,20 @@ own cmdsets by inheriting from them or directly from `evennia.CmdSet`.
 
 """
 
-from evennia import default_cmds
+from commands.evennia_cmdsets import CharacterCmdSet as OldCharacter, SessionCmdSet as OldSession, \
+    UnloggedinCmdSet as OldUnlogged, PlayerCmdSet as OldPlayer
 from commands.community import CmdWho, CmdPWho
 from commands.info_files import CmdInfo
 from commands.bbs import CmdBBAdmin, CmdBBList, CmdBBRead, CmdBBWrite, CmdGBAdmin, CmdGBList, CmdGBRead, CmdGBWrite
-from commands.account_management import CmdPlayerConfig, CmdTz, CmdWatch
+from commands.account_management import CmdPlayerConfig, CmdTz, CmdWatch, CmdUsername, CmdEmail
 from commands.groups import GROUP_COMMANDS
 from commands.grid_management import DISTRICT_COMMANDS
 from commands.mush_import import CmdImport
 from commands.login import CmdMushConnect
 from commands.storyteller import CmdEditChar, CmdSheet
 
-class CharacterCmdSet(default_cmds.CharacterCmdSet):
+
+class CharacterCmdSet(OldCharacter):
     """
     The `CharacterCmdSet` contains general in-game commands like `look`,
     `get`, etc available on in-game Character objects. It is merged with
@@ -59,7 +61,8 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         self.add(CmdEditChar())
         self.add(CmdSheet())
 
-class PlayerCmdSet(default_cmds.PlayerCmdSet):
+
+class PlayerCmdSet(OldPlayer):
     """
     This is the cmdset available to the Player at all times. It is
     combined with the `CharacterCmdSet` when the Player puppets a
@@ -76,12 +79,16 @@ class PlayerCmdSet(default_cmds.PlayerCmdSet):
         #
         # any commands you add below will overload the default ones.
         #
+        #self.add(CmdOOCLook())
         self.add(CmdPWho())
         self.add(CmdPlayerConfig())
         self.add(CmdTz())
         self.add(CmdWatch())
+        self.add(CmdEmail())
+        self.add(CmdUsername())
 
-class UnloggedinCmdSet(default_cmds.UnloggedinCmdSet):
+
+class UnloggedinCmdSet(OldUnlogged):
     """
     Command set available to the Session before being logged in.  This
     holds commands like creating a new account, logging in, etc.
@@ -98,7 +105,8 @@ class UnloggedinCmdSet(default_cmds.UnloggedinCmdSet):
         #
         self.add(CmdMushConnect())
 
-class SessionCmdSet(default_cmds.SessionCmdSet):
+
+class SessionCmdSet(OldSession):
     """
     This cmdset is made available on Session level once logged in. It
     is empty by default.

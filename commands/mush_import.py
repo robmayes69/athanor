@@ -172,12 +172,15 @@ class CmdImport(AthCommand):
     def switch_accounts(self):
         char_typeclass = settings.BASE_CHARACTER_TYPECLASS
         accounts = cobj(abbr='accounts').children.all()
-        account_objids = accounts.values_list('objid', flat=True)
         for acc_obj in sorted(accounts, key=lambda acc: int(acc.name.split(' ')[1])):
             name = 'MushAcc %s' % acc_obj.name.split(' ')[1]
             password = str(random.randrange(5000000,1000000000))
             email = acc_obj.mushget('email') or None
             new_player = create.create_player(name, email, password)
+            new_player.db._import_ready = True
+            new_player.db._reset_username = True
+            if new_player.email == 'dummy@dummy.com':
+                new_player.db._reset_email = True
             objids = acc_obj.mushget('characters').split(' ')
             mush_chars = MushObject.objects.filter(objid__in=objids)
             for char in mush_chars:
@@ -186,18 +189,21 @@ class CmdImport(AthCommand):
                 char.obj = new_char
                 char.save(update_fields=['obj'])
                 new_player.bind_character(new_char)
+                new_char.db._import_ready = True
         unbound = MushObject.objects.filter(type=8, obj=None)
         if unbound:
             name = 'Lost and Found'
             password = str(random.randrange(5000000,1000000000))
             email = None
             new_player = create.create_player(name, email, password)
+            new_player.db._lost_and_found = True
             for char in unbound:
                 new_char = create.create_object(typeclass=char_typeclass, key=char.name)
                 new_char.db.prelogout_location = char.location.obj
                 char.obj = new_char
                 char.save(update_fields=['obj'])
                 new_player.bind_character(new_char)
+                new_char.db._import_ready = True
         self.sys_msg("Finished importing characters!")
 
 
@@ -234,7 +240,7 @@ class CmdImport(AthCommand):
                         if channel.locks.check(new_member.character, 'listen'):
                             channel.connect(new_member.character)
             new_group.save()
-            board_group, created = BoardGroup.objects.get_or_create(main=2, group=new_group)
+            board_group, created = BoardGroup.objects.get_or_create(main=0, group=new_group)
             for old_board in old_group.contents.all():
                 if not old_board.board:
                     old_board.board = board_group.make_board(key=old_board.name)
@@ -247,10 +253,8 @@ class CmdImport(AthCommand):
 
     def switch_bbs(self):
         penn_boards = cobj('bbs').contents.all()
-        print penn_boards
         board_group, created5 = BoardGroup.objects.get_or_create(main=1, group=None)
         for old_board in penn_boards:
-            print old_board
             if not old_board.board:
                 old_board.board = board_group.make_board(key=old_board.name)
                 old_board.save(update_fields=['board'])

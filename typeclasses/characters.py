@@ -9,12 +9,10 @@ creation commands.
 """
 from __future__ import unicode_literals
 
-import time, pytz
-from django.conf import settings
 from evennia import DefaultCharacter
 from evennia.utils.utils import time_format, lazy_property
 from evennia.utils.ansi import ANSIString
-from commands.library import utcnow, mxp_send, header
+from commands.library import utcnow, mxp_send
 
 from world.database.storyteller.models import Game as StGame
 from world.storyteller.sheet import StorytellerHandler
@@ -39,7 +37,7 @@ class Character(DefaultCharacter):
                     has connected" message echoed to the room
 
     """
-
+    character_type = 'Standard'
 
     def at_object_creation(self):
         super(Character, self).at_object_creation()
@@ -215,6 +213,7 @@ class StorytellerCharacter(Character):
     Base template for Storyteller characters. It's not meant to be used literally.
     """
     game_mode = 'storyteller'
+    character_type = 'Storyteller'
 
     def at_object_creation(self):
         super(StorytellerCharacter, self).at_object_creation()
@@ -244,6 +243,7 @@ class Ex2Character(StorytellerCharacter):
     """
     For use with Exalted 2nd Edition characters.
     """
+    character_type = 'Exalted 2e'
     game_mode = 'ex3'
 
 
@@ -252,4 +252,5 @@ class Ex3Character(StorytellerCharacter):
     For use with Exalted 3rd Edition characters.
     """
     game_mode = 'ex3'
+    character_type = 'Exalted 3e'
     sheet_sections = EX3_SHEET

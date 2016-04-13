@@ -1,6 +1,7 @@
 import pytz
+from evennia import PlayerDB
 from commands.command import AthCommand
-from commands.library import utcnow, header, subheader, separator, make_table
+from commands.library import utcnow, header, subheader, separator, make_table, sanitize_string
 from world.database.communications.models import WatchFor
 
 class CmdPlayerConfig(AthCommand):
@@ -192,4 +193,53 @@ class CmdWatch(AthCommand):
         self.sys_msg("You will %s hear friends connecting." % ('now' if toggle else 'no longer'))
         self.player.db._watch_mute = toggle
 
-ACCOUNT_COMMANDS = [CmdPlayerConfig, CmdTz, CmdWatch]
+class CmdUsername(AthCommand):
+    """
+    This command is used to change your account's username.
+
+    Usage:
+        @username <new name>
+    """
+    key = '@username'
+    aliases = []
+    system_name = 'ACCOUNT'
+    help_category = 'System'
+    player_switches = []
+
+    def func(self):
+        if not self.args:
+            self.error("Nothing entered for a username!")
+            return
+        new_name = sanitize_string(self.args)
+        if PlayerDB.objects.filter(username__iexact=new_name).exclude(id=self.player.id).count():
+            self.error("Cannot rename to %s. That name is already taken." % new_name)
+            return
+        self.player.key = new_name
+        self.player.save()
+        del self.player.db._reset_username
+        self.sys_msg("Your new username is: %s - Remember this for your next login!" % new_name)
+
+class CmdEmail(AthCommand):
+    """
+    This command is used to change your account's email.
+
+    Usage:
+        @email <new address>
+    """
+    key = '@email'
+    aliases = []
+    system_name = 'ACCOUNT'
+    help_category = 'System'
+    player_switches = []
+
+    def func(self):
+        if not self.args:
+            self.error("Nothing entered for an address!")
+            return
+        new_address = PlayerDB.objects.normalize_email(sanitize_string(self.args))
+        self.player.email = new_address
+        self.sys_msg("Your new email is: %s" % new_address)
+        del self.player.db._reset_email
+        self.player.save()
+
+ACCOUNT_COMMANDS = [CmdPlayerConfig, CmdTz, CmdWatch, CmdUsername, CmdEmail]

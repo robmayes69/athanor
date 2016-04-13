@@ -32,6 +32,8 @@ def gperm(accessing_obj, accessed_obj, *args, **kwargs):
     """
     if accessing_obj.is_admin():
         return True
+    if not accessing_obj.is_typeclass('typeclasses.characters.Character', exact=False):
+        return False
     if not args[0]:
         return False
     if not re.match(r'^\d+$',args[0]):

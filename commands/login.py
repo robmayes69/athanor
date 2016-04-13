@@ -1,11 +1,10 @@
 from __future__ import unicode_literals
-import re, traceback
+import re, time
 from django.conf import settings
-from evennia.players.models import PlayerDB
 from typeclasses.characters import Character
-from evennia.server.models import ServerConfig
+from evennia.utils.create import create_player
 from commands.command import MuxCommand
-from evennia.commands.default.unloggedin import CmdUnconnectedConnect, _LATEST_FAILED_LOGINS, _throttle
+from evennia.commands.default.unloggedin import _LATEST_FAILED_LOGINS, _throttle
 
 class CmdMushConnect(MuxCommand):
     """
@@ -14,8 +13,8 @@ class CmdMushConnect(MuxCommand):
     Aliases do not function in this mode.
 
     Usage:
-        connect charactername password
-        connect "character name" "pass word"
+        penn charactername password
+        penn "character name" "pass word"
 
     Enclose character names that have spaces in " ".
     """
@@ -51,7 +50,7 @@ class CmdMushConnect(MuxCommand):
         playername, password = parts
 
         # Match old character name and check password
-        char = Character.objects.filter(db_key__iexact=playername).first()
+        char = Character.objects.filter_family(db_key__iexact=playername).first()
         if not char:
             session.msg("Character not found.")
             return
@@ -67,4 +66,24 @@ class CmdMushConnect(MuxCommand):
             session.msg("Invalid password.")
             _throttle(session, storage=_LATEST_FAILED_LOGINS)
             return
-        session.sessionhandler.login(session, player)
+        if not char.db._import_ready:
+            session.msg("Character has already been imported or was not originally from PennMUSH. Contact an admin\nif this is in error.")
+            return
+        if player.db._lost_and_found:
+            session.msg("Credentials accepted. Character is in the Lost and Found.\nCreating a new account for them.")
+            create_name = unicode(float(time.time())).replace('.', '-')
+            new_player = create_player(create_name, email=None, password=password)
+            new_player.db._was_lost = True
+            new_player.db._reset_email = True
+            new_player.db._reset_username = True
+            new_player.bind_character(char)
+            session.msg("Your temporary account name is: %s" % create_name)
+            session.msg("Account created, using your PennMUSH password.")
+        else:
+            session.msg("Credentials accepted. You can now login to this account with the given password.\nPlease set your username and email with the listed commands.")
+            new_player = player
+            new_player.set_password(password)
+        session.msg("Import process complete!")
+        for character in new_player.get_all_characters():
+            del character.db._import_ready
+        session.sessionhandler.login(session, new_player)

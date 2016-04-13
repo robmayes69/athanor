@@ -24,12 +24,15 @@ several more options for customizing the Guest account system.
 
 from __future__ import unicode_literals
 
-import pytz
+import time
 from django.conf import settings
 from evennia import DefaultPlayer, DefaultGuest
+from evennia import utils
 from evennia.utils.utils import time_format, lazy_property
 from evennia.utils.ansi import ANSIString
-from commands.library import utcnow
+from evennia.utils.utils import is_iter
+from evennia.utils.evmenu import get_input
+from commands.library import utcnow, sanitize_string, header, make_table, make_column_table, subheader
 from world.player_settings import SettingHandler
 
 class Player(DefaultPlayer):
@@ -157,12 +160,12 @@ class Player(DefaultPlayer):
         #Lastly, add the new character to our playable characters.
         characters = self.get_all_characters()
         characters.append(character)
-        self.db._playable_characters = sorted(characters, key=lambda char: char.key)
+        self.db._playable_characters = sorted(list(set(characters)), key=lambda char: char.key)
 
     def unbind_character(self, character):
         characters = self.get_all_characters()
         characters.remove(character)
-        self.db._playable_characters = sorted(characters, key=lambda char: char.key)
+        self.db._playable_characters = sorted(list(set(characters)), key=lambda char: char.key)
 
     def delete(self, *args, **kwargs):
         self.actor.update_name(self.key)
@@ -242,6 +245,8 @@ class Player(DefaultPlayer):
         Returns:
             int
         """
+        if not self.db._character_slots:
+            self.db._character_slots = 0
         if update is not None:
             try:
                 new_value = int(update)
@@ -269,6 +274,90 @@ class Player(DefaultPlayer):
         for session in self.sessions.all():
             width_list += session.protocol_flags['SCREENWIDTH'].values()
         return min(width_list) or 78
+
+    def at_look(self, target=None, session=None):
+        """
+        Called when this object executes a look. It allows to customize
+        just what this means.
+
+        Args:
+            target (Object or list, optional): An object or a list
+                objects to inspect.
+            session (Session, optional): The session doing this look.
+
+        Returns:
+            look_string (str): A prepared look string, ready to send
+                off to any recipient (usually to ourselves)
+
+        """
+
+        if target and not is_iter(target):
+            # single target - just show it
+            return target.return_appearance()
+        else:
+            characters = list(target)
+
+            message = list()
+            message.append(header("%s: Account Management" % settings.SERVERNAME))
+            info_column = make_column_table()
+            info_text = list()
+            info_text.append(unicode(ANSIString("Account:".rjust(8) + " {g%s{n" % (self.key))))
+            email = self.email if self.email != 'dummy@dummy.com' else '<blank>'
+            info_text.append(unicode(ANSIString("Email:".rjust(8) + ANSIString(" {g%s{n" % email))))
+            info_text.append(unicode(ANSIString("Perms:".rjust(8) + " {g%s{n" % ", ".join(self.permissions.all()))))
+            info_column.add_row("\n".join(info_text), width=78)
+            message.append(info_column)
+            message += self.at_look_session_menu()
+            message.append(subheader('Commands'))
+            command_column = make_column_table()
+            command_text = list()
+            command_text.append(unicode(ANSIString(" {whelp{n - more commands")))
+            if self.db._reset_username:
+                command_text.append(" {w@username <name>{n - Set your username!")
+            if self.db._reset_email or self.email == 'dummy@dummy.com':
+                command_text.append(" {w@email <address>{n - Set your email!")
+            if self.db._was_lost:
+                command_text.append(" {w@penn <character>=<password>{n - Link an imported PennMUSH character.")
+            command_text.append(" {w@charcreate <name> [=description]{n - create new character")
+            command_text.append(" {w@ic <character>{n - enter the game ({w@ooc{n to get back here)")
+            command_column.add_row("\n".join(command_text), width=78)
+            message.append(command_column)
+            message += self.at_look_character_menu()
+
+            message.append(subheader('Open Char Slots: %s/%s' % (
+                self.max_character_slots() - len(characters), self.max_character_slots())))
+            self.msg('\n'.join(unicode(line) for line in message))
+
+    def at_look_session_menu(self):
+        sessions = self.sessions.all()
+        message = list()
+        message.append(subheader('Sessions'))
+        sesstable = make_table('ID', 'Protocol', 'Address', 'Connected', width=[7, 22, 22, 27])
+        for session in sessions:
+            conn_duration = time.time() - session.conn_time
+            sesstable.add_row(session.sessid, session.protocol_key,
+                                isinstance(session.address, tuple) and str(session.address[0]) or str(
+                                    session.address),
+                                 utils.time_format(conn_duration, 0))
+        message.append(sesstable)
+        # message.append(separator())
+        return message
+
+    def at_look_character_menu(self):
+        message = list()
+        characters = self.get_all_characters()
+        message.append(subheader('Characters'))
+        chartable = make_table('ID', 'Name', 'Type', 'Last Login', width=[7, 36, 15, 20])
+        for character in characters:
+            login = character.last_played()
+            if login:
+                login = self.display_local_time(date=login)
+            else:
+                login = 'N/A'
+            chartable.add_row(character.id, character.key, character.character_type, login)
+        message.append(chartable)
+        # message.append(separator())
+        return message
 
 class Guest(DefaultGuest):
     """
