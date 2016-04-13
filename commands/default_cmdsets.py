@@ -43,7 +43,6 @@ class CharacterCmdSet(OldCharacter):
         #
         # any commands you add below will overload the default ones.
         #
-        self.add(CmdWho())
         self.add(CmdInfo())
         self.add(CmdBBAdmin())
         self.add(CmdBBList())
@@ -80,6 +79,7 @@ class PlayerCmdSet(OldPlayer):
         # any commands you add below will overload the default ones.
         #
         #self.add(CmdOOCLook())
+        self.add(CmdWho())
         self.add(CmdPWho())
         self.add(CmdPlayerConfig())
         self.add(CmdTz())

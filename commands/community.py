@@ -16,7 +16,7 @@ class CmdWho(AthCommand):
 
     def func(self):
         characters = sorted(connected_characters(viewer=self.caller), key=lambda char: char.key)
-        message = []
+        message = list()
         message.append(header('Who'))
         who_table = make_table('Name', 'Alias', 'Fac', 'Idle', 'Conn', 'G', 'Location', width=[20, 11, 4, 5, 5, 2, 31])
         for char in characters:
@@ -40,7 +40,7 @@ class CmdPWho(AthCommand):
 
     def func(self):
         players = sorted(connected_players(viewer=self.caller), key=lambda play: play.key)
-        message = []
+        message = list()
         message.append(header('Who - Players'))
         who_table = make_table('Name', 'Idle', 'Conn', 'Characters', width=[20, 5, 5, 48])
         for play in players:
