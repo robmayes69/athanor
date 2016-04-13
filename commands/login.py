@@ -1,9 +1,10 @@
 from __future__ import unicode_literals
 import re, time
 from django.conf import settings
+from evennia.utils import create
 from typeclasses.characters import Character
 from evennia.utils.create import create_player
-from commands.command import MuxCommand
+from commands.command import MuxCommand, AthCommand
 from evennia.commands.default.unloggedin import _LATEST_FAILED_LOGINS, _throttle
 
 class CmdMushConnect(MuxCommand):
@@ -87,3 +88,58 @@ class CmdMushConnect(MuxCommand):
         for character in new_player.get_all_characters():
             del character.db._import_ready
         session.sessionhandler.login(session, new_player)
+
+
+class CmdCharCreate(AthCommand):
+    """
+    create a new character
+
+    Usage:
+      @charcreate <charname> [= desc]
+
+    Create a new character, optionally giving it a description. You
+    may use upper-case letters in the name - you will nevertheless
+    always be able to access your character using lower-case letters
+    if you want.
+    """
+    key = "@charcreate"
+    locks = "cmd:pperm(Players)"
+    help_category = "General"
+
+    def func(self):
+        "create the new character"
+        player = self.player
+        if not self.args:
+            self.msg("Usage: @charcreate <charname> [= description]")
+            return
+        key = self.lhs
+        desc = self.rhs
+
+        charmax = settings.MAX_NR_CHARACTERS if settings.MULTISESSION_MODE > 1 else 1
+
+        if not player.is_superuser and \
+            (player.db._playable_characters and
+                len(player.db._playable_characters) >= charmax):
+            self.msg("You may only create a maximum of %i characters." % charmax)
+            return
+        # create the character
+        from evennia.objects.models import ObjectDB
+
+        start_location = ObjectDB.objects.get_id(settings.START_LOCATION)
+        default_home = ObjectDB.objects.get_id(settings.DEFAULT_HOME)
+        typeclass = settings.BASE_CHARACTER_TYPECLASS
+        permissions = settings.PERMISSION_PLAYER_DEFAULT
+
+        new_character = create.create_object(typeclass, key=key,
+                                             location=start_location,
+                                             home=default_home,
+                                             permissions=permissions)
+        # only allow creator (and immortals) to puppet this char
+        new_character.locks.add("puppet:id(%i) or pid(%i) or perm(Immortals) or pperm(Immortals)" %
+                                (new_character.id, player.id))
+        player.bind_character(new_character)
+        if desc:
+            new_character.db.desc = desc
+        elif not new_character.db.desc:
+            new_character.db.desc = "This is a Player."
+        self.msg("Created new character %s. Use {w@ic %s{n to enter the game as this character." % (new_character.key, new_character.key))

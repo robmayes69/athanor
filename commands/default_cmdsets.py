@@ -23,7 +23,7 @@ from commands.account_management import CmdPlayerConfig, CmdTz, CmdWatch, CmdUse
 from commands.groups import GROUP_COMMANDS
 from commands.grid_management import DISTRICT_COMMANDS
 from commands.mush_import import CmdImport
-from commands.login import CmdMushConnect
+from commands.login import CmdMushConnect, CmdCharCreate
 from commands.storyteller import CmdEditChar, CmdSheet
 
 
@@ -86,6 +86,7 @@ class PlayerCmdSet(OldPlayer):
         self.add(CmdWatch())
         self.add(CmdEmail())
         self.add(CmdUsername())
+        self.add(CmdCharCreate())
 
 
 class UnloggedinCmdSet(OldUnlogged):
