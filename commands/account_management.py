@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 import pytz
 from evennia import PlayerDB
 from commands.command import AthCommand
@@ -24,7 +25,7 @@ class CmdPlayerConfig(AthCommand):
     system_name = 'CONFIG'
     key = '+config'
     help_category = 'General'
-    player_switches = ['defaults']
+    player_switches = ['name']
 
     def func(self):
         if 'defaults' in self.final_switches:
@@ -241,5 +242,6 @@ class CmdEmail(AthCommand):
         self.sys_msg("Your new email is: %s" % new_address)
         del self.player.db._reset_email
         self.player.save()
+
 
 ACCOUNT_COMMANDS = [CmdPlayerConfig, CmdTz, CmdWatch, CmdUsername, CmdEmail]

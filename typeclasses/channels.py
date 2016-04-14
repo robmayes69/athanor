@@ -70,6 +70,33 @@ class AthanorChannel(Channel):
     backwards compatability for external connections.
     """
 
+    def character_msg(self, sender, message, slot=None):
+        speech = Speech(sender, message, alternate_name=self.sender_altname(sender, slot),
+                        title=self.sender_title(sender, slot), mode='channel')
+        self.distribute_speech(speech, slot)
+
+    def system_msg(self, system, message, sender=None, slot=None):
+        pass
+
+    def emit_msg(self, message, sender=None, slot=None):
+        self.distribute_emit(message)
+
+    def distribute_speech(self, msg, slot=None):
+        recipients = set(self.subscriptions.all())
+        not_gagging = recipients.difference(set(self.gagging.all()))
+        for entity in not_gagging:
+            prefix = self.channel_prefix(entity, slot)
+            message = '%s %s' % (prefix, msg.render(viewer=entity))
+            entity.msg(message)
+
+    def distribute_emit(self, msg):
+        recipients = set(self.subscriptions.all())
+        not_gagging = recipients.difference(set(self.gagging.all()))
+        for entity in not_gagging:
+            prefix = self.channel_prefix(entity)
+            message = '%s %s' % (prefix, msg)
+            entity.msg(message)
+
     def msg(self, msgobj, header=None, senders=None, sender_strings=None,
             persistent=False, online=False, emit=False, external=False, slot=None):
         """
@@ -161,18 +188,24 @@ class AthanorChannel(Channel):
         """
         Slot is only here for future compatability with a radio channel.
         """
-        return '<%s> ' % self.key
+        return '<%s>' % self.key
 
     def sender_title(self, sender=None, slot=None):
         pass
 
-    def sender_codename(self, sender=None, slot=None):
+    def sender_altname(self, sender=None, slot=None):
         pass
 
     def viewer_monitor(self, viewer):
         pass
 
 class PublicChannel(AthanorChannel):
+
+    def __unicode__(self):
+        return unicode(self.key)
+
+    def __str__(self):
+        return self.key
 
     def at_channel_creation(self):
         super(Channel, self).at_channel_creation()
@@ -191,12 +224,12 @@ class PublicChannel(AthanorChannel):
             pass
         if not color:
             color = self.db.settings.get('color', 'n')
-        return '<{%s%s{n> ' % (color, self.key)
+        return '<|%s%s|n>' % (color, self.key)
 
     @property
     def color_name(self):
         color = self.db.settings.get('color', 'n')
-        return '{%s%s{n' % (color, self.key)
+        return '|%s%s|n' % (color, self.key)
 
     def sender_title(self, sender=None, slot=None):
         return self.db.titles.get(sender, None)
@@ -205,7 +238,27 @@ class PublicChannel(AthanorChannel):
         return self.db.codenames.get(sender, None)
 
 class RadioChannel(AthanorChannel):
-    pass
+
+    def init_locks(self):
+        lockstring = "control:perm(Wizards);send:all();listen:all()"
+        self.locks.add(lockstring)
+
+    def channel_prefix(self, viewer, slot=None):
+        try:
+            viewer_slot = self.frequency.characters.filter(character=viewer, on=True).first()
+            slot_name = viewer_slot.key
+            slot_color = viewer_slot.color or 'n'
+            display_name = '|%s%s|n' % (slot_color, slot_name)
+        except:
+            display_name = self.frequency.key
+        return '|r-<|n|wRADIO:|n %s|n|r>-|n' % display_name
+
+    def sender_title(self, sender=None, slot=None):
+        return slot.title
+
+    def sender_altname(self, sender=None, slot=None):
+        return slot.codename
+
 
 class GroupChannel(AthanorChannel):
 
@@ -244,7 +297,7 @@ class GroupIC(GroupChannel):
             name = 'UNKNOWN'
             group_color = 'x'
         color = personal_color or group_color or 'x'
-        return '{C<{%s%s{n{C>{n ' % (color, name)
+        return '{C<{%s%s{n{C>{n' % (color, name)
 
 class GroupOOC(GroupChannel):
 
@@ -268,4 +321,4 @@ class GroupOOC(GroupChannel):
             name = 'UNKNOWN'
             group_color = 'x'
         color = personal_color or group_color or 'x'
-        return '{C<{%s%s{n{C-{n{ROOC{n{C>{n ' % (color, name)
+        return '{C<{%s%s{n{C-{n{ROOC{n{C>{n' % (color, name)

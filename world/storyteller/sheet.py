@@ -421,13 +421,6 @@ class TemplateSection(SheetSection):
 
 
 class StorytellerHandler(object):
-    stats_dict = dict()
-    stats_values = dict()
-    stats_type = dict()
-    owner = None
-    sheet_sections = tuple()
-    render_sections = tuple()
-    sheet_dict = dict()
 
     def __repr__(self):
         return '<StorytellerHandler for %s>' % self.owner.key
@@ -437,8 +430,13 @@ class StorytellerHandler(object):
         'Owner' must be an instance of StorytellerCharacter.
         """
         self.owner = owner
+        self.stats_dict = dict()
+        self.stats_values = dict()
+        self.stats_type = dict()
+        self.sheet_sections = tuple()
+        self.render_sections = tuple()
+        self.sheet_dict = dict()
         self.load()
-
 
     def load(self):
 

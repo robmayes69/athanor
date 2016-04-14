@@ -13,6 +13,8 @@ just overloads its hooks to have it perform its function.
 """
 from __future__ import unicode_literals
 from evennia import DefaultScript
+from evennia.utils.utils import lazy_property
+from world.game_settings import GameSetting, GameSettingHandler
 
 
 class Script(DefaultScript):
@@ -90,22 +92,30 @@ class Script(DefaultScript):
     """
     pass
 
-class BoardTimeout(Script):
+class AthanorManager(Script):
 
     def at_script_creation(self):
-        self.key = 'Board Timeout'
-        self.desc = 'Handles BBS maintenance.'
-        self.interval = 60 * 60 * 24 # Every day.
+        self.key = 'Athanor Manager'
+        self.desc = 'Handles Athanor system tasks.'
+        self.interval = 60 * 15 # Every fifteen minutes..
         self.persistent = True
 
     def at_repeat(self):
-        boards = self.boards()
-        for board in boards:
-            board.process_timeout()
+        self.settings.save()
+        pass
+
 
     def is_valid(self):
-        return bool(self.boards().count())
+        return True
 
     def boards(self):
         from world.database.bbs.models import Board
-        return Board.objects.all()
+        for board in Board.objects.all():
+            board.process_timeout()
+
+    @lazy_property
+    def settings(self):
+        return GameSettingHandler(self)
+
+
+SETTINGS = AthanorManager.objects.filter_family().first().settings.values_cache

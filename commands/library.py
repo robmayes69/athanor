@@ -277,6 +277,8 @@ def separator(*args, **kwargs):
     return header(*args, **kwargs)
 
 
+
+
 class Speech(object):
     """
     This class is similar to the Evennia Msg in that it represents an entity speaking.
@@ -290,16 +292,29 @@ class Speech(object):
 
     """
 
-    __slots__ = ['speaker', 'display_name', 'title', 'codename', 'special_format', 'speech_string']
+    def __init__(self, speaker, speech_text, alternate_name=None, title=None, mode='ooc'):
+        from typeclasses.characters import Character
+        self.character_dict = dict()
+        self.character_id = dict()
+        for char in Character.objects.filter_family():
+            self.character_dict[char.key.upper()] = char.id
+            self.character_id[char.id] = char
 
-    def __init__(self, speaker, speech_text, alternate_name=None, title=None, codename=None):
+        def markup_names(match, char_dict=self.character_dict):
+            found = match.group('found')
+            if found[0].isupper():
+                return '^^^%s:%s^^^' % (char_dict[found.upper()], found)
+            return found
+
         self.speaker = speaker
         if alternate_name:
             self.display_name = alternate_name
+            self.markup_name = alternate_name
         else:
-            self.display_name = speaker.key
+            self.display_name = str(speaker)
+            self.markup_name = '^^^%s:%s^^^' % (speaker.id, speaker.key)
         self.title = title
-        self.codename = codename
+        self.mode = mode
 
         speech_text = ANSIString(speech_text)
 
@@ -322,10 +337,53 @@ class Speech(object):
         self.special_format = special_format
         self.speech_string = ANSIString(speech_string)
 
+        escape_names = [re.escape(name) for name in self.character_dict.keys()]
+        all_names = '|'.join(escape_names)
+        self.markup_string = re.sub(r"(?i)\b(?P<found>%s)\b" % all_names, markup_names, self.speech_string)
+
     def __str__(self):
         str(unicode(self))
 
     def __unicode__(self):
+        return unicode(self.demarkup())
+
+    def monitor_display(self, viewer=None):
+        if not viewer:
+            return self.demarkup()
+        if not self.codename:
+            return self.render(viewer)
+        return_string = None
+        if self.special_format == 0:
+            return_string = '(%s)%s says, "%s"' % (self.markup_name, self.codename, self.markup_string)
+        elif self.special_format == 1:
+            return_string = '(%s)%s %s' % (self.markup_name, self.codename, self.markup_string)
+        elif self.special_format == 2:
+            return_string = '(%s)%s%s' % (self.markup_name, self.codename, self.markup_string)
+        elif self.special_format == 3:
+            return_string = '(%s)%s' % (self.markup_name, self.markup_string)
+        if self.title:
+            return_string = '%s %s' % (self.title, return_string)
+
+        return self.colorize(return_string, viewer)
+
+    def render(self, viewer=None):
+        if not viewer:
+            return ANSIString(self.demarkup())
+        return_string = None
+        if self.special_format == 0:
+            return_string = '%s says, "%s{n"' % (self.markup_name, self.markup_string)
+        elif self.special_format == 1:
+            return_string = '%s %s' % (self.markup_name, self.markup_string)
+        elif self.special_format == 2:
+            return_string = '%s%s' % (self.markup_name, self.markup_string)
+        elif self.special_format == 3:
+            return_string = self.markup_string
+        if self.title:
+            return_string = '%s %s' % (self.title, return_string)
+
+        return self.colorize(return_string, viewer)
+
+    def demarkup(self):
         return_string = None
         if self.special_format == 0:
             return_string = '%s says, "%s{n"' % (self.display_name, self.speech_string)
@@ -335,30 +393,31 @@ class Speech(object):
             return_string = '%s%s' % (self.display_name, self.speech_string)
         elif self.special_format == 3:
             return_string = self.speech_string
-
         if self.title:
             return_string = '%s %s' % (self.title, return_string)
-
         return ANSIString(return_string)
 
-    def monitor_display(self):
-        return_string = None
-        if not self.codename:
-            return unicode(self)
-        if self.special_format == 0:
-            return_string = '(%s)%s says, "%s"' % (self.display_name, self.codename, self.speech_string)
-        elif self.special_format == 1:
-            return_string = '(%s)%s %s' % (self.display_name, self.codename, self.speech_string)
-        elif self.special_format == 2:
-            return_string = '(%s)%s%s' % (self.display_name, self.codename, self.speech_string)
-        elif self.special_format == 3:
-            return_string = '(%s)%s' % (self.display_name, self.speech_string)
+    def colorize(self, message, viewer):
+        quotes = 'quotes_%s' % self.mode
+        speech = 'speech_%s' % self.mode
+        quote_color = viewer.settings.get(quotes)
+        speech_color = viewer.settings.get(speech)
+        def color_speech(found, viewer=viewer):
+            return '|%s"|n|%s%s|n|%s"|n' % (quote_color, speech_color, found.group('found'), quote_color)
 
-        if self.title:
-            return_string = '%s %s' % (self.title, return_string)
+        def color_names(found, viewer=viewer):
+            try:
+                id = int(found.group('id'))
+            except:
+                return found.group('name')
+            if id in self.character_id:
+                color = viewer.settings.get_color_name(self.character_id[id])
+                return '|n|%s%s|n' % (color, found.group('name'))
+            return found.group('name')
 
-        return ANSIString(return_string)
-
+        colorized_string = re.sub(r'(?s)"(?P<found>.*?)"', color_speech, message)
+        names_string = re.sub(r'\^\^\^(?P<id>\d+)\:(?P<name>[^^]+)\^\^\^', color_names, colorized_string)
+        return names_string
 
 def tabular_table(word_list=[], field_width=26, line_length=78, output_separator=" ", truncate_elements=True):
     """
@@ -399,10 +458,10 @@ def sanitize_string(input=None, length=None, strip_ansi=False, strip_mxp=True, s
         input = ANSIString(input).clean()
         input = input
     if strip_newlines:
-        for bad_char in ['\n', '%r', '%R', '{/']:
+        for bad_char in ['\n', '%r', '%R', '|/']:
             input = input.replace(bad_char, '')
     if strip_indents:
-        for bad_char in ['\t', '%t', '%T', '{-']:
+        for bad_char in ['\t', '%t', '%T', '|-']:
             input = input.replace(bad_char, '')
     if length:
         input = input[:length]
@@ -421,7 +480,7 @@ def penn_substitutions(input=None):
     if not input:
         return ''
     for bad_char in ['%r', '%R']:
-        input = input.replace(bad_char, '{/')
+        input = input.replace(bad_char, '|/')
     for bad_char in ['%t', '%T']:
-        input = input.replace(bad_char, '{-')
+        input = input.replace(bad_char, '|-')
     return input

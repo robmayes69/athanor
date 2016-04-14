@@ -6,7 +6,6 @@ from world.database.groups.models import Group
 from commands.command import AthCommand
 from commands.library import header, make_table, mxp_send
 from commands.library import duration_from_string, sanitize_string, penn_substitutions, partial_match
-from typeclasses.scripts import BoardTimeout
 from evennia import create_script
 from evennia.utils.utils import time_format
 
@@ -228,8 +227,6 @@ class CmdBBAdmin(BBCommand):
             self.error(unicode(err))
             return
         self.sys_msg("Board '%s' created!" % new_board)
-        if not BoardTimeout.objects.all().count():
-            create_script(BoardTimeout, obj=None)
 
     def board_cleargroup(self, name):
         try:

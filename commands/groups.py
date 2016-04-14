@@ -1007,7 +1007,7 @@ class CmdGroupChan(GroupCommand):
 
         try:
 
-            channel.msg(message, senders=self.character)
+            channel.character_msg(self.character, message)
         except ValueError as err:
             self.error(unicode(err))
             return

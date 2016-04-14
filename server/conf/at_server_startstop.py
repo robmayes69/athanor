@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 """
 Server startstop hooks
 
@@ -22,7 +23,10 @@ def at_server_start():
     This is called every time the server starts up, regardless of
     how it was shut down.
     """
-    pass
+    from evennia.utils.create import create_script
+    from typeclasses.scripts import AthanorManager
+    if not AthanorManager.objects.filter_family().count():
+        create_script(AthanorManager)
 
 
 def at_server_stop():

@@ -8,13 +8,13 @@ from evennia.utils.ansi import ANSIString
 DEFAULTS = settings.PLAYER_SETTING_DEFAULTS
 
 class SettingHandler(object):
-    settings = list()
-    categories_cache = list()
-    settings_dict = dict()
-    sorted_cache = dict()
-    values_cache = dict()
 
     def __init__(self, owner):
+        self.settings = list()
+        self.categories_cache = list()
+        self.settings_dict = dict()
+        self.sorted_cache = dict()
+        self.values_cache = dict()
         self.owner = owner
         self.load()
         self.save()
@@ -60,9 +60,6 @@ class SettingHandler(object):
 
     def get(self, key):
         return self.values_cache[key]
-    
-    
-
 
     def set_setting(self, key, new_value, exact=True):
         if new_value == '':
@@ -81,7 +78,6 @@ class SettingHandler(object):
         return set_value
 
 
-"""
     def get_color_name(self, target, no_default=False):
         colors = self.owner.db._color_name or {}
         try:
@@ -105,7 +101,7 @@ class SettingHandler(object):
             colors[target] = value
         self.owner.db._color_name = colors
         return value
-"""
+
 
 class Setting(object):
     key = 'Unset'

@@ -20,12 +20,14 @@ from commands.community import CmdWho, CmdPWho
 from commands.info_files import CmdInfo
 from commands.bbs import CmdBBAdmin, CmdBBList, CmdBBRead, CmdBBWrite, CmdGBAdmin, CmdGBList, CmdGBRead, CmdGBWrite
 from commands.account_management import CmdPlayerConfig, CmdTz, CmdWatch, CmdUsername, CmdEmail
+from commands.admin import CmdPlayers, CmdGameConfig
 from commands.groups import GROUP_COMMANDS
 from commands.grid_management import DISTRICT_COMMANDS
 from commands.mush_import import CmdImport
 from commands.login import CmdMushConnect, CmdCharCreate
 from commands.storyteller import CmdEditChar, CmdSheet
-
+from commands.channels import CmdChannels
+from commands.radio import CmdRadio
 
 class CharacterCmdSet(OldCharacter):
     """
@@ -59,6 +61,10 @@ class CharacterCmdSet(OldCharacter):
         self.add(CmdImport())
         self.add(CmdEditChar())
         self.add(CmdSheet())
+        self.add(CmdPlayers())
+        self.add(CmdGameConfig())
+        self.add(CmdChannels())
+        self.add(CmdRadio())
 
 
 class PlayerCmdSet(OldPlayer):

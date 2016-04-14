@@ -2,15 +2,17 @@ from __future__ import unicode_literals
 import datetime, pytz, random, MySQLdb, MySQLdb.cursors as cursors
 from django.conf import settings
 from commands.command import AthCommand
-from commands.library import partial_match, dramatic_capitalize, sanitize_string
+from commands.library import partial_match, dramatic_capitalize, sanitize_string, penn_substitutions
 from world.database.mushimport.models import MushObject, cobj, pmatch, objmatch, MushAttributeName
 from world.database.communications.models import ObjectStub
 from world.database.bbs.models import Board, BoardGroup
 from world.database.mushimport.convpenn import read_penn
 from world.database.groups.models import Group
 from world.database.grid.models import District
+from world.database.fclist.models import FCList, StatusKind, TypeKind
+from world.database.radio.models import RadioFrequency, RadioSlot
 from evennia.utils import create
-from typeclasses.characters import Ex2Character, Ex3Character
+from typeclasses.characters import Ex2Character, Ex3Character, Character
 
 
 def from_unixtimestring(secs):
@@ -31,7 +33,7 @@ class CmdImport(AthCommand):
     key = '+import'
     system_name = 'IMPORT'
     locks = 'cmd:perm(Immortals)'
-    admin_switches = ['initialize', 'grid', 'accounts', 'groups', 'bbs', 'ex2', 'ex3', 'experience']
+    admin_switches = ['initialize', 'grid', 'accounts', 'groups', 'bbs', 'ex2', 'ex3', 'experience', 'fclist', 'radio']
 
     def func(self):
         if not self.final_switches:
@@ -93,7 +95,7 @@ class CmdImport(AthCommand):
             entry.save()
             for attr, value in penn_data['attributes'].items():
                 attr_name, created = MushAttributeName.objects.get_or_create(key=attr.upper())
-                attr_entry, created2 = entry.attrs.get_or_create(attr=attr_name, value=value)
+                attr_entry, created2 = entry.attrs.get_or_create(attr=attr_name, value=penn_substitutions(value))
                 if not created2:
                     attr_entry.save()
 
@@ -294,6 +296,63 @@ class CmdImport(AthCommand):
             new_board.posts.create(subject=old_data['subject'], owner=old_data['owner'],
                                    creation_date=old_data['creation_date'], timeout=old_data['timeout'],
                                    text=old_data['text'], order=num+1)
+
+
+    def switch_fclist(self):
+        old_themes = cobj('themedb').children.all()
+        for old_theme in old_themes:
+            new_theme, created = FCList.objects.get_or_create(key=old_theme.name)
+            desc = old_theme.mushget('DESCRIBE')
+            if desc:
+                new_theme.description = desc
+            powers = old_theme.mushget('POWERS')
+            if powers:
+                new_theme.powers = powers
+            info = old_theme.mushget('INFO')
+            if info:
+                new_theme.info = info
+            old_characters = [objmatch(char) for char in old_theme.mushget('CAST').split(' ') if objmatch(char)]
+            for char in old_characters:
+                if not char.obj:
+                    continue
+                type = char.mushget('D`FINGER`TYPE') or 'N/A'
+                status = char.mushget('D`FINGER`STATUS') or 'N/A'
+                stat_kind, created = StatusKind.objects.get_or_create(key=status)
+                type_kind, created = TypeKind.objects.get_or_create(key=type)
+                stat_kind.characters.get_or_create(character=char.obj)
+                type_kind.characters.get_or_create(character=char.obj)
+                new_theme.cast.add(char.obj)
+            new_theme.save()
+
+    def switch_radio(self):
+        old_frequencies = cobj('radio').contents.all()
+        new_freq_dict = dict()
+        for old_freq in [freq for freq in old_frequencies if freq.name.startswith('FREQ:')]:
+            toss, freq_str = old_freq.name.split(' ', 1)
+            new_freq, created = RadioFrequency.objects.get_or_create(key=freq_str)
+            new_freq.setup()
+            new_freq_dict[freq_str] = new_freq
+
+        characters = [char for char in Character.objects.filter_family() if hasattr(char, 'mush')]
+        for char in characters:
+            for old_slot in char.mush.lattr('D`RADIO`*'):
+                old_freq = char.mush.mushget(old_slot)
+                old_name = char.mush.mushget(old_slot + '`NAME')
+                old_title = char.mush.mushget(old_slot + '`TITLE')
+                old_code = char.mush.mushget(old_slot + '`CODENAME')
+                if old_freq not in new_freq_dict:
+                    new_freq, created2 = RadioFrequency.objects.get_or_create(key=old_freq)
+                    new_freq.setup()
+                    new_freq_dict[old_freq] = new_freq
+                new_freq = new_freq_dict[old_freq]
+                new_slot, created3 = char.radio.get_or_create(key=old_name, frequency=new_freq)
+                if old_title:
+                    new_slot.title = old_title
+                if old_code:
+                    new_slot.codename = old_code
+                new_slot.save()
+                new_slot.frequency.channel.connect(char)
+
 
 
     def switch_ex2(self):

@@ -12,6 +12,7 @@ class MushObject(models.Model):
     account = models.OneToOneField('players.PlayerDB', related_name='mush', null=True)
     group = models.OneToOneField('groups.Group', related_name='mush', null=True)
     board = models.OneToOneField('bbs.Board', related_name='mush', null=True)
+    fclist = models.OneToOneField('fclist.FCList', related_name='mush', null=True)
     dbref = models.CharField(max_length=15, unique=True, db_index=True)
     objid = models.CharField(max_length=30, unique=True, db_index=True)
     type = models.PositiveSmallIntegerField(db_index=True)
