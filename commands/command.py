@@ -163,7 +163,7 @@ class AthCommand(MuxCommand):
             system_name = self.system_name
         if not sender:
             sender = self.caller
-        channels = SETTINGS['alerts_channels']
+        channels = SETTINGS('alerts_channels')
         alert_string = '|w[%s]|n |C%s|n: %s' % (sender, system_name, message)
         for chan in channels:
             chan.msg(alert_string, emit=True)

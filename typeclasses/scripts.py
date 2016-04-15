@@ -117,6 +117,6 @@ class AthanorManager(Script):
     def settings(self):
         return GameSettingHandler(self)
 
-@property
-def SETTINGS():
-    return AthanorManager.objects.filter_family().first().settings.values_cache
+
+def SETTINGS(option):
+    return AthanorManager.objects.filter_family().first().settings.values_cache[option]
