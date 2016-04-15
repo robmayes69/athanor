@@ -54,7 +54,7 @@ class SettingHandler(object):
         message.append(separator(category, viewer=viewer))
         category_table = make_table('Setting', 'Value', 'Type', 'Description', width=[18, 10, 9, 41], viewer=viewer)
         for setting in self.sorted_cache[category]:
-            category_table.add_row(setting.key, setting.value, setting.kind, setting.description)
+            category_table.add_row(setting.key, setting.display, setting.kind, setting.description)
         message.append(category_table)
         return "\n".join([unicode(line) for line in message])
 
@@ -148,6 +148,12 @@ class Setting(object):
         else:
             self.custom_value = self.validate(value)
         self.save()
+
+    @property
+    def display(self):
+        if self.kind == 'Color':
+            return '|%s%s|n' % (self.value, self.value)
+        return str(self.value)
 
     def validate(self, new_value):
         if self.kind == 'Bool':

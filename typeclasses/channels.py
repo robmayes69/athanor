@@ -70,33 +70,6 @@ class AthanorChannel(Channel):
     backwards compatability for external connections.
     """
 
-    def character_msg(self, sender, message, slot=None):
-        speech = Speech(sender, message, alternate_name=self.sender_altname(sender, slot),
-                        title=self.sender_title(sender, slot), mode='channel')
-        self.distribute_speech(speech, slot)
-
-    def system_msg(self, system, message, sender=None, slot=None):
-        pass
-
-    def emit_msg(self, message, sender=None, slot=None):
-        self.distribute_emit(message)
-
-    def distribute_speech(self, msg, slot=None):
-        recipients = set(self.subscriptions.all())
-        not_gagging = recipients.difference(set(self.gagging.all()))
-        for entity in not_gagging:
-            prefix = self.channel_prefix(entity, slot)
-            message = '%s %s' % (prefix, msg.render(viewer=entity))
-            entity.msg(message)
-
-    def distribute_emit(self, msg):
-        recipients = set(self.subscriptions.all())
-        not_gagging = recipients.difference(set(self.gagging.all()))
-        for entity in not_gagging:
-            prefix = self.channel_prefix(entity)
-            message = '%s %s' % (prefix, msg)
-            entity.msg(message)
-
     def msg(self, msgobj, header=None, senders=None, sender_strings=None,
             persistent=False, online=False, emit=False, external=False, slot=None):
         """
@@ -141,7 +114,7 @@ class AthanorChannel(Channel):
             emit = True
 
         self.distribute_message(msgobj, senders=senders, sender_strings=sender_strings, emit=emit, external=external,
-                                online=online, slot=None)
+                                online=online, slot=slot)
         self.post_send_message(msgobj)
         return True
 
@@ -158,31 +131,44 @@ class AthanorChannel(Channel):
 
         """
         # get all players connected to this channel and send to them
+        speech = None
         if senders:
             sender = senders[0]
-        else:
-            sender = None
-        title = self.sender_title(sender, slot)
-        if sender_strings:
-            alt_name = sender_strings[0]
-        else:
-            alt_name = None
-        codename = self.sender_codename(sender, slot)
-        speech = Speech(sender, msg, alternate_name=alt_name, title=title, codename=codename)
+            title = self.sender_title(sender, slot)
+            alt_name = self.sender_altname(sender, slot)
+            speech = Speech(sender, msg, alternate_name=alt_name, title=title, mode='channel')
 
-        for entity in self.subscriptions.all():
-            try:
-                # note our addition of the from_channel keyword here. This could be checked
-                # by a custom player.msg() to treat channel-receives differently.
-                display_prefix = self.channel_prefix(entity)
-                if self.viewer_monitor(entity):
-                    display_main = speech.monitor_display()
-                else:
-                    display_main = unicode(speech)
-                message = display_prefix + display_main
-                entity.msg(str(message), from_obj=senders, from_channel=self.id)
-            except AttributeError as e:
-                logger.log_trace("%s\nCannot send msg to '%s'." % (e, entity))
+        if not emit:
+            for entity in self.subscriptions.all():
+                try:
+                    # note our addition of the from_channel keyword here. This could be checked
+                    # by a custom player.msg() to treat channel-receives differently.
+                    display_prefix = self.channel_prefix(entity)
+                    try:
+                        if self.viewer_monitor(entity):
+                            display_main = speech.monitor_display(entity)
+                        else:
+                            display_main = speech.render(entity)
+                    except:
+                        display_main = msg
+                    message = '%s %s' % (display_prefix, display_main)
+                    entity.msg(str(message), from_obj=senders, from_channel=self.id)
+                except AttributeError as e:
+                    logger.log_trace("%s\nCannot send msg to '%s'." % (e, entity))
+        else:
+            for entity in self.subscriptions.all():
+                try:
+                    # note our addition of the from_channel keyword here. This could be checked
+                    # by a custom player.msg() to treat channel-receives differently.
+                    display_prefix = self.channel_prefix(entity)
+                    if self.viewer_monitor(entity):
+                        display_main = msg
+                    else:
+                        display_main = msg
+                    message = '%s %s' % (display_prefix, display_main)
+                    entity.msg(str(message), from_obj=senders, from_channel=self.id)
+                except AttributeError as e:
+                    logger.log_trace("%s\nCannot send msg to '%s'." % (e, entity))
 
     def channel_prefix(self, viewer, slot=None):
         """

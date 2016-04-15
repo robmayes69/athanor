@@ -11,6 +11,7 @@ from world.database.groups.models import Group
 from world.database.grid.models import District
 from world.database.fclist.models import FCList, StatusKind, TypeKind
 from world.database.radio.models import RadioFrequency, RadioSlot
+from world.database.jobs.models import JobCategory, Job, JobComment, JobHandler
 from evennia.utils import create
 from typeclasses.characters import Ex2Character, Ex3Character, Character
 
@@ -33,7 +34,8 @@ class CmdImport(AthCommand):
     key = '+import'
     system_name = 'IMPORT'
     locks = 'cmd:perm(Immortals)'
-    admin_switches = ['initialize', 'grid', 'accounts', 'groups', 'bbs', 'ex2', 'ex3', 'experience', 'fclist', 'radio']
+    admin_switches = ['initialize', 'grid', 'accounts', 'groups', 'bbs', 'ex2', 'ex3', 'experience', 'fclist', 'radio',
+                      'jobs']
 
     def func(self):
         if not self.final_switches:
@@ -711,3 +713,16 @@ class CmdImport(AthCommand):
                 link, created = type.exp_links.get_or_create(character=v.storyteller)
                 new_xp = link.entries.create(amount=amount, reason=reason, source=source, date_awarded=date)
                 new_xp.save()
+
+    def switch_jobs(self):
+        cat_dict = dict()
+        from commands.mysql import sql_dict
+        old_categories = cobj('jobdb').children.all()
+        for old_cat in old_categories:
+            new_cat, created = JobCategory.objects.get_or_create(key=old_cat.name)
+            if created:
+                new_cat.setup()
+            cat_dict[old_cat.objid] = new_cat
+
+        db = MySQLdb.connect(host=sql_dict['site'], user=sql_dict['username'],
+                             passwd=sql_dict['password'], db=sql_dict['database'], cursorclass=cursors.DictCursor)

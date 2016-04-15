@@ -55,7 +55,7 @@ class GameSettingHandler(object):
         message.append(separator(category, viewer=viewer))
         category_table = make_table('Setting', 'Value', 'Type', 'Description', width=[18, 20, 9, 31], viewer=viewer)
         for setting in self.sorted_cache[category]:
-            category_table.add_row(setting.key, str(setting.value), setting.kind, setting.description)
+            category_table.add_row(setting.key, setting.display, setting.kind, setting.description)
         message.append(category_table)
         return "\n".join([unicode(line) for line in message])
 
@@ -110,6 +110,20 @@ class GameSetting(object):
     def save(self):
         self.saver[self.key] = self.custom_value
         self.handler.values_cache[self.key] = self.value
+
+    @property
+    def display(self):
+        if self.kind == 'Channels':
+            if len(self.value):
+                return ', '.join(chan.key for chan in self.value)
+            else:
+                return None
+        elif self.kind == 'List':
+            if len(self.value):
+                return ', '.join(thing for thing in self.value)
+        elif self.kind == 'Color':
+            return '|%s%s|n' % (self.value, self.value)
+        return str(self.value)
 
     @property
     def value(self):

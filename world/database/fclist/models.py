@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
 from django.db import models
-from commands.library import sanitize_string, header, separator, make_table
+from commands.library import sanitize_string, header, separator, make_table, make_column_table
 
 
 # Create your models here.
@@ -61,9 +61,20 @@ class FCList(models.Model):
         if self.description:
             message.append(self.description)
         message.append(separator('Cast'))
-        theme_table = make_table("Name", "Faction", "Last On", "Type", "Status", width=[20, 29, 9, 10, 9])
-        for char in self.cast.all().order_by('db_key'):
-            theme_table.add_row(char, 'Test', char.last_or_idle_time(viewer=viewer), char.list_type, char.list_status)
-        message.append(theme_table)
+        message.append(self.display_cast(viewer=viewer))
         message.append(header(viewer=viewer))
         return "\n".join([unicode(line) for line in message])
+
+    def display_cast(self, viewer, header=True):
+        theme_table = make_table("Name", "Faction", "Last On", "Type", "Status", width=[21, 29, 9, 10, 9], header=header)
+        for char in self.cast.all().order_by('db_key'):
+            try:
+                type = char.list_type
+            except:
+                type = 'N/A'
+            try:
+                status = char.list_status
+            except:
+                status = 'N/A'
+            theme_table.add_row(char, 'Test', char.last_or_idle_time(viewer=viewer), type, status)
+        return theme_table

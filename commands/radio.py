@@ -85,50 +85,15 @@ class CmdRadio(AthCommand):
                 self.parse_switches()
                 switches = self.final_switches
 
-        if 'all' in switches:
-            self.switch_all()
-            return
-        if 'rename' in switches:
-            self.switch_rename(lhs, rhs)
-            return
-        if 'freq' in switches:
-            self.switch_freq(lhs, rhs)
-            return
-        if 'title' in switches:
-            self.switch_title(lhs, rhs)
-            return
-        if 'color' in switches:
-            self.switch_color(lhs, rhs)
-            return
-        if 'on' in switches:
-            self.switch_on(lhs, rhs)
-            return
-        if 'off' in switches:
-            self.switch_off(lhs, rhs)
-            return
-        if 'gag' in switches:
-            self.switch_gag(lhs, rhs)
-            return
-        if 'ungag' in switches:
-            self.switch_ungag(lhs, rhs)
-            return
-        if 'init' in switches:
-            self.switch_init(lhs, rhs)
-            return
-        if 'codename' in switches:
-            self.switch_codename(lhs, rhs)
-            return
-        if 'nospoof' in switches:
-            self.switch_nospoof(lhs, rhs)
-            return
-        if 'monitor' in switches:
-            self.switch_monitor(lhs, rhs)
+        if switches:
+            switch = switches[0]
+            getattr(self, 'switch_%s' % switch)(lhs, rhs)
             return
         if self.args:
             self.switch_broadcast(lhs, rhs)
             return
         else:
-            self.switch_list()
+            self.switch_list(lhs, rhs)
 
     def switch_broadcast(self, lhs, rhs):
         try:
@@ -141,7 +106,7 @@ class CmdRadio(AthCommand):
             return
         slot = self.character.radio.filter(key__istartswith=slot_name).first()
         chan = slot.frequency.channel
-        chan.character_msg(self.character, rhs, slot=slot)
+        chan.msg(rhs, senders=self.character, slot=slot)
 
     def switch_init(self, lhs, rhs):
         try:
@@ -310,7 +275,7 @@ class CmdRadio(AthCommand):
         slot.ungag()
         self.sys_msg("Radio slot un-gagged.")
 
-    def switch_list(self):
+    def switch_list(self, lhs, rhs):
         message = list()
         message.append(header('Radio Config', viewer=self.character))
         radio_table = make_table('Sta', 'Name', 'Freq', 'Codename', 'Title', 'Members', width=[5, 18, 11, 18, 18, 8], viewer=self.character)

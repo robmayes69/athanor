@@ -63,10 +63,10 @@ def make_column_table(*args, **kwargs):
     else:
         header = False
 
-    table = evtable.EvTable(*args, border=border,pad_width=0, valign='t', header_line_char=ANSIString('{M-{n'),
-                            corner_char=ANSIString('{M+{n'), border_left_char=ANSIString('{M|{n'),
-                            border_right_char=ANSIString('{M|{n'), border_bottom_char=ANSIString('{M-{n'),
-                            border_top_char=ANSIString('{M-{n'), header=header)
+    table = evtable.EvTable(*args, border=border,pad_width=0, valign='t', header_line_char=ANSIString('{M-|n'),
+                            corner_char=ANSIString('{M+|n'), border_left_char=ANSIString('{M||n'),
+                            border_right_char=ANSIString('{M||n'), border_bottom_char=ANSIString('{M-|n'),
+                            border_top_char=ANSIString('{M-|n'), header=header)
     return table
 
 def start_menu(*args, **kwargs):
@@ -237,13 +237,13 @@ def header(header_text=None, width=78, width_mode='fixed', fill_character=None, 
     if header_text:
         if color_header:
             header_text = ANSIString(header_text).clean()
-            header_text = ANSIString('{n{%s%s{n' % (colors['headertext'], header_text))
+            header_text = ANSIString('|n|%s%s|n' % (colors['headertext'], header_text))
         if mode == 'header':
-            begin_center = ANSIString("{n{%s<{%s* {n" % (colors['border'], colors['headerstar']))
-            end_center = ANSIString("{n {%s*{%s>{n" % (colors['headerstar'], colors['border']))
+            begin_center = ANSIString("|n|%s<|%s* |n" % (colors['border'], colors['headerstar']))
+            end_center = ANSIString("|n |%s*|%s>|n" % (colors['headerstar'], colors['border']))
             center_string = ANSIString(begin_center + header_text + end_center)
         else:
-            center_string = ANSIString('{n {%s%s {n' % (colors['headertext'], header_text))
+            center_string = ANSIString('|n |%s%s |n' % (colors['headertext'], header_text))
     else:
         center_string = ''
 
@@ -253,12 +253,12 @@ def header(header_text=None, width=78, width_mode='fixed', fill_character=None, 
         fill_character = '='
     elif not fill_character:
         fill_character = '-'
-    fill = ANSIString('{n{%s%s{n' % (colors['border'], fill_character))
+    fill = ANSIString('|n|%s%s|n' % (colors['border'], fill_character))
 
     if edges:
         if not edge_character:
             edge_character = '='
-        edge_fill = ANSIString('{n{%s%s{n' % (colors['border'], edge_character))
+        edge_fill = ANSIString('|n|%s%s|n' % (colors['border'], edge_character))
         main_string = ANSIString(center_string).center(width, fill)
         return ANSIString(edge_fill) + ANSIString(main_string) + ANSIString(edge_fill)
     else:
@@ -371,7 +371,7 @@ class Speech(object):
             return ANSIString(self.demarkup())
         return_string = None
         if self.special_format == 0:
-            return_string = '%s says, "%s{n"' % (self.markup_name, self.markup_string)
+            return_string = '%s says, "%s|n"' % (self.markup_name, self.markup_string)
         elif self.special_format == 1:
             return_string = '%s %s' % (self.markup_name, self.markup_string)
         elif self.special_format == 2:
@@ -386,7 +386,7 @@ class Speech(object):
     def demarkup(self):
         return_string = None
         if self.special_format == 0:
-            return_string = '%s says, "%s{n"' % (self.display_name, self.speech_string)
+            return_string = '%s says, "%s|n"' % (self.display_name, self.speech_string)
         elif self.special_format == 1:
             return_string = '%s %s' % (self.display_name, self.speech_string)
         elif self.special_format == 2:

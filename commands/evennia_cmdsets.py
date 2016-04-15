@@ -59,7 +59,7 @@ class PlayerCmdSet(CmdSet):
         self.add(building.CmdExamine())
 
         # Help command
-        self.add(help.CmdHelp())
+        #self.add(help.CmdHelp())
 
         # system commands
         self.add(system.CmdReload())
@@ -115,7 +115,7 @@ class CharacterCmdSet(CmdSet):
         self.add(general.CmdAccess())
 
         # The help system
-        self.add(help.CmdHelp())
+        #self.add(help.CmdHelp())
         self.add(help.CmdSetHelp())
 
         # System commands

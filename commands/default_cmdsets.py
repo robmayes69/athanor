@@ -28,6 +28,8 @@ from commands.login import CmdMushConnect, CmdCharCreate
 from commands.storyteller import CmdEditChar, CmdSheet
 from commands.channels import CmdChannels
 from commands.radio import CmdRadio
+from commands.fclist import CmdFCList
+from commands.help import CmdHelp, CmdAdminHelp
 
 class CharacterCmdSet(OldCharacter):
     """
@@ -65,6 +67,7 @@ class CharacterCmdSet(OldCharacter):
         self.add(CmdGameConfig())
         self.add(CmdChannels())
         self.add(CmdRadio())
+        self.add(CmdFCList())
 
 
 class PlayerCmdSet(OldPlayer):
@@ -93,6 +96,8 @@ class PlayerCmdSet(OldPlayer):
         self.add(CmdEmail())
         self.add(CmdUsername())
         self.add(CmdCharCreate())
+        self.add(CmdHelp())
+        self.add(CmdAdminHelp())
 
 
 class UnloggedinCmdSet(OldUnlogged):

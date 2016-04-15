@@ -18,6 +18,9 @@ class JobCategory(models.Model):
     def __str__(self):
         return self.key
 
+    def setup(self):
+        self.locks.add('admin:perm(Wizards);post:all()')
+        self.save()
 
 class Job(models.Model):
     category = models.ForeignKey('jobs.JobCategory', related_name='jobs')

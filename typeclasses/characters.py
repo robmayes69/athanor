@@ -75,7 +75,7 @@ class Character(DefaultCharacter):
             ObjectDB instance.
 
         Raises:
-            AthanorError: If character cannot be found.
+            ValueError: If character cannot be found.
 
         """
         if not search_name:

@@ -9,6 +9,7 @@ from __future__ import unicode_literals
 from evennia import Command as BaseCommand
 from evennia import default_cmds
 from commands.library import partial_match
+from typeclasses.scripts import SETTINGS
 
 class Command(BaseCommand):
     """
@@ -147,6 +148,7 @@ class AthCommand(MuxCommand):
     admin_switches = []
     help_category = 'Athanor'
     system_name = 'SYSTEM'
+    admin_help = False
 
     def partial(self, partial_list, start_list):
         return partial_match(partial_list, start_list)
@@ -161,7 +163,10 @@ class AthCommand(MuxCommand):
             system_name = self.system_name
         if not sender:
             sender = self.caller
-        #staff_report(message, system_name, sender)
+        channels = SETTINGS['alerts_channels']
+        alert_string = '|w[%s]|n |C%s|n: %s' % (sender, system_name, message)
+        for chan in channels:
+            chan.msg(alert_string, emit=True)
 
     def error(self, message, target=None):
         if not target:
