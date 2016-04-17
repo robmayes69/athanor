@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 import datetime, pytz, random, MySQLdb, MySQLdb.cursors as cursors
 from django.conf import settings
 from commands.command import AthCommand
-from commands.library import partial_match, dramatic_capitalize, sanitize_string, penn_substitutions
+from commands.library import partial_match, dramatic_capitalize, sanitize_string, penn_substitutions, utcnow
 from world.database.mushimport.models import MushObject, cobj, pmatch, objmatch, MushAttributeName
 from world.database.communications.models import ObjectStub
 from world.database.bbs.models import Board, BoardGroup
@@ -11,7 +11,8 @@ from world.database.groups.models import Group
 from world.database.grid.models import District
 from world.database.fclist.models import FCList, StatusKind, TypeKind
 from world.database.radio.models import RadioFrequency, RadioSlot
-from world.database.jobs.models import JobCategory, Job, JobComment, JobHandler
+from world.database.jobs.models import JobCategory
+from world.database.scenes.models import Plot, Event, Scene, Pose
 from evennia.utils import create
 from typeclasses.characters import Ex2Character, Ex3Character, Character
 
@@ -35,7 +36,7 @@ class CmdImport(AthCommand):
     system_name = 'IMPORT'
     locks = 'cmd:perm(Immortals)'
     admin_switches = ['initialize', 'grid', 'accounts', 'groups', 'bbs', 'ex2', 'ex3', 'experience', 'fclist', 'radio',
-                      'jobs']
+                      'jobs', 'scenes']
 
     def func(self):
         if not self.final_switches:
@@ -561,7 +562,6 @@ class CmdImport(AthCommand):
                 int_value = 0
             stats_dict[name] = int(int_value)
 
-        print character
         character.setup_storyteller()
         character.storyteller.swap_template(template)
         try:
@@ -713,10 +713,13 @@ class CmdImport(AthCommand):
                 link, created = type.exp_links.get_or_create(character=v.storyteller)
                 new_xp = link.entries.create(amount=amount, reason=reason, source=source, date_awarded=date)
                 new_xp.save()
+        db.close()
 
     def switch_jobs(self):
+
+        # Step one is importing all of the Job Categories from the MUSH data. Each category is a THING object
+        # So we don't need mysql just yet.
         cat_dict = dict()
-        from commands.mysql import sql_dict
         old_categories = cobj('jobdb').children.all()
         for old_cat in old_categories:
             new_cat, created = JobCategory.objects.get_or_create(key=old_cat.name)
@@ -724,5 +727,226 @@ class CmdImport(AthCommand):
                 new_cat.setup()
             cat_dict[old_cat.objid] = new_cat
 
+        # Establishing Mysql Connection!
+        from commands.mysql import sql_dict
         db = MySQLdb.connect(host=sql_dict['site'], user=sql_dict['username'],
                              passwd=sql_dict['password'], db=sql_dict['database'], cursorclass=cursors.DictCursor)
+        c = db.cursor()
+
+        # Our next order of business is retrieving all of the players who've ever posted jobs.
+        # This section searches the database by OBJID and creates a dictionary that links the old jobsys player_id
+        # to the new communications.ObjectStub, creating them if necessary.
+        c.execute("""SELECT * from jobsys_players""")
+        old_players = c.fetchall()
+        stub_dict = dict()
+        for old_player in old_players:
+            match = objmatch(old_player['objid'])
+            if match:
+                if match.obj:
+                    stub, created = ObjectStub.objects.get_or_create(object=match.obj, key=match.obj.key)
+                else:
+                    stub = ObjectStub.objects.create(key=old_player['player_name'])
+                    stub.save()
+            else:
+                stub = ObjectStub.objects.create(key=old_player['player_name'])
+                stub.save()
+            stub_dict[old_player['player_id']] = stub
+
+        # Now that we have the Player ID->Stub dictionary, we can begin the process of actually importing job data!
+        # we only want the jobs from categories that actually exist. Probably rare that any of them wouldn't be, but
+        # just in case...
+        cat_list = ', '.join("'%s'" % cat for cat in cat_dict.keys())
+        c.execute("""SELECT * from jobsys_jobs WHERE job_objid IN (%s) ORDER BY job_id""" % cat_list)
+        old_jobs = c.fetchall()
+        for row in old_jobs:
+            job_id = row['job_id']
+            if row['close_date']:
+                close_date = row['close_date'].replace(tzinfo=pytz.utc)
+            else:
+                close_date = None
+            if row['due_date']:
+                due_date = row['due_date'].replace(tzinfo=pytz.utc)
+            else:
+                due_date = None
+            if row['submit_date']:
+                submit_date = row['submit_date'].replace(tzinfo=pytz.utc)
+            else:
+                submit_date = None
+            title = row['job_title']
+            status = row['job_status']
+            owner = stub_dict[row['player_id']]
+            text = penn_substitutions(row['job_text'])
+            category = cat_dict[row['job_objid']]
+
+            handler_dict = dict()
+            # We have our job row data prepped! Now to create the job and its opening comment as well as the owner-handler.
+            new_job = category.jobs.create(title=title, submit_date=submit_date, due_date=due_date,
+                                           close_date=close_date, status=status)
+            new_owner = new_job.characters.create(character=owner, is_owner=True, check_date=utcnow())
+            new_owner.comments.create(text=text, date_made=submit_date)
+            handler_dict[row['player_id']] = new_owner
+
+            # Here it's time to import all of the job's claims, handlers, watchers, and create JobHandler rows for them.
+            c.execute("""SELECT * from jobsys_claim WHERE job_id=%s""", (job_id,))
+            claim_data = c.fetchall()
+            for old_claim in claim_data:
+                stub = stub_dict[old_claim['player_id']]
+                new_handler, created = new_job.characters.get_or_create(character=stub, check_date=utcnow())
+                if old_claim['claim_mode'] == 0:
+                    new_handler.is_handler = True
+                if old_claim['claim_mode'] == 1:
+                    new_handler.is_helper = True
+                new_handler.save()
+                handler_dict[old_claim['player_id']] = new_handler
+
+            # Unfortunately it's also possible that people who didn't claim it might also need JobHandler entries so...
+            c.execute("""SELECT DISTINCT player_id from jobsys_comments WHERE job_id=%s""", (job_id,))
+            all_speakers = c.fetchall()
+            for speaker in all_speakers:
+                if speaker['player_id'] not in handler_dict:
+                    new_handler, created = new_job.characters.get_or_create(character=stub_dict[speaker['player_id']],
+                                                                            check_date=utcnow())
+                    handler_dict[speaker['player_id']] = new_handler
+
+            # And another round. This time it's a matter of importing handlers for anyone who ever CHECKED a job.
+            # Here we'll also import everyone's 'last date they checked the job'.
+            c.execute("""SELECT * FROM jobsys_check WHERE job_id=%s""", (job_id,))
+            old_checks = c.fetchall()
+            for check in old_checks:
+                if check['player_id'] not in handler_dict:
+                    handler, created = new_job.characters.get_or_create(character=stub_dict[check['player_id']],
+                                                                        check_date=utcnow())
+                    handler_dict[check['player_id']] = new_handler
+                else:
+                    handler = handler_dict[check['player_id']]
+                handler.check_date = check['check_date'].replace(tzinfo=pytz.utc)
+                handler.save(update_fields=['check_date'])
+
+            # Now to import all of the comments and replies.
+            c.execute("""SELECT * from jobsys_comments WHERE job_id=%s ORDER BY comment_id""", (job_id,))
+            old_comments = c.fetchall()
+            for old_com in old_comments:
+                handler = handler_dict[old_com['player_id']]
+                comment_text = penn_substitutions(old_com['comment_text'])
+                comment_date = old_com['comment_date'].replace(tzinfo=pytz.utc)
+                private = old_com['comment_type']
+                handler.comments.create(text=comment_text, date_made=comment_date, is_private=private)
+        db.close()
+
+    def switch_scenes(self):
+
+        # Establishing Mysql Connection!
+        from commands.mysql import sql_dict
+        db = MySQLdb.connect(host=sql_dict['site'], user=sql_dict['username'],
+                             passwd=sql_dict['password'], db=sql_dict['database'], cursorclass=cursors.DictCursor)
+        c = db.cursor()
+
+        # Just like with jobs, we need to create Stubs for everyone who has ever used SceneSys and link them to their
+        # Scene IDs! Same code, believe it or not.
+        c.execute("""SELECT * from scene_players""")
+        old_players = c.fetchall()
+        stub_dict = dict()
+        for old_player in old_players:
+            match = objmatch(old_player['objid'])
+            if match:
+                if match.obj:
+                    stub, created = ObjectStub.objects.get_or_create(object=match.obj, key=match.obj.key)
+                else:
+                    stub = ObjectStub.objects.create(key=old_player['player_name'])
+                    stub.save()
+            else:
+                stub = ObjectStub.objects.create(key=old_player['player_name'])
+                stub.save()
+            stub_dict[old_player['player_id']] = stub
+
+        # Convert plots! This one's pretty easy.
+        c.execute("""SELECT * FROM scene_plots ORDER BY plot_id""")
+        old_plots = c.fetchall()
+        plot_dict = dict()
+        for old_plot in old_plots:
+            if old_plot['start_date']:
+                start_date = old_plot['start_date'].replace(tzinfo=pytz.utc)
+            else:
+                start_date = None
+            if old_plot['end_date']:
+                end_date = old_plot['end_date'].replace(tzinfo=pytz.utc)
+            else:
+                end_date = None
+            owner = stub_dict[old_plot['player_id']]
+            description = penn_substitutions(old_plot['plot_desc'])
+            plot_type = old_plot['plot_type']
+            title = old_plot['title']
+            new_plot = Plot.objects.create(owner=owner, description=description, title=title, date_start=start_date,
+                                date_end=end_date, type=plot_type)
+            plot_dict[old_plot['plot_id']]= new_plot
+
+        # Another easy one. Importing the Events calendar of scheduled scenes.
+        event_dict = dict()
+        c.execute("""SELECT * from scene_schedule ORDER BY schedule_id""")
+        old_events = c.fetchall()
+        for old_event in old_events:
+            owner = stub_dict[old_event['player_id']]
+            schedule_date = old_event['schedule_date'].replace(tzinfo=pytz.utc)
+            description = penn_substitutions(old_event['schedule_desc'])
+            schedule_title = old_event['schedule_title']
+            plot = plot_dict.get(old_event['plot_id'], None)
+
+            new_event = Event.objects.create(owner=owner, date_schedule=schedule_date, description=description,
+                                             title=schedule_title, plot=plot)
+            event_dict[old_event['schedule_id']] = new_event
+
+        # Now we begin the process of importing scenes. This is a very involved process!
+        scene_dict = dict()
+        c.execute("""SELECT * FROM scene_scenes ORDER BY scene_id""")
+        old_scenes = c.fetchall()
+        for old_scene in old_scenes:
+            owner = stub_dict[old_scene['player_id']]
+            scene_title = old_scene['scene_title']
+            scene_desc = old_scene['scene_desc']
+            scene_status = int(old_scene['scene_state'])
+
+            creation_date = old_scene['creation_date'].replace(tzinfo=pytz.utc)
+
+            if old_scene['finish_date']:
+                finish_date = old_scene['finish_date'].replace(tzinfo=pytz.utc)
+            else:
+                finish_date = None
+
+            plot = plot_dict.get(old_scene['plot_id'], None)
+
+            old_loc = objmatch(old_scene['room_objid'])
+            if old_loc.obj:
+                old_loc = objmatch(old_scene['room_objid']).obj
+                location, created = ObjectStub.objects.get_or_create(object=old_loc, key=old_loc.key)
+            else:
+                location = ObjectStub.objects.create(object=None, key=old_scene['room_name'])
+
+            new_scene = Scene.objects.create(owner=owner, title=scene_title, description=scene_desc, status=scene_status,
+                                             date_created=creation_date, date_finished=finish_date, plot=plot)
+
+            scene_dict[old_scene['scene_id']] = new_scene
+
+            # In this section we'll be setting up the Participants for this scene and making an index dictionary
+            # in preparation to import the poses.
+            part_dict = dict()
+            c.execute("""SELECT DISTINCT player_id FROM scene_poses WHERE scene_id=%s""", (old_scene['scene_id'],))
+            posers = c.fetchall()
+            for poser in posers:
+                new_part = new_scene.participants.create(actor=stub_dict[poser['player_id']])
+                part_dict[poser['player_id']] = new_part
+
+            # Finally it's time to import the individual poses!
+            pose_dict = dict()
+            c.execute("""SELECT * from scene_poses WHERE scene_id=%s""", (old_scene['scene_id'],))
+            old_poses = c.fetchall()
+            for pose in old_poses:
+                parse_pose = pose['pose'].decode('utf-8',errors='ignore')
+                owner = part_dict[pose['player_id']]
+                pose_date = pose['pose_time'].replace(tzinfo=pytz.utc)
+                ignore = bool(int(pose['pose_ignore']))
+                pose_text = penn_substitutions(parse_pose)
+
+                new_pose = Pose.objects.create(owner=owner, ignore=ignore, text=pose_text, date_made=pose_date,
+                                               location=location)
+                pose_dict[pose['pose_id']] = new_pose
+        db.close()

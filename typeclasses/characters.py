@@ -146,6 +146,18 @@ class Character(DefaultCharacter):
             self.db._last_played = utcnow()
         return self.db._last_played
 
+    def off_or_idle_time(self, viewer):
+        idle = self.idle_time
+        if idle is None or not viewer.can_see(self):
+            return '|XOff|n'
+        return time_format(idle, style=1)
+
+    def off_or_conn_time(self, viewer):
+        conn = self.connection_time
+        if conn is None or not viewer.can_see(self):
+            return '|XOff|n'
+        return time_format(conn, style=1)
+
     def last_or_idle_time(self, viewer):
         idle = self.idle_time
         last = self.last_played()

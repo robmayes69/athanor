@@ -7,6 +7,7 @@ from evennia.locks.lockhandler import LockHandler
 
 # Create your models here.
 
+
 class JobCategory(models.Model):
     key = models.CharField(max_length=50, unique=True, db_index=True)
     lock_storage = models.TextField('locks', blank=True)
@@ -21,6 +22,7 @@ class JobCategory(models.Model):
     def setup(self):
         self.locks.add('admin:perm(Wizards);post:all()')
         self.save()
+
 
 class Job(models.Model):
     category = models.ForeignKey('jobs.JobCategory', related_name='jobs')

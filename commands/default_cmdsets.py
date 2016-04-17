@@ -20,7 +20,7 @@ from commands.community import CmdWho, CmdPWho
 from commands.info_files import CmdInfo
 from commands.bbs import CmdBBAdmin, CmdBBList, CmdBBRead, CmdBBWrite, CmdGBAdmin, CmdGBList, CmdGBRead, CmdGBWrite
 from commands.account_management import CmdPlayerConfig, CmdTz, CmdWatch, CmdUsername, CmdEmail
-from commands.admin import CmdPlayers, CmdGameConfig
+from commands.admin import CmdPlayers, CmdGameConfig, CmdAdmin
 from commands.groups import GROUP_COMMANDS
 from commands.grid_management import DISTRICT_COMMANDS
 from commands.mush_import import CmdImport
@@ -98,6 +98,7 @@ class PlayerCmdSet(OldPlayer):
         self.add(CmdCharCreate())
         self.add(CmdHelp())
         self.add(CmdAdminHelp())
+        self.add(CmdAdmin())
 
 
 class UnloggedinCmdSet(OldUnlogged):

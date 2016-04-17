@@ -296,17 +296,9 @@ class Player(DefaultPlayer):
             return target.return_appearance()
         else:
             characters = list(target)
-
             message = list()
             message.append(header("%s: Account Management" % settings.SERVERNAME))
-            info_column = make_column_table()
-            info_text = list()
-            info_text.append(unicode(ANSIString("Account:".rjust(8) + " {g%s{n" % (self.key))))
-            email = self.email if self.email != 'dummy@dummy.com' else '<blank>'
-            info_text.append(unicode(ANSIString("Email:".rjust(8) + ANSIString(" {g%s{n" % email))))
-            info_text.append(unicode(ANSIString("Perms:".rjust(8) + " {g%s{n" % ", ".join(self.permissions.all()))))
-            info_column.add_row("\n".join(info_text), width=78)
-            message.append(info_column)
+            message.append(self.at_look_info_section())
             message += self.at_look_session_menu()
             message.append(subheader('Commands'))
             command_column = make_column_table()
@@ -328,11 +320,27 @@ class Player(DefaultPlayer):
                 self.max_character_slots() - len(characters), self.max_character_slots())))
             self.msg('\n'.join(unicode(line) for line in message))
 
-    def at_look_session_menu(self):
+    def at_look_info_section(self, viewer=None):
+        if not viewer:
+            viewer = self
+        message = list()
+        info_column = make_column_table()
+        info_text = list()
+        info_text.append(unicode(ANSIString("Account:".rjust(8) + " {g%s{n" % (self.key))))
+        email = self.email if self.email != 'dummy@dummy.com' else '<blank>'
+        info_text.append(unicode(ANSIString("Email:".rjust(8) + ANSIString(" {g%s{n" % email))))
+        info_text.append(unicode(ANSIString("Perms:".rjust(8) + " {g%s{n" % ", ".join(self.permissions.all()))))
+        info_column.add_row("\n".join(info_text), width=78)
+        message.append(info_column)
+        return message
+
+    def at_look_session_menu(self, viewer=None):
+        if not viewer:
+            viewer = self
         sessions = self.sessions.all()
         message = list()
-        message.append(subheader('Sessions'))
-        sesstable = make_table('ID', 'Protocol', 'Address', 'Connected', width=[7, 22, 22, 27])
+        message.append(subheader('Sessions', viewer=viewer))
+        sesstable = make_table('ID', 'Protocol', 'Address', 'Connected', width=[7, 22, 22, 27], viewer=viewer)
         for session in sessions:
             conn_duration = time.time() - session.conn_time
             sesstable.add_row(session.sessid, session.protocol_key,
@@ -343,11 +351,13 @@ class Player(DefaultPlayer):
         # message.append(separator())
         return message
 
-    def at_look_character_menu(self):
+    def at_look_character_menu(self, viewer=None):
+        if not viewer:
+            viewer = self
         message = list()
         characters = self.get_all_characters()
-        message.append(subheader('Characters'))
-        chartable = make_table('ID', 'Name', 'Type', 'Last Login', width=[7, 36, 15, 20])
+        message.append(subheader('Characters', viewer=viewer))
+        chartable = make_table('ID', 'Name', 'Type', 'Last Login', width=[7, 36, 15, 20], viewer=viewer)
         for character in characters:
             login = character.last_played()
             if login:

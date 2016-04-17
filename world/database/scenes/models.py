@@ -2,14 +2,17 @@ from __future__ import unicode_literals
 from django.db import models
 from commands.library import utcnow, header, separator, make_table
 
+
 # Create your models here.
+
+
 class Plot(models.Model):
     owner = models.ForeignKey('communications.ObjectStub', related_name='plots')
     title = models.CharField(max_length=150)
     description = models.TextField(blank=True)
     date_start = models.DateTimeField(null=True)
     date_end = models.DateTimeField(null=True)
-    status = models.SmallIntegerField(default=0, db_index=True)
+    type = models.CharField(max_length=40, blank=True, null=True)
 
     def display_plot(self, viewer):
         message = list()
@@ -20,7 +23,7 @@ class Plot(models.Model):
         message.append('Status: %s' % ('Running' if not self.status else 'Finished'))
         message.append(self.description)
         message.append(separator('Scenes'))
-        scenes_table = make_table('ID','Name','Date','Description,','Participants', width=[3, 10, 10, 10, 30])
+        scenes_table = make_table('ID', 'Name', 'Date', 'Description,', 'Participants', width=[3, 10, 10, 10, 30])
         for scene in self.scenes.all().order_by('date_created'):
             scenes_table.add_row(scene.id, scene.title, viewer.display_local_time(date=scene.date_created),
                                  scene.description, '')
@@ -45,10 +48,11 @@ class Plot(models.Model):
     def locations(self):
         return Pose.objects.filter(scene__in=self.scenes).values_list('location', flat=True).distinct()
 
+
 class Scene(models.Model):
     owner = models.ForeignKey('communications.ObjectStub', related_name='scenes')
-    title = models.CharField(max_length=150)
-    description = models.TextField(blank=True)
+    title = models.CharField(max_length=150, blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
     date_created = models.DateTimeField()
     date_finished = models.DateTimeField(null=True)
     plot = models.ForeignKey('Plot', null=True, related_name='scenes')
@@ -64,12 +68,11 @@ class Scene(models.Model):
         message.append('Owner: %s' % self.owner)
         message.append('Status: %s' % self.display_status())
         message.append(separator('Players'))
-        player_table = make_table('Name', 'Status', 'Poses')
-        participants = sorted(self.poses.exclude(ignore=True).values_list('owner', flat=True).distinct(), key=lambda char: str(char).lower())
-        for participant in participants:
-            player_table.add_row(participant, '', self.poses.filter(owner=participant,ignore=False).count())
+        player_table = make_table('Name', 'Status', 'Poses', width=[35, 30, 13])
+        for participant in self.participants.order_by('actor'):
+            player_table.add_row(participant.actor, '', participant.poses.exclude(ignore=True).count())
         message.append(player_table)
-        message.append(header)
+        message.append(header(viewer=viewer))
         return "\n".join([unicode(line) for line in message])
 
     def display_status(self):
@@ -77,7 +80,7 @@ class Scene(models.Model):
             return 'Active'
         if self.status == 1:
             return 'Paused'
-        if self.status == 2:
+        if self.status == 3:
             return 'Finished'
 
     def msg(self, text):
@@ -87,8 +90,8 @@ class Scene(models.Model):
     @property
     def recipients(self):
         recip_list = list()
-        if self.owner.actor: recip_list.append(self.owner)
-        recip_list += [actor.object for actor in self.participants.values_list('actor', flat=True) if actor.object]
+        if self.owner: recip_list.append(self.owner)
+        recip_list += [actor.object for actor in self.participants if actor.object]
         return set(recip_list)
 
     @property
@@ -98,6 +101,7 @@ class Scene(models.Model):
     @property
     def poses(self):
         return Pose.objects.filter(owner__scene=self)
+
 
 class Participant(models.Model):
     actor = models.ForeignKey('communications.ObjectStub', related_name='scenes')
@@ -110,15 +114,16 @@ class Participant(models.Model):
 class Pose(models.Model):
     owner = models.ForeignKey('scenes.Participant', related_name='poses')
     ignore = models.BooleanField(default=False, db_index=True)
-    date_made = models.DateTimeField()
+    date_made = models.DateTimeField(db_index=True)
     text = models.TextField(blank=True)
-    location = models.ForeignKey('communications.ObjectStub', related_name='poses_here')
+    location = models.ForeignKey('communications.ObjectStub', null=True, related_name='poses_here', on_delete=models.SET_NULL)
 
     def display_pose(self, viewer):
         message = []
         message.append(separator('%s Posed on %s' % (self.owner, viewer.display_local_time(date=self.date_made))))
         message.append(self.text)
         return "\n".join([unicode(line) for line in message])
+
 
 class Event(models.Model):
     owner = models.ForeignKey('communications.ObjectStub', related_name='events')
@@ -141,5 +146,5 @@ class Event(models.Model):
         for char in interested:
             interest_table.add_row(char.key, char.last_or_conn_time(viewer), char.last_or_idle_time(viewer))
         message.append(interest_table)
-        message.append(header())
+        message.append(header(viewer=viewer))
         return "\n".join([unicode(line) for line in message])

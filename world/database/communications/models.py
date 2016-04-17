@@ -118,9 +118,20 @@ class Message(models.Model):
         self.creation_date = utcnow()
         return super(Message, self).save(*args, **kwargs)
 
+
 class Login(models.Model):
     player = models.ForeignKey('players.PlayerDB',related_name='logins')
     date = models.DateTimeField(auto_now_add=True)
     ip = models.GenericIPAddressField()
     site = models.CharField(max_length=300)
     result = models.CharField(max_length=200)
+
+
+class StaffEntry(models.Model):
+    character = models.OneToOneField('objects.ObjectDB', related_name='staff_entry')
+    order = models.PositiveSmallIntegerField(default=0)
+    position = models.CharField(max_length=255, null=True, blank=True)
+    duty = models.BooleanField(default=False)
+
+    def __str__(self):
+        return self.character.key

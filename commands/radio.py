@@ -290,7 +290,7 @@ class CmdRadio(AthCommand):
         message.append(subheader(viewer=self.character))
         self.msg_lines(message)
 
-    def switch_all(self):
+    def switch_all(self, lhs, rhs):
         message = list()
         message.append(header('All Frequencies', viewer=self.character))
         radio_table = make_table('Freq', 'Members', width=[15, 63],
