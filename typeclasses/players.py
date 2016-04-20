@@ -331,7 +331,7 @@ class Player(DefaultPlayer):
         info_text.append(unicode(ANSIString("Perms:".rjust(8) + " {g%s{n" % ", ".join(self.permissions.all()))))
         info_column.add_row("\n".join(info_text), width=78)
         message.append(info_column)
-        return message
+        return '\n'.join(unicode(line) for line in message)
 
     def at_look_session_menu(self, viewer=None):
         if not viewer:
@@ -348,7 +348,7 @@ class Player(DefaultPlayer):
                                  utils.time_format(conn_duration, 0))
         message.append(sesstable)
         # message.append(separator())
-        return message
+        return '\n'.join(unicode(line) for line in message)
 
     def at_look_character_menu(self, viewer=None):
         if not viewer:
@@ -366,7 +366,7 @@ class Player(DefaultPlayer):
             chartable.add_row(character.id, character.key, character.character_type, login)
         message.append(chartable)
         # message.append(separator())
-        return message
+        return '\n'.join(unicode(line) for line in message)
 
 class Guest(DefaultGuest):
     """
