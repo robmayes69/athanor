@@ -297,7 +297,7 @@ class Player(DefaultPlayer):
             characters = list(target)
             message = list()
             message.append(header("%s: Account Management" % settings.SERVERNAME))
-            message.append(self.at_look_info_section())
+            message += self.at_look_info_section()
             message += self.at_look_session_menu()
             message.append(subheader('Commands'))
             command_column = make_column_table()
@@ -331,7 +331,7 @@ class Player(DefaultPlayer):
         info_text.append(unicode(ANSIString("Perms:".rjust(8) + " {g%s{n" % ", ".join(self.permissions.all()))))
         info_column.add_row("\n".join(info_text), width=78)
         message.append(info_column)
-        return '\n'.join(unicode(line) for line in message)
+        return message
 
     def at_look_session_menu(self, viewer=None):
         if not viewer:
@@ -348,7 +348,7 @@ class Player(DefaultPlayer):
                                  utils.time_format(conn_duration, 0))
         message.append(sesstable)
         # message.append(separator())
-        return '\n'.join(unicode(line) for line in message)
+        return message
 
     def at_look_character_menu(self, viewer=None):
         if not viewer:
@@ -366,7 +366,7 @@ class Player(DefaultPlayer):
             chartable.add_row(character.id, character.key, character.character_type, login)
         message.append(chartable)
         # message.append(separator())
-        return '\n'.join(unicode(line) for line in message)
+        return message
 
 class Guest(DefaultGuest):
     """
