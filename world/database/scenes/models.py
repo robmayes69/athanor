@@ -132,6 +132,7 @@ class Event(models.Model):
     date_schedule = models.DateTimeField(db_index=True)
     plot = models.ForeignKey('Plot', null=True, related_name='events')
     interest = models.ManyToManyField('objects.ObjectDB')
+    post = models.OneToOneField('bbs.Post', related_name='event', null=True)
 
     def display_event(self, viewer):
         message = []
@@ -148,3 +149,50 @@ class Event(models.Model):
         message.append(interest_table)
         message.append(header(viewer=viewer))
         return "\n".join([unicode(line) for line in message])
+
+    def setup(self):
+        from typeclasses.scripts import SETTINGS
+        board = SETTINGS('scene_board')
+        if not board:
+            return
+        subject = '#%s: %s' % (self.id, self.title)
+        text = self.post_text()
+        new_post = board.make_post(character=self.owner, subject=subject, text=text)
+        self.post = new_post
+        self.save(update_fields=['post'])
+
+    def post_text(self):
+        message = list()
+        message.append('|wTitle:|n %s' % (self.title))
+        message.append('|wPosted By:|n %s' % self.owner)
+        message.append('|wScheduled Time:|n %s' % self.date_schedule.strftime('%b %d %I:%M%p %Z'))
+        message.append('-'*78)
+        message.append(self.description)
+        return '\n'.join(unicode(line) for line in message)
+
+    def delete(self, *args, **kwargs):
+        if self.post:
+            self.post.delete()
+        super(Event, self).delete(*args, **kwargs)
+
+    def reschedule(self, new_time):
+        self.date_schedule = new_time
+        self.save(update_fields=['date_schedule'])
+        self.update_post()
+
+    def retitle(self, new_title):
+        self.title = new_title
+        self.save(update_fields=['title'])
+        self.update_post()
+
+    def update_post(self):
+        if self.post:
+            self.post.text = self.post_text()
+            self.post.modify_date = utcnow()
+            self.post.save(update_fields=['text', 'modify_date'])
+
+class Pot(models.Model):
+    owner = models.ForeignKey('objects.ObjectDB', related_name='pot_poses')
+    location = models.ForeignKey('objects.ObjectDB', related_name='pot_poses_here')
+    date_made = models.DateTimeField(auto_now_add=True)
+    text = models.TextField(blank=True)

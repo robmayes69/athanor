@@ -123,6 +123,11 @@ class GameSetting(object):
                 return ', '.join(thing for thing in self.value)
         elif self.kind == 'Color':
             return '|%s%s|n' % (self.value, self.value)
+        elif self.kind == 'Board':
+            if self.value:
+                return '%s: %s' % (self.value.order, self.value.key)
+            else:
+                return 'None'
         return str(self.value)
 
     @property
@@ -175,16 +180,14 @@ class GameSetting(object):
 
     def validate_board(self, new_value):
         from world.database.bbs.models import BoardGroup
-        board_group = BoardGroup.objects.get_or_create(main=1, group=None).first()
+        board_group, created = BoardGroup.objects.get_or_create(main=1, group=None)
         board = board_group.find_board(find_name=new_value)
         return board
 
     def validate_channels(self, new_value):
         from typeclasses.channels import PublicChannel
         channels = PublicChannel.objects.filter_family()
-        print new_value
         values_list = new_value.split(',')
-        print values_list
         values_list = [value.strip() for value in values_list]
         channels_list = [partial_match(value, channels) for value in values_list]
         return tuple(sorted(list(set(channels_list)), key=lambda chan: chan.key))

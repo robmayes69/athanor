@@ -30,6 +30,7 @@ from commands.channels import CmdChannels
 from commands.radio import CmdRadio
 from commands.fclist import CmdFCList
 from commands.help import CmdHelp, CmdAdminHelp
+from commands.scene import CmdEvents
 
 class CharacterCmdSet(OldCharacter):
     """
@@ -68,6 +69,7 @@ class CharacterCmdSet(OldCharacter):
         self.add(CmdChannels())
         self.add(CmdRadio())
         self.add(CmdFCList())
+        self.add(CmdEvents())
 
 
 class PlayerCmdSet(OldPlayer):

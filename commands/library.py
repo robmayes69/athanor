@@ -149,6 +149,34 @@ def utcnow():
     return datetime.datetime.utcnow().replace(tzinfo=utc)
 
 
+def utc_from_string(input=None, tz=None):
+    """
+
+    Args:
+        input (str): A date string from a user.
+        tz (pytz): An instance of pytz from the user.
+
+    Returns:
+        datetime in utc.
+    """
+    if not input:
+        raise ValueError("No time string entered!")
+    cur_year = utcnow().strftime('%Y')
+    split_time = input.split(' ')
+    if len(split_time) == 3:
+        input = "{0} {1} {2} {3}".format(split_time[0], split_time[1], split_time[2], cur_year)
+    elif len(split_time) == 4:
+        pass
+    else:
+        raise ValueError("Time must be entered in a 24-hour format such as: %s" % utcnow().strftime('%b %d %H:%H'))
+    try:
+        local = datetime.datetime.strptime(input, '%b %d %H:%M %Y')
+    except ValueError:
+        raise ValueError("Time must be entered in a 24-hour format such as: %s" % utcnow().strftime('%b %d %H:%H'))
+    local_tz = tz.localize(local)
+    return local_tz.astimezone(utc)
+
+
 def duration_from_string(time_string):
     """
     Take a string and derive a datetime timedelta from it.

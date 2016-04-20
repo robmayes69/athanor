@@ -203,18 +203,21 @@ class Board(models.Model):
         return [char for char in connected_characters() if self.check_permission(checker=char)
                 and not char in self.ignore_list.all()]
 
-    def make_post(self, stub=None, subject=None, text=None, announce=True, date=utcnow()):
-        if not stub:
+    def make_post(self, character=None, subject=None, text=None, announce=True, date=None):
+        if not character:
             raise ValueError("No player data to use.")
         if not text:
             raise ValueError("Text field empty.")
         if not subject:
             raise ValueError("Subject field empty.")
+        if not date:
+            date = utcnow()
         order = self.posts.all().count() + 1
-        post = self.posts.create(owner=stub, subject=subject, text=text, creation_date=date,
+        post = self.posts.create(owner=character, subject=subject, text=text, creation_date=date,
                                  modify_date=date, timeout=self.timeout, order=order)
         if announce:
             self.announce_post(post)
+        return post
 
     def announce_post(self, post):
         postid = '%s/%s' % (self.order, post.order)
