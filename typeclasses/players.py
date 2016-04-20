@@ -113,8 +113,7 @@ class Player(DefaultPlayer):
             self.db._playable_characters = []
 
         # All Players need an Actor and WatchFor entry!
-        from world.database.communications.models import PlayerStub, WatchFor
-        PlayerStub.objects.get_or_create(player=self, key=self.key)
+        from world.database.communications.models import WatchFor
         WatchFor.objects.get_or_create(player=self)
 
     def at_post_login(self, session=None):

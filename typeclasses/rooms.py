@@ -10,16 +10,10 @@ from typeclasses.characters import Character
 from evennia import DefaultRoom
 from commands.library import header, subheader, make_table, tabular_table
 
-
-class Room(DefaultRoom):
+class BaseRoom(DefaultRoom):
     """
-    Rooms are like any Object, except their location is None
-    (which is default). They also use basetype_setup() to
-    add locks so they cannot be puppeted or picked up.
-    (to change that, use at_object_creation instead)
-
-    See examples/object.py for a list of
-    properties and methods available on all Objects.
+    This class is a placeholder meant to represent deleted rooms. It implements the main room logic, but should
+    not be used for new rooms.
     """
 
     def return_appearance(self, caller):
@@ -67,3 +61,16 @@ class Room(DefaultRoom):
 
     def format_roomlist(self):
         return "{C%s{n {x%s{n" % (self.dbref.ljust(6), self.key)
+
+
+class Room(BaseRoom):
+    """
+    Rooms are like any Object, except their location is None
+    (which is default). They also use basetype_setup() to
+    add locks so they cannot be puppeted or picked up.
+    (to change that, use at_object_creation instead)
+
+    See examples/object.py for a list of
+    properties and methods available on all Objects.
+    """
+    pass

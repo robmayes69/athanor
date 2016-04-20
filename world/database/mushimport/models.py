@@ -13,7 +13,7 @@ class MushObject(models.Model):
     group = models.OneToOneField('groups.Group', related_name='mush', null=True)
     board = models.OneToOneField('bbs.Board', related_name='mush', null=True)
     fclist = models.OneToOneField('fclist.FCList', related_name='mush', null=True)
-    dbref = models.CharField(max_length=15, unique=True, db_index=True)
+    dbref = models.CharField(max_length=15, db_index=True)
     objid = models.CharField(max_length=30, unique=True, db_index=True)
     type = models.PositiveSmallIntegerField(db_index=True)
     name = models.CharField(max_length=80)
@@ -23,6 +23,7 @@ class MushObject(models.Model):
     parent = models.ForeignKey('MushObject', related_name='children', null=True)
     owner = models.ForeignKey('MushObject', related_name='owned', null=True)
     flags = models.TextField(blank=True)
+    recreated = models.BooleanField(default=0)
 
     def __unicode__(self):
         return self.name

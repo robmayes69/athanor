@@ -22,7 +22,8 @@ from web import sheet
 
 patterns = [
     # url(r'/desired/url/', view, name='example'),
-    url(r'^sheet/(?P<sheet_id>\d+)/(?P<width>\d+)$', sheet.display_sheet, name='ex2_sheet')
+    url(r'^sheet/(?P<sheet_id>\d+)/(?P<width>\d+)$', sheet.display_sheet, name='ex2_sheet'),
+    url(r'^scenes(?:/(?P<scene_id>\d+))?', sheet.display_scenes, name='scenes')
 ]
 
 urlpatterns = patterns + urlpatterns

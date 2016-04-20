@@ -54,7 +54,7 @@ class Job(models.Model):
 
 
 class JobHandler(models.Model):
-    character = models.ForeignKey('communications.ObjectStub', related_name='job_handling')
+    character = models.ForeignKey('objects.ObjectDB', related_name='job_handling')
     job = models.ForeignKey('jobs.Job', related_name='characters')
     is_handler = models.BooleanField(default=False)
     is_helper = models.BooleanField(default=False)

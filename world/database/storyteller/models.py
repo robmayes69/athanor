@@ -771,7 +771,7 @@ class Exp(models.Model):
     link = models.ForeignKey('storyteller.ExpLink', related_name='entries')
     amount = models.DecimalField(default=0.0, db_index=True)
     reason = models.CharField(max_length=200)
-    source = models.ForeignKey('communications.ObjectStub', null=True)
+    source = models.ForeignKey('objects.ObjectDB', null=True)
     date_awarded = models.DateTimeField()
 
     def __int__(self):

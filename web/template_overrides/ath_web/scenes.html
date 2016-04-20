@@ -1,0 +1,41 @@
+{% extends 'ath_web/athbase.html' %}
+{% load bootstrap3 %}
+
+{% block title %}django-bootstrap3{% endblock %}
+
+{% block bootstrap3_extra_head %}
+<style>
+    #scene-table {
+        color: blue
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<p>
+    {{request.user.get_all_characters}}
+</p>
+
+<table class="table table-bordered" id="scene-table">
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>Owner</th>
+        <th>Title</th>
+        <th>Description</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for scene in scenes %}
+    <tr>
+        <td><a href="{% url 'scenes' %}/{{scene.id}}">{{scene.id}}</a></td>
+        <td>{{scene.owner}}</td>
+        <td><a href="{% url 'scenes' %}/{{scene.id}}">{{scene.title}}</a></td>
+        <td>{{scene.description}}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+
+</table>
+{% endblock %}

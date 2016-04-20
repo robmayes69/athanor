@@ -3,6 +3,7 @@ from django.http import HttpResponse
 from typeclasses.characters import Ex2Character
 from evennia.utils.ansi import ANSIString
 from evennia.utils import text2html
+from world.database.scenes.models import Scene
 
 def display_sheet(request, sheet_id, width=78):
     try:
@@ -20,6 +21,19 @@ def display_sheet(request, sheet_id, width=78):
     character_sheet = text2html.parse_html(find_character.storyteller.render_sheet(width=width))
     pagevars = {'character_sheet': character_sheet}
 
-    return render(request, 'evennia_general/sheet.html', pagevars)
+    return render(request, 'ath_web/sheet.html', pagevars)
 
 #
+
+def display_scenes(request, *args, **kwargs):
+    if kwargs.get('scene_id',None):
+        scene_id = int(kwargs['scene_id'])
+        scene = Scene.objects.filter(id=scene_id).first()
+        poses = scene.poses.all().order_by('id')
+        pagevars = {'poses': poses}
+        return render(request, 'ath_web/scene_poses.html', pagevars)
+
+    scenes = Scene.objects.all().order_by('id')
+    pagevars = {'scenes': scenes}
+
+    return render(request, 'ath_web/scenes.html', pagevars)

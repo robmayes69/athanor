@@ -5,42 +5,6 @@ from commands.library import header, make_table, utcnow, Speech
 
 
 # Create your models here.
-class PlayerStub(models.Model):
-    player = models.OneToOneField('players.PlayerDB', related_name='stub', null=True, on_delete=models.SET_NULL)
-    key = models.CharField(max_length=100)
-    email = models.EmailField(max_length=254, null=True)
-    updated = models.DateTimeField(null=True)
-    
-    def __str__(self):
-        if self.player:
-            return str(self.player)
-        else:
-            return self.key
-
-    def update_name(self, new_name):
-        self.key = new_name
-        self.save()
-
-    def save(self, *args, **kwargs):
-        self.updated = utcnow()
-        return super(PlayerStub, self).save(*args, **kwargs)
-
-
-class ObjectStub(models.Model):
-    object = models.OneToOneField('objects.ObjectDB', related_name='stub', null=True, on_delete=models.SET_NULL)
-    key = models.CharField(max_length=100)
-    updated = models.DateTimeField(null=True)
-
-    def __str__(self):
-        if self.object:
-            return str(self.object)
-        else:
-            return self.key
-
-    def save(self, *args, **kwargs):
-        self.updated = utcnow()
-        return super(ObjectStub, self).save(*args, **kwargs)
-
 
 class WatchFor(models.Model):
     player = models.OneToOneField('players.PlayerDB', related_name='watch')
@@ -71,7 +35,7 @@ class Muzzle(models.Model):
     channel = models.ForeignKey('comms.ChannelDB', related_name='muzzles', null=True)
     character = models.ForeignKey('objects.ObjectDB', related_name='muzzles', null=True)
     player = models.ForeignKey('players.PlayerDB', related_name='muzzles', null=True)
-    setby = models.ForeignKey('communications.ObjectStub', null=True, on_delete=models.SET_NULL)
+    setby = models.ForeignKey('objects.ObjectDB', null=True, on_delete=models.SET_NULL)
     is_global = models.BooleanField(default=False)
     creation_date = models.DateTimeField(auto_now_add=True)
     expires = models.DurationField()
@@ -83,8 +47,8 @@ class Muzzle(models.Model):
         return (self.creation_date + self.expires) < utcnow()
 
 class Message(models.Model):
-    player = models.ForeignKey('communications.PLayerStub', null=True)
-    object = models.ForeignKey('communications.ObjectStub', null=True)
+    player = models.ForeignKey('players.PlayerDB', null=True)
+    object = models.ForeignKey('objects.ObjectDB', null=True)
     channel = models.ForeignKey('comms.ChannelDB')
     emit = models.BooleanField(default=False)
     creation_date = models.DateTimeField(null=True)
@@ -104,7 +68,7 @@ class Message(models.Model):
             speaker = self.object or self.player
         else:
             speaker = None
-        speech = Speech(speaker, self.text, alternate_name=self.external_name, title=self.title, codename=self.codename)
+        speech = Speech(speaker, self.text, alternate_name=self.external_name, title=self.title)
         if self.emit:
             speech.speech_string.strip('|')
             speech.special_format = 3

@@ -30,10 +30,10 @@ class InfoFile(models.Model):
     date_created = models.DateTimeField(auto_now_add=True)
     date_modified = models.DateTimeField(null=True)
     text = models.TextField()
-    set_by = models.ForeignKey('communications.ObjectStub', null=True, on_delete=models.SET_NULL)
+    set_by = models.ForeignKey('objects.ObjectDB', null=True, on_delete=models.SET_NULL)
     date_approved = models.DateTimeField(null=True)
     approved = models.BooleanField(default=False)
-    approved_by = models.ForeignKey('communications.ObjectStub',null=True, on_delete=models.SET_NULL)
+    approved_by = models.ForeignKey('objects.ObjectDB', null=True, on_delete=models.SET_NULL)
     
     def __unicode__(self):
         return self.title

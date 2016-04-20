@@ -7,7 +7,7 @@ from commands.library import utcnow, header, separator, make_table
 
 
 class Plot(models.Model):
-    owner = models.ForeignKey('communications.ObjectStub', related_name='plots')
+    owner = models.ForeignKey('objects.ObjectDB', related_name='plots')
     title = models.CharField(max_length=150)
     description = models.TextField(blank=True)
     date_start = models.DateTimeField(null=True)
@@ -38,11 +38,11 @@ class Plot(models.Model):
 
     @property
     def recipients(self):
-        return [actor.object for actor in self.participants if actor.object]
+        return [char.character for char in self.participants]
 
     @property
     def participants(self):
-        return Participant.objects.filter(scene__in=self.scenes).values_list('actor', flat=True)
+        return Participant.objects.filter(scene__in=self.scenes).values_list('character', flat=True)
 
     @property
     def locations(self):
@@ -50,7 +50,7 @@ class Plot(models.Model):
 
 
 class Scene(models.Model):
-    owner = models.ForeignKey('communications.ObjectStub', related_name='scenes')
+    owner = models.ForeignKey('objects.ObjectDB', related_name='scenes')
     title = models.CharField(max_length=150, blank=True, null=True)
     description = models.TextField(blank=True, null=True)
     date_created = models.DateTimeField()
@@ -69,8 +69,8 @@ class Scene(models.Model):
         message.append('Status: %s' % self.display_status())
         message.append(separator('Players'))
         player_table = make_table('Name', 'Status', 'Poses', width=[35, 30, 13])
-        for participant in self.participants.order_by('actor'):
-            player_table.add_row(participant.actor, '', participant.poses.exclude(ignore=True).count())
+        for participant in self.participants.order_by('character'):
+            player_table.add_row(participant.character, '', participant.poses.exclude(ignore=True).count())
         message.append(player_table)
         message.append(header(viewer=viewer))
         return "\n".join([unicode(line) for line in message])
@@ -91,7 +91,7 @@ class Scene(models.Model):
     def recipients(self):
         recip_list = list()
         if self.owner: recip_list.append(self.owner)
-        recip_list += [actor.object for actor in self.participants if actor.object]
+        recip_list += [char.character for char in self.participants]
         return set(recip_list)
 
     @property
@@ -104,11 +104,11 @@ class Scene(models.Model):
 
 
 class Participant(models.Model):
-    actor = models.ForeignKey('communications.ObjectStub', related_name='scenes')
+    character = models.ForeignKey('objects.ObjectDB', related_name='scenes')
     scene = models.ForeignKey('scenes.Scene', related_name='participants')
 
     class Meta:
-        unique_together = (("actor", "scene"),)
+        unique_together = (("character", "scene"),)
 
 
 class Pose(models.Model):
@@ -116,7 +116,7 @@ class Pose(models.Model):
     ignore = models.BooleanField(default=False, db_index=True)
     date_made = models.DateTimeField(db_index=True)
     text = models.TextField(blank=True)
-    location = models.ForeignKey('communications.ObjectStub', null=True, related_name='poses_here', on_delete=models.SET_NULL)
+    location = models.ForeignKey('objects.ObjectDB', null=True, related_name='poses_here', on_delete=models.SET_NULL)
 
     def display_pose(self, viewer):
         message = []
@@ -126,7 +126,7 @@ class Pose(models.Model):
 
 
 class Event(models.Model):
-    owner = models.ForeignKey('communications.ObjectStub', related_name='events')
+    owner = models.ForeignKey('objects.ObjectDB', related_name='events')
     title = models.CharField(max_length=150)
     description = models.TextField(blank=True)
     date_schedule = models.DateTimeField(db_index=True)

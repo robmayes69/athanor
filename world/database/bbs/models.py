@@ -270,7 +270,7 @@ class Board(models.Model):
 
 class Post(models.Model):
     board = models.ForeignKey('Board', related_name='posts')
-    owner = models.ForeignKey('communications.ObjectStub', related_name='posts')
+    owner = models.ForeignKey('objects.ObjectDB', related_name='posts')
     creation_date = models.DateTimeField(null=True)
     timeout_date = models.DateTimeField(null=True)
     modify_date = models.DateTimeField(null=True)

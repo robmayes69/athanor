@@ -4,7 +4,6 @@ from django.conf import settings
 from commands.command import AthCommand
 from commands.library import partial_match, dramatic_capitalize, sanitize_string, penn_substitutions, utcnow
 from world.database.mushimport.models import MushObject, cobj, pmatch, objmatch, MushAttributeName
-from world.database.communications.models import ObjectStub
 from world.database.bbs.models import Board, BoardGroup
 from world.database.mushimport.convpenn import read_penn
 from world.database.groups.models import Group
@@ -278,15 +277,13 @@ class CmdImport(AthCommand):
             poster_name = post_details[0]
             poster_objid = post_details[1]
             poster_obj = objmatch(poster_objid)
-            owner = None
             if poster_obj:
-                if poster_obj.obj:
-                    if poster_obj.obj.stub:
-                        owner = poster_obj.obj.stub
-                    else:
-                        owner = ObjectStub.objects.create(object=poster_obj.obj, key=poster_obj.obj.key)
-            if not owner:
-                owner = ObjectStub.objects.create(key=poster_name)
+                owner = poster_obj.obj
+            else:
+                owner = create.create_object(typeclass='typeclasses.characters.BaseCharacter', key=poster_name)
+                dbref, csecs = poster_objid.split(':', 1)
+                cdate = from_unixtimestring(csecs)
+                MushObject.objects.create(objid=poster_objid, dbref=dbref, created=cdate, type=8, recreated=1, obj=owner)
             post_date = from_unixtimestring(post_details[2])
             text = old_board.mushget(old_post)
             timeout_secs = int(old_board.mushget(old_post + '`TIMEOUT'))
@@ -738,19 +735,19 @@ class CmdImport(AthCommand):
         # to the new communications.ObjectStub, creating them if necessary.
         c.execute("""SELECT * from jobsys_players""")
         old_players = c.fetchall()
-        stub_dict = dict()
+        char_dict = dict()
         for old_player in old_players:
             match = objmatch(old_player['objid'])
             if match:
-                if match.obj:
-                    stub, created = ObjectStub.objects.get_or_create(object=match.obj, key=match.obj.key)
-                else:
-                    stub = ObjectStub.objects.create(key=old_player['player_name'])
-                    stub.save()
+                char = match.obj
             else:
-                stub = ObjectStub.objects.create(key=old_player['player_name'])
-                stub.save()
-            stub_dict[old_player['player_id']] = stub
+                key = old_player['player_name']
+                char = create.create_object(typeclass='typeclasses.characters.BaseCharacter', key=key)
+                objid = old_player['objid']
+                dbref, csecs = objid.split(':', 1)
+                cdate = from_unixtimestring(csecs)
+                MushObject.objects.create(objid=objid, dbref=dbref, created=cdate, type=8, recreated=1, obj=char)
+            char_dict[old_player['player_id']] = char
 
         # Now that we have the Player ID->Stub dictionary, we can begin the process of actually importing job data!
         # we only want the jobs from categories that actually exist. Probably rare that any of them wouldn't be, but
@@ -774,7 +771,7 @@ class CmdImport(AthCommand):
                 submit_date = None
             title = row['job_title']
             status = row['job_status']
-            owner = stub_dict[row['player_id']]
+            owner = char_dict[row['player_id']]
             text = penn_substitutions(row['job_text'])
             category = cat_dict[row['job_objid']]
 
@@ -790,7 +787,7 @@ class CmdImport(AthCommand):
             c.execute("""SELECT * from jobsys_claim WHERE job_id=%s""", (job_id,))
             claim_data = c.fetchall()
             for old_claim in claim_data:
-                stub = stub_dict[old_claim['player_id']]
+                stub = char_dict[old_claim['player_id']]
                 new_handler, created = new_job.characters.get_or_create(character=stub, check_date=utcnow())
                 if old_claim['claim_mode'] == 0:
                     new_handler.is_handler = True
@@ -804,7 +801,7 @@ class CmdImport(AthCommand):
             all_speakers = c.fetchall()
             for speaker in all_speakers:
                 if speaker['player_id'] not in handler_dict:
-                    new_handler, created = new_job.characters.get_or_create(character=stub_dict[speaker['player_id']],
+                    new_handler, created = new_job.characters.get_or_create(character=char_dict[speaker['player_id']],
                                                                             check_date=utcnow())
                     handler_dict[speaker['player_id']] = new_handler
 
@@ -814,7 +811,7 @@ class CmdImport(AthCommand):
             old_checks = c.fetchall()
             for check in old_checks:
                 if check['player_id'] not in handler_dict:
-                    handler, created = new_job.characters.get_or_create(character=stub_dict[check['player_id']],
+                    handler, created = new_job.characters.get_or_create(character=char_dict[check['player_id']],
                                                                         check_date=utcnow())
                     handler_dict[check['player_id']] = new_handler
                 else:
@@ -845,19 +842,20 @@ class CmdImport(AthCommand):
         # Scene IDs! Same code, believe it or not.
         c.execute("""SELECT * from scene_players""")
         old_players = c.fetchall()
-        stub_dict = dict()
+        char_dict = dict()
         for old_player in old_players:
             match = objmatch(old_player['objid'])
             if match:
-                if match.obj:
-                    stub, created = ObjectStub.objects.get_or_create(object=match.obj, key=match.obj.key)
-                else:
-                    stub = ObjectStub.objects.create(key=old_player['player_name'])
-                    stub.save()
+                char = match.obj
             else:
-                stub = ObjectStub.objects.create(key=old_player['player_name'])
-                stub.save()
-            stub_dict[old_player['player_id']] = stub
+                key = old_player['player_name']
+                char = create.create_object(typeclass='typeclasses.characters.BaseCharacter', key=key)
+                objid = old_player['objid']
+                dbref, csecs = objid.split(':', 1)
+                cdate = from_unixtimestring(csecs)
+                new_mush = MushObject.objects.create(objid=objid, dbref=dbref, created=cdate, type=8, recreated=1, obj=char)
+                new_mush.save()
+            char_dict[old_player['player_id']] = char
 
         # Convert plots! This one's pretty easy.
         c.execute("""SELECT * FROM scene_plots ORDER BY plot_id""")
@@ -872,7 +870,7 @@ class CmdImport(AthCommand):
                 end_date = old_plot['end_date'].replace(tzinfo=pytz.utc)
             else:
                 end_date = None
-            owner = stub_dict[old_plot['player_id']]
+            owner = char_dict[old_plot['player_id']]
             description = penn_substitutions(old_plot['plot_desc'])
             plot_type = old_plot['plot_type']
             title = old_plot['title']
@@ -885,7 +883,7 @@ class CmdImport(AthCommand):
         c.execute("""SELECT * from scene_schedule ORDER BY schedule_id""")
         old_events = c.fetchall()
         for old_event in old_events:
-            owner = stub_dict[old_event['player_id']]
+            owner = char_dict[old_event['player_id']]
             schedule_date = old_event['schedule_date'].replace(tzinfo=pytz.utc)
             description = penn_substitutions(old_event['schedule_desc'])
             schedule_title = old_event['schedule_title']
@@ -900,7 +898,7 @@ class CmdImport(AthCommand):
         c.execute("""SELECT * FROM scene_scenes ORDER BY scene_id""")
         old_scenes = c.fetchall()
         for old_scene in old_scenes:
-            owner = stub_dict[old_scene['player_id']]
+            owner = char_dict[old_scene['player_id']]
             scene_title = old_scene['scene_title']
             scene_desc = old_scene['scene_desc']
             scene_status = int(old_scene['scene_state'])
@@ -913,13 +911,18 @@ class CmdImport(AthCommand):
                 finish_date = None
 
             plot = plot_dict.get(old_scene['plot_id'], None)
-
-            old_loc = objmatch(old_scene['room_objid'])
+            room_objid = old_scene['room_objid']
+            old_loc = objmatch(room_objid)
             if old_loc.obj:
-                old_loc = objmatch(old_scene['room_objid']).obj
-                location, created = ObjectStub.objects.get_or_create(object=old_loc, key=old_loc.key)
+                location = old_loc.obj
             else:
-                location = ObjectStub.objects.create(object=None, key=old_scene['room_name'])
+                room_name = old_scene['room_name']
+                dbref, csecs = room_objid.split(':', 1)
+                cdate = from_unixtimestring(csecs)
+                location = create.create_object(typeclass='typeclasses.rooms.BaseRoom', key=room_name)
+                new_mush, created = MushObject.objects.get_or_create(objid=room_objid, dbref=dbref, type=1, created=cdate)
+                new_mush.obj = location
+                new_mush.save()
 
             new_scene = Scene.objects.create(owner=owner, title=scene_title, description=scene_desc, status=scene_status,
                                              date_created=creation_date, date_finished=finish_date, plot=plot)
@@ -932,7 +935,7 @@ class CmdImport(AthCommand):
             c.execute("""SELECT DISTINCT player_id FROM scene_poses WHERE scene_id=%s""", (old_scene['scene_id'],))
             posers = c.fetchall()
             for poser in posers:
-                new_part = new_scene.participants.create(actor=stub_dict[poser['player_id']])
+                new_part = new_scene.participants.create(character=char_dict[poser['player_id']])
                 part_dict[poser['player_id']] = new_part
 
             # Finally it's time to import the individual poses!
