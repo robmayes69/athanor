@@ -1,9 +1,14 @@
 from django.shortcuts import render
 from django.http import HttpResponse
+from django import forms
 from typeclasses.characters import Ex2Character
 from evennia.utils.ansi import ANSIString
 from evennia.utils import text2html
 from world.database.scenes.models import Scene
+
+class CharSwitchForm(forms.Form):
+    character_id = forms.TypedChoiceField(coerce=int)
+
 
 def display_sheet(request, sheet_id, width=78):
     try:
@@ -34,6 +39,10 @@ def display_scenes(request, *args, **kwargs):
         return render(request, 'ath_web/scene_poses.html', pagevars)
 
     scenes = Scene.objects.all().order_by('id')
-    pagevars = {'scenes': scenes}
+    char_data = tuple([(char.id, char.key) for char in request.user.get_all_characters()])
+    form_test = CharSwitchForm()
+    form_test.fields['character_id'].choices = char_data
+    pagevars = {'scenes': scenes, 'form': form_test}
+
 
     return render(request, 'ath_web/scenes.html', pagevars)

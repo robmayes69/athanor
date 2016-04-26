@@ -10,12 +10,12 @@
     <!--[if IE]><meta http-equiv="X-UA-Compatible" content="IE=edge" /><![endif]-->
     <meta name="viewport" content="width=device-width, initial-scale=1">
     {% if sidebar %}
-    <link rel="stylesheet" type="text/css" href="{% static "website/css/prosimii-screen-alt.css" %}" media="screen" title="Prosimii (Sidebar)" />
+    <link rel="stylesheet" type="text/css" href="{% static 'website/css/prosimii-screen-alt.css' %}" media="screen" title="Prosimii (Sidebar)" />
     {% else %}
-    <link rel="stylesheet" type="text/css" href="{% static "website/css/prosimii-screen.css" %}" media="screen" title="Prosimii" />
+    <link rel="stylesheet" type="text/css" href="{% static 'website/css/prosimii-screen.css' %}" media="screen" title="Prosimii" />
     {% endif %}
-    <link rel="stylesheet alternative" type="text/css" href="{% static "website/css/prosimii-print.css" %}" media="screen" title="Print Preview" />
-    <link rel="stylesheet" type="text/css" href="{% static "website/css/prosimii-print.css" %}" media="print" />
+    <link rel="stylesheet alternative" type="text/css" href="{% static 'website/css/prosimii-print.css' %}" media="screen" title="Print Preview" />
+    <link rel="stylesheet" type="text/css" href="{% static 'website/css/prosimii-print.css' %}" media="print" />
 
     {% block header_ext %}
     {% endblock %}
@@ -60,6 +60,8 @@
             <a href="{% url 'logout' %}">Log Out &laquo;</a>
             <span class="doNotDisplay">|</span>
             Logged in as {{user.username}} &laquo;
+            <span class="doNotDisplay">|</span>
+
           {% else %}
             <a href="{% url 'login' %}">Log In &laquo;</a>
             <span class="doNotDisplay">|</span>

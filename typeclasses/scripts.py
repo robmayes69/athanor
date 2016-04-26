@@ -12,10 +12,14 @@ just overloads its hooks to have it perform its function.
 
 """
 from __future__ import unicode_literals
+import twisted
+from twisted.internet import reactor
 from evennia import DefaultScript
 from evennia.utils.utils import lazy_property
 from world.game_settings import GameSetting, GameSettingHandler
+from typeclasses.bots.mush import MushFactory
 
+BOT_HELP = """[center(Bot Help,78,=)]%RThe MUSHHaven Bot links together a wide assortment of games! To use it, simply page it with commands. Available commands:%R%R[ansi(hw,worlds)]%R%TList all connected games.%R%R[ansi(hw,who <worldname>)]%R%TCheck the 'who' list of a distant world.%R[center(,78,=)]"""
 
 class Script(DefaultScript):
     """
@@ -120,3 +124,97 @@ class AthanorManager(Script):
 
 def SETTINGS(option):
     return AthanorManager.objects.filter_family().first().settings.values_cache[option]
+
+class TelnetBot(Script):
+
+    def at_script_creation(self):
+        self.interval = 10
+        self.persistent = True
+        self.desc = "Handles telnet connections to other games."
+        self.start_delay = True
+
+    def is_valid(self):
+        return True
+
+    def at_repeat(self):
+        if not self.botdb.connect_ready():
+            return
+        if not self.ndb.factory:
+            self.game_connect()
+            return
+        if not self.ndb.protocol:
+            self.game_connect()
+            return
+        if not self.ndb.logged_in:
+            self.login()
+            return
+        if not self.ndb.bot_ready:
+            self.install_bot()
+            return
+        self.collect_data()
+
+
+    def game_connect(self):
+        site = self.botdb.game_site
+        port = self.botdb.game_port
+        if not self.ndb.factory:
+            factory = MushFactory(self)
+            self.ndb.factory = factory
+        reactor.connectTCP(site, port, factory)
+
+
+    def collect_data(self):
+        if self.ndb.protocol.mssp_data:
+            self.load_mssp(self.ndb.protocol.mssp_data)
+
+    def load_mssp(self, data):
+        for k, v in data.iteritems():
+            entry, created = self.botdb.mssp.get_or_create(field=k)
+            entry.value = v
+            entry.save(update_fields=['value'])
+
+    def relay(self, line):
+        for chan in SETTINGS('alerts_channels'):
+            chan.msg(line, emit=True)
+
+    def parse_data(self, line):
+        pass
+
+    def parse_command(self, dbref, command):
+        if ' ' in command:
+            command, arg = command.split(' ', 1)
+        else:
+            arg = None
+        command = command.lower()
+        if not command in ['worlds', 'who', 'help']:
+            self.command_error(dbref, 'Command not recognized.')
+            return
+        getattr(self, 'command_%s' % command)(dbref, arg)
+
+    def command_error(self, dbref, message):
+        self.send("page %s=%s - Page 'help' for help." % (dbref, message))
+
+    def command_help(self, dbref, arg):
+        self.send("""@pemit {}={}""".format(dbref, BOT_HELP))
+
+    def send(self, command):
+        sending = str(command)
+        self.ndb.protocol.sendLine(sending)
+
+    def command_worlds(self, dbref, arg):
+        self.send('page %s=Command worked!' % dbref)
+
+    def command_who(self, dbref, arg):
+        self.send('page %s=Command Worked!' % dbref)
+
+    def login(self):
+        user = self.botdb.bot_name
+        passw = self.botdb.bot_pass
+        self.send('connect %s %s' % (user, passw))
+        self.ndb.logged_in = True
+
+    def logout(self):
+        self.send('QUIT')
+
+    def install_bot(self):
+        pass

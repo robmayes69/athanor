@@ -44,8 +44,10 @@ IDLE_TIMEOUT = -1
 # Enabling some extra Django apps!
 INSTALLED_APPS = INSTALLED_APPS + ('world.database.communications',
                                    'bootstrap3',
+                                   'channels',
                                    'world.database.info',
                                    'world.database.bbs.apps.BBSConfig',
+                                   'world.database.botnet.apps.BotnetConfig',
                                    'world.database.fclist.apps.FCListConfig',
                                    'world.database.radio.apps.RadioConfig',
                                    'world.database.jobs.apps.JobsConfig',
@@ -54,6 +56,13 @@ INSTALLED_APPS = INSTALLED_APPS + ('world.database.communications',
                                    'world.database.storyteller.apps.StorytellerConfig',
                                    'world.database.grid.apps.GridConfig',
                                    'world.database.mushimport',)
+
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "asgiref.inmemory.ChannelLayer",
+    },
+}
 
 LOCK_FUNC_MODULES = LOCK_FUNC_MODULES + ("world.database.groups.locks",)
 

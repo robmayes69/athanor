@@ -14,7 +14,11 @@
 {% block content %}
 
 <p>
-    {{request.user.get_all_characters}}
+    <form action="/char_switch/" method="post">
+    {% csrf_token %}
+    {{ form }}
+    <input type="submit" value="submit" />
+    </form>
 </p>
 
 <table class="table table-bordered" id="scene-table">
