@@ -10,7 +10,8 @@ from commands.library import sanitize_string, header, separator, make_table, mak
 class Bot(models.Model):
     bot = models.OneToOneField('scripts.ScriptDB', null=True, related_name='botdb')
     game_name = models.CharField(max_length=200)
-    game_type = models.CharField(max_length=80)
+    game_type = models.CharField(max_length=200)
+    game_server = models.CharField(max_length=80)
     game_site = models.CharField(max_length=200, null=True, blank=True)
     game_port = models.IntegerField(default=0)
     bot_name = models.CharField(max_length=200, null=True, blank=True)
@@ -31,6 +32,11 @@ class Bot(models.Model):
                 return False
         return True
 
+    def connected(self):
+        if not self.bot:
+            return False
+        return bool(self.bot.ndb.protocol)
+
 class MSSPField(models.Model):
     game = models.ForeignKey('botnet.Bot', related_name='mssp')
     field = models.CharField(max_length=60)
@@ -38,3 +44,4 @@ class MSSPField(models.Model):
 
     class Meta:
         unique_together = (('game', 'field'),)
+

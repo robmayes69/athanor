@@ -18,6 +18,8 @@ from evennia import DefaultScript
 from evennia.utils.utils import lazy_property
 from world.game_settings import GameSetting, GameSettingHandler
 from typeclasses.bots.mush import MushFactory
+from world.database.botnet.models import Bot
+from world.database.botnet.penn import ALL_LINES
 
 BOT_HELP = """[center(Bot Help,78,=)]%RThe MUSHHaven Bot links together a wide assortment of games! To use it, simply page it with commands. Available commands:%R%R[ansi(hw,worlds)]%R%TList all connected games.%R%R[ansi(hw,who <worldname>)]%R%TCheck the 'who' list of a distant world.%R[center(,78,=)]"""
 
@@ -151,10 +153,13 @@ class TelnetBot(Script):
         if not self.ndb.bot_ready:
             self.install_bot()
             return
-        self.collect_data()
-
+        if not self.ndb.bot_started:
+            self.collect_data()
 
     def game_connect(self):
+        self.ndb.lwho = list()
+        self.ndb.fullwho = dict()
+        self.ndb.whohead = None
         site = self.botdb.game_site
         port = self.botdb.game_port
         if not self.ndb.factory:
@@ -164,8 +169,10 @@ class TelnetBot(Script):
 
 
     def collect_data(self):
+        self.ndb.bot_started = True
         if self.ndb.protocol.mssp_data:
             self.load_mssp(self.ndb.protocol.mssp_data)
+        self.send('@restart me')
 
     def load_mssp(self, data):
         for k, v in data.iteritems():
@@ -178,7 +185,17 @@ class TelnetBot(Script):
             chan.msg(line, emit=True)
 
     def parse_data(self, line):
-        pass
+        if line.startswith('CLEAR:'):
+            self.ndb.lwho = list()
+            self.ndb.fullwho = dict()
+        if line.startswith('LWHO:'):
+            junk, lwho = line.split(' ', 1)
+            self.ndb.lwho = lwho.split(' ')
+        if line.startswith('WHODATA:'):
+            junk, data = line.split(' ', 1)
+            for char_line in data.split('^'):
+                dbref, name, alias, sex, conn, idle = char_line.split('~')
+                self.ndb.fullwho[dbref] = {'name': name, 'alias': alias, 'sex': sex, 'conn': conn, 'idle': idle}
 
     def parse_command(self, dbref, command):
         if ' ' in command:
@@ -205,7 +222,28 @@ class TelnetBot(Script):
         self.send('page %s=Command worked!' % dbref)
 
     def command_who(self, dbref, arg):
-        self.send('page %s=Command Worked!' % dbref)
+        if not arg:
+            self.command_error(dbref, 'Must also include a game world name.')
+            return
+        find = Bot.objects.filter(game_name__iexact=arg).first()
+        if not find:
+            find = Bot.objects.filter(game_name__istartswith=arg).first()
+        if not find:
+            self.command_error(dbref, "World not found.")
+            return
+        message = list()
+        game_name = ' * %s * ' % find.game_name
+        header_start = game_name.center(78, '=')
+        message.append(header_start)
+        message.append('[u(BOT_WHOHEAD)]')
+        message.append('=' * 78)
+        for char in find.bot.ndb.lwho:
+            if char in find.bot.ndb.fullwho.keys():
+                cdat = find.bot.ndb.fullwho[char]
+                message.append('[u(BOT_WHOLINE,%s,%s,%s,%s,%s)]' % (cdat['name'], cdat['alias'], cdat['sex'], cdat['conn'], cdat['idle']))
+        message.append('=' * 78)
+        send_lines = '%R'.join(message)
+        self.send('@pemit %s=%s' % (dbref, send_lines))
 
     def login(self):
         user = self.botdb.bot_name
@@ -217,4 +255,6 @@ class TelnetBot(Script):
         self.send('QUIT')
 
     def install_bot(self):
-        pass
+        for k, v in ALL_LINES.iteritems():
+            self.send('&%s me=%s' % (k, v))
+        self.ndb.bot_ready = True

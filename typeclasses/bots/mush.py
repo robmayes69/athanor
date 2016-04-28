@@ -39,6 +39,7 @@ class MushBot(telnet.Telnet, telnet.StatefulTelnetProtocol):
 
         """
         # public properties
+        self.incoming_data = b''
         self.protocol = self
         self.protocol_flags = dict()
         self.mssp_data = dict()
@@ -72,26 +73,41 @@ class MushBot(telnet.Telnet, telnet.StatefulTelnetProtocol):
             data (str): Incoming data.
 
         """
+        if not len(data):
+            return
 
         if self.protocol_flags.get('MCCP'):
             data = zlib.decompress(data)
 
         if data.startswith(IAC):
-            data_str = list()
             self.parse_IAC(data)
             return
 
-        if not data.startswith(chr(255)):
-            self.is_connected = True
-            self.lineReceived(data.decode('utf-8', errors='ignore'))
+        self.is_connected = True
+        if self.incoming_data == None:
+            self.incoming_data = data
+        else:
+            self.incoming_data += data
+
+        if self.incoming_data[-1] == '\n':
+            packet = self.incoming_data.decode('utf-8', errors='ignore')
+            for line in packet.split('\n'):
+                if len(line):
+                    self.lineReceived(line)
+            self.incoming_data = None
 
     def lineReceived(self, line):
+        line = line.strip('\r')
+        if not len(line):
+            return
         self.owner.relay(line)
         if line.startswith('^^^'):
             self.owner.parse_data(line[3:])
         if line.startswith('$$$'):
             dbref, command = line[3:].split(' ', 1)
             self.owner.parse_command(dbref, command)
+        if line.startswith('***'):
+            pass
 
     def parse_IAC(self, data):
         instructions = data.split(IAC)
@@ -105,6 +121,7 @@ class MushBot(telnet.Telnet, telnet.StatefulTelnetProtocol):
                 self.sub_service(b)
 
     def will_service(self, data):
+        print(ord(data))
         if data == MSSP:
             self._write(IAC + DO + MSSP)
             self.protocol_flags['MSSP'] = True
