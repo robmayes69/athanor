@@ -12,13 +12,9 @@ from __future__ import unicode_literals
 from evennia import DefaultCharacter
 from evennia.utils.utils import time_format, lazy_property
 from evennia.utils.ansi import ANSIString
-from commands.library import utcnow, mxp_send
+from athanor.library import utcnow, mxp_send
 
-from world.database.storyteller.models import Game as StGame
-from world.storyteller.sheet import StorytellerHandler
-from world.storyteller.exalted3.sheet import SECTION_LIST as EX3_SHEET
-
-class BaseCharacter(DefaultCharacter):
+class Character(DefaultCharacter):
     """
     The Character defaults to implementing some of its hook methods with the
     following standard functionality:
@@ -37,16 +33,15 @@ class BaseCharacter(DefaultCharacter):
                     has connected" message echoed to the room
 
     """
-    character_type = 'Deleted'
 
     def at_object_creation(self):
-        super(BaseCharacter, self).at_object_creation()
-        from world.database.communications.models import Gag
+        super(Character, self).at_object_creation()
+        from athanor.communications.models import Gag
         Gag.objects.get_or_create(character=self)
         self.last_played(update=True)
 
     def at_post_unpuppet(self, player, session=None):
-        super(BaseCharacter, self).at_post_unpuppet(player, session)
+        super(Character, self).at_post_unpuppet(player, session)
         self.last_played(update=True)
         if self.sessions:
             return
@@ -57,7 +52,7 @@ class BaseCharacter(DefaultCharacter):
             player.sys_msg('%s has disconnected.' % self, sys_name='WATCH')
 
     def at_post_puppet(self):
-        super(BaseCharacter, self).at_post_puppet()
+        super(Character, self).at_post_puppet()
         self.last_played(update=True)
         if len(self.sessions.all()) != 1 and not self.db._owner.db._watch_hide:
             for player in [play.db_player for play in self.on_watch.all() if not play.db_player.db._watch_mute]:
@@ -88,7 +83,7 @@ class BaseCharacter(DefaultCharacter):
 
         # Did that not work? Next we'll try the online match if it's set!
         if not search_results:
-            from commands.library import connected_characters
+            from athanor.library import connected_characters
             search_results = self.search(search_name, exact=False, use_nicks=True, candidates=connected_characters(),
                                          quiet=True)
 
@@ -107,10 +102,6 @@ class BaseCharacter(DefaultCharacter):
         Called by the processes for binding a character to a player.
         """
         self.locks.add("puppet:id(%i) or pid(%i) or perm(Immortals) or pperm(Immortals)" % (self.id, player.id))
-
-    def delete(self):
-        self.actor.update_name(self.key)
-        super(BaseCharacter, self).delete()
 
     def is_admin(self):
         return self.locks.check_lockstring(self, "dummy:perm(Wizards)")
@@ -217,58 +208,3 @@ class BaseCharacter(DefaultCharacter):
     def screen_width(self):
         width_list = [session.get_client_size()[0] for session in self.sessions.all()]
         return min(width_list) or 78
-
-
-class Character(BaseCharacter):
-    """
-    This class exists to actually be used. BaseCharacter is used for 'soft deleted' or otherwise inactive characters.
-    """
-    character_type = 'Standard'
-
-
-class StorytellerCharacter(Character):
-    """
-    Base template for Storyteller characters. It's not meant to be used literally.
-    """
-    game_mode = 'storyteller'
-    character_type = 'Storyteller'
-
-    def at_object_creation(self):
-        super(StorytellerCharacter, self).at_object_creation()
-        self.setup_storyteller()
-
-    def at_post_puppet(self):
-        super(StorytellerCharacter, self).at_post_puppet()
-        self.setup_storyteller()
-
-    def return_sheet(self, viewer):
-        return self.story.render_sheet(viewer=viewer)
-
-    def setup_storyteller(self):
-        obj, created = StGame.objects.get_or_create(key=self.game_mode)
-        obj.setup_storyteller()
-        if not obj.templates.filter(characters__character=self).count():
-            template = obj.templates.filter(key='mortal').first()
-            template, created = template.characters.get_or_create(character=self)
-        self.storyteller.setup_character()
-
-    @lazy_property
-    def story(self):
-        return StorytellerHandler(self)
-
-
-class Ex2Character(StorytellerCharacter):
-    """
-    For use with Exalted 2nd Edition characters.
-    """
-    character_type = 'Exalted 2e'
-    game_mode = 'ex3'
-
-
-class Ex3Character(StorytellerCharacter):
-    """
-    For use with Exalted 3rd Edition characters.
-    """
-    game_mode = 'ex3'
-    character_type = 'Exalted 3e'
-    sheet_sections = EX3_SHEET
