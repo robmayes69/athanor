@@ -2,9 +2,8 @@ from __future__ import unicode_literals
 import re
 from django.db import models
 from django.conf import settings
-from evennia.locks.lockhandler import LockHandler
-from evennia.utils.utils import lazy_property
-from commands.library import utcnow, mxp_send, connected_characters, header, separator, make_table, sanitize_string, partial_match
+from athanor.abstract import WithTimestamp, WithLocks
+from athanor.library import utcnow, mxp_send, connected_characters, header, separator, make_table, sanitize_string, partial_match
 
 # Create your models here.
 
@@ -111,11 +110,10 @@ class BoardGroup(models.Model):
         return '\n'.join(unicode(line) for line in message)
 
 
-class Board(models.Model):
+class Board(WithLocks):
     category = models.ForeignKey('bbs.BoardGroup', related_name='boards')
     key = models.CharField(max_length=40)
     order = models.PositiveSmallIntegerField(default=0)
-    lock_storage = models.TextField('locks', blank=True)
     ignore_list = models.ManyToManyField('objects.ObjectDB')
     anonymous = models.CharField(max_length=80, null=True)
     timeout = models.DurationField(null=True)
@@ -137,15 +135,11 @@ class Board(models.Model):
         else:
             locks = 'read:all();write:all();admin:perm(Wizards)'
         self.lock_storage = locks
-        self.save(update_fields=['lock_storage'])
+        self.save_locks()
 
     @property
     def group(self):
         return self.category.group
-
-    @lazy_property
-    def locks(self):
-        return LockHandler(self)
 
     def parse_postnums(self, player, check=None):
         if not check:
@@ -271,7 +265,7 @@ class Board(models.Model):
         if True in check_list:
             self.squish_posts()
 
-class Post(models.Model):
+class Post(WithTimestamp):
     board = models.ForeignKey('Board', related_name='posts')
     owner = models.ForeignKey('objects.ObjectDB', related_name='posts')
     creation_date = models.DateTimeField(null=True)
@@ -313,9 +307,9 @@ class Post(models.Model):
             raise ValueError("No text entered to find.")
         if not replace:
             replace = ''
-        self.modify_date = utcnow()
+        self.update_time('modify_date')
         self.text = self.text.replace(find, replace)
-        self.save(update_fields=['text', 'modify_date'])
+        self.save(update_fields=['text'])
 
     def display_poster(self, viewer):
         anon = self.board.anonymous

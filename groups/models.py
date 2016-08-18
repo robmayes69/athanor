@@ -1,22 +1,24 @@
 from __future__ import unicode_literals
 from django.db import models
-from commands.library import utcnow, sanitize_string, partial_match, connected_characters
-from commands.library import header, make_table
+from athanor.library import utcnow, sanitize_string, partial_match, connected_characters
+from athanor.library import header, make_table
 from evennia.utils.ansi import ANSIString
 from evennia.utils.create import create_channel
-from evennia.utils.utils import lazy_property
-from evennia.locks.lockhandler import LockHandler
+from athanor.abstract import WithLocks, WithKey
+from athanor.core.models import validate_color
 
 # Create your models here.
 
+class GroupCategory(WithKey):
+    order = models.PositiveSmallIntegerField(default=0)
 
-class Group(models.Model):
-    key = models.CharField(max_length=60, unique=True)
+
+class Group(WithKey, WithLocks):
+    category = models.ForeignKey('groups.GroupCategory', related_name='groups')
     order = models.IntegerField(default=0)
     tier = models.PositiveSmallIntegerField(default=1)
-    lock_storage = models.TextField('locks', blank=True)
     abbreviation = models.CharField(max_length=10)
-    color = models.CharField(max_length=20, null=True)
+    color = models.CharField(max_length=20, default='n', validators=[validate_color])
     member_permissions = models.ManyToManyField('GroupPermissions')
     guest_permissions = models.ManyToManyField('GroupPermissions')
     start_rank = models.ForeignKey('GroupRank', null=True)
@@ -29,16 +31,6 @@ class Group(models.Model):
     ooc_enabled = models.BooleanField(default=True)
     display_type = models.SmallIntegerField(default=0)
     timeout = models.DurationField(null=True)
-
-    def __str__(self):
-        return str(self.key)
-
-    def __unicode__(self):
-        return unicode(self.key)
-
-    @lazy_property
-    def locks(self):
-        return LockHandler(self)
 
     def delete(self, *args, **kwargs):
         """
@@ -59,38 +51,33 @@ class Group(models.Model):
 
     @property
     def name(self):
-        color = self.color or 'n'
-        return ANSIString('|%s%s|n' % (color, self))
+        return ANSIString('|%s%s|n' % (self.color, self))
 
     @property
     def abbr(self):
-        color = self.color or 'n'
-        return ANSIString('|%s%s|n' % (color, self.abbreviation))
+        return ANSIString('|%s%s|n' % (self.color, self.abbreviation))
 
     def rename(self, new_name=None):
-        new_name = valid_groupname(new_name)
-        if Group.objects.filter(key__iexact=new_name).exclude(id=self.id).count():
-            raise ValueError("That name is already in use.")
-        self.key = new_name
+        name = valid_groupname(new_name)
+        super(Group, self).rename(name)
         if self.ic_channel:
             self.ic_channel.key = 'group_%s_ic' % self.key
         if self.ooc_channel:
             self.ooc_channel.key = 'group_%s_ooc' % self.key
-        self.save(update_fields=['key'])
 
     def setup_channels(self):
         if self.ic_channel:
             ic_channel = self.ic_channel
             ic_channel.key = 'group_%s_ic' % self.key
         else:
-            self.ic_channel = create_channel('group_%s_ic' % self.key, typeclass='typeclasses.channels.GroupIC')
+            self.ic_channel = create_channel('group_%s_ic' % self.key, typeclass='athanor.typeclasses.channels.GroupIC')
             self.save(update_fields=['ic_channel'])
             self.ic_channel.init_locks(group=self)
         if self.ooc_channel:
             ooc_channel = self.ooc_channel
             ooc_channel.key = 'group_%s_ooc' % self.key
         else:
-            self.ooc_channel = create_channel('group_%s_ooc' % self.key, typeclass='typeclasses.channels.GroupOOC')
+            self.ooc_channel = create_channel('group_%s_ooc' % self.key, typeclass='athanor.typeclasses.channels.GroupOOC')
             self.save(update_fields=['ooc_channel'])
             self.ooc_channel.init_locks(group=self)
 

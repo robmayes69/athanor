@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from world.database.groups.models import Group, GroupPermissions
+from athanor.groups.models import Group, GroupPermissions
 from evennia.utils.create import create_channel
 
 

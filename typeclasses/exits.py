@@ -8,7 +8,7 @@ for allowing Characters to traverse the exit to its destination.
 """
 from __future__ import unicode_literals
 from evennia import DefaultExit
-from commands.library import mxp_send, MAIN_COLOR_DEFAULTS
+from athanor.library import mxp_send, MAIN_COLOR_DEFAULTS
 from evennia.utils.ansi import ANSIString
 
 class Exit(DefaultExit):

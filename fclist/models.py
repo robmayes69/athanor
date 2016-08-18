@@ -1,59 +1,24 @@
 from __future__ import unicode_literals
 
 from django.db import models
-from commands.library import sanitize_string, header, separator, make_table, make_column_table
-
+from athanor.library import sanitize_string, header, separator, make_table, make_column_table
+from athanor.abstract import WithKey
 
 # Create your models here.
 
-class StatusKind(models.Model):
-    key = models.CharField(max_length=255, db_index=True, unique=True)
-
-    def __str__(self):
-        return self.key
+class CharacterStatus(WithKey):
+    pass
 
 
-class CharStatus(models.Model):
-    kind = models.ForeignKey('fclist.StatusKind', related_name='characters')
-    character = models.OneToOneField('objects.ObjectDB', related_name='list_status')
-
-    def __str__(self):
-        return str(self.kind)
+class CharacterType(WithKey):
+    pass
 
 
-class TypeKind(models.Model):
-    key = models.CharField(max_length=255, db_index=True, unique=True)
-
-    def __str__(self):
-        return self.key
-
-
-class CharType(models.Model):
-    kind = models.ForeignKey('fclist.TypeKind', related_name='characters')
-    character = models.OneToOneField('objects.ObjectDB', related_name='list_type')
-
-    def __str__(self):
-        return str(self.kind)
-
-
-class FCList(models.Model):
-    key = models.CharField(max_length=255, db_index=True, unique=True)
+class FCList(WithKey):
     cast = models.ManyToManyField('objects.ObjectDB', related_name='themes')
     description = models.TextField(blank=True, null=True)
     powers = models.TextField(blank=True, null=True)
     info = models.TextField(blank=True, null=True)
-
-    def __str__(self):
-        return self.key
-
-    def rename(self, new_name):
-        if not new_name:
-            raise ValueError("Nothing entered to rename to!")
-        new_name = sanitize_string(new_name, strip_ansi=True)
-        if FCList.objects.filter(key__iexact=new_name).exclude(id=self.id).count():
-            raise ValueError("FCList names must be unique!")
-        self.key = new_name
-        self.save(update_fields=['key'])
 
     def display_list(self, viewer):
         message = list()

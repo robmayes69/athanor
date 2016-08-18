@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 from django.db import models
-from commands.library import utcnow, header, separator, make_table
+from athanor.library import utcnow, header, separator, make_table
 
 
 # Create your models here.

@@ -7,8 +7,8 @@ class BBS(AppConfig):
         import athanor.bbs.signals
 
 
-class Comm(AppConfig):
-    name = 'athanor.communications'
+class Core(AppConfig):
+    name = 'athanor.core'
 
 
 class FCList(AppConfig):
@@ -47,8 +47,3 @@ class Radio(AppConfig):
 
 class Scenes(AppConfig):
     name = 'athanor.scenes'
-
-
-class Settings(AppConfig):
-    name = 'athanor.settiings'
-

@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 
 import re
 from django.db import models
-from commands.library import utcnow, sanitize_string, penn_substitutions, header, separator, make_table
+from athanor.library import utcnow, sanitize_string, penn_substitutions, header, separator, make_table
 
 
 # Create your models here.

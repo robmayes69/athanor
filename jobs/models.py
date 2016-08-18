@@ -2,26 +2,16 @@ from __future__ import unicode_literals
 
 from django.db import models
 
-from evennia.utils.utils import lazy_property
-from evennia.locks.lockhandler import LockHandler
+from athanor.abstract import WithKey, WithLocks
 
 # Create your models here.
 
 
-class JobCategory(models.Model):
-    key = models.CharField(max_length=50, unique=True, db_index=True)
-    lock_storage = models.TextField('locks', blank=True)
-
-    @lazy_property
-    def locks(self):
-        return LockHandler(self)
-
-    def __str__(self):
-        return self.key
+class JobCategory(WithKey, WithLocks):
 
     def setup(self):
         self.locks.add('admin:perm(Wizards);post:all()')
-        self.save()
+        self.save_locks()
 
 
 class Job(models.Model):

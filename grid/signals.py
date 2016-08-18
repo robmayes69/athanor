@@ -1,6 +1,6 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from world.database.grid.models import District
+from athanor.grid.models import District
 
 @receiver(post_save, sender=District)
 def setup_board(sender, **kwargs):

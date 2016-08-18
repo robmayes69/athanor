@@ -1,6 +1,6 @@
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
-from world.database.bbs.models import Board, Post
+from athanor.bbs.models import Board, Post
 
 @receiver(post_delete, sender=Post)
 def do_squish(sender, **kwargs):

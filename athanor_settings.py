@@ -19,19 +19,21 @@ PLAYER_CREATE = True
 IDLE_TIMEOUT = -1
 
 # Enabling some extra Django apps!
-INSTALLED_APPS = INSTALLED_APPS + ('athanor.apps.BBS',
-                                   'athanor.apps.Comm',
-                                   'athanor.apps.FCList',
-                                   'athanor.apps.Grid',
-                                   'athanor.apps.Group',
-                                   'athanor.apps.Info',
-                                   'athanor.apps.Jobs',
-                                   'athanor.apps.Mushimport',
-                                   'athanor.apps.Radio',
-                                   'athanor.apps.Scenes',)
+
+INSTALLED_APPS = INSTALLED_APPS + ('timezone_field',
+                                   'athanor.bbs.apps.BBS',
+                                   'athanor.fclist.apps.FCList',
+                                   'athanor.grid.apps.Grid',
+                                   'athanor.groups.apps.Group',
+                                   'athanor.info.apps.Info',
+                                   'athanor.jobs.apps.Jobs',
+                                   'athanor.core.apps.Core',
+                                   'athanor.mushimport.apps.Mushimport',
+                                   'athanor.radio.apps.Radio',
+                                   'athanor.scenes.apps.Scenes',)
 
 
-LOCK_FUNC_MODULES = LOCK_FUNC_MODULES + ("world.database.groups.locks",)
+LOCK_FUNC_MODULES = LOCK_FUNC_MODULES + ("athanor.groups.locks",)
 
 
 # TYPECLASS STUFF
@@ -50,31 +52,3 @@ BASE_CHANNEL_TYPECLASS = "athanor.typeclasses.channels.PublicChannel"
 # Typeclass for Scripts (fallback). You usually don't need to change this
 # but create custom variations of scripts on a per-case basis instead.
 #BASE_SCRIPT_TYPECLASS = "typeclasses.scripts.Script"
-
-
-
-GAME_SETTING_DEFAULTS = {
-    'gbs_enabled': True,
-    'guest_post': True,
-    'approve_channels': tuple(),
-    'admin_channels': tuple(),
-    'default_channels': tuple(),
-    'guest_channels': tuple(),
-    'roleplay_channels': tuple(),
-    'alerts_channels': tuple(),
-    'staff_tag': 'r',
-    'char_types': ('FC', 'OC', 'OFC', 'EFC', 'SFC'),
-    'char_status': ('Open', 'Closing', 'Played', 'Dead', 'Temp'),
-    'fclist_enable': True,
-    'guest_home': None,
-    'pot_timeout': None,
-    'group_ic': True,
-    'group_ooc': True,
-    'anon_notices': False,
-    'public_email': 'test@example.org',
-    'require_approval': False,
-    'scene_board': None,
-    'job_default': None,
-    'open_players': True,
-    'open_characters': True
-}

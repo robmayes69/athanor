@@ -1,11 +1,10 @@
 from __future__ import unicode_literals
 
 import re, datetime
-from django.conf import settings
 from django.utils.timezone import utc
 import evennia
 from evennia.utils.ansi import ANSIString, ANSI_PARSER
-from evennia.utils import evtable, create
+from evennia.utils import evtable
 
 def make_table(*args, **kwargs):
     border_color = None
@@ -21,8 +20,8 @@ def make_table(*args, **kwargs):
     if 'viewer' in kwargs:
         viewer = kwargs['viewer']
         try:
-            border_color = viewer.settings.get('border_color')
-            column_color = viewer.settings.get('columnname_color')
+            border_color = viewer.player_settings.border_color
+            column_color = viewer.player_settings.columnname_color
         except AttributeError:
             border_color = 'M'
             column_color = 'G'
@@ -119,7 +118,7 @@ def connected_players(viewer=None):
     Returns:
         list
     """
-    from typeclasses.players import Player
+    from athanor.typeclasses.players import Player
     return sorted([player for player in evennia.SESSION_HANDLER.all_connected_players()
             if player.is_typeclass(Player, exact=False)], key=lambda play: play.key)
 
@@ -130,7 +129,7 @@ def connected_characters(viewer=None):
     Returns:
         list
     """
-    from typeclasses.characters import Character
+    from athanor.typeclasses.characters import Character
     characters = [session.get_puppet() for session in connected_sessions() if session.get_puppet()]
     characters = [char for char in characters if char.is_typeclass(Character, exact=False)]
     character_list = sorted(list(set(characters)), key=lambda char: char.key)
@@ -245,9 +244,9 @@ def header(header_text=None, width=78, width_mode='fixed', fill_character=None, 
     colors = {}
     if viewer:
         try:
-            colors['border'] = viewer.settings.get('border_color')
-            colors['headertext'] = viewer.settings.get('headertext_color')
-            colors['headerstar'] = viewer.settings.get('headerstar_color')
+            colors['border'] = viewer.player_settings.border_color
+            colors['headertext'] = viewer.player_settings.headertext_color
+            colors['headerstar'] = viewer.player_settings.headerstar_color
         except AttributeError:
             colors['border'] = MAIN_COLOR_DEFAULTS['borders']['border']
             colors['headertext'] = MAIN_COLOR_DEFAULTS['borders']['bordertext']
@@ -428,8 +427,8 @@ class Speech(object):
     def colorize(self, message, viewer):
         quotes = 'quotes_%s' % self.mode
         speech = 'speech_%s' % self.mode
-        quote_color = viewer.settings.get(quotes)
-        speech_color = viewer.settings.get(speech)
+        quote_color = getattr(viewer.player_settings, quotes)
+        speech_color = getattr(viewer.player_settings, speech)
         def color_speech(found, viewer=viewer):
             return '|%s"|n|%s%s|n|%s"|n' % (quote_color, speech_color, found.group('found'), quote_color)
 
@@ -439,7 +438,7 @@ class Speech(object):
             except:
                 return found.group('name')
             if id in self.character_id:
-                color = viewer.settings.get_color_name(self.character_id[id])
+                color = viewer.player_settings.get_color_name(self.character_id[id])
                 return '|n|%s%s|n' % (color, found.group('name'))
             return found.group('name')
 

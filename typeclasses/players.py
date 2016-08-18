@@ -28,12 +28,12 @@ import time
 from django.conf import settings
 from evennia import DefaultPlayer, DefaultGuest
 from evennia import utils
-from evennia.utils.utils import time_format, lazy_property
+from evennia.utils.utils import time_format
 from evennia.utils.ansi import ANSIString
 from evennia.utils.utils import is_iter
-from evennia.utils.evmenu import get_input
-from commands.library import utcnow, sanitize_string, header, make_table, make_column_table, subheader
-from world.player_settings import SettingHandler
+from athanor.core.models import PlayerSetting
+from athanor.library import utcnow, header, make_table, make_column_table, subheader
+
 
 class Player(DefaultPlayer):
     """
@@ -113,8 +113,7 @@ class Player(DefaultPlayer):
             self.db._playable_characters = []
 
         # All Players need an Actor and WatchFor entry!
-        from world.database.communications.models import WatchFor
-        WatchFor.objects.get_or_create(player=self)
+        PlayerSetting.objects.get_or_create(player=self)
 
     def at_post_login(self, session=None):
         super(Player, self).at_post_login(session)
@@ -137,7 +136,7 @@ class Player(DefaultPlayer):
         """
         Returns a list of all valid playable characters.
         """
-        return [char for char in self.db._playable_characters if char]
+        return self.char_settings.all().values_list('character', flat=True)
 
     def bind_character(self, character):
         """
@@ -147,35 +146,25 @@ class Player(DefaultPlayer):
             character (objectdb): The character being bound.
         """
 
-        #First we'll unbind any existing owner.
-        old_player = character.db._owner
-        if old_player:
-            old_player.unbind_character(character)
-
-        #Now set the new owner.
-        character.db._owner = self
+        character.character_settings.player = self
+        character.character_settings.save()
         character.reset_puppet_locks(self)
 
-        #Lastly, add the new character to our playable characters.
-        characters = self.get_all_characters()
-        characters.append(character)
-        self.db._playable_characters = sorted(list(set(characters)), key=lambda char: char.key)
-
     def unbind_character(self, character):
-        characters = self.get_all_characters()
-        characters.remove(character)
-        self.db._playable_characters = sorted(list(set(characters)), key=lambda char: char.key)
+        character.character_settings.player = None
+        character.character_settings.save()
+        character.reset_puppet_locks(self)
 
     def delete(self, *args, **kwargs):
-        self.actor.update_name(self.key)
-        super(Player, self).delete(*args, **kwargs)
+        self.settings.deleted = True
+        self.settings.save()
 
     def display_local_time(self, date=None, format=None):
         if not format:
             format = '%b %d %I:%M%p %Z'
         if not date:
             date = utcnow()
-        tz = self.settings.get('timezone')
+        tz = self.player_settings.timezone
         time = date.astimezone(tz)
         return time.strftime(format)
 
@@ -197,21 +186,16 @@ class Player(DefaultPlayer):
             self.sys_msg("You %s HIDDEN." % ('are now' if value else 'are no longer'))
         return self.db._hidden
 
-    def last_played(self, update=False):
-        if update:
-            self.db._last_played = utcnow()
-        return self.db._last_played
-
     def last_or_idle_time(self, viewer):
         idle = self.idle_time
-        last = self.last_played()
+        last = self.player_settings.last_played
         if not idle or not viewer.can_see(self):
             return viewer.display_local_time(date=last, format='%b %d')
         return time_format(idle, style=1)
 
     def last_or_conn_time(self, viewer):
         conn = self.connection_time
-        last = self.last_played()
+        last = self.player_settings.last_played
         if not conn or not viewer.can_see(self):
             return viewer.display_local_time(date=last, format='%b %d')
         return time_format(conn, style=1)
@@ -219,8 +203,9 @@ class Player(DefaultPlayer):
     def sys_msg(self, message, sys_name='SYSTEM', error=False):
         if error:
             message = '{rERROR:{n %s' % message
-        alert = '{%s-=<{n{%s%s{n{%s>=-{n ' % (self.settings.get('msgborder_color'), self.settings.get('msgtext_color'),
-                                            sys_name.upper(), self.settings.get('msgborder_color'))
+        settings = self.player_settings
+        alert = '{%s-=<{n{%s%s{n{%s>=-{n ' % (settings.msgborder_color, settings.msgtext_color,
+                                            sys_name.upper(), settings.msgborder_color)
         send_string = alert + '(Account) ' + message
         self.msg(unicode(ANSIString(send_string)))
 
@@ -231,41 +216,14 @@ class Player(DefaultPlayer):
             return False
         return True
 
-    def extra_character_slots(self, update=None):
-        """
-        This method is used to set and/or retrieve how many Extra Character Slots a Player has.
+    @property
+    def available_character_slots(self):
+        used = sum(self.char_settings.all().values_list('slot_cost', flat=True))
+        return settings.MAX_NR_CHARACTERS + self.player_settings.extra_slots - used
 
-        Args:
-            update (str or int): If provided, sets the character's available extra slots.
-
-        Raises:
-            AthanorError: If the update argument cannot be converted to a non-negative integer.
-
-        Returns:
-            int
-        """
-        if not self.db._character_slots:
-            self.db._character_slots = 0
-        if update is not None:
-            try:
-                new_value = int(update)
-            except ValueError:
-                raise ValueError("Character slots must be non-negative integers.")
-            if new_value < 0:
-                raise ValueError("Character slots must be non-negative integers.")
-            self.db._character_slots = new_value
-            self.sys_msg("You now have %i Extra Character Slots." % new_value)
-        return int(self.db._character_slots)
-
-    def max_character_slots(self):
-        return settings.MAX_NR_CHARACTERS + self.extra_character_slots()
-
-    def used_character_slots(self):
-        return sum([char.character_slot_value() for char in self.get_all_characters()])
-
-    @lazy_property
-    def settings(self):
-        return SettingHandler(self)
+    @property
+    def character_count(self):
+        return self.char_settings.count()
 
     @property
     def screen_width(self):

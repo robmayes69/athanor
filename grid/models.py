@@ -1,34 +1,28 @@
 from __future__ import unicode_literals
 from django.db import models
+from athanor.abstract import WithKey
 from evennia.locks.lockhandler import LockHandler
 from evennia.utils.utils import lazy_property
-from commands.library import tabular_table, separator, sanitize_string
+from athanor.library import tabular_table, separator, sanitize_string
+
+class ObjectSetting(models.Model):
+    object = models.OneToOneField('objects.ObjectDB', related_name='object_settings')
+    owner = models.ForeignKey('objects.ObjectDB', related_name='owned_objects', null=True, on_delete=models.SET_NULL)
+    quota_cost = models.PositiveIntegerField(default=0)
+    creator = models.ForeignKey('objects.ObjectDB', related_name='created_objects', null=True, on_delete=models.SET_NULL)
+    district = models.ForeignKey('grid.District', related_name='rooms', null=True, on_delete=models.SET_NULL)
+
 
 # Create your models here.
-class District(models.Model):
-    key = models.CharField(max_length=100, unique=True)
+class District(WithKey):
     lock_storage = models.TextField('locks', blank=True)
     setting_ic = models.BooleanField(default=True)
     order = models.SmallIntegerField(default=100)
     description = models.TextField(blank=True, default='This District has no Description!')
-    rooms = models.ManyToManyField('objects.ObjectDB', related_name='district')
-
-    def __unicode__(self):
-        return self.key
 
     @lazy_property
     def locks(self):
         return LockHandler(self)
-
-    def do_rename(self, new_name):
-        if not new_name:
-            raise ValueError("no new name entered!")
-        clean_name = sanitize_string(new_name, strip_ansi=True)
-        if District.objects.filter(key__iexact=clean_name).exclude(id=self.id).count():
-            raise ValueError("District names must be unique.")
-        else:
-            self.key = clean_name
-            self.save()
 
     def list_destinations(self, viewer):
         return sorted([room for room in self.rooms.all()],

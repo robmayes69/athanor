@@ -1,5 +1,5 @@
 import re
-from world.database.groups.models import Group
+from athanor.groups.models import Group
 
 def group(accessing_obj, accessed_obj, *args, **kwargs):
     """
