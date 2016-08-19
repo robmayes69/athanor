@@ -3,7 +3,7 @@ from evennia.utils.utils import make_iter
 from evennia.utils.evmenu import EvMenu, _HELP_NO_OPTION_MATCH, _ERR_NO_OPTION_DESC, EvMenuError, _HELP_FULL, \
     _HELP_NO_QUIT, _HELP_NO_OPTIONS, _HELP_NO_OPTIONS_NO_QUIT
 from evennia.utils.ansi import strip_ansi
-from commands.library import partial_match
+from athanor.library import partial_match
 
 class AthanorMenu(EvMenu):
 

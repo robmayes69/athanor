@@ -38,12 +38,11 @@ class Character(DefaultCharacter):
         super(Character, self).at_object_creation()
         from athanor.core.models import CharacterSetting
         CharacterSetting.objects.get_or_create(character=self)
-        self.settings.update_last_played()
+        self.character_settings.update_last_played()
 
     def at_post_unpuppet(self, player, session=None):
         super(Character, self).at_post_unpuppet(player, session)
-        self.settings.update_last_played()
-        self.puppet_logs.create(player=self.player, unpuppet=True)
+        self.character_settings.update_last_played()
         if self.sessions:
             return
         self.channel_gags.db_channel.clear()
@@ -54,7 +53,7 @@ class Character(DefaultCharacter):
 
     def at_post_puppet(self):
         super(Character, self).at_post_puppet()
-        self.settings.update_last_played()
+        self.character_settings.update_last_played()
         self.puppet_logs.create(player=self.player)
         if len(self.sessions.all()) != 1 and not self.db._owner.db._watch_hide:
             for player in [play.db_player for play in self.on_watch.all() if not play.db_player.db._watch_mute]:
@@ -203,8 +202,12 @@ class Character(DefaultCharacter):
         return mxp_send(text=self.key, command=send_commands)
 
     @lazy_property
-    def settings(self):
-        return self.db._owner.settings
+    def owner(self):
+        return self.character_settings.player
+
+    @lazy_property
+    def player_settings(self):
+        return self.owner.player_settings
 
     @property
     def screen_width(self):

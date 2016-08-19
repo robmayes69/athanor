@@ -19,14 +19,13 @@ PLAYER_CREATE = True
 IDLE_TIMEOUT = -1
 
 # Enabling some extra Django apps!
-
 INSTALLED_APPS = INSTALLED_APPS + ('timezone_field',
                                    'athanor.bbs.apps.BBS',
+                                   'athanor.jobs.apps.Jobs',
                                    'athanor.fclist.apps.FCList',
                                    'athanor.grid.apps.Grid',
                                    'athanor.groups.apps.Group',
                                    'athanor.info.apps.Info',
-                                   'athanor.jobs.apps.Jobs',
                                    'athanor.core.apps.Core',
                                    'athanor.mushimport.apps.Mushimport',
                                    'athanor.radio.apps.Radio',
@@ -52,3 +51,14 @@ BASE_CHANNEL_TYPECLASS = "athanor.typeclasses.channels.PublicChannel"
 # Typeclass for Scripts (fallback). You usually don't need to change this
 # but create custom variations of scripts on a per-case basis instead.
 #BASE_SCRIPT_TYPECLASS = "typeclasses.scripts.Script"
+
+WEBSOCKET_ENABLED = True
+WEBSOCKET_PORTS = [8021]
+
+CMDSET_UNLOGGEDIN = "athanor.commands.default_cmdsets.UnloggedinCmdSet"
+CMDSET_SESSION = "athanor.commands.default_cmdsets.SessionCmdSet"
+CMDSET_CHARACTER = "athanor.commands.default_cmdsets.CharacterCmdSet"
+CMDSET_PLAYER = "athanor.commands.default_cmdsets.PlayerCmdSet"
+
+INLINEFUNC_ENABLED = True
+#INLINEFUNC_MODULES += []

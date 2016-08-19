@@ -117,7 +117,7 @@ class Player(DefaultPlayer):
 
     def at_post_login(self, session=None):
         super(Player, self).at_post_login(session)
-        self.last_played(update=True)
+        self.player_settings.update_last_played()
 
     def at_failed_login(self, session=None):
         super(Player, self).at_failed_login(session)
@@ -136,7 +136,8 @@ class Player(DefaultPlayer):
         """
         Returns a list of all valid playable characters.
         """
-        return self.char_settings.all().values_list('character', flat=True)
+        return sorted([setting.character for setting in self.char_settings.all()],
+                      key=lambda char: char.key)
 
     def bind_character(self, character):
         """
@@ -219,7 +220,11 @@ class Player(DefaultPlayer):
     @property
     def available_character_slots(self):
         used = sum(self.char_settings.all().values_list('slot_cost', flat=True))
-        return settings.MAX_NR_CHARACTERS + self.player_settings.extra_slots - used
+        return self.max_character_slots - used
+
+    @property
+    def max_character_slots(self):
+        return settings.MAX_NR_CHARACTERS + self.player_settings.extra_slots
 
     @property
     def character_count(self):
@@ -274,7 +279,7 @@ class Player(DefaultPlayer):
             message += self.at_look_character_menu()
 
             message.append(subheader('Open Char Slots: %s/%s' % (
-                self.max_character_slots() - len(characters), self.max_character_slots())))
+                self.max_character_slots - len(characters), self.max_character_slots)))
             self.msg('\n'.join(unicode(line) for line in message))
 
     def at_look_info_section(self, viewer=None):
@@ -316,12 +321,12 @@ class Player(DefaultPlayer):
         message.append(subheader('Characters', viewer=viewer))
         chartable = make_table('ID', 'Name', 'Type', 'Last Login', width=[7, 36, 15, 20], viewer=viewer)
         for character in characters:
-            login = character.last_played()
+            login = character.character_settings.last_played
             if login:
                 login = self.display_local_time(date=login)
             else:
                 login = 'N/A'
-            chartable.add_row(character.id, character.key, character.character_type, login)
+            chartable.add_row(character.id, character.key, '', login)
         message.append(chartable)
         # message.append(separator())
         return message

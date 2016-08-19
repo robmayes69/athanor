@@ -14,23 +14,22 @@ own cmdsets by inheriting from them or directly from `evennia.CmdSet`.
 
 """
 
-from commands.evennia_cmdsets import CharacterCmdSet as OldCharacter, SessionCmdSet as OldSession, \
+from athanor.commands.evennia_cmdsets import CharacterCmdSet as OldCharacter, SessionCmdSet as OldSession, \
     UnloggedinCmdSet as OldUnlogged, PlayerCmdSet as OldPlayer
-from commands.community import CmdWho, CmdPWho
-from commands.info_files import CmdInfo
-from commands.bbs import CmdBBAdmin, CmdBBList, CmdBBRead, CmdBBWrite, CmdGBAdmin, CmdGBList, CmdGBRead, CmdGBWrite
-from commands.account_management import CmdPlayerConfig, CmdTz, CmdWatch, CmdUsername, CmdEmail
-from commands.admin import CmdPlayers, CmdGameConfig, CmdAdmin
-from commands.groups import GROUP_COMMANDS
-from commands.grid_management import DISTRICT_COMMANDS
-from commands.mush_import import CmdImport
-from commands.login import CmdMushConnect, CmdCharCreate
-from commands.storyteller import CmdEditChar, CmdSheet
-from commands.channels import CmdChannels
-from commands.radio import CmdRadio
-from commands.fclist import CmdFCList
-from commands.help import CmdHelp, CmdAdminHelp
-from commands.scene import CmdEvents
+from athanor.commands.community import CmdWho, CmdPWho
+from athanor.info.info_files import CmdInfo
+from athanor.bbs.bbs import CmdBBAdmin, CmdBBList, CmdBBRead, CmdBBWrite, CmdGBAdmin, CmdGBList, CmdGBRead, CmdGBWrite
+from athanor.commands.account_management import CmdPlayerConfig, CmdTz, CmdWatch, CmdUsername, CmdEmail
+from athanor.commands.admin import CmdPlayers, CmdGameConfig, CmdAdmin
+from athanor.groups.groups import GROUP_COMMANDS
+from athanor.grid.grid_management import DISTRICT_COMMANDS
+from athanor.commands.mush_import import CmdImport
+from athanor.commands.login import CmdMushConnect, CmdCharCreate
+from athanor.core.channels import CmdChannels
+from athanor.radio.radio import CmdRadio
+from athanor.fclist.fclist import CmdFCList
+from athanor.commands.help import CmdHelp, CmdAdminHelp
+from athanor.scenes.scene import CmdEvents
 
 class CharacterCmdSet(OldCharacter):
     """
@@ -62,8 +61,6 @@ class CharacterCmdSet(OldCharacter):
         for district_cmd in DISTRICT_COMMANDS:
             self.add(district_cmd())
         self.add(CmdImport())
-        self.add(CmdEditChar())
-        self.add(CmdSheet())
         self.add(CmdPlayers())
         self.add(CmdGameConfig())
         self.add(CmdChannels())

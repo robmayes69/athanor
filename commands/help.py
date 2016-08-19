@@ -7,8 +7,8 @@ from evennia.utils.utils import fill, dedent
 from evennia.help.models import HelpEntry
 from evennia.utils.utils import string_suggestions
 
-from commands.command import AthCommand
-from commands.library import header, make_table
+from athanor.commands.command import AthCommand
+from athanor.library import header, make_table
 
 _DEFAULT_WIDTH = settings.CLIENT_DEFAULT_WIDTH
 _SEP = "{C" + "-" * _DEFAULT_WIDTH + "{n"

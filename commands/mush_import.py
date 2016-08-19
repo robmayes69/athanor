@@ -1,19 +1,19 @@
 from __future__ import unicode_literals
 import datetime, pytz, random, MySQLdb, MySQLdb.cursors as cursors
 from django.conf import settings
-from commands.command import AthCommand
-from commands.library import partial_match, dramatic_capitalize, sanitize_string, penn_substitutions, utcnow
-from world.database.mushimport.models import MushObject, cobj, pmatch, objmatch, MushAttributeName
-from world.database.bbs.models import Board, BoardGroup
-from world.database.mushimport.convpenn import read_penn
-from world.database.groups.models import Group
-from world.database.grid.models import District
-from world.database.fclist.models import FCList, StatusKind, TypeKind
-from world.database.radio.models import RadioFrequency, RadioSlot
-from world.database.jobs.models import JobCategory
-from world.database.scenes.models import Plot, Event, Scene, Pose
+from athanor.commands.command import AthCommand
+from athanor.library import partial_match, dramatic_capitalize, sanitize_string, penn_substitutions, utcnow
+from athanor.mushimport.models import MushObject, cobj, pmatch, objmatch, MushAttributeName
+from athanor.bbs.models import Board, BoardGroup
+from athanor.mushimport.convpenn import read_penn
+from athanor.groups.models import Group
+from athanor.grid.models import District
+from athanor.fclist.models import FCList, CharacterStatus, CharacterType
+from athanor.radio.models import RadioFrequency, RadioSlot
+from athanor.jobs.models import JobCategory
+from athanor.scenes.models import Plot, Event, Scene, Pose
 from evennia.utils import create
-from typeclasses.characters import Ex2Character, Ex3Character, Character
+from athanor.typeclasses.characters import Character
 
 
 def from_unixtimestring(secs):

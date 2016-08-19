@@ -4,7 +4,7 @@ from django.conf import settings
 from evennia.utils import create
 from typeclasses.characters import Character
 from evennia.utils.create import create_player
-from commands.command import MuxCommand, AthCommand
+from athanor.commands.command import MuxCommand, AthCommand
 from evennia.commands.default.unloggedin import _LATEST_FAILED_LOGINS, _throttle
 
 class CmdMushConnect(MuxCommand):

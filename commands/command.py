@@ -8,8 +8,8 @@ from __future__ import unicode_literals
 
 from evennia import Command as BaseCommand
 from evennia import default_cmds
-from commands.library import partial_match
-from typeclasses.scripts import SETTINGS
+from athanor.library import partial_match
+from athanor.typeclasses.scripts import SETTINGS
 
 class Command(BaseCommand):
     """

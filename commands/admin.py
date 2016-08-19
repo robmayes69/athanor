@@ -1,8 +1,8 @@
 from __future__ import unicode_literals
 from evennia import PlayerDB
-from commands.command import AthCommand
-from commands.library import utcnow, header, subheader, separator, make_table, sanitize_string, partial_match
-from world.database.communications.models import StaffEntry
+from athanor.commands.command import AthCommand
+from athanor.library import utcnow, header, subheader, separator, make_table, sanitize_string, partial_match
+from athanor.core.models import StaffEntry
 
 
 class CmdPlayers(AthCommand):

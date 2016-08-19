@@ -37,8 +37,9 @@ class PlayerSetting(models.Model):
     penn_channels = models.BooleanField(default=True)
     deleted = models.BooleanField(default=False)
     watch_list = models.ManyToManyField('objects.ObjectDB', related_name='on_watch')
-    channel_muzzles = models.ManyToManyField('settings.Muzzle', related_name='players')
+    channel_muzzles = models.ManyToManyField('core.Muzzle', related_name='player_muzzles')
     extra_slots = models.SmallIntegerField(default=0)
+    last_played = models.DateTimeField(null=True)
 
     def display_watch(self, viewer, connected_only=False):
         message = list()
@@ -55,16 +56,20 @@ class PlayerSetting(models.Model):
         message.append(header(viewer=viewer))
         return "\n".join([unicode(line) for line in message])
 
+    def update_last_played(self):
+        self.last_played = utcnow()
+        self.save(update_fields=['last_played'])
+
 class GameSetting(models.Model):
     key = models.PositiveSmallIntegerField(default=1, unique=True, db_index=True)
     gbs_enabled = models.BooleanField(default=True)
     guest_post = models.BooleanField(default=True)
-    approve_channels = models.ManyToManyField('channels.ChannelDB', related_name='+')
-    admin_channels = models.ManyToManyField('channels.ChannelDB', related_name='+')
-    default_channels = models.ManyToManyField('channels.ChannelDB', related_name='+')
-    guest_channels = models.ManyToManyField('channels.ChannelDB', related_name='+')
-    roleplay_channels = models.ManyToManyField('channels.ChannelDB', related_name='+')
-    alerts_channels = models.ManyToManyField('channels.ChannelDB', related_name='+')
+    approve_channels = models.ManyToManyField('comms.ChannelDB', related_name='+')
+    admin_channels = models.ManyToManyField('comms.ChannelDB', related_name='+')
+    default_channels = models.ManyToManyField('comms.ChannelDB', related_name='+')
+    guest_channels = models.ManyToManyField('comms.ChannelDB', related_name='+')
+    roleplay_channels = models.ManyToManyField('comms.ChannelDB', related_name='+')
+    alerts_channels = models.ManyToManyField('comms.ChannelDB', related_name='+')
     staff_tag = models.CharField(max_length=25, default='r')
     fclist_enable = models.BooleanField(default=True)
     max_themes = models.PositiveSmallIntegerField(default=1)
@@ -77,14 +82,14 @@ class GameSetting(models.Model):
     public_email = models.EmailField(null=True)
     require_approval = models.BooleanField(default=False)
     scene_board = models.ForeignKey('bbs.Board', related_name='+', null=True, on_delete=models.SET_NULL)
-    job_default = models.ForeignKey('job.Category', related_name='+', null=True, on_delete=models.SET_NULL)
+    job_default = models.ForeignKey('jobs.JobCategory', related_name='+', null=True, on_delete=models.SET_NULL)
     open_players = models.BooleanField(default=True)
     open_characters = models.BooleanField(default=True)
 
 
 class CharacterSetting(models.Model):
     character = models.OneToOneField('objects.ObjectDB', related_name='character_settings')
-    player = models.ForeignKey('players.PlayerDB', related_name='char_settings')
+    player = models.ForeignKey('players.PlayerDB', related_name='char_settings', null=True)
     radio_nospoof = models.BooleanField(default=False)
     group_ic = models.BooleanField(default=True)
     group_ooc = models.BooleanField(default=True)
@@ -95,8 +100,8 @@ class CharacterSetting(models.Model):
                                        on_delete=models.SET_NULL)
     character_status = models.ForeignKey('fclist.CharacterStatus', related_name='characters', null=True,
                                        on_delete=models.SET_NULL)
-    channel_gags = models.ManyToManyField('comms.ChannelDB', related_name='gagging')
-    channel_muzzles = models.ManyToManyField('settings.Muzzle', related_name='characters')
+    channel_gags = models.ManyToManyField('comms.ChannelDB', related_name='character_gags')
+    channel_muzzles = models.ManyToManyField('core.Muzzle', related_name='character_muzzles')
     slot_cost = models.SmallIntegerField(default=1)
 
     def update_last_played(self):
@@ -107,7 +112,6 @@ class CharacterSetting(models.Model):
 class Muzzle(models.Model):
     channel = models.ForeignKey('comms.ChannelDB', related_name='muzzles', null=True)
     setby = models.ForeignKey('objects.ObjectDB', null=True, on_delete=models.SET_NULL)
-    is_global = models.BooleanField(default=False)
     creation_date = models.DateTimeField(auto_now_add=True)
     expires = models.DurationField()
 
@@ -115,7 +119,7 @@ class Muzzle(models.Model):
         return (self.creation_date + self.expires) < utcnow()
 
 class ChannelSetting(models.Model):
-    channel = models.OneToOneField('comms.ChannelDB', related_name='settings')
+    channel = models.OneToOneField('comms.ChannelDB', related_name='channel_settings')
     group = models.ForeignKey('groups.Group', related_name='channel_settings', null=True)
     titles = models.BooleanField(default=True)
     color = models.CharField(max_length=20, default='n', validators=[validate_color])
@@ -171,7 +175,6 @@ class PuppetLog(models.Model):
     player = models.ForeignKey('players.PlayerDB', related_name='puppet_logs')
     character = models.ForeignKey('objects.ObjectDB', related_name='puppet_logs')
     date = models.DateTimeField(auto_now_add=True)
-    unpuppet = models.BooleanField(default=False)
 
 
 class StaffEntry(models.Model):
