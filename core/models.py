@@ -2,9 +2,10 @@ from __future__ import unicode_literals
 from django.db import models
 from evennia.utils.ansi import ANSIString
 from django.core.exceptions import ValidationError
-from timezone_field import TimeZoneField
-from athanor.library import utcnow, header, make_table
-
+from athanor.utils.time import utcnow
+from athanor.utils.text import sanitize_string, Speech
+from evennia.locks.lockhandler import LockHandler
+from evennia.utils.utils import lazy_property
 
 def validate_color(value):
     if not len(ANSIString('|%s' % value)) == 0:
@@ -17,12 +18,12 @@ class PlayerSetting(models.Model):
     look_alert = models.BooleanField(default=True)
     bbscan_alert = models.BooleanField(default=True)
     mail_alert = models.BooleanField(default=True)
-    scenes_alert = models.BooleanField(default=True)
+    events_alert = models.BooleanField(default=True)
     namelink_channel = models.BooleanField(default=True)
     quotes_channel = models.CharField(max_length=25, default='n', validators=[validate_color])
     speech_channel = models.CharField(max_length=25, default='n', validators=[validate_color])
     border_color = models.CharField(max_length=25, default='M', validators=[validate_color])
-    columnname_color = models.CharField(max_length=25, default='G', validators=[validate_color])
+    column_color = models.CharField(max_length=25, default='G', validators=[validate_color])
     headerstar_color = models.CharField(max_length=25, default='m', validators=[validate_color])
     headertext_color = models.CharField(max_length=25, default='w', validators=[validate_color])
     msgborder_color = models.CharField(max_length=25, default='m', validators=[validate_color])
@@ -33,9 +34,9 @@ class PlayerSetting(models.Model):
     outpage_color = models.CharField(max_length=25, default='n', validators=[validate_color])
     exitname_color = models.CharField(max_length=25, default='n', validators=[validate_color])
     exitalias_color = models.CharField(max_length=25, default='n', validators=[validate_color])
-    timezone = TimeZoneField(default='UTC')
+    timezone = models.CharField(max_length=100, default='UTC')
     penn_channels = models.BooleanField(default=True)
-    deleted = models.BooleanField(default=False)
+    enabled = models.BooleanField(default=True)
     watch_list = models.ManyToManyField('objects.ObjectDB', related_name='on_watch')
     channel_muzzles = models.ManyToManyField('core.Muzzle', related_name='player_muzzles')
     extra_slots = models.SmallIntegerField(default=0)
@@ -43,25 +44,26 @@ class PlayerSetting(models.Model):
 
     def display_watch(self, viewer, connected_only=False):
         message = list()
-        message.append(header('Watch List', viewer=viewer))
-        characters = self.watch_list.all()
+        message.append(viewer.render.header('Watch List'))
+        characters = self.watch_list.all().order_by('db_key')
         if connected_only:
             characters = [char for char in characters if char.has_player]
-        characters = sorted(characters, key=lambda char: char.key)
-        watch_table = make_table('Name', 'Conn', 'Idle', 'Location', width=[24, 8, 8, 38], viewer=viewer)
+        watch_table = viewer.render.make_table('Name', 'Conn', 'Idle', 'Location', width=[24, 8, 8, 38], viewer=viewer)
         for char in characters:
             watch_table.add_row(char.key, char.last_or_conn_time(viewer=viewer), char.last_or_idle_time(viewer=viewer),
                                 str(char.location))
         message.append(watch_table)
-        message.append(header(viewer=viewer))
+        message.append(viewer.render.footer())
         return "\n".join([unicode(line) for line in message])
 
     def update_last_played(self):
         self.last_played = utcnow()
         self.save(update_fields=['last_played'])
 
+
 class GameSetting(models.Model):
     key = models.PositiveSmallIntegerField(default=1, unique=True, db_index=True)
+    bbs_enabled = models.BooleanField(default=True)
     gbs_enabled = models.BooleanField(default=True)
     guest_post = models.BooleanField(default=True)
     approve_channels = models.ManyToManyField('comms.ChannelDB', related_name='+')
@@ -71,17 +73,26 @@ class GameSetting(models.Model):
     roleplay_channels = models.ManyToManyField('comms.ChannelDB', related_name='+')
     alerts_channels = models.ManyToManyField('comms.ChannelDB', related_name='+')
     staff_tag = models.CharField(max_length=25, default='r')
-    fclist_enable = models.BooleanField(default=True)
+    fclist_enabled = models.BooleanField(default=True)
+    fclist_types = models.ManyToManyField('fclist.CharacterType', related_name='+')
+    fclist_status = models.ManyToManyField('fclist.CharacterStatus', related_name='+')
     max_themes = models.PositiveSmallIntegerField(default=1)
     guest_home = models.ForeignKey('objects.ObjectDB', related_name='+', null=True, on_delete=models.SET_NULL)
+    max_guests = models.PositiveIntegerField(default=100)
+    guest_rename = models.BooleanField(default=True)
     character_home = models.ForeignKey('objects.ObjectDB', related_name='+', null=True, on_delete=models.SET_NULL)
-    pot_timeout = models.DurationField(default=28800)
+    pot_enabled = models.BooleanField(default=True)
+    pot_timeout = models.PositiveIntegerField(default=28800)
+    pot_number = models.PositiveIntegerField(default=300)
+    events_enabled = models.BooleanField(default=True)
+    groups_enabled = models.BooleanField(default=True)
     group_ic = models.BooleanField(default=True)
     group_ooc = models.BooleanField(default=True)
     anon_notices = models.BooleanField(default=False)
     public_email = models.EmailField(null=True)
     require_approval = models.BooleanField(default=False)
-    scene_board = models.ForeignKey('bbs.Board', related_name='+', null=True, on_delete=models.SET_NULL)
+    event_board = models.ForeignKey('bbs.Board', related_name='+', null=True, on_delete=models.SET_NULL)
+    job_enabled = models.BooleanField(default=True)
     job_default = models.ForeignKey('jobs.JobCategory', related_name='+', null=True, on_delete=models.SET_NULL)
     open_players = models.BooleanField(default=True)
     open_characters = models.BooleanField(default=True)
@@ -95,7 +106,7 @@ class CharacterSetting(models.Model):
     group_ooc = models.BooleanField(default=True)
     group_focus = models.ForeignKey('groups.Group', related_name='+', null=True, on_delete=models.SET_NULL)
     last_played = models.DateTimeField(null=True)
-    deleted = models.BooleanField(default=False)
+    enabled = models.BooleanField(default=True)
     character_type = models.ForeignKey('fclist.CharacterType', related_name='characters', null=True,
                                        on_delete=models.SET_NULL)
     character_status = models.ForeignKey('fclist.CharacterStatus', related_name='characters', null=True,
@@ -185,3 +196,57 @@ class StaffEntry(models.Model):
 
     def __str__(self):
         return self.character.key
+
+class WithKey(models.Model):
+    key = models.CharField(max_length=255, unique=True, db_index=True)
+
+    class Meta:
+        abstract = True
+
+    def __unicode__(self):
+        return self.key
+
+    def __str__(self):
+        return self.key
+
+    def rename(self, new_name):
+        if not new_name:
+            raise ValueError("No new name entered!")
+        clean_name = sanitize_string(new_name, strip_ansi=True)
+        if self.__class__.objects.filter(key__iexact=clean_name).exclude(id=self.id).count():
+            raise ValueError("Names must be unique, case insensitive.")
+        else:
+            if self.key == clean_name:
+                return
+            self.key = clean_name
+            self.save(update_fields=['key'])
+
+
+class WithTimestamp(models.Model):
+
+    class Meta:
+        abstract = True
+
+    def update_time(self, fields):
+        timestamp = utcnow()
+        if isinstance(fields, basestring):
+            setattr(self, fields, timestamp)
+            self.save(update_fields=[fields])
+            return
+        for field in fields:
+            setattr(self, field, timestamp)
+        self.save(update_fields=fields)
+
+
+class WithLocks(models.Model):
+    lock_storage = models.TextField('locks', blank=True)
+
+    class Meta:
+        abstract = True
+
+    @lazy_property
+    def locks(self):
+        return LockHandler(self)
+
+    def save_locks(self):
+        self.save(update_fields=['lock_storage'])

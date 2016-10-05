@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 import re, hashlib
 from django.db import models
 from django.db.models import Q
-from athanor.library import partial_match
+from athanor.utils.text import partial_match
 
 # Create your models here.
 

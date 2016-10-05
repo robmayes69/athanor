@@ -22,7 +22,7 @@ class Bot(models.Model):
 
     def setup(self):
         if not self.bot:
-            new_bot = create_script('typeclasses.scripts.TelnetBot', key=self.game_name)
+            new_bot = create_script('classes.scripts.TelnetBot', key=self.game_name)
             self.bot = new_bot
             self.save()
 

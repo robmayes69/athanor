@@ -1,9 +1,10 @@
 from __future__ import unicode_literals
 import pytz
-from evennia import PlayerDB
-from commands.command import AthCommand
-from commands.library import utcnow, header, subheader, separator, make_table, sanitize_string
-from world.database.communications.models import WatchFor
+from athanor.classes.players import Player
+from athanor.commands.command import AthCommand
+from athanor.utils.time import utcnow
+from athanor.utils.menu import make_menu
+from athanor.utils.create import player as make_player
 
 class CmdPlayerConfig(AthCommand):
     """
@@ -12,14 +13,13 @@ class CmdPlayerConfig(AthCommand):
     Usage:
         +config - displays all possible options.
         +config <option>=<value> - change an option.
-        +config/defaults - restore default settings.
 
     Options:
-        <BOOL> - Boolean. expects 0 (false) or 1 (True).
+        <BOOL> - Boolean. expects 0 (false/off) or 1 (True/On).
         <DURATION> - expects a time string in the format of #d #h #m #s. example: 5d for 5 days, or 1m 30s for 1 minute
                     30 seconds.
         <TIMEZONE> - Takes the name of a timezone. Will attempt to partial match. See @timezone for a proper list.
-        <COLOR> - Takes a color code option.
+        <COLOR> - Takes a color code option. Like r for bright red or n for neutral.
     """
 
     system_name = 'CONFIG'
@@ -28,29 +28,18 @@ class CmdPlayerConfig(AthCommand):
     player_switches = ['name']
 
     def func(self):
-        if 'defaults' in self.final_switches:
-            self.reset_defaults()
-            return
-
         if not self.args:
             self.display_config()
         else:
             self.set_config()
 
-    def reset_defaults(self):
-        if not self.verify('settings defaults'):
-            self.sys_msg("WARNING: This will clear your default settings."
-                         "Are you sure? Enter the command again to confirm.")
-            return
-        self.player.settings.restore_defaults()
-        self.sys_msg("Your settings were restored to defaults.")
 
     def display_config(self):
-        self.caller.msg(self.player.settings.display_categories(self.caller))
+        self.msg_lines(self.player.config.display(self.player))
 
     def set_config(self):
         try:
-            self.player.settings.set_setting(self.lhs, self.rhs, exact=False)
+            self.player.config.set(self.lhs, self.rhs)
         except ValueError as err:
             self.error(str(err))
             return
@@ -88,32 +77,34 @@ class CmdTz(AthCommand):
 
     def switch_none(self):
         if not self.args:
-            current_tz = self.player.settings.get('timezone')
+            current_tz = self.player.player_settings.timezone
             now = utcnow().astimezone(current_tz)
 
             self.sys_msg("Your Current Timezone is '%s'. Is it %s where you are right now?" % (str(current_tz),
                                                                                                now.strftime('%c %Z')))
             return
-        tz = self.player.settings.set_setting('timezone', self.args)
+        self.player.player_settings.timezone = self.args
+        self.player.player_settings.save(update_fields=['timezone'])
+        tz = self.player.player_settings.timezone
         self.sys_msg("Your Current Timezone is now '%s'. Is it %s where you are right now?" % (str(tz),
                                                                                                utcnow().astimezone(tz).strftime('%c %Z')))
 
 
     def switch_list(self):
         message = []
-        message.append(header('Available Timezones', viewer=self.caller))
+        message.append(self.player.render.header('Available Timezones'))
         tz_list = pytz.common_timezones
         if self.args:
             tz_list = [tz for tz in tz_list if tz.lower().startswith(self.args.lower())]
         if not tz_list:
             self.error("'%s' returned no matches.")
             return
-        tz_table = make_table('Name', 'Current Time', width=[35, 43], viewer=self.caller)
+        tz_table = self.player.render.make_table(['Name', 'Current Time'], width=[35, 43])
         for zone in tz_list:
             now = utcnow().astimezone(pytz.timezone(zone))
             tz_table.add_row(zone, now.strftime('%c %Z'))
         message.append(tz_table)
-        message.append(subheader(viewer=self.caller))
+        message.append(self.player.render.footer())
         self.msg_lines(message)
 
 
@@ -149,17 +140,13 @@ class CmdWatch(AthCommand):
             exec 'self.switch_%s()' % self.final_switches[0]
             return
 
-    def find_watch(self):
-        watch, created = WatchFor.objects.get_or_create(player=self.player)
-        return watch
-
     def display_list(self):
-        watch = self.find_watch()
-        self.character.msg(watch.display_list(viewer=self.character, connected_only=True))
+        msg = self.player.config.model.display_watch(viewer=self.character, connected_only=True)
+        self.character.msg(msg)
 
     def switch_list(self):
-        watch = self.find_watch()
-        self.character.msg(watch.display_list(viewer=self.character, connected_only=False))
+        msg = self.player.config.model.display_watch(viewer=self.character, connected_only=False)
+        self.character.msg(msg)
 
     def switch_add(self):
         try:
@@ -167,8 +154,7 @@ class CmdWatch(AthCommand):
         except ValueError as err:
             self.error(str(err))
             return
-        watch = self.find_watch()
-        watch.watch_list.add(found)
+        self.player.config.model.watch_list.add(found)
         self.sys_msg("Added '%s' to your Watch list." % found)
 
     def switch_delete(self):
@@ -177,11 +163,9 @@ class CmdWatch(AthCommand):
         except ValueError as err:
             self.error(str(err))
             return
-        watch = self.find_watch()
-        if found not in watch.watch_list.all():
+        if found not in self.player.player_settings.watch_list.all():
             self.error("They are not a friend!")
-            return
-        watch.watch_list.remove(found)
+        self.player.config.model.watch_list.remove(found)
         self.sys_msg("Removed '%s' from your Watch list." % found)
 
     def switch_hide(self):
@@ -194,54 +178,74 @@ class CmdWatch(AthCommand):
         self.sys_msg("You will %s hear friends connecting." % ('now' if toggle else 'no longer'))
         self.player.db._watch_mute = toggle
 
-class CmdUsername(AthCommand):
-    """
-    This command is used to change your account's username.
 
-    Usage:
-        @username <new name>
+
+class CmdAccount(AthCommand):
     """
-    key = '@username'
-    aliases = []
+
+    """
+    key = '@account'
     system_name = 'ACCOUNT'
     help_category = 'System'
-    player_switches = []
+    player_switches = ['edit']
+    admin_switches = ['list', 'create']
+
+    def target(self):
+        if not self.args or not self.is_admin:
+            target = self.player
+        elif self.args and self.is_admin:
+            target = Player.objects.filter_family(username__iexact=self.args).first()
+        else:
+            target = None
+        return target
 
     def func(self):
-        if not self.args:
-            self.error("Nothing entered for a username!")
+        if not self.final_switches:
+            self.main()
+        else:
+            getattr(self, 'switch_%s' % self.final_switches[0])()
+
+    def main(self):
+        target = self.target()
+        self.msg(target.account.display(self.player))
+
+    def switch_create(self):
+        name, password = self.lsargs, self.rsargs
+        if not name:
+            self.error("No name entered.")
             return
-        new_name = sanitize_string(self.args)
-        if PlayerDB.objects.filter(username__iexact=new_name).exclude(id=self.player.id).count():
-            self.error("Cannot rename to %s. That name is already taken." % new_name)
+        if not password:
+            self.error("No password entered.")
             return
-        self.player.key = new_name
-        self.player.save()
-        del self.player.db._reset_username
-        self.sys_msg("Your new username is: %s - Remember this for your next login!" % new_name)
-
-class CmdEmail(AthCommand):
-    """
-    This command is used to change your account's email.
-
-    Usage:
-        @email <new address>
-    """
-    key = '@email'
-    aliases = []
-    system_name = 'ACCOUNT'
-    help_category = 'System'
-    player_switches = []
-
-    def func(self):
-        if not self.args:
-            self.error("Nothing entered for an address!")
+        try:
+            target = make_player(name, password)
+        except ValueError as err:
+            self.error(str(err))
             return
-        new_address = PlayerDB.objects.normalize_email(sanitize_string(self.args))
-        self.player.email = new_address
-        self.sys_msg("Your new email is: %s" % new_address)
-        del self.player.db._reset_email
-        self.player.save()
+        self.sys_msg("Account created!")
+        #make_menu(self.character, 'athanor.core.menus.account', player=target)
+
+    def switch_edit(self):
+        target = self.target()
+        if not target:
+            self.error("Nobody found!")
+            return
+        make_menu(self.character, 'athanor.core.menus.account', player=target)
+
+    def switch_list(self):
+        message = list()
+        message.append(self.player.render.header('Accounts'))
+        if self.args:
+            found = Player.objects.filter_family(username__istartswith=self.args).order_by('id')
+        else:
+            found = Player.objects.filter_family().order_by('id')
+        acc_table = self.player.render.make_table(['ID', 'Name', 'Email', 'Characters'], width=[6, 17, 25, 30])
+        for acc in found:
+            acc_table.add_row(acc.id, '%s%s' % (acc.key, ' (Disabled)' if not acc.config.model.enabled else ''),
+                              acc.email, ', '.join(char.key for char in acc.account.characters()))
+        message.append(acc_table)
+        message.append(self.player.render.footer())
+        self.msg_lines(message)
 
 
-ACCOUNT_COMMANDS = [CmdPlayerConfig, CmdTz, CmdWatch, CmdUsername, CmdEmail]
+ACCOUNT_COMMANDS = [CmdPlayerConfig, CmdTz, CmdWatch, CmdAccount]

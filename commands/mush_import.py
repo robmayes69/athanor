@@ -2,7 +2,8 @@ from __future__ import unicode_literals
 import datetime, pytz, random, MySQLdb, MySQLdb.cursors as cursors
 from django.conf import settings
 from athanor.commands.command import AthCommand
-from athanor.library import partial_match, dramatic_capitalize, sanitize_string, penn_substitutions, utcnow
+from athanor.utils.text import partial_match, dramatic_capitalize, sanitize_string, penn_substitutions
+from athanor.utils.time import utcnow
 from athanor.mushimport.models import MushObject, cobj, pmatch, objmatch, MushAttributeName
 from athanor.bbs.models import Board, BoardGroup
 from athanor.mushimport.convpenn import read_penn
@@ -13,7 +14,7 @@ from athanor.radio.models import RadioFrequency, RadioSlot
 from athanor.jobs.models import JobCategory
 from athanor.scenes.models import Plot, Event, Scene, Pose
 from evennia.utils import create
-from athanor.typeclasses.characters import Character
+from athanor.classes.characters import Character
 
 
 def from_unixtimestring(secs):
@@ -280,7 +281,7 @@ class CmdImport(AthCommand):
             if poster_obj:
                 owner = poster_obj.obj
             else:
-                owner = create.create_object(typeclass='typeclasses.characters.BaseCharacter', key=poster_name)
+                owner = create.create_object(typeclass='classes.characters.BaseCharacter', key=poster_name)
                 dbref, csecs = poster_objid.split(':', 1)
                 cdate = from_unixtimestring(csecs)
                 MushObject.objects.create(objid=poster_objid, dbref=dbref, created=cdate, type=8, recreated=1, obj=owner)
@@ -742,7 +743,7 @@ class CmdImport(AthCommand):
                 char = match.obj
             else:
                 key = old_player['player_name']
-                char = create.create_object(typeclass='typeclasses.characters.BaseCharacter', key=key)
+                char = create.create_object(typeclass='classes.characters.BaseCharacter', key=key)
                 objid = old_player['objid']
                 dbref, csecs = objid.split(':', 1)
                 cdate = from_unixtimestring(csecs)
@@ -849,7 +850,7 @@ class CmdImport(AthCommand):
                 char = match.obj
             else:
                 key = old_player['player_name']
-                char = create.create_object(typeclass='typeclasses.characters.BaseCharacter', key=key)
+                char = create.create_object(typeclass='classes.characters.BaseCharacter', key=key)
                 objid = old_player['objid']
                 dbref, csecs = objid.split(':', 1)
                 cdate = from_unixtimestring(csecs)
@@ -919,7 +920,7 @@ class CmdImport(AthCommand):
                 room_name = old_scene['room_name']
                 dbref, csecs = room_objid.split(':', 1)
                 cdate = from_unixtimestring(csecs)
-                location = create.create_object(typeclass='typeclasses.rooms.BaseRoom', key=room_name)
+                location = create.create_object(typeclass='classes.rooms.BaseRoom', key=room_name)
                 new_mush, created = MushObject.objects.get_or_create(objid=room_objid, dbref=dbref, type=1, created=cdate)
                 new_mush.obj = location
                 new_mush.save()

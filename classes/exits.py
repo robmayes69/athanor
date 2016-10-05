@@ -8,7 +8,7 @@ for allowing Characters to traverse the exit to its destination.
 """
 from __future__ import unicode_literals
 from evennia import DefaultExit
-from athanor.library import mxp_send, MAIN_COLOR_DEFAULTS
+from athanor.utils.text import mxp
 from evennia.utils.ansi import ANSIString
 
 class Exit(DefaultExit):
@@ -36,10 +36,8 @@ class Exit(DefaultExit):
     """
 
     def format_output(self, viewer):
-        colors = MAIN_COLOR_DEFAULTS
-        colors = colors['rooms']
-        namecolor = colors['exitnames']
-        aliascolor = colors['exitalias']
+        namecolor = viewer.player.config['exitname_color']
+        aliascolor = viewer.player.config['exitalias_color']
         alias = self.aliases.all()[0] or ''
         alias = alias.upper()
         if alias:
@@ -55,7 +53,7 @@ class Exit(DefaultExit):
         else:
             destination_text = ''
         if alias:
-            main = mxp_send(text=border_alias + name, command=self.key)
+            main = mxp(text=border_alias + name, command=self.key)
         else:
-            main = mxp_send(text=name, command=self.key)
+            main = mxp(text=name, command=self.key)
         return ANSIString(main + destination_text)

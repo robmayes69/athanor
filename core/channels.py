@@ -1,9 +1,10 @@
 from __future__ import unicode_literals
 from evennia import PlayerDB
 from evennia.utils.create import create_channel
-from typeclasses.channels import PublicChannel
-from commands.command import AthCommand
-from commands.library import utcnow, header, subheader, separator, make_table, sanitize_string
+from athanor.classes.channels import PublicChannel
+from athanor.commands.command import AthCommand
+from athanor.utils.time import utcnow
+from athanor.utils.text import sanitize_string
 
 class CmdChannels(AthCommand):
     """
@@ -16,10 +17,11 @@ class CmdChannels(AthCommand):
     def func(self):
         channels = PublicChannel.objects.filter_family().order_by('db_key')
         message = list()
-        message.append(header("Public Channels"))
-        channel_table = make_table("Sta", "Name", "Aliases", "Perms", "Members", "Description", width=[5, 22, 8, 7, 8, 28], viewer=self.character)
+        message.append(self.player.render.header("Public Channels"))
+        channel_table = self.player.render.make_table(["Sta", "Name", "Aliases", "Perms", "Members", "Description"],
+                                                       width=[5, 22, 8, 7, 8, 28])
         for chan in channels:
             channel_table.add_row('##', chan.key, 'test', 'test2', '0', 'test3')
         message.append(channel_table)
-        message.append(header(viewer=self.character))
+        message.append(self.player.render.footer())
         self.msg("\n".join([unicode(line) for line in message]))

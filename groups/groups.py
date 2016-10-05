@@ -1,8 +1,9 @@
 from __future__ import unicode_literals
 import re
-from world.database.groups.models import Group, valid_groupname, find_group, GroupPermissions
-from commands.command import AthCommand
-from commands.library import header, make_table, partial_match, sanitize_string, duration_from_string, utcnow
+from athanor.groups.models import Group, valid_groupname, find_group, GroupPermissions
+from athanor.commands.command import AthCommand
+from athanor.utils.text import partial_match, sanitize_string
+from athanor.utils.time import duration_from_string, utcnow
 from evennia.utils.ansi import ANSIString
 
 class GroupCommand(AthCommand):
@@ -35,8 +36,8 @@ class CmdGroupList(GroupCommand):
         for tier in tiers:
             groups = Group.objects.filter(tier=tier).order_by('order')
             if groups:
-                message.append(header("Tier %s Groups" % tier, viewer=self.character))
-                group_table = make_table("Name", "Leader", "Second", "Conn", width=[30, 20, 20, 8], viewer=self.character)
+                message.append(self.player.render.header("Tier %s Groups" % tier))
+                group_table = self.player.render.make_table(["Name", "Leader", "Second", "Conn"], width=[30, 20, 20, 8])
                 for group in groups:
                     group_table.add_row(group.name,
                                        ", ".join('%s' % char for char in group.members.filter(rank__num=1)),
@@ -46,7 +47,7 @@ class CmdGroupList(GroupCommand):
         if not len(message):
             self.sys_msg("No groups to display.")
             return
-        message.append(header(viewer=self.character))
+        message.append(self.player.render.footer())
         self.msg_lines(message)
 
 
@@ -511,7 +512,7 @@ class CmdGroupSet(GroupCommand):
 
     def display_settings(self, group):
         message = list()
-        message.append(header('%s Settings' % group, viewer=self.character))
+        message.append(self.player.render.header('%s Settings' % group))
         message.append('Start: %s' % group.start_rank.num)
         message.append('Alert: %s' % group.alert_rank.num)
         message.append('Order: %s' % group.order)
@@ -523,7 +524,7 @@ class CmdGroupSet(GroupCommand):
         message.append('Tier: %s' % group.tier)
         message.append('Timeout: %s' % group.timeout)
         message.append('ID: %s' % group.id)
-        message.append(header(viewer=self.character))
+        message.append(self.player.render.footer())
         self.msg("\n".join([unicode(line) for line in message]))
 
     def change_settings(self, group):
@@ -990,10 +991,10 @@ class CmdGroupChan(GroupCommand):
             if not recall:
                 self.sys_msg("No lines to recall.")
             recall_buffer = list()
-            recall_buffer.append(header('%s %s Chat Recall - %s Lines' % (group, chan.upper(), lines)))
+            recall_buffer.append(self.player.render.header('%s %s Chat Recall - %s Lines' % (group, chan.upper(), lines)))
             for line in show_recall:
                 recall_buffer.append(line.format_msg(self.character, date_prefix=True))
-            recall_buffer.append(header('%s Lines in Buffer' % full_recall.count()))
+            recall_buffer.append(self.player.render.header('%s Lines in Buffer' % full_recall.count()))
             self.msg_lines(recall_buffer)
             return
 

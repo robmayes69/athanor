@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
-from world.database.info.models import valid_name
-from commands.command import AthCommand
+from athanor.info.models import valid_name
+from athanor.commands.command import AthCommand
 
 class CmdInfo(AthCommand):
     """

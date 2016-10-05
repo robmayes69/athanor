@@ -19,8 +19,7 @@ PLAYER_CREATE = True
 IDLE_TIMEOUT = -1
 
 # Enabling some extra Django apps!
-INSTALLED_APPS = INSTALLED_APPS + ('timezone_field',
-                                   'athanor.bbs.apps.BBS',
+INSTALLED_APPS = INSTALLED_APPS + ('athanor.bbs.apps.BBS',
                                    'athanor.jobs.apps.Jobs',
                                    'athanor.fclist.apps.FCList',
                                    'athanor.grid.apps.Grid',
@@ -32,28 +31,30 @@ INSTALLED_APPS = INSTALLED_APPS + ('timezone_field',
                                    'athanor.scenes.apps.Scenes',)
 
 
-LOCK_FUNC_MODULES = LOCK_FUNC_MODULES + ("athanor.groups.locks",)
+TEMPLATES[0]['DIRS'] += (os.path.join(GAME_DIR, 'athanor', 'site', 'templates'),)
 
+LOCK_FUNC_MODULES = LOCK_FUNC_MODULES + ("athanor.core.lockfuncs", "athanor.groups.locks",)
+
+INPUT_FUNC_MODULES = INPUT_FUNC_MODULES + ['athanor.core.inputfuncs']
 
 # TYPECLASS STUFF
 # Typeclass for player objects (linked to a character) (fallback)
-BASE_PLAYER_TYPECLASS = "athanor.typeclasses.players.Player"
+BASE_PLAYER_TYPECLASS = "athanor.classes.players.Player"
 # Typeclass and base for all objects (fallback)
-#BASE_OBJECT_TYPECLASS = "typeclasses.objects.Object"
+#BASE_OBJECT_TYPECLASS = "classes.objects.Object"
 # Typeclass for character objects linked to a player (fallback)
-BASE_CHARACTER_TYPECLASS = "athanor.typeclasses.characters.Character"
+BASE_CHARACTER_TYPECLASS = "athanor.classes.characters.Character"
 # Typeclass for rooms (fallback)
-BASE_ROOM_TYPECLASS = "athanor.typeclasses.rooms.Room"
+BASE_ROOM_TYPECLASS = "athanor.classes.rooms.Room"
 # Typeclass for Exit objects (fallback).
-BASE_EXIT_TYPECLASS = "athanor.typeclasses.exits.Exit"
+BASE_EXIT_TYPECLASS = "athanor.classes.exits.Exit"
 # Typeclass for Channel (fallback).
-BASE_CHANNEL_TYPECLASS = "athanor.typeclasses.channels.PublicChannel"
+BASE_CHANNEL_TYPECLASS = "athanor.classes.channels.PublicChannel"
 # Typeclass for Scripts (fallback). You usually don't need to change this
 # but create custom variations of scripts on a per-case basis instead.
-#BASE_SCRIPT_TYPECLASS = "typeclasses.scripts.Script"
+#BASE_SCRIPT_TYPECLASS = "classes.scripts.Script"
 
 WEBSOCKET_ENABLED = True
-WEBSOCKET_PORTS = [8021]
 
 CMDSET_UNLOGGEDIN = "athanor.commands.default_cmdsets.UnloggedinCmdSet"
 CMDSET_SESSION = "athanor.commands.default_cmdsets.SessionCmdSet"

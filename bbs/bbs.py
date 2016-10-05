@@ -1,11 +1,11 @@
 from __future__ import unicode_literals
 
 from evennia.locks.lockhandler import LockException
-from world.database.bbs.models import BoardGroup
-from world.database.groups.models import Group
-from commands.command import AthCommand
-from commands.library import header, make_table, mxp_send
-from commands.library import duration_from_string, sanitize_string, penn_substitutions, partial_match
+from athanor.bbs.models import BoardGroup
+from athanor.groups.models import Group
+from athanor.commands.command import AthCommand
+from athanor.utils.text import mxp, sanitize_string, penn_substitutions, partial_match
+from athanor.utils.time import duration_from_string
 from evennia import create_script
 from evennia.utils.utils import time_format
 
@@ -16,7 +16,7 @@ class BBCommand(AthCommand):
     """
     help_category = "Boards"
     system_name = "BBS"
-    locks = "cmd:all()"
+    locks = "cmd:bbs_enabled()"
     arg_rexex = r"\s+"
 
     @property
@@ -353,11 +353,11 @@ class CmdBBWrite(BBCommand):
             return
         curpost = dict(self.character.db.curpost)
         message = list()
-        message.append(header("Post in Progress", viewer=self.character))
+        message.append(self.player.render.header("Post in Progress"))
         message.append('Board: %s, Group: %s' % (curpost['board'], curpost['group']))
         message.append("Subject: %s" % curpost['subject'])
         message.append(curpost['text'])
-        message.append(header(viewer=self.character))
+        message.append(self.player.render.header(viewer=self.character))
         self.msg_lines(message)
 
     def post_toss(self):
@@ -637,13 +637,13 @@ class CmdBBWrite(BBCommand):
             return
         message = list()
         message.append(self.board_header())
-        bbtable = make_table("ID", "RWA", "Name", "Timeout", width=[4, 4, 23, 47], viewer=self.character)
+        bbtable = self.player.render.make_table(["ID", "RWA", "Name", "Timeout"], width=[4, 4, 23, 47])
         for board in board_group.visible_boards(checker=self.player):
-            bbtable.add_row(mxp_send(board.order, "+bbread %s" % board.order),
-                            board.display_permissions(self.character), mxp_send(board, "+bbread %s" % board.order),
+            bbtable.add_row(mxp(board.order, "+bbread %s" % board.order),
+                            board.display_permissions(self.character), mxp(board, "+bbread %s" % board.order),
                             time_format(board.timeout.total_seconds()) if board.timeout else '0 - Permanent')
         message.append(bbtable)
-        message.append(header(viewer=self.character))
+        message.append(self.player.render.footer())
         self.msg_lines(message)
 
 
@@ -772,7 +772,7 @@ class CmdBBRead(BBCommand):
             return
         message = list()
         message.append(self.board_header())
-        bbs = make_table("ID", "Board", "U", "Posts", width=[4, 30, 4, 39], viewer=self.character)
+        bbs = self.player.render.make_table(["ID", "Board", "U", "Posts"], width=[4, 30, 4, 39], viewer=self.character)
         boards = board_group.visible_boards(checker=self.player)
         show = False
         if boards:
@@ -782,7 +782,7 @@ class CmdBBRead(BBCommand):
                     show = True
                     bbs.add_row(board.order, board, len(unread), ", ".join(str(n.order) for n in unread))
             message.append(bbs)
-            message.append(header(viewer=self.character))
+            message.append(self.player.render.header())
         if show:
             self.msg_lines(message)
         else:
@@ -804,7 +804,7 @@ class CmdBBRead(BBCommand):
             return
         message = list()
         message.append(self.board_group.name)
-        bbs = make_table("ID", "Board", "U", "Posts", width=[4, 30, 4, 39], viewer=self.character)
+        bbs = self.player.render.make_table(["ID", "Board", "U", "Posts"], width=[4, 30, 4, 39])
         boards = board_group.visible_boards(checker=self.character)
         show = False
         if boards:
@@ -814,7 +814,7 @@ class CmdBBRead(BBCommand):
                     show = True
                     bbs.add_row(board.order, board, len(unread), ", ".join(str(n.order) for n in unread))
             message.append(bbs)
-            message.append(header(viewer=self.character))
+            message.append(self.player.render.footer())
         if show:
             self.msg_lines(message)
         elif standalone:

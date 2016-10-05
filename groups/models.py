@@ -1,10 +1,9 @@
 from __future__ import unicode_literals
 from django.db import models
-from athanor.library import utcnow, sanitize_string, partial_match, connected_characters
-from athanor.library import header, make_table
+from athanor.utils.text import sanitize_string, partial_match
 from evennia.utils.ansi import ANSIString
 from evennia.utils.create import create_channel
-from athanor.abstract import WithLocks, WithKey
+from athanor.core.models import WithLocks, WithKey
 from athanor.core.models import validate_color
 
 # Create your models here.
@@ -31,6 +30,13 @@ class Group(WithKey, WithLocks):
     ooc_enabled = models.BooleanField(default=True)
     display_type = models.SmallIntegerField(default=0)
     timeout = models.DurationField(null=True)
+
+    def serialize(self, viewer):
+        members = [char.character.id for char in self.members]
+        return {'id': self.id, 'key': self.key, 'order': self.order, 'tier': self.tier,
+                'abbreviation': self.abbreviation, 'color': self.color, 'display_type': self.display_type,
+                'member_ids': members}
+
 
     def delete(self, *args, **kwargs):
         """
@@ -70,14 +76,14 @@ class Group(WithKey, WithLocks):
             ic_channel = self.ic_channel
             ic_channel.key = 'group_%s_ic' % self.key
         else:
-            self.ic_channel = create_channel('group_%s_ic' % self.key, typeclass='athanor.typeclasses.channels.GroupIC')
+            self.ic_channel = create_channel('group_%s_ic' % self.key, typeclass='athanor.classes.channels.GroupIC')
             self.save(update_fields=['ic_channel'])
             self.ic_channel.init_locks(group=self)
         if self.ooc_channel:
             ooc_channel = self.ooc_channel
             ooc_channel.key = 'group_%s_ooc' % self.key
         else:
-            self.ooc_channel = create_channel('group_%s_ooc' % self.key, typeclass='athanor.typeclasses.channels.GroupOOC')
+            self.ooc_channel = create_channel('group_%s_ooc' % self.key, typeclass='athanor.classes.channels.GroupOOC')
             self.save(update_fields=['ooc_channel'])
             self.ooc_channel.init_locks(group=self)
 
@@ -200,25 +206,25 @@ class Group(WithKey, WithLocks):
 
     def display_group(self, viewer):
         message = list()
-        message.append(header("Group: %s" % self))
-        grouptable = make_table("Name", "Rank", "Title", "Idle", width=[24, 23, 23, 8], viewer=viewer)
+        message.append(viewer.render.header("Group: %s" % self))
+        grouptable = viewer.render.make_table(["Name", "Rank", "Title", "Idle"], width=[24, 23, 23, 8])
         for member in self.members.order_by('rank__num'):
             title = member.title
             grouptable.add_row(member, member.rank.display, title or '', member.character.last_or_idle_time(viewer))
         message.append(grouptable)
-        message.append(header(viewer=viewer))
+        message.append(viewer.render.footer())
         return "\n".join([unicode(line) for line in message])
 
     def display_ranks(self, viewer):
         message = list()
-        message.append(header("Group Ranks: %s" % self, viewer=viewer))
-        ranktable = make_table("#", "Name", "Permissions", width=[5, 24, 49], viewer=viewer)
+        message.append(viewer.render.header("Group Ranks: %s" % self, viewer=viewer))
+        ranktable = viewer.render.make_table(["#", "Name", "Permissions"], width=[5, 24, 49])
         for rank in self.ranks.order_by('num'):
             ranktable.add_row(rank.num, rank.name, ", ".join('%s' % perm for perm in rank.perms.all()))
         ranktable.add_row("MEM", "", ", ".join('%s' % perm for perm in self.member_permissions.all()))
         ranktable.add_row("GST", "", ", ".join('%s' % perm for perm in self.guest_permissions.all()))
         message.append(ranktable)
-        message.append(header(viewer=viewer))
+        message.append(viewer.render.footer(viewer=viewer))
         return "\n".join([unicode(line) for line in message])
 
 

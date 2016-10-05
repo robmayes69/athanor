@@ -1,8 +1,8 @@
 from __future__ import unicode_literals
 
 from django.db import models
-from athanor.library import sanitize_string, header, separator, make_table, make_column_table
-from athanor.abstract import WithKey
+from athanor.utils.text import sanitize_string
+from athanor.core.models import WithKey
 
 # Create your models here.
 
@@ -22,16 +22,16 @@ class FCList(WithKey):
 
     def display_list(self, viewer):
         message = list()
-        message.append(header("Theme: %s" % self, viewer=viewer))
+        message.append(viewer.render.header("Theme: %s" % self))
         if self.description:
             message.append(self.description)
-        message.append(separator('Cast'))
+        message.append(viewer.render.separator('Cast'))
         message.append(self.display_cast(viewer=viewer))
-        message.append(header(viewer=viewer))
+        message.append(viewer.render.header())
         return "\n".join([unicode(line) for line in message])
 
     def display_cast(self, viewer, header=True):
-        theme_table = make_table("Name", "Faction", "Last On", "Type", "Status", width=[21, 29, 9, 10, 9], header=header)
+        theme_table = viewer.render.make_table(["Name", "Faction", "Last On", "Type", "Status"], width=[21, 29, 9, 10, 9], header=header)
         for char in self.cast.all().order_by('db_key'):
             try:
                 type = char.list_type

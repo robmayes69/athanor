@@ -1,9 +1,10 @@
 from __future__ import unicode_literals
-from commands.command import AthCommand
+from athanor.commands.command import AthCommand
 from evennia.utils.ansi import ANSIString
-from commands.library import utcnow, header, subheader, separator, make_table, sanitize_string, partial_match, \
-    duration_from_string, utc_from_string
-from world.database.scenes.models import Event, Pot, Plot, Scene
+from athanor.utils.time import utcnow, duration_from_string, utc_from_string
+from athanor.utils.text import sanitize_string, partial_match
+
+from athanor.scenes.models import Event, Pot, Plot, Scene
 
 class CmdEvents(AthCommand):
     """
@@ -71,11 +72,11 @@ class CmdEvents(AthCommand):
         last_day = ''
         check_day = ''
         message = list()
-        message.append(header("Current Schedule - %s" % self.caller.display_local_time(format='%Z'), viewer=self.caller))
+        message.append(self.player.render.header("Current Schedule - %s" % self.player.time.display(format='%Z')))
         for event in events:
             check_day = self.caller.display_local_time(date=event.date_schedule, format='%a %b %d %Y')
             if check_day != last_day:
-                message.append(subheader(check_day))
+                message.append(self.player.render.subheader(check_day))
             last_day = check_day
             time = self.caller.display_local_time(date=event.date_schedule, format='%I:%M%p')
             tag_mark = ' '
@@ -92,7 +93,7 @@ class CmdEvents(AthCommand):
             display_string = "{}{:<2} {:<4}{:40.40}{:23.23}{:7}".format(tag_mark, tag_count, event.id, event.title,
                                                                         event.owner, time)
             message.append(display_string)
-        message.append(header(viewer=self.caller))
+        message.append(self.player.render.footer())
         self.msg_lines(message)
 
     def display_event(self, lhs):

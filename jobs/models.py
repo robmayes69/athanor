@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 
 from django.db import models
 
-from athanor.abstract import WithKey, WithLocks
+from athanor.core.models import WithKey, WithLocks
 
 # Create your models here.
 

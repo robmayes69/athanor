@@ -1,0 +1,227 @@
+from __future__ import unicode_literals
+import re
+from evennia.utils.ansi import ANSIString, ANSI_PARSER
+
+def tabular_table(word_list=None, field_width=26, line_length=78, output_separator=" ", truncate_elements=True):
+    """
+    This function returns a tabulated string composed of a basic list of words.
+    """
+    if not word_list:
+        word_list = list()
+    elements = [ANSIString(entry) for entry in word_list]
+    if truncate_elements:
+        elements = [entry[:field_width] for entry in elements]
+    elements = [entry.ljust(field_width) for entry in elements]
+    separator_length = len(output_separator)
+    per_line = line_length / (field_width + separator_length)
+    result_string = ANSIString("")
+    count = 0
+    total = len(elements)
+    for num, element in enumerate(elements):
+        count += 1
+        if count == 1:
+            result_string += element
+        elif count == per_line:
+            result_string += output_separator
+            result_string += element
+            if not num+1 == total:
+                result_string += '\n'
+            count = 0
+        elif count > 1:
+            result_string += output_separator
+            result_string += element
+    return result_string
+
+
+def sanitize_string(input=None, length=None, strip_ansi=False, strip_mxp=True, strip_newlines=True, strip_indents=True):
+    if not input:
+        return ''
+    input = input.strip()
+    if strip_mxp:
+        input = ANSI_PARSER.strip_mxp(input)
+    if strip_ansi:
+        input = ANSIString(input).clean()
+        input = input
+    if strip_newlines:
+        for bad_char in ['\n', '%r', '%R', '|/']:
+            input = input.replace(bad_char, '')
+    if strip_indents:
+        for bad_char in ['\t', '%t', '%T', '|-']:
+            input = input.replace(bad_char, '')
+    if length:
+        input = input[:length]
+    return input
+
+
+def dramatic_capitalize(capitalize_string=''):
+    capitalize_string = re.sub(r"(?i)(?:^|(?<=[_\/\-\|\s()\+]))(?P<name1>[a-z]+)",
+                               lambda find: find.group('name1').capitalize(), capitalize_string.lower())
+    capitalize_string = re.sub(r"(?i)\b(of|the|a|and|in)\b", lambda find: find.group(1).lower(), capitalize_string)
+    capitalize_string = re.sub(r"(?i)(^|(?<=[(\|\/]))(of|the|a|and|in)",
+                               lambda find: find.group(1) + find.group(2).capitalize(), capitalize_string)
+    return capitalize_string
+
+
+def penn_substitutions(input=None):
+    if not input:
+        return ''
+    for bad_char in ['%r', '%R']:
+        input = input.replace(bad_char, '|/')
+    for bad_char in ['%t', '%T']:
+        input = input.replace(bad_char, '|-')
+    return input
+
+
+def partial_match(match_text, candidates):
+    candidate_list = sorted(candidates, key=lambda item: len(str(item)))
+    for candidate in candidate_list:
+        if match_text.lower() == str(candidate).lower():
+            return candidate
+        if str(candidate).lower().startswith(match_text.lower()):
+            return candidate
+
+
+def mxp(text="", command="", hints=""):
+    if text:
+        return ANSIString("|lc%s|lt%s|le" % (command, text))
+    else:
+        return ANSIString("|lc%s|lt%s|le" % (command, command))
+
+class Speech(object):
+    """
+    This class is similar to the Evennia Msg in that it represents an entity speaking.
+    It is meant to render speech from a player or character. The output replicates MUSH-style
+    speech from varying input. Intended output:
+
+    If input = ':blah.', output = 'Character blah.'
+    If input = ';blah.', output = 'Characterblah.'
+    If input = |blah', output = 'blah'
+    If input = 'blah.', output = 'Character says, "Blah,"'
+
+    """
+
+    def __init__(self, speaker, speech_text, alternate_name=None, title=None, mode='ooc'):
+        from athanor.utils.create import CHARACTER_MANAGER
+        self.character_dict = dict()
+        self.character_id = CHARACTER_MANAGER.char_dict
+        for id, key in CHARACTER_MANAGER.char_dict.iteritems():
+            self.character_dict[key.upper()] = id
+
+        def markup_names(match, char_dict=self.character_dict):
+            found = match.group('found')
+            if found[0].isupper():
+                return '^^^%s:%s^^^' % (char_dict[found.upper()], found)
+            return found
+
+        self.speaker = speaker
+        if alternate_name:
+            self.display_name = alternate_name
+            self.markup_name = alternate_name
+        else:
+            self.display_name = str(speaker)
+            self.markup_name = '^^^%s:%s^^^' % (speaker.id, speaker.key)
+        self.title = title
+        self.mode = mode
+
+        speech_text = ANSIString(speech_text)
+
+        if speech_text[:1] == ':':
+            special_format = 1
+            speech_string = speech_text[1:]
+        elif speech_text[:1] == ';':
+            special_format = 2
+            speech_string = speech_text[1:]
+        elif speech_text[:1] == '|':
+            special_format = 3
+            speech_string = speech_text[1:]
+        elif speech_text[:1] in ['"', "'"]:
+            special_format = 0
+            speech_string = speech_text[1:]
+        else:
+            special_format = 0
+            speech_string = speech_text
+
+        self.special_format = special_format
+        self.speech_string = ANSIString(speech_string)
+
+        escape_names = [re.escape(name) for name in self.character_dict.keys()]
+        all_names = '|'.join(escape_names)
+        self.markup_string = re.sub(r"(?i)\b(?P<found>%s)\b" % all_names, markup_names, self.speech_string)
+
+    def __str__(self):
+        str(unicode(self))
+
+    def __unicode__(self):
+        return unicode(self.demarkup())
+
+    def monitor_display(self, viewer=None):
+        if not viewer:
+            return self.demarkup()
+        if not self.codename:
+            return self.render(viewer)
+        return_string = None
+        if self.special_format == 0:
+            return_string = '(%s)%s says, "%s"' % (self.markup_name, self.codename, self.markup_string)
+        elif self.special_format == 1:
+            return_string = '(%s)%s %s' % (self.markup_name, self.codename, self.markup_string)
+        elif self.special_format == 2:
+            return_string = '(%s)%s%s' % (self.markup_name, self.codename, self.markup_string)
+        elif self.special_format == 3:
+            return_string = '(%s)%s' % (self.markup_name, self.markup_string)
+        if self.title:
+            return_string = '%s %s' % (self.title, return_string)
+
+        return self.colorize(return_string, viewer)
+
+    def render(self, viewer=None):
+        if not viewer:
+            return ANSIString(self.demarkup())
+        return_string = None
+        if self.special_format == 0:
+            return_string = '%s says, "%s|n"' % (self.markup_name, self.markup_string)
+        elif self.special_format == 1:
+            return_string = '%s %s' % (self.markup_name, self.markup_string)
+        elif self.special_format == 2:
+            return_string = '%s%s' % (self.markup_name, self.markup_string)
+        elif self.special_format == 3:
+            return_string = self.markup_string
+        if self.title:
+            return_string = '%s %s' % (self.title, return_string)
+
+        return self.colorize(return_string, viewer)
+
+    def demarkup(self):
+        return_string = None
+        if self.special_format == 0:
+            return_string = '%s says, "%s|n"' % (self.display_name, self.speech_string)
+        elif self.special_format == 1:
+            return_string = '%s %s' % (self.display_name, self.speech_string)
+        elif self.special_format == 2:
+            return_string = '%s%s' % (self.display_name, self.speech_string)
+        elif self.special_format == 3:
+            return_string = self.speech_string
+        if self.title:
+            return_string = '%s %s' % (self.title, return_string)
+        return ANSIString(return_string)
+
+    def colorize(self, message, viewer):
+        quotes = 'quotes_%s' % self.mode
+        speech = 'speech_%s' % self.mode
+        quote_color = getattr(viewer.player_settings, quotes)
+        speech_color = getattr(viewer.player_settings, speech)
+        def color_speech(found, viewer=viewer):
+            return '|%s"|n|%s%s|n|%s"|n' % (quote_color, speech_color, found.group('found'), quote_color)
+
+        def color_names(found, viewer=viewer):
+            try:
+                id = int(found.group('id'))
+            except:
+                return found.group('name')
+            if id in self.character_id:
+                color = viewer.player_settings.get_color_name(self.character_id[id])
+                return '|n|%s%s|n' % (color, found.group('name'))
+            return found.group('name')
+
+        colorized_string = re.sub(r'(?s)"(?P<found>.*?)"', color_speech, message)
+        names_string = re.sub(r'\^\^\^(?P<id>\d+)\:(?P<name>[^^]+)\^\^\^', color_names, colorized_string)
+        return names_string

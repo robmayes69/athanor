@@ -1,10 +1,11 @@
 from __future__ import unicode_literals
 
 from evennia.utils.ansi import ANSIString
-from typeclasses.characters import Character
-from commands.command import AthCommand
-from commands.library import utcnow, header, subheader, separator, make_table, sanitize_string
-from world.database.radio.models import RadioFrequency, valid_freq, valid_slot
+from athanor.classes.characters import Character
+from athanor.commands.command import AthCommand
+from athanor.utils.time import utcnow
+from athanor.utils.text import sanitize_string
+from athanor.radio.models import RadioFrequency, valid_slot
 
 class CmdRadio(AthCommand):
     """
@@ -277,8 +278,9 @@ class CmdRadio(AthCommand):
 
     def switch_list(self, lhs, rhs):
         message = list()
-        message.append(header('Radio Config', viewer=self.character))
-        radio_table = make_table('Sta', 'Name', 'Freq', 'Codename', 'Title', 'Members', width=[5, 18, 11, 18, 18, 8], viewer=self.character)
+        message.append(self.player.render.header('Radio Config'))
+        radio_table = self.player.render.make_table(['Sta', 'Name', 'Freq', 'Codename', 'Title', 'Members'],
+                                                    width=[5, 18, 11, 18, 18, 8])
         for slot in self.character.radio.all().order_by('key'):
             members = len(slot.frequency.channel.subscriptions.all())
             if slot.is_gagged:
@@ -287,14 +289,13 @@ class CmdRadio(AthCommand):
                 status = 'On' if slot.on else 'Off'
             radio_table.add_row(status, slot.key, slot.frequency.key, slot.codename, slot.title, members)
         message.append(radio_table)
-        message.append(subheader(viewer=self.character))
+        message.append(self.player.render.footer())
         self.msg_lines(message)
 
     def switch_all(self, lhs, rhs):
         message = list()
-        message.append(header('All Frequencies', viewer=self.character))
-        radio_table = make_table('Freq', 'Members', width=[15, 63],
-                                 viewer=self.character)
+        message.append(self.player.render.header('All Frequencies'))
+        radio_table = self.player.render.make_table(['Freq', 'Members'], width=[15, 63])
         for freq in RadioFrequency.objects.all().order_by('key'):
             characters = list()
             chan = freq.channel
@@ -307,5 +308,5 @@ class CmdRadio(AthCommand):
             char_display = ', '.join(characters)
             radio_table.add_row(freq.key, char_display)
         message.append(radio_table)
-        message.append(subheader(viewer=self.character))
+        message.append(self.player.render.footer())
         self.msg_lines(message)

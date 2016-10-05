@@ -1,9 +1,9 @@
 from __future__ import unicode_literals
-from commands.command import AthCommand
-from commands.library import header, make_table, sanitize_string
-from world.database.grid.models import District
+from athanor.commands.command import AthCommand
+from athanor.utils.text import sanitize_string
+from athanor.grid.models import District
 from evennia.locks.lockhandler import LockException
-from typeclasses.rooms import Room
+from athanor.classes.rooms import Room
 
 class CmdDistrict(AthCommand):
     """
@@ -57,13 +57,13 @@ class CmdDistrict(AthCommand):
     def display_all(self):
         districts = District.objects.all().order_by('order') or []
         message = list()
-        message.append(header('Districts', viewer=self.character))
-        district_table = make_table("Name", "IC", "Rooms", "Description", width=[24, 4, 6, 44], viewer=self.character)
+        message.append(self.player.render.header('Districts'))
+        district_table = self.player.render.make_table(["Name", "IC", "Rooms", "Description"], width=[24, 4, 6, 44])
         for district in districts:
             district_table.add_row(district.key, '1' if district.setting_ic else '0',
                                    district.rooms.all().count(), district.description)
         message.append(district_table)
-        message.append(header(viewer=self.character))
+        message.append(self.player.render.footer())
         self.msg_lines(message)
 
     def find_district(self, find_name=None):
@@ -153,12 +153,12 @@ class CmdDistrict(AthCommand):
     def switch_technical(self):
         districts = District.objects.all().order_by('order') or []
         message = list()
-        message.append(header('Districts - Technical', viewer=self.character))
-        district_table = make_table("Name", "Order", "Locks", width=[24, 7, 47], viewer=self.character)
+        message.append(self.player.render.header('Districts - Technical'))
+        district_table = self.player.render.make_table("Name", "Order", "Locks", width=[24, 7, 47])
         for district in districts:
             district_table.add_row(district.key, district.order, district.lock_storage)
         message.append(district_table)
-        message.append(header(viewer=self.character))
+        message.append(self.player.render.footer())
         self.msg_lines(message)
 
     def switch_assign(self):
@@ -222,18 +222,18 @@ class CmdRoomList(AthCommand):
 
     def display_all(self):
         message = list()
-        message.append(header('Destinations by District', viewer=self.character))
+        message.append(self.player.render.header('Destinations by District'))
         for district in District.objects.exclude(rooms=None).order_by('order') or []:
             message.append(district.display_destinations(viewer=self.character))
-        message.append(header(viewer=self.character))
+        message.append(self.player.render.header(viewer=self.character))
         self.msg_lines(message)
 
     def display_search(self):
         message = list()
-        message.append(header('Room Search', viewer=self.character))
+        message.append(self.player.render.header('Room Search'))
         for district in District.objects.filter(rooms__db_key__istartswith=self.args).order_by('order'):
-            message.append(district.display_search(self.args, viewer=self.character))
-        message.append(header(viewer=self.character))
+            message.append(district.display_search(self.args))
+        message.append(self.player.render.footer())
         self.msg_lines(message)
 
 

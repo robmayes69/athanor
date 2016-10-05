@@ -1,7 +1,8 @@
 from __future__ import unicode_literals
 from evennia import PlayerDB
 from athanor.commands.command import AthCommand
-from athanor.library import utcnow, header, subheader, separator, make_table, sanitize_string, partial_match
+from athanor.utils.time import utcnow
+from athanor.utils.text import sanitize_string, partial_match
 from athanor.core.models import StaffEntry
 
 
@@ -73,8 +74,9 @@ class CmdPlayers(AthCommand):
     def switch_main(self, lhs, rhs):
         players = PlayerDB.objects.all().order_by('id')
         message = list()
-        message.append(header("Players"))
-        player_table = make_table("Dbr", "Name", "Email", "Characters", width=[6, 14, 27, 31], viewer=self.character)
+        message.append(self.player.render.header("Players"))
+        player_table = self.player.render.make_table(["Dbr", "Name", "Email", "Characters"],
+                                                     width=[6, 14, 27, 31])
         for player in players:
             characters = ', '.join(str(char) for char in player.get_all_characters())
             if player.email == 'dummy@dummy.com':
@@ -83,7 +85,7 @@ class CmdPlayers(AthCommand):
                 email = player.email
             player_table.add_row(player.dbref, player.key, email, characters)
         message.append(player_table)
-        message.append(header(viewer=self.character))
+        message.append(self.player.render.footer())
         self.msg("\n".join([unicode(line) for line in message]))
 
 class CmdGameConfig(AthCommand):
@@ -101,7 +103,7 @@ class CmdGameConfig(AthCommand):
         lhs = self.lhs
         switches = self.final_switches
 
-        from typeclasses.scripts import AthanorManager
+        from classes.scripts import AthanorManager
         manager = AthanorManager.objects.filter_family().first()
 
         if not lhs:
@@ -166,8 +168,9 @@ class CmdAdmin(AthCommand):
             self.error("There are no staff registered!")
             return
         message = list()
-        message.append(header("Staff", viewer=self.caller))
-        staff_table = make_table("Idl", "Name", "Prm", "Position", "Duty", width=[6, 24, 4, 39, 5], viewer=self.caller)
+        message.append(self.player.render.header("Staff"))
+        staff_table = self.player.render.make_table(["Idl", "Name", "Prm", "Position", "Duty"],
+                                                    width=[6, 24, 4, 39, 5])
         for char in staff:
             perms = char.character.permissions.all()
             perm = '|XN/A|n'
@@ -182,7 +185,7 @@ class CmdAdmin(AthCommand):
             staff_table.add_row(char.character.off_or_idle_time(viewer=self.caller), char.character.key, perm,
                                 char.position, duty)
         message.append(staff_table)
-        message.append(header(viewer=self.caller))
+        message.append(self.player.render.footer())
         self.msg("\n".join([unicode(line) for line in message]))
 
     def switch_add(self, lhs, rhs):

@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 
 import re
 from django.db import models
-from athanor.library import sanitize_string, header, separator, make_table
+from athanor.utils.text import sanitize_string
 from evennia.utils.create import create_channel
 from athanor.core.models import validate_color
 
@@ -63,6 +63,6 @@ class RadioFrequency(models.Model):
 
     def setup(self):
         if not self.channel:
-            self.channel = create_channel('%s' % self.key, typeclass='typeclasses.channels.RadioChannel')
+            self.channel = create_channel('%s' % self.key, typeclass='classes.channels.RadioChannel')
             self.channel.init_locks()
             self.save()

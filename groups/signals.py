@@ -7,7 +7,7 @@ from evennia.utils.create import create_channel
 
 @receiver(post_save, sender=Group)
 def setup_group(sender, **kwargs):
-    """f
+    """
     This function is called whenever a new group is created. It's necessary to initialize all of the default settings!
     """
 

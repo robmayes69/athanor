@@ -8,8 +8,8 @@ from __future__ import unicode_literals
 
 from evennia import Command as BaseCommand
 from evennia import default_cmds
-from athanor.library import partial_match
-from athanor.typeclasses.scripts import SETTINGS
+from athanor.utils.text import partial_match
+from athanor.core.config import GLOBAL_SETTINGS
 
 class Command(BaseCommand):
     """
@@ -163,7 +163,7 @@ class AthCommand(MuxCommand):
             system_name = self.system_name
         if not sender:
             sender = self.caller
-        channels = SETTINGS('alerts_channels')
+        channels = GLOBAL_SETTINGS['alerts_channels']
         alert_string = '|w[%s]|n |C%s|n: %s' % (sender, system_name, message)
         for chan in channels:
             chan.msg(alert_string, emit=True)
@@ -189,7 +189,7 @@ class AthCommand(MuxCommand):
             self.player = self.caller
             self.isic = False
             self.character = None
-        self.is_admin = self.caller.is_admin()
+        self.is_admin = self.caller.account.is_admin()
         self.parse_switches()
 
     def parse_switches(self):
@@ -215,3 +215,8 @@ class AthCommand(MuxCommand):
     def msg_lines(self, message=None):
         for line in message:
             self.caller.msg(unicode(line))
+
+    @property
+    def settings(self):
+        found, created = GameSetting.objects.get_or_create(key=1)
+        return found

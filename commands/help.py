@@ -8,7 +8,6 @@ from evennia.help.models import HelpEntry
 from evennia.utils.utils import string_suggestions
 
 from athanor.commands.command import AthCommand
-from athanor.library import header, make_table
 
 _DEFAULT_WIDTH = settings.CLIENT_DEFAULT_WIDTH
 _SEP = "{C" + "-" * _DEFAULT_WIDTH + "{n"
@@ -40,14 +39,14 @@ def format_help_list(hdict_cmds, hdict_db, viewer):
     """
     string = list()
     if hdict_cmds and any(hdict_cmds.values()):
-        string.append(header('Command Help Entries', viewer=viewer))
-        help_table = make_table("Category", "Files", width=[16, 62], viewer=viewer, border='cells')
+        string.append(viewer.player.render.header('Command Help Entries'))
+        help_table = viewer.player.render.make_table(["Category", "Files"], width=[16, 62], border='cells')
         for category in sorted(hdict_cmds.keys()):
             help_table.add_row('|w' + str(category).title() + '|n', ", ".join(sorted(hdict_cmds[category])))
         string.append(help_table)
     if hdict_db and any(hdict_db.values()):
-        string.append(header('Other Help Entries', viewer=viewer))
-        other_table = make_table("Category", "Files", width=[16, 62], viewer=viewer, border='cells')
+        string.append(viewer.player.render.header('Other Help Entries'))
+        other_table = viewer.player.render.make_table(["Category", "Files"], width=[16, 62], border='cells')
         for category in sorted(hdict_db.keys()):
             other_table.add('|w' + str(category).title() + '|n', "{G" + fill(", ".join(sorted([str(topic) for topic in hdict_db[category]]))) + "{n")
         string.append(other_table)

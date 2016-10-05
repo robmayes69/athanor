@@ -1,11 +1,10 @@
 from __future__ import unicode_literals
 
-from evennia.utils.ansi import ANSIString
-from typeclasses.characters import Character
-from commands.command import AthCommand
-from commands.library import utcnow, header, subheader, separator, make_table, sanitize_string, partial_match, tabular_table
-from world.database.fclist.models import FCList, TypeKind, StatusKind, CharType, CharStatus
-from typeclasses.scripts import SETTINGS
+from athanor.commands.command import AthCommand
+from athanor.utils.time import utcnow
+from athanor.utils.text import sanitize_string, partial_match, tabular_table
+from athanor.fclist.models import FCList
+from athanor.core.config import GLOBAL_SETTINGS
 
 class CmdFCList(AthCommand):
     """
@@ -105,10 +104,10 @@ class CmdFCList(AthCommand):
             self.error("No themes to display!")
             return
         message = list()
-        message.append(header('Theme Listing', viewer=self.character))
+        message.append(self.player.render.header('Theme Listing'))
         theme_table = tabular_table(themes, field_width=37)
         message.append(theme_table)
-        message.append(header(viewer=self.character))
+        message.append(self.player.render.footer())
         self.msg_lines(message)
 
     def switch_display(self, lhs, rhs):
@@ -182,16 +181,16 @@ class CmdFCList(AthCommand):
         if not rhs:
             self.error("No type entered to assign!")
             return
-        found = partial_match(rhs, SETTINGS['char_types'])
+        chartypes = GLOBAL_SETTINGS['fclist_types']
+        found = partial_match(rhs, chartypes)
         if not found:
-            self.error("No match for type! Options: %s" % ', '.join(SETTINGS['char_types']))
+            self.error("No match for type! Options: %s" % ', '.join(chartypes))
             return
-        type, created = TypeKind.objects.get_or_create(key=found)
-        link, created2 = CharType.objects.update_or_create(character=char, kind=type)
-        link.save(update_fields=['kind'])
-        self.sys_msg("You are now registered as a %s." % type, target=char)
-        self.sys_msg("%s is now registered as a %s." % (char, type))
-        self.sys_report("%s is now registered as a %s." % (char, type))
+        char.config.model.character_type = found
+        char.config.model.save(update_fields=['character_type'])
+        self.sys_msg("You are now registered as a %s." % found, target=char)
+        self.sys_msg("%s is now registered as a %s." % (char, found))
+        self.sys_report("%s is now registered as a %s." % (char, found))
 
     def switch_status(self, lhs, rhs):
         try:
@@ -202,16 +201,16 @@ class CmdFCList(AthCommand):
         if not rhs:
             self.error("No status entered to assign!")
             return
-        found = partial_match(rhs, SETTINGS['char_status'])
+        charstatus = GLOBAL_SETTINGS['fclist_status']
+        found = partial_match(rhs, charstatus)
         if not found:
-            self.error("No match for status! Options: %s" % ', '.join(SETTINGS['char_status']))
+            self.error("No match for status! Options: %s" % ', '.join(charstatus))
             return
-        status, created = StatusKind.objects.get_or_create(key=found)
-        link, created2 = CharStatus.objects.update_or_create(character=char, kind=status)
-        link.save(update_fields=['kind'])
-        self.sys_msg("Your character status is now: %s." % status, target=char)
-        self.sys_msg("%s is now listed as %s." % (char, status))
-        self.sys_report("%s is now listed as %s." % (char, status))
+        char.config.model.character_status = found
+        char.config.model.save(update_fields=['character_status'])
+        self.sys_msg("Your character status is now: %s." % found, target=char)
+        self.sys_msg("%s is now listed as %s." % (char, found))
+        self.sys_report("%s is now listed as %s." % (char, found))
 
     def switch_describe(self, lhs, rhs):
         if not lhs:
@@ -323,9 +322,9 @@ class CmdFCList(AthCommand):
             self.error("Theme has no info.")
             return
         message = list()
-        message.append(header('Info for Theme: %s' % found, viewer=self.character))
+        message.append(self.player.render.header('Info for Theme: %s' % found))
         message.append(found.info)
-        message.append(header(viewer=self.character))
+        message.append(self.player.render.footer())
         self.msg_lines(message)
 
     def switch_powers(self, lhs, rhs):
@@ -344,9 +343,9 @@ class CmdFCList(AthCommand):
             self.error("Theme has no powers.")
             return
         message = list()
-        message.append(header('Powers for Theme: %s' % found, viewer=self.character))
+        message.append(self.player.render.header('Powers for Theme: %s' % found))
         message.append(found.powers)
-        message.append(header(viewer=self.character))
+        message.append(self.player.render.footer())
         self.msg_lines(message)
 
     def switch_mail(self, lhs, rhs):
@@ -361,9 +360,9 @@ class CmdFCList(AthCommand):
             self.error("No matching themes with cast.")
             return
         message = list()
-        message.append(header('Casts Matching: %s' % lhs, viewer=self.character))
+        message.append(self.player.render.header('Casts Matching: %s' % lhs))
         for count, theme in enumerate(themes):
-            message.append(separator(theme, viewer=self.character))
+            message.append(self.player.render.separator(theme))
             message.append(theme.display_cast(viewer=self.character, header=not(count)))
-        message.append(header(viewer=self.character))
+        message.append(self.player.render.footer())
         self.msg_lines(message)

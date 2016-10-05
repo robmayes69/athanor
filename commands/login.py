@@ -2,10 +2,11 @@ from __future__ import unicode_literals
 import re, time
 from django.conf import settings
 from evennia.utils import create
-from typeclasses.characters import Character
+from athanor.classes.characters import Character
 from evennia.utils.create import create_player
 from athanor.commands.command import MuxCommand, AthCommand
 from evennia.commands.default.unloggedin import _LATEST_FAILED_LOGINS, _throttle
+from athanor.utils.create import character as make_character
 
 class CmdMushConnect(MuxCommand):
     """
@@ -115,31 +116,16 @@ class CmdCharCreate(AthCommand):
         key = self.lhs
         desc = self.rhs
 
-        charmax = settings.MAX_NR_CHARACTERS if settings.MULTISESSION_MODE > 1 else 1
+        available = player.account.available_slots
 
-        if not player.is_superuser and \
-            (player.db._playable_characters and
-                len(player.db._playable_characters) >= charmax):
-            self.msg("You may only create a maximum of %i characters." % charmax)
+        if available < 1 and not self.is_admin:
+            self.error("You may not create more characters.")
             return
         # create the character
-        from evennia.objects.models import ObjectDB
+        new_character = make_character(key, player)
 
-        start_location = ObjectDB.objects.get_id(settings.START_LOCATION)
-        default_home = ObjectDB.objects.get_id(settings.DEFAULT_HOME)
-        typeclass = settings.BASE_CHARACTER_TYPECLASS
-        permissions = settings.PERMISSION_PLAYER_DEFAULT
-
-        new_character = create.create_object(typeclass, key=key,
-                                             location=start_location,
-                                             home=default_home,
-                                             permissions=permissions)
-        # only allow creator (and immortals) to puppet this char
-        new_character.locks.add("puppet:id(%i) or pid(%i) or perm(Immortals) or pperm(Immortals)" %
-                                (new_character.id, player.id))
-        player.bind_character(new_character)
         if desc:
             new_character.db.desc = desc
         elif not new_character.db.desc:
-            new_character.db.desc = "This is a Player."
+            new_character.db.desc = "This is a Character."
         self.msg("Created new character %s. Use {w@ic %s{n to enter the game as this character." % (new_character.key, new_character.key))

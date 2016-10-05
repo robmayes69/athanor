@@ -2,8 +2,10 @@ from __future__ import unicode_literals
 import re
 from django.db import models
 from django.conf import settings
-from athanor.abstract import WithTimestamp, WithLocks
-from athanor.library import utcnow, mxp_send, connected_characters, header, separator, make_table, sanitize_string, partial_match
+from athanor.core.models import WithTimestamp, WithLocks
+from athanor.utils.time import utcnow
+from athanor.utils.text import mxp, sanitize_string, partial_match
+from athanor.utils.online import characters
 
 # Create your models here.
 
@@ -39,19 +41,19 @@ class BoardGroup(models.Model):
     def visible_boards(self, checker, checkadmin=True):
         return [board for board in self.usable_boards(checker, checkadmin) if checker not in board.ignore_list.all()]
 
-    def boards_list(self, checker, viewer=None):
+    def boards_list(self, checker, viewer):
         message = list()
-        message.append(header(self.name, viewer=viewer))
-        bbtable = make_table("ID", "RWA", "Name", "Locks", "On", width=[4, 4, 23, 43, 4], viewer=viewer)
+        message.append(viewer.render.header(self.name, viewer=viewer))
+        bbtable = viewer.render.make_table(["ID", "RWA", "Name", "Locks", "On"], width=[4, 4, 23, 43, 4])
         for board in self.usable_boards(checker=checker):
             if checker in board.ignore_list.all():
                 member = "No"
             else:
                 member = "Yes"
-            bbtable.add_row(mxp_send(board.order, "+bbread %s" % board.order), board.display_permissions(checker),
-                            mxp_send(board, "+bbread %s" % board.order), board.lock_storage, member)
+            bbtable.add_row(mxp(board.order, "+bbread %s" % board.order), board.display_permissions(checker),
+                            mxp(board, "+bbread %s" % board.order), board.lock_storage, member)
         message.append(bbtable)
-        message.append(header(viewer=viewer))
+        message.append(viewer.render.footer())
         return '\n'.join(unicode(line) for line in message)
 
     def find_board(self, find_name=None, checker=None, visible_only=True):
@@ -97,16 +99,15 @@ class BoardGroup(models.Model):
 
     def display_boards(self, checker, viewer):
         message = list()
-        message.append(header(self.name, viewer=viewer))
-        bbtable = make_table("ID", "RWA", "Name", "Last Post", "#", "U", width=[4, 4, 37, 23, 5, 5],
-                             viewer=viewer)
+        message.append(viewer.render.header(self.name))
+        bbtable = viewer.render.make_table(["ID", "RWA", "Name", "Last Post", "#", "U"], width=[4, 4, 37, 23, 5, 5])
         for board in self.visible_boards(checker=checker):
-            bbtable.add_row(mxp_send(board.order, "+bbread %s" % board.order),
-                            board.display_permissions(checker), mxp_send(board, "+bbread %s" % board.order),
+            bbtable.add_row(mxp(board.order, "+bbread %s" % board.order),
+                            board.display_permissions(checker), mxp(board, "+bbread %s" % board.order),
                             board.last_post(checker), board.posts.all().count(),
                             board.posts.exclude(read=viewer).count())
         message.append(bbtable)
-        message.append(header(viewer=viewer))
+        message.append(viewer.render.footer())
         return '\n'.join(unicode(line) for line in message)
 
 
@@ -160,7 +161,7 @@ class Board(WithLocks):
                 fullnums += self.posts.exclude(read__contains=player).values_list('order', flat=True)
         return self.posts.filter(order__in=fullnums).order_by('order')
 
-    def check_permission(self, checker=None, type="read", checkadmin=True):
+    def check_permission(self, checker=None, mode="read", checkadmin=True):
         if checker.is_admin():
             return True
         if self.group:
@@ -170,7 +171,7 @@ class Board(WithLocks):
                 return False
         elif self.locks.check(checker, "admin") and checkadmin:
             return True
-        elif self.locks.check(checker, type):
+        elif self.locks.check(checker, mode):
             return True
         else:
             return False
@@ -179,22 +180,22 @@ class Board(WithLocks):
         if not checker:
             return " "
         acc = ""
-        if self.check_permission(checker=checker, type="read", checkadmin=False):
+        if self.check_permission(checker=checker, mode="read", checkadmin=False):
             acc += "R"
         else:
             acc += " "
-        if self.check_permission(checker=checker, type="write", checkadmin=False):
+        if self.check_permission(checker=checker, mode="write", checkadmin=False):
             acc += "W"
         else:
             acc += " "
-        if self.check_permission(checker=checker, type="admin", checkadmin=False):
+        if self.check_permission(checker=checker, mode="admin", checkadmin=False):
             acc += "A"
         else:
             acc += " "
         return acc
 
     def listeners(self):
-        return [char for char in connected_characters() if self.check_permission(checker=char)
+        return [char for char in characters() if self.check_permission(checker=char)
                 and not char in self.ignore_list.all()]
 
     def make_post(self, character=None, subject=None, text=None, announce=True, date=None):
@@ -216,14 +217,14 @@ class Board(WithLocks):
     def announce_post(self, post):
         postid = '%s/%s' % (self.order, post.order)
         if self.group:
-            clickable = mxp_send(text=postid, command='+gbread %s=%s' % (postid, self.group.name))
+            clickable = mxp(text=postid, command='+gbread %s=%s' % (postid, self.group.name))
             text_message = "{cM<GROUP BB>{n New GB Message (%s) posted to '%s' '%s' by %s: %s"
             message = text_message % (clickable, self.group, self, post.owner if not self.anonymous else self.anonymous,
                                                                                              post.subject)
             for character in self.listeners():
                 character.msg(message)
         else:
-            clickable = mxp_send(text=postid, command='+bbread %s' % postid)
+            clickable = mxp(text=postid, command='+bbread %s' % postid)
             text_message = "(New BB Message (%s) posted to '%s' by %s: %s)"
             message = text_message % (clickable, self, post.owner if not self.anonymous else self.anonymous,
                                       post.subject)
@@ -241,14 +242,14 @@ class Board(WithLocks):
         Viewer is meant to be a PlayerDB instance in this case! Since it needs to pull from Player read/unread.
         """
         message = list()
-        message.append(header('%s - %s' % (self.category.name, self.key)))
-        board_table = make_table("ID", 'S', "Subject", "Date", "Poster", width=[7, 2, 33, 9, 27])
+        message.append(viewer.render.header('%s - %s' % (self.category.name, self.key)))
+        board_table = viewer.render.make_table(["ID", 'S', "Subject", "Date", "Poster"], width=[7, 2, 33, 9, 27])
         for post in self.posts.all().order_by('creation_date'):
             board_table.add_row("%s/%s" % (self.order, post.order), 'U' if viewer not in post.read.all() else '',
                                 post.subject, viewer.display_local_time(date=post.creation_date, format='%x'),
                                 post.display_poster(viewer))
         message.append(board_table)
-        message.append(header())
+        message.append(viewer.render.footer())
         return "\n".join([unicode(line) for line in message])
 
     def last_post(self, viewer):
@@ -264,6 +265,7 @@ class Board(WithLocks):
         check_list = [post.process_timeout() for post in self.posts.all()]
         if True in check_list:
             self.squish_posts()
+
 
 class Post(WithTimestamp):
     board = models.ForeignKey('Board', related_name='posts')
@@ -328,11 +330,11 @@ class Post(WithTimestamp):
 
     def display_post(self, viewer):
         message = list()
-        message.append(header(self.board.category.name, viewer=viewer))
+        message.append(viewer.render.header(self.board.category.name, viewer=viewer))
         message.append("Message: %s/%s - By %s on %s" % (self.board.order, self.order, self.display_poster(viewer),
                                                          viewer.display_local_time(date=self.creation_date,format='%X %x %Z')))
-        message.append(separator())
+        message.append(viewer.render.separator())
         message.append(self.text)
-        message.append(header(viewer=viewer))
+        message.append(viewer.render.footer())
         self.read.add(viewer)
         return "\n".join([unicode(line) for line in message])

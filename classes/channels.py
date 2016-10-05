@@ -16,7 +16,7 @@ from __future__ import unicode_literals
 from evennia import DefaultChannel
 from evennia.utils import logger
 from evennia.utils.utils import make_iter
-from athanor.library import Speech
+from athanor.utils.text import Speech
 
 class Channel(DefaultChannel):
     """

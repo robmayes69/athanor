@@ -16,10 +16,10 @@ own cmdsets by inheriting from them or directly from `evennia.CmdSet`.
 
 from athanor.commands.evennia_cmdsets import CharacterCmdSet as OldCharacter, SessionCmdSet as OldSession, \
     UnloggedinCmdSet as OldUnlogged, PlayerCmdSet as OldPlayer
-from athanor.commands.community import CmdWho, CmdPWho
+from athanor.commands.community import CmdWho
 from athanor.info.info_files import CmdInfo
 from athanor.bbs.bbs import CmdBBAdmin, CmdBBList, CmdBBRead, CmdBBWrite, CmdGBAdmin, CmdGBList, CmdGBRead, CmdGBWrite
-from athanor.commands.account_management import CmdPlayerConfig, CmdTz, CmdWatch, CmdUsername, CmdEmail
+from athanor.commands.account_management import CmdPlayerConfig, CmdTz, CmdWatch, CmdAccount
 from athanor.commands.admin import CmdPlayers, CmdGameConfig, CmdAdmin
 from athanor.groups.groups import GROUP_COMMANDS
 from athanor.grid.grid_management import DISTRICT_COMMANDS
@@ -67,6 +67,8 @@ class CharacterCmdSet(OldCharacter):
         self.add(CmdRadio())
         self.add(CmdFCList())
         self.add(CmdEvents())
+        self.add(CmdAccount())
+        self.add(CmdPlayerConfig())
 
 
 class PlayerCmdSet(OldPlayer):
@@ -88,12 +90,6 @@ class PlayerCmdSet(OldPlayer):
         #
         #self.add(CmdOOCLook())
         self.add(CmdWho())
-        self.add(CmdPWho())
-        self.add(CmdPlayerConfig())
-        self.add(CmdTz())
-        self.add(CmdWatch())
-        self.add(CmdEmail())
-        self.add(CmdUsername())
         self.add(CmdCharCreate())
         self.add(CmdHelp())
         self.add(CmdAdminHelp())

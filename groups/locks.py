@@ -6,7 +6,7 @@ def group(accessing_obj, accessed_obj, *args, **kwargs):
     First argument: Group ID.
     Second argument (optional): Rank the checker must meet or exceed to pass. If blank, any rank will do.
     """
-    if accessing_obj.is_admin():
+    if accessing_obj.account.is_admin():
         return True
     if not args[0]:
         return False
@@ -30,9 +30,9 @@ def gperm(accessing_obj, accessed_obj, *args, **kwargs):
     First argument: Group ID.
     Second argument: which permission to check for.
     """
-    if accessing_obj.is_admin():
+    if accessing_obj.account.is_admin():
         return True
-    if not accessing_obj.is_typeclass('typeclasses.characters.Character', exact=False):
+    if not accessing_obj.is_typeclass('classes.characters.Character', exact=False):
         return False
     if not args[0]:
         return False
@@ -49,7 +49,7 @@ def gbmanage(accessing_obj, accessed_obj, *args, **kwargs):
     Although it looks useless, this lock is used for the GBS management commands so that they only appear to people
     who can use them.
     """
-    if accessing_obj.is_admin():
+    if accessing_obj.account.is_admin():
         return True
     for group in [membership.group for membership in accessing_obj.groups.all()]:
             if group.group.check_permission(accessing_obj, 'gbmanage'):
