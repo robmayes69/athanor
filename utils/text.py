@@ -100,18 +100,18 @@ class Speech(object):
 
     """
 
-    def __init__(self, speaker, speech_text, alternate_name=None, title=None, mode='ooc'):
-        from athanor.utils.create import CHARACTER_MANAGER
-        self.character_dict = dict()
-        self.character_id = CHARACTER_MANAGER.char_dict
-        for id, key in CHARACTER_MANAGER.char_dict.iteritems():
-            self.character_dict[key.upper()] = id
+    def __init__(self, speaker, speech_text, alternate_name=None, title=None, mode='ooc', char_dict=None):
+        self.char_dict = char_dict
+        self.upper_dict = dict()
+        for key in char_dict.keys():
+            self.upper_dict[char_dict[key].upper()] = key
 
-        def markup_names(match, char_dict=self.character_dict):
+        def markup_names(match):
             found = match.group('found')
-            if found[0].isupper():
-                return '^^^%s:%s^^^' % (char_dict[found.upper()], found)
-            return found
+            if found:
+                if found[0].isupper():
+                    return '^^^%s:%s^^^' % (self.upper_dict[found.upper()], found)
+                return found
 
         self.speaker = speaker
         if alternate_name:
@@ -144,7 +144,7 @@ class Speech(object):
         self.special_format = special_format
         self.speech_string = ANSIString(speech_string)
 
-        escape_names = [re.escape(name) for name in self.character_dict.keys()]
+        escape_names = [re.escape(name) for name in char_dict.values()]
         all_names = '|'.join(escape_names)
         self.markup_string = re.sub(r"(?i)\b(?P<found>%s)\b" % all_names, markup_names, self.speech_string)
 
@@ -207,8 +207,8 @@ class Speech(object):
     def colorize(self, message, viewer):
         quotes = 'quotes_%s' % self.mode
         speech = 'speech_%s' % self.mode
-        quote_color = getattr(viewer.player_settings, quotes)
-        speech_color = getattr(viewer.player_settings, speech)
+        quote_color = viewer.player_config[quotes]
+        speech_color = viewer.player_config[speech]
         def color_speech(found, viewer=viewer):
             return '|%s"|n|%s%s|n|%s"|n' % (quote_color, speech_color, found.group('found'), quote_color)
 
@@ -217,8 +217,8 @@ class Speech(object):
                 id = int(found.group('id'))
             except:
                 return found.group('name')
-            if id in self.character_id:
-                color = viewer.player_settings.get_color_name(self.character_id[id])
+            if id in self.char_dict:
+                color = viewer.player_config.get_color_name(self.char_dict[id])
                 return '|n|%s%s|n' % (color, found.group('name'))
             return found.group('name')
 

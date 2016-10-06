@@ -29,7 +29,8 @@ class SessionCmdSet(CmdSet):
 
     def at_cmdset_creation(self):
         "Populate the cmdset"
-        self.add(player.CmdSessions())
+        #self.add(player.CmdSessions())
+        pass
 
 class PlayerCmdSet(CmdSet):
     """
@@ -122,7 +123,7 @@ class CharacterCmdSet(CmdSet):
         self.add(system.CmdPy())
         self.add(system.CmdScripts())
         self.add(system.CmdObjects())
-        self.add(system.CmdPlayers())
+        #self.add(system.CmdPlayers())
         self.add(system.CmdService())
         self.add(system.CmdAbout())
         self.add(system.CmdTime())

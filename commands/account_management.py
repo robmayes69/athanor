@@ -5,6 +5,8 @@ from athanor.commands.command import AthCommand
 from athanor.utils.time import utcnow
 from athanor.utils.menu import make_menu
 from athanor.utils.create import player as make_player
+from athanor.classes.channels import PublicChannel
+from evennia.utils.ansi import ANSIString
 
 class CmdPlayerConfig(AthCommand):
     """
@@ -25,14 +27,13 @@ class CmdPlayerConfig(AthCommand):
     system_name = 'CONFIG'
     key = '+config'
     help_category = 'General'
-    player_switches = ['name']
+    player_switches = ['name', 'channel', 'group']
 
-    def func(self):
+    def main(self):
         if not self.args:
             self.display_config()
         else:
             self.set_config()
-
 
     def display_config(self):
         self.msg_lines(self.player.config.display(self.player))
@@ -44,6 +45,21 @@ class CmdPlayerConfig(AthCommand):
             self.error(str(err))
             return
 
+    def switch_name(self):
+        pass
+
+    def switch_channel(self):
+        if not self.args:
+            self.display_channel()
+            return
+        if not self.lhs:
+            self.error("Must enter a channel name.")
+            return
+
+
+
+    def switch_group(self):
+        pass
 
 class CmdTz(AthCommand):
     """

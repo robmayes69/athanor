@@ -20,12 +20,12 @@ from athanor.commands.community import CmdWho
 from athanor.info.info_files import CmdInfo
 from athanor.bbs.bbs import CmdBBAdmin, CmdBBList, CmdBBRead, CmdBBWrite, CmdGBAdmin, CmdGBList, CmdGBRead, CmdGBWrite
 from athanor.commands.account_management import CmdPlayerConfig, CmdTz, CmdWatch, CmdAccount
-from athanor.commands.admin import CmdPlayers, CmdGameConfig, CmdAdmin
+from athanor.commands.admin import CmdGameConfig, CmdAdmin
 from athanor.groups.groups import GROUP_COMMANDS
 from athanor.grid.grid_management import DISTRICT_COMMANDS
 from athanor.commands.mush_import import CmdImport
 from athanor.commands.login import CmdMushConnect, CmdCharCreate
-from athanor.core.channels import CmdChannels
+from athanor.core.channels import CmdChannels, CmdSend
 from athanor.radio.radio import CmdRadio
 from athanor.fclist.fclist import CmdFCList
 from athanor.commands.help import CmdHelp, CmdAdminHelp
@@ -61,7 +61,6 @@ class CharacterCmdSet(OldCharacter):
         for district_cmd in DISTRICT_COMMANDS:
             self.add(district_cmd())
         self.add(CmdImport())
-        self.add(CmdPlayers())
         self.add(CmdGameConfig())
         self.add(CmdChannels())
         self.add(CmdRadio())
@@ -69,6 +68,7 @@ class CharacterCmdSet(OldCharacter):
         self.add(CmdEvents())
         self.add(CmdAccount())
         self.add(CmdPlayerConfig())
+        self.add(CmdSend())
 
 
 class PlayerCmdSet(OldPlayer):

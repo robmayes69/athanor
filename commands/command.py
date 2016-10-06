@@ -10,6 +10,7 @@ from evennia import Command as BaseCommand
 from evennia import default_cmds
 from athanor.utils.text import partial_match
 from athanor.core.config import GLOBAL_SETTINGS
+from athanor.utils.menu import make_menu
 
 class Command(BaseCommand):
     """
@@ -166,7 +167,7 @@ class AthCommand(MuxCommand):
         channels = GLOBAL_SETTINGS['alerts_channels']
         alert_string = '|w[%s]|n |C%s|n: %s' % (sender, system_name, message)
         for chan in channels:
-            chan.msg(alert_string, emit=True)
+            chan.emit(alert_string)
 
     def error(self, message, target=None):
         if not target:
@@ -203,7 +204,6 @@ class AthCommand(MuxCommand):
             if found_switches:
                 self.final_switches.append(found_switches)
 
-
     def verify(self, checkstr):
         if checkstr == str(self.player.db.verify):
             del self.player.db.verify
@@ -213,10 +213,19 @@ class AthCommand(MuxCommand):
             return False
 
     def msg_lines(self, message=None):
-        for line in message:
-            self.caller.msg(unicode(line))
+        lines = '\n'.join(unicode(line) for line in message)
+        self.caller.msg(lines)
 
     @property
     def settings(self):
-        found, created = GameSetting.objects.get_or_create(key=1)
-        return found
+        return GLOBAL_SETTINGS
+
+    # When in doubt, use this setup.
+    def func(self):
+        if not self.final_switches:
+            self.main()
+        else:
+            getattr(self, 'switch_%s' % self.final_switches[0])()
+
+    def menu(self, caller, data, start='start', **kwargs):
+        return make_menu(caller, data, start, title=self.system_name, **kwargs)

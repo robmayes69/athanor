@@ -1,94 +1,97 @@
 from __future__ import unicode_literals
-from django.conf import settings
 from athanor.classes.players import Player
 
-def _error(caller, message):
-    caller.sys_msg(message, sys_name='ACCOUNT', error=True)
-
-
-def _msg(caller, message):
-    caller.sys_msg(message, sys_name='ACCOUNT')
 
 
 def _email(caller, raw_input):
-    new_email = caller.ndb._menutree.args['args']
-    player = caller.ndb._menutree.player
+    menu = caller.ndb._menutree
+    new_email = menu.args['args']
+    player = menu.player
     if not new_email:
-        _error(caller, "You must enter an email address!")
+        menu.error("You must enter an email address!")
         return
     try:
         player.account.change_email(new_email)
     except ValueError as err:
-        _error(caller, str(err))
+        menu.error(str(err))
         return
     if not caller.player == player:
-        _msg(caller, "Email changed!")
+        menu.error("Email changed!")
+
 
 def _password(caller, raw_input):
-    player = caller.ndb._menutree.player
+    menu = caller.ndb._menutree
+    player = menu.player
     if caller.account.is_admin():
         old_password = None
         new_password = caller.ndb._menutree.args['args']
         if not new_password:
-            _error(caller, "You must enter a password!")
+            menu.error("You must enter a password!")
     else:
         old_password = caller.ndb._menutree.args['lsargs']
         new_password = caller.ndb._menutree.args['rsargs']
         if not (old_password and new_password):
-            _error(caller, "You must enter <oldpassword>=<newpassword>")
+            menu.error(caller, "You must enter <oldpassword>=<newpassword>")
     try:
         player.account.change_password(caller, old_password, new_password)
     except ValueError as err:
-        _error(caller, str(err))
+        menu.error(caller, str(err))
         return
     if not caller.player == player:
         _msg(caller, "Password changed!")
 
+
 def _disable(caller, raw_input):
+    menu = caller.ndb._menutree
     player = caller.ndb._menutree.player
     try:
         player.account.disable(enactor=caller)
     except ValueError as err:
-        _error(caller, str(err))
+        menu.error(caller, str(err))
         return
-    _msg(caller, "Account disabled.")
+    menu.sys_msg(caller, "Account disabled.")
 
 
 def _enable(caller, raw_input):
+    menu = caller.ndb._menutree
     player = caller.ndb._menutree.player
     try:
         player.account.enabled(enactor=caller)
     except ValueError as err:
-        _error(caller, str(err))
+        menu.error(caller, str(err))
         return
-    _msg(caller, "Account enabled.")
+    menu.sys_msg(caller, "Account enabled.")
 
 
 def _slots(caller, raw_input):
-    new_slots = caller.ndb._menutree.args['args']
-    player = caller.ndb._menutree.player
+    menu = caller.ndb._menutree
+    new_slots = menu.args['args']
+    player = menu.player
     try:
         player.account.set_slots(new_slots)
     except ValueError as err:
-        _error(caller, str(err))
+        menu.error(caller, str(err))
         return
-    _msg(caller, "Slots updated.")
+    menu.sys_msg(caller, "Slots updated.")
+
 
 def _target(caller, raw_input):
-    new_target = caller.ndb._menutree.args['args']
+    menu = caller.ndb._menutree
+    new_target = menu.args['args']
     if not new_target:
-        _error(caller, "Must enter an account name to switch to!")
+        menu.error(caller, "Must enter an account name to switch to!")
         return
     player = Player.objects.filter_family(username__iexact=new_target).first()
     if not player:
-        _error(caller, "Account not found.")
+        menu.error(caller, "Account not found.")
         return
-    caller.ndb._menutree.player = player
+    menu.player = player
 
 
 def start(caller):
+    menu = caller.ndb._menutree
     message = list()
-    player = caller.ndb._menutree.player
+    player = menu.player
     message.append(player.account.display(caller.player, footer=False))
     enabled = player.config.model.enabled
 
@@ -96,22 +99,22 @@ def start(caller):
 
     if caller.account.is_admin():
         if enabled:
-            disp = _OPTIONS['disable']
+            disp = 'disable'
         else:
-            disp = _OPTIONS['enable']
+            disp = 'enable'
         if caller.player != player:
-            options = (_OPTIONS['email'], _OPTIONS['slots'], _OPTIONS['password'],
-                        disp, _OPTIONS['target'], _OPTIONS['finish'])
+            ops = ['email', 'slots', 'password', disp, 'target', 'finish']
         else:
-            options = (_OPTIONS['email'], _OPTIONS['slots'], _OPTIONS['password'],
-                        _OPTIONS['target'], _OPTIONS['finish'])
+            ops = ['email', 'slots', 'password', 'target', 'finish']
     else:
-        options = (_OPTIONS['email'], _OPTIONS['reset'], _OPTIONS['finish'])
+        ops = ['email', 'reset', 'finish']
+    options = tuple([_OPTIONS[op] for op in ops])
     return text, options
 
 
 def menu_finish(caller):
     return "Back to the game!", None
+
 
 _OPTIONS = {
     'email': {

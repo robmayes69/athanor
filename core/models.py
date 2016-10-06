@@ -7,6 +7,7 @@ from athanor.utils.text import sanitize_string, Speech
 from evennia.locks.lockhandler import LockHandler
 from evennia.utils.utils import lazy_property
 
+
 def validate_color(value):
     if not len(ANSIString('|%s' % value)) == 0:
         raise ValidationError("'%s' is not a valid color." % value)
@@ -22,6 +23,8 @@ class PlayerSetting(models.Model):
     namelink_channel = models.BooleanField(default=True)
     quotes_channel = models.CharField(max_length=25, default='n', validators=[validate_color])
     speech_channel = models.CharField(max_length=25, default='n', validators=[validate_color])
+    quotes_page = models.CharField(max_length=25, default='n', validators=[validate_color])
+    speech_page = models.CharField(max_length=25, default='n', validators=[validate_color])
     border_color = models.CharField(max_length=25, default='M', validators=[validate_color])
     column_color = models.CharField(max_length=25, default='G', validators=[validate_color])
     headerstar_color = models.CharField(max_length=25, default='m', validators=[validate_color])
@@ -76,6 +79,7 @@ class GameSetting(models.Model):
     fclist_enabled = models.BooleanField(default=True)
     fclist_types = models.ManyToManyField('fclist.CharacterType', related_name='+')
     fclist_status = models.ManyToManyField('fclist.CharacterStatus', related_name='+')
+    character_close = models.BooleanField(default=False)
     max_themes = models.PositiveSmallIntegerField(default=1)
     guest_home = models.ForeignKey('objects.ObjectDB', related_name='+', null=True, on_delete=models.SET_NULL)
     max_guests = models.PositiveIntegerField(default=100)
@@ -129,6 +133,7 @@ class Muzzle(models.Model):
     def expired(self):
         return (self.creation_date + self.expires) < utcnow()
 
+
 class ChannelSetting(models.Model):
     channel = models.OneToOneField('comms.ChannelDB', related_name='channel_settings')
     group = models.ForeignKey('groups.Group', related_name='channel_settings', null=True)
@@ -136,6 +141,7 @@ class ChannelSetting(models.Model):
     color = models.CharField(max_length=20, default='n', validators=[validate_color])
     color_titles = models.BooleanField(default=True)
     title_length = models.PositiveSmallIntegerField(default=40)
+
 
 class Message(models.Model):
     player = models.ForeignKey('players.PlayerDB', null=True)
@@ -174,6 +180,27 @@ class Message(models.Model):
         return super(Message, self).save(*args, **kwargs)
 
 
+class Mail(models.Model):
+    recipients = models.ManyToManyField('objects.ObjectDB', related_name='+')
+    title = models.CharField(max_length=255)
+    creation_date = models.DateTimeField(auto_created=True)
+    contents = models.TextField()
+
+
+class MailRead(models.Model):
+    mail = models.ForeignKey('core.Mail', related_name='readers')
+    character = models.ForeignKey('objects.ObjectDB', related_name='mail')
+    read = models.BooleanField(default=0)
+    replied = models.BooleanField(default=0)
+    forwarded = models.BooleanField(default=0)
+
+    def delete(self, *args, **kwargs):
+        if not self.mail.readers.exclude(id=self.id).count():
+            self.mail.delete()
+            return
+        super(MailRead, self).delete(*args, **kwargs)
+
+
 class Login(models.Model):
     player = models.ForeignKey('players.PlayerDB', related_name='logins')
     date = models.DateTimeField(auto_now_add=True)
@@ -196,6 +223,7 @@ class StaffEntry(models.Model):
 
     def __str__(self):
         return self.character.key
+
 
 class WithKey(models.Model):
     key = models.CharField(max_length=255, unique=True, db_index=True)

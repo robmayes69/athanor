@@ -135,8 +135,39 @@ class CharacterChannel(object):
 
     def __init__(self, owner):
         self.owner = owner
+        self.gagging = list()
+        self.monitor = False
 
-    def receive(self, channel, msg):
-        pass
+    def receive(self, channel, speech, emit=False):
+        if channel in self.gagging:
+            return
+        if not self.owner.player:
+            return
+        prefix = self.prefix(channel)
+        if emit:
+            self.owner.msg(speech)
+            return
+        if self.monitor:
+            render = speech.monitor_display(self.owner)
+        else:
+            render = speech.render(self.owner)
+        print render
+        self.owner.msg('%s %s' % (prefix, render))
 
+    def color_name(self, channel):
+        color = self.owner.player_config.get_color_name(channel, no_default=True)
+        if not color:
+            color = channel.db.color
+        if not color:
+            color = 'n'
+        return '|%s%s|n' % (color, channel.key)
 
+    def prefix(self, channel):
+        return '<%s>' % self.color_name(channel)
+
+    def status(self, channel):
+        if not channel.has_connection(self.owner):
+            return 'Off'
+        if channel in self.gagging:
+            return 'Gag'
+        return 'On'

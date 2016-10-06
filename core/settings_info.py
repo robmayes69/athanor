@@ -113,6 +113,9 @@ class ChannelListSetting(Setting):
     def display(self):
         return ', '.join(chan.key for chan in self.value)
 
+    def save(self, delay=False):
+        self.to_db()
+
 class CharacterTypeSetting(Setting):
     expect_type = 'List'
     manager = CharacterType
@@ -137,6 +140,11 @@ class CharacterTypeSetting(Setting):
         manager = getattr(self.model, self.field_name)
         return list(manager.all())
 
+    def display(self):
+        return ', '.join(str(item) for item in self.value_storage)
+
+    def save(self, delay=False):
+        self.to_db()
 
 class CharacterStatusSetting(CharacterTypeSetting):
     manager = CharacterStatus
@@ -325,6 +333,18 @@ class SettingOutPage(ColorSetting):
     description = 'Color for outgoing PAGE:?'
 
 
+class SettingQuotesPage(ColorSetting):
+    key = 'quotes_page'
+    category = 'Colors'
+    description = 'Color of PAGE quotations?'
+
+
+class SettingSpeechPage(ColorSetting):
+    key = 'speech_page'
+    category = 'Colors'
+    description = 'Color of PAGE dialogue?'
+
+
 class SettingExitName(ColorSetting):
     key = 'exitname_color'
     category = 'Colors'
@@ -352,7 +372,8 @@ class SettingPennChannels(BoolSetting):
 PLAYER_SETTINGS = (SettingLookAlert, SettingBBScan, SettingMail, SettingEvents, SettingNamelink, SettingQuotes,
                    SettingSpeech, SettingBorder, SettingColumn, SettingHeaderStar, SettingHeaderText,
                    SettingMsgBorder, SettingMsgText, SettingOOCBorder, SettingOOCText, SettingPage, SettingOutPage,
-                   SettingExitAlias, SettingExitName, SettingTimezone, SettingPennChannels)
+                   SettingExitAlias, SettingExitName, SettingTimezone, SettingPennChannels, SettingQuotesPage,
+                   SettingSpeechPage)
 
 
 # GAME SETTINGS
@@ -426,6 +447,7 @@ class GameFCListStatus(CharacterStatusSetting):
     key = 'fclist_status'
     category = 'Characters'
     description = 'Status for FCListed characters?'
+
 
 class GameMaxThemes(NumberSetting):
     key = 'max_themes'
@@ -547,11 +569,17 @@ class GameJob(BoolSetting):
     description = 'Enable Job system?'
 
 
+class GameClose(BoolSetting):
+    key = 'character_close'
+    category = 'Character'
+    description = 'Use Open/Close system?'
+
+
 GAME_SETTINGS = (GameGBS, GameBBS, GameGuestPost, GameApproveChannels, GameAdminChannels, GameDefaultChannels,
                  GameRPChannel, GameAlertsChannel, GameStaffTag, GameFCList, GameMaxThemes, GameRequireApproval,
                  GameGuestHome, GameMaxGuests, GameGuestRename, GameCharHome, GamePot, GamePotPoses, GamePotTimeout,
                  GameGroups, GameGroupIC, GameGroupOOC, GameAnonAdmin, GameEmail, GameEvents, GameEventBoard,
-                 GameOpenChar, GameOpenPlay, GameJob, GameJobDefault, GameFCListStatus, GameFCListTypes)
+                 GameOpenChar, GameOpenPlay, GameJob, GameJobDefault, GameFCListStatus, GameFCListTypes, GameClose)
 
 
 

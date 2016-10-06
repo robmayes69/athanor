@@ -27,7 +27,7 @@ def node_format(nodetext, optionstext, caller=None):
     message.append(nodetext)
     if optionstext:
         message.append(optionstext)
-    message.append(render.footer())
+    message.append(render.footer("'exit' to leave menu"))
     return '\n'.join(unicode(line) for line in message)
 
 def parser(menuobject, raw_string, caller):
@@ -66,6 +66,17 @@ def parser(menuobject, raw_string, caller):
         # no options - we are at the end of the menu.
         menuobject.close_menu()
 
-def make_menu(caller, data, **kwargs):
-    return EvMenu(caller, data, input_parser=parser, nodetext_formatter=nodetext_format,
-                  options_formatter=option_format, node_formatter=node_format, **kwargs)
+class AthMenu(EvMenu):
+    title = 'SYSTEM'
+
+    def sys_msg(self, message):
+        self.caller.sys_msg(message, sys_name=self.title)
+
+    def error(self, message):
+        self.caller.sys_msg(message, sys_name=self.title, error=True)
+
+
+def make_menu(caller, data, start='start', title='SYSTEM', **kwargs):
+    return AthMenu(caller, data, input_parser=parser, nodetext_formatter=nodetext_format,
+                  options_formatter=option_format, node_formatter=node_format, start=start, title=title,
+                   **kwargs)

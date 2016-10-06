@@ -120,7 +120,7 @@ class Character(DefaultCharacter):
             raise ValueError("Character name field empty.")
 
         # First, collect all possible character candidates.
-        candidates = Character.objects.filter_family(character_settings__deleted=deleted)
+        candidates = Character.objects.filter_family(character_settings__enabled=True)
 
         # First we'll run an Exact check.:
         search_results = self.search(search_name, exact=True, use_nicks=True, candidates=candidates, quiet=True)

@@ -4,6 +4,7 @@ from athanor.utils.text import partial_match
 from athanor.core.models import GameSetting, PlayerSetting, CharacterSetting
 from athanor.core.settings_info import GAME_SETTINGS, PLAYER_SETTINGS, CHARACTER_SETTINGS, ColorSetting
 
+
 class SettingManager(object):
     setting_classes = None
     settings = None
@@ -65,10 +66,12 @@ class SettingManager(object):
             message.append(viewer.render.separator(category))
             tbl = viewer.render.make_table(['Name', 'Value', 'Type', 'Description'], width=[18, 15, 10, 35])
             for op in self.categorized_dict[category]:
+                print op.key
                 tbl.add_row(op.key, op.display(), op.expect_type, op.description)
             message.append(tbl)
         message.append(viewer.render.footer())
         return message
+
 
 class GameSettings(SettingManager):
     setting_classes = GAME_SETTINGS
@@ -82,6 +85,12 @@ class PlayerSettings(SettingManager):
 
     def ready_db(self, id):
         self.model, created = PlayerSetting.objects.get_or_create(player=id)
+        if not self.owner.db._color_names:
+            self.owner.db._color_names = dict()
+        self.color_dict = self.owner.db._color_names
+        for entry in ['channels', 'characters', 'groups']:
+            if entry not in self.color_dict.keys():
+                self.color_dict[entry] = dict()
 
     def update_last_played(self):
         self.model.update_last_played()
@@ -94,6 +103,18 @@ class PlayerSettings(SettingManager):
         if isinstance(setting, ColorSetting):
             self.owner.render.clear_cache()
 
+    def get_color_name(self, thing, mode='characters', no_default=False):
+        section = self.color_dict[mode]
+        if no_default:
+            return section.get(thing, None)
+        return section.get(thing, 'n')
+
+    def set_color_name(self, thing, mode='characters', clear=False):
+        pass
+
+    def list_color_name(self, mode='characters'):
+        pass
+
 
 class CharacterSettings(PlayerSettings):
     setting_classes = CHARACTER_SETTINGS
@@ -101,13 +122,12 @@ class CharacterSettings(PlayerSettings):
     def ready_db(self, id):
         self.model, created = CharacterSetting.objects.get_or_create(character=id)
 
-
     def change_status(self, key):
         pass
 
-
     def change_type(self, key):
         pass
+
 
 GLOBAL_SETTINGS = GameSettings(1)
 
