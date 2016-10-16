@@ -100,18 +100,18 @@ class Speech(object):
 
     """
 
-    def __init__(self, speaker, speech_text, alternate_name=None, title=None, mode='ooc', char_dict=None):
+    def __init__(self, speaker, speech_text, alternate_name=None, title=None, mode='ooc', char_dict=None,
+                 name_dict=None, targets=None):
         self.char_dict = char_dict
+        self.name_dict = name_dict
         self.upper_dict = dict()
-        for key in char_dict.keys():
-            self.upper_dict[char_dict[key].upper()] = key
+        self.targets = ['^^^%s:%s^^^' % (char.id, char.key) for char in targets]
+        for key in name_dict.keys():
+            self.upper_dict[name_dict[key].upper()] = key
 
         def markup_names(match):
             found = match.group('found')
-            if found:
-                if found[0].isupper():
-                    return '^^^%s:%s^^^' % (self.upper_dict[found.upper()], found)
-                return found
+            return '^^^%s:%s^^^' % (self.upper_dict[found.upper()], found)
 
         self.speaker = speaker
         if alternate_name:
@@ -144,7 +144,7 @@ class Speech(object):
         self.special_format = special_format
         self.speech_string = ANSIString(speech_string)
 
-        escape_names = [re.escape(name) for name in char_dict.values()]
+        escape_names = [re.escape(name) for name in name_dict.values()]
         all_names = '|'.join(escape_names)
         self.markup_string = re.sub(r"(?i)\b(?P<found>%s)\b" % all_names, markup_names, self.speech_string)
 
@@ -187,6 +187,9 @@ class Speech(object):
             return_string = self.markup_string
         if self.title:
             return_string = '%s %s' % (self.title, return_string)
+        if self.mode == 'page' and len(self.targets) > 1:
+            pref = '(To %s)' % (', '.join(self.targets))
+            return_string = '%s %s' % (pref, return_string)
 
         return self.colorize(return_string, viewer)
 
@@ -217,8 +220,10 @@ class Speech(object):
                 id = int(found.group('id'))
             except:
                 return found.group('name')
-            if id in self.char_dict:
-                color = viewer.player_config.get_color_name(self.char_dict[id])
+            if id in self.name_dict:
+                color = viewer.player.colors.characters.get(self.char_dict[id], None)
+                if not color:
+                    return found.group('name')
                 return '|n|%s%s|n' % (color, found.group('name'))
             return found.group('name')
 

@@ -29,7 +29,7 @@ from evennia import DefaultPlayer, DefaultGuest
 
 from evennia.utils.utils import lazy_property, is_iter
 from evennia.utils.ansi import ANSIString
-from athanor.utils.handlers.player import PlayerWeb, PlayerTime, PlayerAccount, PlayerRender
+from athanor.utils.handlers.player import PlayerWeb, PlayerTime, PlayerAccount, PlayerRender, ColorHandler
 from athanor.core.config import PlayerSettings
 
 class Player(DefaultPlayer):
@@ -118,6 +118,10 @@ class Player(DefaultPlayer):
     @lazy_property
     def render(self):
         return PlayerRender(self)
+
+    @lazy_property
+    def colors(self):
+        return ColorHandler(self)
 
     def _send_to_connect_channel(self, message):
         return

@@ -151,8 +151,8 @@ class AthCommand(MuxCommand):
     system_name = 'SYSTEM'
     admin_help = False
 
-    def partial(self, partial_list, start_list):
-        return partial_match(partial_list, start_list)
+    def partial(self, match_text, candidates):
+        return partial_match(match_text, candidates)
 
     def sys_msg(self, message, target=None, error=False):
         if not target:

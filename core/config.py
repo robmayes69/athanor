@@ -51,7 +51,7 @@ class SettingManager(object):
         if not found:
             raise ValueError("Sorry, could not find '%s'." % key)
         found.set(value, value_list)
-        self.set_after(found)
+        return self.set_after(found)
 
     def set_after(self, setting):
         pass
@@ -66,7 +66,6 @@ class SettingManager(object):
             message.append(viewer.render.separator(category))
             tbl = viewer.render.make_table(['Name', 'Value', 'Type', 'Description'], width=[18, 15, 10, 35])
             for op in self.categorized_dict[category]:
-                print op.key
                 tbl.add_row(op.key, op.display(), op.expect_type, op.description)
             message.append(tbl)
         message.append(viewer.render.footer())
@@ -79,6 +78,8 @@ class GameSettings(SettingManager):
     def ready_db(self, id):
         self.model, created = GameSetting.objects.get_or_create(key=id)
 
+    def set_after(self, setting):
+        return 'Setting %s is now: %s' % (setting, setting.display())
 
 class PlayerSettings(SettingManager):
     setting_classes = PLAYER_SETTINGS
@@ -102,6 +103,7 @@ class PlayerSettings(SettingManager):
     def set_after(self, setting):
         if isinstance(setting, ColorSetting):
             self.owner.render.clear_cache()
+        return "Your %s setting is now: %s" % (setting, setting.display())
 
     def get_color_name(self, thing, mode='characters', no_default=False):
         section = self.color_dict[mode]

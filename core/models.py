@@ -201,6 +201,36 @@ class MailRead(models.Model):
         super(MailRead, self).delete(*args, **kwargs)
 
 
+class CharacterColor(models.Model):
+    owner = models.ForeignKey('players.PlayerDB', related_name='char_colors')
+    target = models.ForeignKey('objects.ObjectDB', related_name='+')
+    color = models.CharField(max_length=25, default='n', validators=[validate_color])
+
+
+    class Meta:
+        unique_together = (('owner', 'target',),)
+
+
+class GroupColor(models.Model):
+    owner = models.ForeignKey('players.PlayerDB', related_name='group_colors')
+    target = models.ForeignKey('groups.Group', related_name='+')
+    color = models.CharField(max_length=25, default='n', validators=[validate_color])
+
+
+    class Meta:
+        unique_together = (('owner', 'target',),)
+
+
+class ChannelColor(models.Model):
+    owner = models.ForeignKey('players.PlayerDB', related_name='channel_colors')
+    target = models.ForeignKey('comms.ChannelDB', related_name='+')
+    color = models.CharField(max_length=25, default='n', validators=[validate_color])
+
+
+    class Meta:
+        unique_together = (('owner', 'target',),)
+
+
 class Login(models.Model):
     player = models.ForeignKey('players.PlayerDB', related_name='logins')
     date = models.DateTimeField(auto_now_add=True)

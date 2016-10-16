@@ -27,10 +27,12 @@ class CmdGameConfig(AthCommand):
         op = self.lhs
         val = self.rhs
         try:
-            GLOBAL_SETTINGS.set(op, val, self.rhslist)
+            msg = GLOBAL_SETTINGS.set(op, val, self.rhslist)
         except ValueError as err:
             self.error(str(err))
             return
+        self.sys_msg(msg)
+        self.sys_report(msg)
 
 
 class CmdAdmin(AthCommand):

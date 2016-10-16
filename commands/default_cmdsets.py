@@ -30,6 +30,7 @@ from athanor.radio.radio import CmdRadio
 from athanor.fclist.fclist import CmdFCList
 from athanor.commands.help import CmdHelp, CmdAdminHelp
 from athanor.scenes.scene import CmdEvents
+from athanor.core.page import CmdPage
 
 class CharacterCmdSet(OldCharacter):
     """
@@ -69,6 +70,7 @@ class CharacterCmdSet(OldCharacter):
         self.add(CmdAccount())
         self.add(CmdPlayerConfig())
         self.add(CmdSend())
+        self.add(CmdPage())
 
 
 class PlayerCmdSet(OldPlayer):

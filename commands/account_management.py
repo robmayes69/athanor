@@ -40,13 +40,25 @@ class CmdPlayerConfig(AthCommand):
 
     def set_config(self):
         try:
-            self.player.config.set(self.lhs, self.rhs)
+            msg = self.player.config.set(self.lhs, self.rhs)
         except ValueError as err:
             self.error(str(err))
             return
+        self.sys_msg(msg)
+
 
     def switch_name(self):
-        pass
+        if not self.args:
+            self.display_name()
+            return
+        try:
+            found = self.character.search_character(self.lhs)
+            msg = self.player.colors.set(target=found, value=self.rhs, mode='characters')
+        except ValueError as err:
+            self.error(str(err))
+            return
+        self.sys_msg(msg)
+
 
     def switch_channel(self):
         if not self.args:
@@ -55,11 +67,21 @@ class CmdPlayerConfig(AthCommand):
         if not self.lhs:
             self.error("Must enter a channel name.")
             return
-
-
+        found = self.partial(self.lhs, self.character.channels.visible())
+        if not found:
+            self.error("Channel not found.")
+            return
+        try:
+            msg = self.player.colors.set(target=found, value=self.rhs, mode='channels')
+        except ValueError as err:
+            self.error(str(err))
+            return
+        self.sys_msg(msg)
 
     def switch_group(self):
-        pass
+        if not self.args:
+            self.display_group()
+            return
 
 class CmdTz(AthCommand):
     """

@@ -14,26 +14,26 @@ class CmdPage(AthCommand):
         if not self.args:
             self.error("What will you say?")
         if '=' in self.args:
-            if not self.lsargs:
+            if not self.lhs:
                 self.error("Who will you send to?")
                 return
-            if not self.lsargs:
+            if not self.lhs:
                 self.error("What will you say?")
                 return
             targets = list()
             for name in self.lhslist:
                 try:
                     found = self.character.search_character(name)
+                    targets.append(found)
                 except ValueError as err:
                     self.error(str(err))
-                targets.append(name)
-            text = self.rsargs
+            text = self.rhs
         else:
             targets = self.character.page.last_to
             text = self.args
 
         online = [char for char in targets if hasattr(char, 'player')]
-
+        print online
         for char in targets:
             if char not in online:
                 self.error("%s is offline." % char)
@@ -41,10 +41,9 @@ class CmdPage(AthCommand):
         if not online:
             self.error("Nobody is listening...")
 
-        online.append(self.character)
         online = set(online)
 
-        speech = make_speech(self.character, text, mode='page')
+        speech = make_speech(self.character, text, mode='page', targets=online)
         self.character.page.send(online, speech)
 
     def reply(self):
@@ -57,7 +56,6 @@ class CmdPage(AthCommand):
             self.error("Nobody is listening...")
             return
 
-        speech = make_speech(self.character, self.args, mode='page')
-        online.append(self.character)
+        speech = make_speech(self.character, self.args, mode='page', targets=online)
         online = set(online)
         self.character.page.send(online, speech)

@@ -359,10 +359,37 @@ class PlayerRender(object):
     def clear_cache(self):
         self.cache = dict()
 
-class CharacterChannel(object):
+class ColorHandler(object):
 
     def __init__(self, owner):
         self.owner = owner
+        self.models = {'groups': owner.group_colors, 'channels': owner.channel_colors,
+                       'characters': owner.char_colors}
+        for key in self.models.keys():
+            data = {dat.target: dat.color for dat in self.models[key].all()}
+            setattr(self, key, data)
 
-    def receive(self, channel, msg):
-        pass
+    def set(self, target=None, value=None, mode='characters'):
+        model = self.models[mode]
+        if not target:
+            raise ValueError("Nothing entered to set!")
+        if not value:
+            return self.clear(target, mode)
+        if len(ANSIString('|%s|n' % value)):
+            raise ValueError("You must enter a valid color code!")
+        data = getattr(self, mode)
+        data[target] = value
+        dat, created = model.get_or_create(target=target)
+        dat.color = value
+        dat.save()
+        return "You will now see %s as |%s%s|n!" % (target, value, target)
+
+    def clear(self, target, mode):
+        if target in getattr(self, mode).keys():
+            data = getattr(self, mode)
+            del data[target]
+        else:
+            raise ValueError("Cannot clean an entry you don't have!")
+        model = self.models[mode]
+        model.objects.filter(target=target).delete()
+        return "Custom color for %s cleared." % target

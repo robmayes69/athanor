@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 from evennia.utils import time_format
+from athanor.classes.channels import PublicChannel
 
 
 class CharacterWeb(object):
@@ -84,8 +85,6 @@ class CharacterTime(object):
         return not (target.time.is_dark() or target.time.is_hidden())
 
 
-
-
 class CharacterAccount(object):
 
     def __init__(self, owner):
@@ -126,10 +125,6 @@ class CharacterAccount(object):
     def status(self):
         return 'Playable'
 
-class CharacterConfig(object):
-
-    def __init__(self, owner):
-        self.owner = owner
 
 class CharacterChannel(object):
 
@@ -141,21 +136,20 @@ class CharacterChannel(object):
     def receive(self, channel, speech, emit=False):
         if channel in self.gagging:
             return
-        if not self.owner.player:
+        if not hasattr(self.owner, 'player'):
             return
         prefix = self.prefix(channel)
         if emit:
-            self.owner.msg(speech)
+            self.owner.msg('%s %s' % (prefix, speech))
             return
         if self.monitor:
             render = speech.monitor_display(self.owner)
         else:
             render = speech.render(self.owner)
-        print render
         self.owner.msg('%s %s' % (prefix, render))
 
     def color_name(self, channel):
-        color = self.owner.player_config.get_color_name(channel, no_default=True)
+        color = self.owner.player.colors.channels.get(channel, None)
         if not color:
             color = channel.db.color
         if not color:
@@ -171,3 +165,32 @@ class CharacterChannel(object):
         if channel in self.gagging:
             return 'Gag'
         return 'On'
+
+    def visible(self):
+        channels = PublicChannel.objects.all().order_by('db_key')
+        return [chan for chan in channels if chan.locks.check(self.owner, 'listen')]
+
+
+class CharacterPage(object):
+
+    def __init__(self, owner):
+        self.owner = owner
+        self.last_to = list()
+        self.reply_to = list()
+
+    def send(self, targets, msg):
+        targets.discard(self.owner)
+        self.last_to = targets
+        for target in targets:
+            target.page.receive(targets, msg, source=self.owner)
+        outpage = self.owner.player_config['outpage_color']
+        self.owner.msg('|%sPAGE:|n %s' % (outpage, msg.render(viewer=self.owner)))
+
+
+    def receive(self, recipients, msg, source=None):
+        color = self.owner.player_config['page_color']
+        self.owner.msg('|%sPAGE:|n %s' % (color, msg.render(viewer=self.owner)))
+        reply = set(recipients)
+        reply.add(source)
+        reply.discard(self.owner)
+        self.reply_to = reply

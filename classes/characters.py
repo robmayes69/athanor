@@ -15,7 +15,7 @@ from evennia.utils.ansi import ANSIString
 from athanor.utils.text import mxp
 from athanor.classes.scripts import WhoManager
 from athanor.utils.handlers.character import CharacterWeb, CharacterTime, CharacterAccount
-from athanor.utils.handlers.character import CharacterChannel
+from athanor.utils.handlers.character import CharacterChannel, CharacterPage
 from athanor.core.config import CharacterSettings
 from athanor.core.models import CharacterSetting
 
@@ -69,6 +69,10 @@ class Character(DefaultCharacter):
     @lazy_property
     def channels(self):
         return CharacterChannel(self)
+
+    @lazy_property
+    def page(self):
+        return CharacterPage(self)
 
     def at_post_unpuppet(self, player, session=None):
         super(Character, self).at_post_unpuppet(player, session)
@@ -128,7 +132,7 @@ class Character(DefaultCharacter):
         # Did that not work? Next we'll try the online match if it's set!
         if not search_results and not deleted:
             characters = self.who.ndb.characters
-            search_results = self.search(search_name, exact=False, use_nicks=True, candidates=characters(),
+            search_results = self.search(search_name, exact=False, use_nicks=True, candidates=characters,
                                          quiet=True)
 
         # We found NOBODY? Then error!
