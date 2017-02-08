@@ -1,9 +1,12 @@
 from __future__ import unicode_literals
-from athanor.commands.command import AthCommand
-from athanor.utils.text import sanitize_string
-from athanor.grid.models import District
+
 from evennia.locks.lockhandler import LockException
+
 from athanor.classes.rooms import Room
+from athanor.core.command import AthCommand
+from athanor.grid.models import District
+from athanor.utils.text import sanitize_string
+
 
 class CmdDistrict(AthCommand):
     """

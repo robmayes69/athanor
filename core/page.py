@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
+from athanor.core.command import AthCommand
 from athanor.utils.create import make_speech
-from athanor.commands.command import AthCommand
 
 class CmdPage(AthCommand):
     key = 'page'

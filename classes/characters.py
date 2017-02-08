@@ -9,12 +9,12 @@ creation commands.
 """
 from __future__ import unicode_literals
 
-from evennia import DefaultCharacter, create_script
+from evennia import DefaultCharacter
 from evennia.utils.utils import lazy_property
 from evennia.utils.ansi import ANSIString
 from athanor.utils.text import mxp
-from athanor.classes.scripts import WhoManager
-from athanor.utils.handlers.character import CharacterWeb, CharacterTime, CharacterAccount
+from athanor.managers import ALL_MANAGERS
+from athanor.utils.handlers.character import CharacterWeb, CharacterTime, CharacterAccount, CharacterMode
 from athanor.utils.handlers.character import CharacterChannel, CharacterPage
 from athanor.core.config import CharacterSettings
 from athanor.core.models import CharacterSetting
@@ -45,10 +45,7 @@ class Character(DefaultCharacter):
 
     @lazy_property
     def who(self):
-        found = WhoManager.objects.filter_family(db_key='Who Manager').first()
-        if found:
-            return found
-        return create_script(WhoManager, persistent=False, obj=None)
+        return ALL_MANAGERS.who
 
     @lazy_property
     def web(self):
@@ -73,6 +70,10 @@ class Character(DefaultCharacter):
     @lazy_property
     def page(self):
         return CharacterPage(self)
+
+    @lazy_property
+    def mode(self):
+        return CharacterMode(self)
 
     def at_post_unpuppet(self, player, session=None):
         super(Character, self).at_post_unpuppet(player, session)

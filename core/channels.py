@@ -1,19 +1,30 @@
 from __future__ import unicode_literals
+
 import evennia
+
 from athanor.classes.channels import PublicChannel
-from athanor.commands.command import AthCommand
+from athanor.core.command import AthCommand
 from athanor.utils.create import make_speech
+
 
 class CmdChannels(AthCommand):
     """
-    Used to list all channels available to you.
+    General command used to administrate the channel system.
+
+    Usage:
+        @channel - List all channels.
+
+    Switches:
+        /on or /off <channel> - turn reception of a channel on or off.
+        /gag or /ungag <channel> - temporarily stop receiving messages from a channel, resets on logoff.
+
     """
     key = "@channel"
     system_name = 'CHANNEL'
-    aliases = ['comlist', 'channellist', 'all channels', 'channels', '@clist', 'chanlist']
+    aliases = ['comlist', 'channels', '@clist', 'chanlist', '@channels']
     locks = 'cmd:all()'
     player_switches = ['on', 'off', 'gag', 'ungag']
-    admin_switches = ['edit']
+    admin_switches = ['edit', 'create']
 
     def switch_edit(self):
         self.menu(self.character, 'athanor.core.menus.channel')
@@ -21,12 +32,18 @@ class CmdChannels(AthCommand):
     def main(self):
         channels = PublicChannel.objects.filter_family().order_by('db_key')
         message = list()
+        permissions = ['control', 'send', 'listen']
         message.append(self.player.render.header("Public Channels"))
+        online = set(self.character.who.visible_characters(self.character))
         channel_table = self.player.render.make_table(["Sta", "Name", "Aliases", "Perms", "Members", "Description"],
                                                        width=[5, 22, 8, 7, 8, 28])
         for chan in channels:
+            perms = [perm[0].upper() for perm in permissions if chan.access(self.character, perm)]
             status = self.character.channels.status(chan)
-            channel_table.add_row(status, chan.key, 'test', 'test2', '0', 'test3')
+            members = set(chan.subscriptions.all())
+            visible = len(members.intersection(online))
+            channel_table.add_row(status, chan.key, ', '.join(chan.aliases.all()), ' '.join(perms),
+                                  '%s/%s' % (visible, len(members)), chan.db.desc)
         message.append(channel_table)
         message.append(self.player.render.footer())
         self.msg_lines(message)

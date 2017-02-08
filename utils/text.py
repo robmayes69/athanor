@@ -32,26 +32,26 @@ def tabular_table(word_list=None, field_width=26, line_length=78, output_separat
             result_string += element
     return result_string
 
-
-def sanitize_string(input=None, length=None, strip_ansi=False, strip_mxp=True, strip_newlines=True, strip_indents=True):
-    if not input:
+def sanitize_string(text=None, length=None, strip_ansi=False, strip_mxp=True, strip_newlines=True, strip_indents=True):
+    if not text:
         return ''
-    input = input.strip()
+    text = text.strip()
     if strip_mxp:
-        input = ANSI_PARSER.strip_mxp(input)
+        text = ANSI_PARSER.strip_mxp(text)
     if strip_ansi:
-        input = ANSIString(input).clean()
-        input = input
+        text = ANSIString(text).clean()
     if strip_newlines:
         for bad_char in ['\n', '%r', '%R', '|/']:
-            input = input.replace(bad_char, '')
+            text = text.replace(bad_char, '')
     if strip_indents:
         for bad_char in ['\t', '%t', '%T', '|-']:
-            input = input.replace(bad_char, '')
+            text = text.replace(bad_char, '')
     if length:
-        input = input[:length]
-    return input
+        text = text[:length]
+    return text
 
+def normal_string(text=None):
+    return sanitize_string(text, strip_ansi=True)
 
 def dramatic_capitalize(capitalize_string=''):
     capitalize_string = re.sub(r"(?i)(?:^|(?<=[_\/\-\|\s()\+]))(?P<name1>[a-z]+)",

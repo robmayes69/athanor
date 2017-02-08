@@ -1,13 +1,13 @@
 from __future__ import unicode_literals
 
+from collections import defaultdict
 
 from django.conf import settings
-from collections import defaultdict
-from evennia.utils.utils import fill, dedent
 from evennia.help.models import HelpEntry
+from evennia.utils.utils import fill, dedent
 from evennia.utils.utils import string_suggestions
 
-from athanor.commands.command import AthCommand
+from athanor.core.command import AthCommand
 
 _DEFAULT_WIDTH = settings.CLIENT_DEFAULT_WIDTH
 _SEP = "{C" + "-" * _DEFAULT_WIDTH + "{n"
@@ -109,7 +109,7 @@ class CmdHelp(AthCommand):
             [hdict_cmd[cmd.help_category].append(cmd.key) for cmd in all_cmds]
             [hdict_topic[topic.help_category].append(topic.key) for topic in all_topics]
             # report back
-            hdict_cmd.pop('channel names')
+            #hdict_cmd.pop('channel names')
             self.msg(format_help_list(hdict_cmd, hdict_topic, viewer=self.caller))
             return
 

@@ -1,11 +1,11 @@
 from __future__ import unicode_literals
 
 from evennia.utils.ansi import ANSIString
+
 from athanor.classes.characters import Character
-from athanor.commands.command import AthCommand
-from athanor.utils.time import utcnow
-from athanor.utils.text import sanitize_string
+from athanor.core.command import AthCommand
 from athanor.radio.models import RadioFrequency, valid_slot
+from athanor.utils.text import sanitize_string
 
 class CmdRadio(AthCommand):
     """

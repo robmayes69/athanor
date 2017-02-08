@@ -1,5 +1,5 @@
 from __future__ import unicode_literals
-import datetime
+import datetime, re
 from django.utils.timezone import utc
 
 def utcnow():
@@ -24,18 +24,19 @@ def utc_from_string(input=None, tz=None):
     """
     if not input:
         raise ValueError("No time string entered!")
-    cur_year = utcnow().strftime('%Y')
+    now = utcnow()
+    cur_year = now.strftime('%Y')
     split_time = input.split(' ')
     if len(split_time) == 3:
         input = "{0} {1} {2} {3}".format(split_time[0], split_time[1], split_time[2], cur_year)
     elif len(split_time) == 4:
         pass
     else:
-        raise ValueError("Time must be entered in a 24-hour format such as: %s" % utcnow().strftime('%b %d %H:%H'))
+        raise ValueError("Time must be entered in a 24-hour format such as: %s" % now.strftime('%b %d %H:%H'))
     try:
         local = datetime.datetime.strptime(input, '%b %d %H:%M %Y')
     except ValueError:
-        raise ValueError("Time must be entered in a 24-hour format such as: %s" % utcnow().strftime('%b %d %H:%H'))
+        raise ValueError("Time must be entered in a 24-hour format such as: %s" % now.strftime('%b %d %H:%H'))
     local_tz = tz.localize(local)
     return local_tz.astimezone(utc)
 

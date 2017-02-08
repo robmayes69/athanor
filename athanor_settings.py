@@ -56,10 +56,10 @@ BASE_CHANNEL_TYPECLASS = "athanor.classes.channels.PublicChannel"
 
 WEBSOCKET_ENABLED = True
 
-CMDSET_UNLOGGEDIN = "athanor.commands.default_cmdsets.UnloggedinCmdSet"
-CMDSET_SESSION = "athanor.commands.default_cmdsets.SessionCmdSet"
-CMDSET_CHARACTER = "athanor.commands.default_cmdsets.CharacterCmdSet"
-CMDSET_PLAYER = "athanor.commands.default_cmdsets.PlayerCmdSet"
+CMDSET_UNLOGGEDIN = "athanor.core.default_cmdsets.UnloggedinCmdSet"
+CMDSET_SESSION = "athanor.core.default_cmdsets.SessionCmdSet"
+CMDSET_CHARACTER = "athanor.core.default_cmdsets.CharacterCmdSet"
+CMDSET_PLAYER = "athanor.core.default_cmdsets.PlayerCmdSet"
 
 INLINEFUNC_ENABLED = True
 #INLINEFUNC_MODULES += []

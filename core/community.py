@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-from athanor.commands.command import AthCommand
+from athanor.core.command import AthCommand
 
 class CmdWho(AthCommand):
     """

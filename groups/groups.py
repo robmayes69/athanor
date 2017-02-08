@@ -1,10 +1,14 @@
 from __future__ import unicode_literals
+
 import re
+
+from evennia.utils.ansi import ANSIString
+
+from athanor.core.command import AthCommand
 from athanor.groups.models import Group, valid_groupname, find_group, GroupPermissions
-from athanor.commands.command import AthCommand
 from athanor.utils.text import partial_match, sanitize_string
 from athanor.utils.time import duration_from_string, utcnow
-from evennia.utils.ansi import ANSIString
+
 
 class GroupCommand(AthCommand):
     """

@@ -1,12 +1,16 @@
 from __future__ import unicode_literals
-import re, time
+
+import re
+import time
+
 from django.conf import settings
-from evennia.utils import create
-from athanor.classes.characters import Character
-from evennia.utils.create import create_player
-from athanor.commands.command import MuxCommand, AthCommand
 from evennia.commands.default.unloggedin import _LATEST_FAILED_LOGINS, _throttle
+from evennia.utils.create import create_player
+
+from athanor.classes.characters import Character
+from athanor.core.command import MuxCommand, AthCommand
 from athanor.utils.create import character as make_character
+
 
 class CmdMushConnect(MuxCommand):
     """

@@ -194,3 +194,35 @@ class CharacterPage(object):
         reply.add(source)
         reply.discard(self.owner)
         self.reply_to = reply
+
+class CharacterMode(object):
+
+    def __init__(self, owner):
+        self.cmdset = None
+        self.owner = owner
+        self.mode_dict = dict()
+        self.target_dict = dict()
+
+    def get(self, key, default):
+        if key in self.mode_dict:
+            return self.mode_dict[key]
+        self.mode_dict[key] = dict(default)
+        return self.mode_dict[key]
+
+    def target(self, key, value=None):
+        if key in self.target_dict and not value:
+            return self.target_dict[key]
+        if value:
+            self.target_dict[key] = value
+            return value
+
+    def leave(self):
+        if not self.cmdset:
+            return
+        self.owner.cmdset.delete(self.cmdset)
+        self.cmdset = None
+
+    def switch(self, cmdset):
+        self.leave()
+        self.cmdset = cmdset
+        self.owner.cmdset.add(cmdset)

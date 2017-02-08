@@ -1,13 +1,12 @@
 from __future__ import unicode_literals
-
 from django.db import models
-
 from athanor.core.models import WithKey, WithLocks
-
-# Create your models here.
 
 
 class JobCategory(WithKey, WithLocks):
+    anonymous = models.BooleanField(default=False)
+    due = models.DurationField()
+    description = models.TextField(blank=True, null=True, default=None)
 
     def setup(self):
         self.locks.add('admin:perm(Wizards);post:all()')
@@ -21,6 +20,7 @@ class Job(models.Model):
     due_date = models.DateTimeField()
     close_date = models.DateTimeField(null=True)
     status = models.SmallIntegerField(default=0)
+    anonymous = models.BooleanField(default=False)
 
     def handlers(self):
         return self.characters.filter(is_handler=True)
@@ -62,7 +62,7 @@ class JobComment(models.Model):
     handler = models.ForeignKey('jobs.JobHandler', related_name='comments')
     text = models.TextField()
     is_private = models.BooleanField(default=False)
-    date_made = models.DateTimeField()
+    date_made = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.text

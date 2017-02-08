@@ -118,11 +118,13 @@ class AthanorManager(AthanorScript):
 class WhoManager(AthanorScript):
 
     def at_script_creation(self):
+        self.ndb.characters = list()
         self.key = 'Who Manager'
         self.desc = 'Maintains the Who List for webclients.'
         self.interval = 30
 
     def at_start(self):
+        return
         from athanor.utils.online import characters
         self.ndb.characters = characters()
 

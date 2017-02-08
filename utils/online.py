@@ -29,7 +29,7 @@ def characters():
     Returns:
         list
     """
-    from athanor.classes.characters import Character
+    from athanor.classes.characters import Character as chr
     characters = [session.get_puppet() for session in sessions() if session.get_puppet()]
-    characters = [char for char in characters if char.is_typeclass(Character, exact=False)]
+    characters = [char for char in characters if char.is_typeclass(chr, exact=False)]
     return sorted(list(set(characters)), key=lambda char: char.key)

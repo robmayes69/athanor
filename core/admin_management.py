@@ -1,8 +1,9 @@
 from __future__ import unicode_literals
-from athanor.commands.command import AthCommand
-from athanor.utils.text import partial_match
-from athanor.core.models import StaffEntry
+
+from athanor.core.command import AthCommand
 from athanor.core.config import GLOBAL_SETTINGS
+from athanor.core.models import StaffEntry
+
 
 class CmdGameConfig(AthCommand):
     """

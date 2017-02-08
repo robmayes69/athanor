@@ -195,7 +195,8 @@ class Board(WithLocks):
         return acc
 
     def listeners(self):
-        return [char for char in characters() if self.check_permission(checker=char)
+        from athanor.managers import ALL_MANAGERS
+        return [char for char in ALL_MANAGERS.who.ndb.characters if self.check_permission(checker=char)
                 and not char in self.ignore_list.all()]
 
     def make_post(self, character=None, subject=None, text=None, announce=True, date=None):

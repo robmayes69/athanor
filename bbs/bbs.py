@@ -1,13 +1,13 @@
 from __future__ import unicode_literals
 
 from evennia.locks.lockhandler import LockException
+from evennia.utils.utils import time_format
+
 from athanor.bbs.models import BoardGroup
+from athanor.core.command import AthCommand
 from athanor.groups.models import Group
-from athanor.commands.command import AthCommand
 from athanor.utils.text import mxp, sanitize_string, penn_substitutions, partial_match
 from athanor.utils.time import duration_from_string
-from evennia import create_script
-from evennia.utils.utils import time_format
 
 
 class BBCommand(AthCommand):

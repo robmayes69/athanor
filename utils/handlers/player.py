@@ -118,7 +118,10 @@ class PlayerAccount(object):
         return '\n'.join(unicode(line) for line in message)
 
     def is_admin(self):
-        return self.owner.locks.check_lockstring(self, "dummy:perm(Wizards)")
+        return self.owner.locks.check_lockstring(self.owner, "dummy:perm(Wizards)")
+
+    def is_immortal(self):
+        return self.owner.locks.check_lockstring(self.owner, "dummy:perm(Immortals)")
 
     def characters(self):
         """
@@ -222,7 +225,7 @@ class PlayerRender(object):
             command_text.append(" {w@penn <character>=<password>{n - Link an imported PennMUSH character.")
         command_text.append(" {w@charcreate <name> [=description]{n - create new character")
         command_text.append(" {w@ic <character>{n - enter the game ({w@ooc{n to get back here)")
-        command_column.add_row("\n".join(command_text), width=78)
+        command_column.add_row("\n".join(command_text), width=80)
         message.append(command_column)
         if characters:
             message += self.at_look_character_menu()
@@ -242,7 +245,7 @@ class PlayerRender(object):
         email = self.owner.email if self.owner.email != 'dummy@dummy.com' else '<blank>'
         info_text.append(unicode(ANSIString("Email:".rjust(8) + ANSIString(" {g%s{n" % email))))
         info_text.append(unicode(ANSIString("Perms:".rjust(8) + " {g%s{n" % ", ".join(self.owner.permissions.all()))))
-        info_column.add_row("\n".join(info_text), width=78)
+        info_column.add_row("\n".join(info_text), width=80)
         message.append(info_column)
         return message
 
@@ -307,7 +310,7 @@ class PlayerRender(object):
         colors['border'] = self.config['border_color']
         colors['headertext'] = self.config['headertext_color']
         colors['headerstar'] = self.config['headerstar_color']
-        width = 78
+        width = 80
         if edge_character:
             width -= 2
 

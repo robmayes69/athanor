@@ -14,23 +14,27 @@ own cmdsets by inheriting from them or directly from `evennia.CmdSet`.
 
 """
 
-from athanor.commands.evennia_cmdsets import CharacterCmdSet as OldCharacter, SessionCmdSet as OldSession, \
+from athanor.core.account_management import CmdPlayerConfig, CmdAccount
+from athanor.core.evennia_cmdsets import CharacterCmdSet as OldCharacter, SessionCmdSet as OldSession, \
     UnloggedinCmdSet as OldUnlogged, PlayerCmdSet as OldPlayer
-from athanor.commands.community import CmdWho
-from athanor.info.info_files import CmdInfo
+from athanor.core.help import CmdHelp, CmdAdminHelp
+from athanor.core.login import CmdMushConnect, CmdCharCreate
+
 from athanor.bbs.bbs import CmdBBAdmin, CmdBBList, CmdBBRead, CmdBBWrite, CmdGBAdmin, CmdGBList, CmdGBRead, CmdGBWrite
-from athanor.commands.account_management import CmdPlayerConfig, CmdTz, CmdWatch, CmdAccount
-from athanor.commands.admin import CmdGameConfig, CmdAdmin
-from athanor.groups.groups import GROUP_COMMANDS
-from athanor.grid.grid_management import DISTRICT_COMMANDS
-from athanor.commands.mush_import import CmdImport
-from athanor.commands.login import CmdMushConnect, CmdCharCreate
+from athanor.core.admin_management import CmdGameConfig, CmdAdmin
 from athanor.core.channels import CmdChannels, CmdSend
-from athanor.radio.radio import CmdRadio
-from athanor.fclist.fclist import CmdFCList
-from athanor.commands.help import CmdHelp, CmdAdminHelp
-from athanor.scenes.scene import CmdEvents
+from athanor.core.community import CmdWho
 from athanor.core.page import CmdPage
+from athanor.fclist.fclist import CmdFCList
+from athanor.grid.grid_management import DISTRICT_COMMANDS
+from athanor.groups.groups import GROUP_COMMANDS
+from athanor.info.info_files import CmdInfo
+from athanor.mushimport.mush_import import CmdImport
+from athanor.radio.radio import CmdRadio
+from athanor.scenes.scene import CmdEvents
+from athanor.jobs.jobs import CmdJob
+
+from storyteller.editor import Chargen
 
 class CharacterCmdSet(OldCharacter):
     """
@@ -71,6 +75,10 @@ class CharacterCmdSet(OldCharacter):
         self.add(CmdPlayerConfig())
         self.add(CmdSend())
         self.add(CmdPage())
+        self.add(CmdJob)
+
+        # Just testing this
+        self.add(Chargen)
 
 
 class PlayerCmdSet(OldPlayer):
