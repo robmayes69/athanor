@@ -42,7 +42,7 @@ class SpeechFactory(object):
     def upper(self):
         if not self.loaded:
             self.load()
-        return [key.upper() for key in self.keys()]
+        return [key.key.upper() for key in self.values()]
 
     def __getitem__(self, item):
         if not self.loaded:

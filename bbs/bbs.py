@@ -393,7 +393,7 @@ class CmdBBWrite(BBCommand):
         if not board.check_permission(self.character, 'write'):
             self.error("Permission denied.")
             return
-        board.make_post(stub=self.character.stub, subject=curpost['subject'], text=curpost['text'])
+        board.make_post(character=self.character, subject=curpost['subject'], text=curpost['text'])
         del self.character.db.curpost
 
     def board_post_startpost(self, lhs=None, rhs=None):
@@ -445,7 +445,7 @@ class CmdBBWrite(BBCommand):
         except ValueError as err:
             self.error(unicode(err))
             return
-        board.make_post(stub=self.character.stub, subject=sanitize_string(subject),
+        board.make_post(character=self.character, subject=sanitize_string(subject),
                         text=penn_substitutions(rhs.strip()))
 
     def post_edit(self, lhs, rhs):

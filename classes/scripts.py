@@ -124,31 +124,18 @@ class WhoManager(AthanorScript):
         self.interval = 30
 
     def at_start(self):
-        return
-        from athanor.utils.online import characters
-        self.ndb.characters = characters()
+        from athanor.utils.online import characters as _char
+        self.ndb.characters = _char()
 
     def add(self, character):
         if character in self.ndb.characters:
             return
         self.ndb.characters.append(character)
-        for char in [chr for chr in self.visible_characters(character)]:
-            char.oob(who_add=((character.id), {'data': character.web.serialize(char)}))
 
     def rem(self, character):
         if character not in self.ndb.characters:
             return
-        for char in [chr for chr in self.ndb.characters if chr.time.can_see(character)]:
-            char.oob(who_remove=((character.id), {}))
         self.ndb.characters.remove(character)
-
-    def at_repeat(self):
-        for char in self.ndb.characters:
-            self.update_character(char)
-
-    def update_character(self, character):
-        all_data = [chr.web.serialize(character) for chr in self.visible_characters(character)]
-        character.oob(who_all=((), {'data': all_data}))
 
     def visible_characters(self, character):
         return [chr for chr in self.ndb.characters if character.time.can_see(chr)]

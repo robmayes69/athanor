@@ -17,12 +17,12 @@ class CmdWho(AthCommand):
         characters = sorted(self.character.who.visible_characters(self.character),
                             key=lambda char: char.key)
         message = list()
-        message.append(self.player.render.header('Who'))
-        who_table = self.player.render.make_table(['Name', 'Alias', 'Fac', 'Idle', 'Conn', 'G', 'Location'],
-                                                  width=[20, 11, 4, 5, 5, 2, 31])
+        message.append(self.character.render.header('Who'))
+        who_table = self.character.render.make_table(['Name', 'Alias', 'Fac', 'Idle', 'Conn', 'G', 'Location'],
+                                                  width=[20, 11, 4, 5, 5, 2, 33])
         for char in characters:
             who_table.add_row(char.mxp_name(), '', '', char.time.last_or_idle_time(self.character),
                               char.time.last_or_conn_time(self.character),'?', char.location.key)
         message.append(who_table)
-        message.append(self.player.render.footer())
+        message.append(self.character.render.footer())
         self.msg_lines(message)

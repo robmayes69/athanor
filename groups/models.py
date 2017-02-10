@@ -8,21 +8,22 @@ from athanor.core.models import validate_color
 
 # Create your models here.
 
+
 class GroupCategory(WithKey):
     order = models.PositiveSmallIntegerField(default=0)
+    description = models.TextField(blank=True, null=True, default=None)
 
 
 class Group(WithKey, WithLocks):
     category = models.ForeignKey('groups.GroupCategory', related_name='groups')
     order = models.IntegerField(default=0)
-    tier = models.PositiveSmallIntegerField(default=1)
     abbreviation = models.CharField(max_length=10)
     color = models.CharField(max_length=20, default='n', validators=[validate_color])
     member_permissions = models.ManyToManyField('GroupPermissions')
     guest_permissions = models.ManyToManyField('GroupPermissions')
     start_rank = models.ForeignKey('GroupRank', null=True)
     alert_rank = models.ForeignKey('GroupRank', null=True)
-    description = models.TextField(blank=True)
+    description = models.TextField(blank=True, null=True, default=None)
     ic_channel = models.OneToOneField('comms.ChannelDB', null=True, related_name='group')
     ooc_channel = models.OneToOneField('comms.ChannelDB', null=True, related_name='group')
     invites = models.ManyToManyField('objects.ObjectDB', related_name='group_invites')
@@ -30,12 +31,6 @@ class Group(WithKey, WithLocks):
     ooc_enabled = models.BooleanField(default=True)
     display_type = models.SmallIntegerField(default=0)
     timeout = models.DurationField(null=True)
-
-    def serialize(self, viewer):
-        members = [char.character.id for char in self.members]
-        return {'id': self.id, 'key': self.key, 'order': self.order, 'tier': self.tier,
-                'abbreviation': self.abbreviation, 'color': self.color, 'display_type': self.display_type,
-                'member_ids': members}
 
 
     def delete(self, *args, **kwargs):

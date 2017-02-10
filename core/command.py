@@ -249,14 +249,12 @@ class AthCommand(MuxCommand):
     def valid_date(self, entry=None, player=None):
         if not player:
             player = self.player
-        tz = player.player_settings.timezone
+        tz = player.config['timezone']
         return utc_from_string(entry, tz)
 
     def valid_int(self, entry=None):
         if not entry:
             raise ValueError("Must enter a valid integer!")
-        if not _VAL_ISNUM.match(entry):
-            raise ValueError("That was not an integer.")
         try:
             num = int(entry)
         except ValueError:

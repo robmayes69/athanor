@@ -43,8 +43,8 @@ class BoardGroup(models.Model):
 
     def boards_list(self, checker, viewer):
         message = list()
-        message.append(viewer.render.header(self.name, viewer=viewer))
-        bbtable = viewer.render.make_table(["ID", "RWA", "Name", "Locks", "On"], width=[4, 4, 23, 43, 4])
+        message.append(viewer.player.render.header(self.name))
+        bbtable = viewer.player.render.make_table(["ID", "RWA", "Name", "Locks", "On"], width=[4, 4, 25, 43, 4])
         for board in self.usable_boards(checker=checker):
             if checker in board.ignore_list.all():
                 member = "No"
@@ -53,7 +53,7 @@ class BoardGroup(models.Model):
             bbtable.add_row(mxp(board.order, "+bbread %s" % board.order), board.display_permissions(checker),
                             mxp(board, "+bbread %s" % board.order), board.lock_storage, member)
         message.append(bbtable)
-        message.append(viewer.render.footer())
+        message.append(viewer.player.render.footer())
         return '\n'.join(unicode(line) for line in message)
 
     def find_board(self, find_name=None, checker=None, visible_only=True):
@@ -100,7 +100,7 @@ class BoardGroup(models.Model):
     def display_boards(self, checker, viewer):
         message = list()
         message.append(viewer.render.header(self.name))
-        bbtable = viewer.render.make_table(["ID", "RWA", "Name", "Last Post", "#", "U"], width=[4, 4, 37, 23, 5, 5])
+        bbtable = viewer.render.make_table(["ID", "RWA", "Name", "Last Post", "#", "U"], width=[4, 4, 37, 25, 5, 5])
         for board in self.visible_boards(checker=checker):
             bbtable.add_row(mxp(board.order, "+bbread %s" % board.order),
                             board.display_permissions(checker), mxp(board, "+bbread %s" % board.order),
@@ -162,7 +162,7 @@ class Board(WithLocks):
         return self.posts.filter(order__in=fullnums).order_by('order')
 
     def check_permission(self, checker=None, mode="read", checkadmin=True):
-        if checker.is_admin():
+        if checker.account.is_admin():
             return True
         if self.group:
             if self.group.check_permission(checker, 'gbadmin'):
@@ -244,10 +244,10 @@ class Board(WithLocks):
         """
         message = list()
         message.append(viewer.render.header('%s - %s' % (self.category.name, self.key)))
-        board_table = viewer.render.make_table(["ID", 'S', "Subject", "Date", "Poster"], width=[7, 2, 33, 9, 27])
+        board_table = viewer.render.make_table(["ID", 'S', "Subject", "Date", "Poster"], width=[7, 2, 35, 9, 27])
         for post in self.posts.all().order_by('creation_date'):
             board_table.add_row("%s/%s" % (self.order, post.order), 'U' if viewer not in post.read.all() else '',
-                                post.subject, viewer.display_local_time(date=post.creation_date, format='%x'),
+                                post.subject, viewer.time.display(date=post.creation_date, format='%x'),
                                 post.display_poster(viewer))
         message.append(board_table)
         message.append(viewer.render.footer())
@@ -256,7 +256,7 @@ class Board(WithLocks):
     def last_post(self, viewer):
         find = self.posts.all().order_by('creation_date').first()
         if find:
-            return viewer.display_local_time(date=find.creation_date, format='%X %x %Z')
+            return viewer.time.display(date=find.creation_date, format='%X %x %Z')
         else:
             return "None"
 
@@ -331,9 +331,9 @@ class Post(WithTimestamp):
 
     def display_post(self, viewer):
         message = list()
-        message.append(viewer.render.header(self.board.category.name, viewer=viewer))
+        message.append(viewer.render.header(self.board.category.name))
         message.append("Message: %s/%s - By %s on %s" % (self.board.order, self.order, self.display_poster(viewer),
-                                                         viewer.display_local_time(date=self.creation_date,format='%X %x %Z')))
+                                                         viewer.time.display(date=self.creation_date,format='%X %x %Z')))
         message.append(viewer.render.separator())
         message.append(self.text)
         message.append(viewer.render.footer())

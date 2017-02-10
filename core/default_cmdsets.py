@@ -32,7 +32,7 @@ from athanor.info.info_files import CmdInfo
 from athanor.mushimport.mush_import import CmdImport
 from athanor.radio.radio import CmdRadio
 from athanor.scenes.scene import CmdEvents
-from athanor.jobs.jobs import CmdJob
+from athanor.jobs.jobs import CmdJob, CmdRequest, CmdMyJob
 
 from storyteller.editor import Chargen
 
@@ -76,6 +76,8 @@ class CharacterCmdSet(OldCharacter):
         self.add(CmdSend())
         self.add(CmdPage())
         self.add(CmdJob)
+        self.add(CmdRequest)
+        self.add(CmdMyJob)
 
         # Just testing this
         self.add(Chargen)

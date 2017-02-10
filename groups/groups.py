@@ -5,8 +5,8 @@ import re
 from evennia.utils.ansi import ANSIString
 
 from athanor.core.command import AthCommand
-from athanor.groups.models import Group, valid_groupname, find_group, GroupPermissions
-from athanor.utils.text import partial_match, sanitize_string
+from athanor.groups.models import Group, valid_groupname, find_group, GroupPermissions, GroupCategory
+from athanor.utils.text import partial_match, normal_string
 from athanor.utils.time import duration_from_string, utcnow
 
 
@@ -121,23 +121,38 @@ class CmdGroupCreate(GroupCommand):
         try:
             group_name = valid_groupname(lhs)
         except ValueError as err:
-            self.error(str(err))
-            return
+            return self.error(str(err))
         if Group.objects.filter(key__iexact=group_name):
-            self.error("That name is already in use.")
-            return
-        new_group = Group.objects.create(key=group_name)
+            return self.error("That name is already in use.")
+        catname = normal_string(rhs)
+        if not catname:
+            return self.error("Must enter a group category name.")
+        found = GroupCategory.objects.filter(key__istartswith=catname).first()
+        if not found:
+            return self.error("Group Category not found.")
+        new_group = Group.objects.create(key=group_name, category=found)
         self.sys_msg("Group '%s' Created!" % new_group)
-        if rhs:
-            try:
-                target = self.character.search_character(rhs)
-                new_group.add_member(target, setrank=1)
-                self.sys_msg("You have been made leader of the new '%s' Group." % new_group, target)
-            except ValueError as err:
-                self.error(str(err))
         self.character.db.group = new_group
         self.sys_msg("Focus changed to: %s" % new_group)
 
+
+class CmdGroupMakeCat(GroupCommand):
+    key = '+gmakecat'
+    locks = "cmd:perm(Wizards)"
+
+    def func(self):
+        rhs = self.rhs
+        lhs = self.lhs
+        name = normal_string(lhs)
+        if not name:
+            self.error("No category name entered.")
+            return
+        if GroupCategory.objects.filter(key__iexact=name).count():
+            self.error("Category name is already in use.")
+            return
+        new_cat = GroupCategory.objects.create(key=name)
+        self.sys_report("Group Category %s created!" % name)
+        self.sys_msg("Created group category %s" % name)
 
 class CmdGroupDescribe(GroupCommand):
     """
@@ -456,7 +471,7 @@ class CmdGroupTitle(GroupCommand):
         if group.get_rank(target) < group.get_rank(self.caller):
             self.error("Permission denied. They outrank you!")
             return
-        new_title = sanitize_string(rhs, length=40)
+        new_title = normal_string(rhs, length=40)
         option, created = group.participants.get_or_create(character=target)
         if not new_title:
             self.sys_msg("Title cleared for %s!" % group)
@@ -600,7 +615,7 @@ class CmdGroupSet(GroupCommand):
         return validate
 
     def setting_abbreviation(self, group):
-        validate = sanitize_string(self.rhs, strip_ansi=True)
+        validate = normal_string(self.rhs)
         group.abbreviation = validate
         return validate
 
@@ -1019,4 +1034,4 @@ class CmdGroupChan(GroupCommand):
 
 GROUP_COMMANDS = [CmdGroupAdd, CmdGroupCreate, CmdGroupDescribe, CmdGroupDisplay, CmdGroupDisband, CmdGroupFocus,
                   CmdGroupKick, CmdGroupList, CmdGroupPerm, CmdGroupRank, CmdGroupRename, CmdGroupTitle, CmdGroupChan,
-                  CmdGroupJoin, CmdGroupLeave, CmdGroupInvite, CmdGroupSet]
+                  CmdGroupJoin, CmdGroupLeave, CmdGroupInvite, CmdGroupSet, CmdGroupMakeCat]

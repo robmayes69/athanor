@@ -8,6 +8,7 @@ from athanor.classes.rooms import Room
 from athanor.utils.time import duration_from_string
 from athanor.utils.text import partial_match
 from athanor.fclist.models import CharacterType, CharacterStatus
+from athanor.jobs.models import JobCategory
 
 
 TZ_DICT = {str(tz): pytz.timezone(tz) for tz in pytz.common_timezones}
@@ -216,6 +217,15 @@ class BoardSetting(Setting):
 
 class JobSetting(Setting):
     expect_type = 'JOB'
+
+    def do_validate(self, value, value_list):
+        if not value:
+            raise ValueError("%s requires a value!" % self)
+        found = JobCategory.objects.filter(key__istartswith=value).first()
+        if not found:
+            raise ValueError("Job Category '%s' not found!" % value)
+        return found
+
 
 
 class DurationSetting(Setting):

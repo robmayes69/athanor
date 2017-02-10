@@ -170,6 +170,10 @@ class Character(DefaultCharacter):
     def owner(self):
         return self.config.model.player
 
+    @property
+    def render(self):
+        return self.player.render
+
     @lazy_property
     def player_config(self):
         return self.owner.config
@@ -186,5 +190,5 @@ class Character(DefaultCharacter):
         self.key = new_name
 
     def at_rename(self, oldname, newname):
-        from athanor.utils.create import CHARACTER_MANAGER
-        CHARACTER_MANAGER.update(self)
+        from athanor.utils.create import SPEECH_FACTORY
+        SPEECH_FACTORY.update(self)
