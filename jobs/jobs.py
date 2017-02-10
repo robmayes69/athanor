@@ -3,10 +3,11 @@ import math
 from django.db.models import Q
 from evennia.utils.utils import time_format
 from evennia.locks.lockhandler import LockException
-from athanor.jobs.models import JobCategory, Job, JobHandler, JobComment
+from athanor.jobs.models import JobCategory, Job
 from athanor.core.command import AthCommand
 from athanor.utils.text import normal_string
 from athanor.utils.time import utcnow, duration_from_string
+
 
 class CmdJob(AthCommand):
     key = '+job'
@@ -15,10 +16,10 @@ class CmdJob(AthCommand):
     player_switches = ['reply', 'old', 'approve', 'deny', 'cancel', 'revive', 'comment', 'due', 'claim', 'unclaim',
                        'scan', 'next', 'pending', 'addhelper', 'remhelper', 'brief', 'search', 'help']
     admin_switches = ['newcategory', 'delcategory', 'rencategory', 'lock', 'move', 'config']
-    page = 1
     jobs = None
 
     def func(self):
+        self.page = 1
         pages = [int(swi) for swi in self.switches if swi.isdigit()]
         if pages:
             self.page = pages[0]
@@ -41,8 +42,9 @@ class CmdJob(AthCommand):
     def list_categories(self, lhs, rhs):
         message = list()
         message.append(self.player.render.header('Job Categories'))
-        cat_table = self.player.render.make_table(['Name', 'Description', 'Pen', 'App', 'Dny', 'Cnc', 'Over', 'Due', 'Anon'],
-                                                    width=[10, 35, 5, 5, 5, 5, 5, 5, 5])
+        cat_table = self.player.render.make_table(
+            ['Name', 'Description', 'Pen', 'App', 'Dny', 'Cnc', 'Over', 'Due', 'Anon'],
+            width=[10, 35, 5, 5, 5, 5, 5, 5, 5])
         for cat in JobCategory.objects.all().order_by('key'):
             pending = cat.jobs.filter(status=0).count()
             approved = cat.jobs.filter(status=1).count()
@@ -57,7 +59,6 @@ class CmdJob(AthCommand):
         message.append(self.player.render.footer())
         self.msg_lines(message)
 
-
     def switch_newcategory(self, lhs, rhs):
         if not self.player.account.is_immortal():
             return self.error("Permission denied!")
@@ -70,7 +71,7 @@ class CmdJob(AthCommand):
         if found:
             return self.error("Category already exists. Use /rencategory to rename it.")
         due = self.valid_duration('1w')
-        cat, created = JobCategory.objects.get_or_create(key=name, due=due)
+        JobCategory.objects.get_or_create(key=name, due=due)
         msg = "Created New Job Category: %s" % name
         self.sys_report(msg)
         self.sys_msg(msg)
@@ -158,7 +159,6 @@ class CmdJob(AthCommand):
                 self.sys_report(msg)
             return
 
-
     def valid_job(self, entry=None, check_access=True):
         if not entry:
             raise ValueError("Must enter a Job ID.")
@@ -175,7 +175,6 @@ class CmdJob(AthCommand):
             return found
         raise ValueError("Permission denied.")
 
-
     def switch_move(self, lhs, rhs):
         job = self.valid_job(lhs)
         if not job.locks.check(self.character, 'admin'):
@@ -184,10 +183,8 @@ class CmdJob(AthCommand):
         cat = self.valid_jobcategory(rhs, check_permission='admin')
         job.change_category(self.character, cat)
 
-
     def switch_config(self, lhs, rhs):
         pass
-
 
     def switch_display(self, lhs, rhs, old=False):
         if not lhs:
@@ -203,32 +200,22 @@ class CmdJob(AthCommand):
         cat = self.valid_jobcategory(lhs)
         viewer = self.character
         page = self.page
-        message = list()
         if old:
-            jobs = cat.jobs.exclude(status=0).order_by('id').reverse()
+            jobs_count = cat.old().count()
         else:
-            interval = utcnow() - duration_from_string('7d')
-            jobs = cat.jobs.filter(Q(status=0, close_date=None) | Q(close_date__gte=interval)).order_by('id').reverse()
-        jobs_count = jobs.count()
+            jobs_count = cat.active().count()
         pages = float(jobs_count) / 30.0
         pages = int(math.ceil(pages))
         if page > pages:
             page = pages
         if not pages:
             raise ValueError("No jobs to display!")
-        start = (page - 1) * 30
-        show = list(jobs[start:start+30])
-        show.reverse()
-        message.append(viewer.render.header('Jobs - %s' % cat))
-        job_table = viewer.render.make_table(["*", "ID", "From", "Title", "Due", "Handling", "Upd", "LstAct"],
-                                             width=[3, 4, 25, 18, 5, 10, 5, 10])
-        for j in show:
-            sta = j.status_letter()
-            due = ''
-            handle = ', '.join([hand.character.key for hand in j.handlers()])
-            upd = ''
-            job_table.add_row(sta, j.id, j.owner, j.title, due, handle, upd, j.last_from)
-        message.append(job_table)
+        mode = 'display'
+        if old:
+            mode = 'old'
+        header = 'Jobs - %s' % cat
+        message = cat.display(viewer=self.character, mode=mode, page=page,
+                              header_text=header)
         foot = '< Page %s of %s >' % (page, pages)
         message.append(viewer.render.footer(foot))
         self.msg_lines(message)
@@ -241,30 +228,34 @@ class CmdJob(AthCommand):
 
     def switch_pending(self, lhs, rhs):
         if lhs:
-            cats = [self.valid_jobcategory(lhs, check_permission='admin'),]
+            cats = [self.valid_jobcategory(lhs, check_permission='admin'), ]
         else:
             cats = [cat for cat in JobCategory.objects.all().order_by('key') if cat.jobs.filter(status=0).count()]
         cats = [cat for cat in cats if cat.locks.check(self.character, 'admin')]
         if not cats:
             raise ValueError("No visible Pending jobs for applicable Job categories.")
         message = list()
+        viewer = self.character
         render = self.character.render
         for cat in cats:
-            message.append(render.header('Pending Jobs - %s' % cat))
-            pen_table = render.make_table(["*", "ID", "From", "Title", "Due", "Handling", "Upd", "LstAct"],
-                                             width=[3, 4, 25, 18, 5, 10, 5, 10])
-            jobs = cat.jobs.filter(status=0).order_by('id').reverse()[:20]
-            jobs = list(jobs)
-            jobs.reverse()
-            for j in jobs:
-                sta = j.status_letter()
-                due = ''
-                handle = ', '.join([hand.character.key for hand in j.handlers()])
-                upd = ''
-                pen_table.add_row(sta, j.id, j.owner, j.title, due, handle, upd, j.last_from)
-            message.append(pen_table)
+            pen = 'Pending Jobs - %s' % cat
+            message += cat.display(viewer=viewer, mode='pending', header_text=pen)
         message.append(render.footer(()))
         self.msg_lines(message)
+
+    def switch_scan(self, lhs, rhs):
+        cats = [cat for cat in JobCategory.objects.all().order_by('key')
+                if cat.locks.check(self.character, 'admin')]
+        message = list()
+        all_cats = list()
+        for cat in cats:
+            pen_jobs = cat.jobs.filter()
+
+    def switch_next(self, lhs, rhs):
+        pass
+
+    def switch_help(self, lhs, rhs):
+        pass
 
     def switch_claim(self, lhs, rhs):
         job = self.valid_job(lhs)
@@ -274,7 +265,6 @@ class CmdJob(AthCommand):
             return job.appoint_handler(self.character, self.character)
         self.check_finished(job)
         for target in self.rhslist:
-            find = None
             try:
                 find = self.character.search_character(target)
                 job.appoint_handler(self.character, find)
@@ -289,7 +279,6 @@ class CmdJob(AthCommand):
         if not rhs:
             return job.remove_handler(self.character, self.character)
         for target in self.rhslist:
-            find = None
             try:
                 find = self.character.search_character(target)
                 job.remove_handler(self.character, find)
@@ -304,7 +293,6 @@ class CmdJob(AthCommand):
         if not rhs:
             return job.appoint_helper(self.character, self.character)
         for target in self.rhslist:
-            find = None
             try:
                 find = self.character.search_character(target)
                 job.appoint_helper(self.character, find)
@@ -319,7 +307,6 @@ class CmdJob(AthCommand):
         if not rhs:
             return job.remove_helper(self.character, self.character)
         for target in self.rhslist:
-            find = None
             try:
                 find = self.character.search_character(target)
                 job.remove_helper(self.character, find)
@@ -329,6 +316,7 @@ class CmdJob(AthCommand):
     def check_finished(self, job):
         if not job.status == 0:
             raise ValueError("Cannot modify Job %s. It is %s." % (job.id, job.status_word()))
+        return
 
     def switch_reply(self, lhs, rhs):
         job = self.valid_job(lhs)
@@ -409,7 +397,8 @@ class CmdRequest(AthCommand):
             switch = self.switches[0]
             found = self.partial(switch, choices)
             if not found:
-                return self.error("Category '%s' not Found. Choices are: %s" % (switch, ', '.join(cat.key for cat in choices)))
+                return self.error("Category '%s' not Found. Choices are: %s" %
+                                  (switch, ', '.join(cat.key for cat in choices)))
             category = found
         if not category:
             return self.error("Category not found!")
@@ -461,18 +450,20 @@ class CmdMyJob(CmdJob):
         if not pages:
             raise ValueError("No jobs to display!")
         start = (page - 1) * 30
-        show = list(jobs[start:start + 30])
+        final_jobs = jobs[start:start + 30]
+        cat_ids = final_jobs.values_list('category', flat=True)
+        cats = JobCategory.objects.filter(id__in=cat_ids)
+        cat_min = {cat: cat.locks.check(self.character, 'admin') for cat in cats}
+        show = list(final_jobs)
         show.reverse()
         message.append(viewer.render.header('MyJobs'))
         job_table = viewer.render.make_table(["*", "ID", "Cat", "From", "Title", "Due", "Handling", "Upd", "LstAct"],
-                                             width=[3, 4, 8, 21, 16, 5, 10, 5, 8])
+                                             width=[3, 4, 8, 19, 16, 6, 10, 6, 8])
         for j in show:
-            sta = j.status_letter()
-            cat = j.category.key
-            due = ''
-            handle = ', '.join([hand.character.key for hand in j.handlers()])
-            upd = ''
-            job_table.add_row(sta, j.id, cat, j.owner, j.title, due, handle, upd, j.last_from)
+            cat = j.category
+            admin = cat_min[cat]
+            job_table.add_row(j.status_letter(), j.id, cat, j.owner, j.title, j.display_due(viewer),
+                              j.handler_names(), j.display_last(viewer, admin), j.last_from(admin))
         message.append(job_table)
         foot = '< Page %s of %s >' % (page, pages)
         message.append(viewer.render.footer(foot))

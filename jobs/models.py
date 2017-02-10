@@ -1,7 +1,8 @@
 from __future__ import unicode_literals
 from django.db import models
 from athanor.core.models import WithKey, WithLocks
-from athanor.utils.time import utcnow
+from athanor.utils.time import utcnow, duration_from_string
+
 
 class JobCategory(WithKey, WithLocks):
     anonymous = models.BooleanField(default=False)
@@ -17,13 +18,50 @@ class JobCategory(WithKey, WithLocks):
         due = now + self.due
         job = self.jobs.create(title=title, due_date=due, anonymous=self.anonymous)
         handler = job.characters.create(character=source, is_owner=True, check_date=now)
-        comment = handler.comments.create(text=opening, date_made=now, comment_mode=0)
+        handler.comments.create(text=opening, date_made=now, comment_mode=0)
         text = 'Submitted by: %s'
         if self.anonymous:
             msg = text % 'Anonymous'
         else:
             msg = text % source.key
         job.announce(msg)
+
+    def display(self, viewer, mode='display', page=1, header_text='', footer=False):
+        message = list()
+        message.append(viewer.render.header(header_text))
+        admin = self.locks.check(viewer, 'admin')
+        job_table = viewer.render.make_table(["*", "ID", "From", "Title", "Due", "Handling", "Upd", "LstAct"],
+                                             width=[3, 4, 25, 18, 6, 10, 6, 8])
+        start = (page - 1) * 30
+        show = list()
+        if mode == 'display':
+            jobs = self.active()
+            show = list(jobs[start:start + 30])
+        elif mode == 'old':
+            jobs = self.old()
+            show = list(jobs[start:start + 30])
+        elif mode == 'pending':
+            jobs = self.pending()
+            show = list(jobs[:20])
+        show.reverse()
+        for j in show:
+            job_table.add_row(j.status_letter(), j.id, j.owner, j.title, j.display_due(viewer),
+                              j.handler_names(), j.display_last(viewer, admin), j.last_from(admin))
+        message.append(job_table)
+        if footer:
+            message.append(viewer.render.footer())
+        return message
+
+    def active(self):
+        Q = models.Q
+        interval = utcnow() - duration_from_string('7d')
+        return self.jobs.filter(Q(status=0, close_date=None) | Q(close_date__gte=interval)).order_by('id').reverse()
+
+    def pending(self):
+        return self.jobs.filter(status=0).order_by('id').reverse()
+
+    def old(self):
+        return self.jobs.exclude(status=0).order_by('id').reverse()
 
 
 class Job(models.Model):
@@ -39,6 +77,9 @@ class Job(models.Model):
     def handlers(self):
         return self.characters.filter(is_handler=True)
 
+    def handler_names(self):
+        return ', '.join([hand.character.key for hand in self.handlers()])
+
     def helpers(self):
         return self.characters.filter(is_helper=True)
 
@@ -53,6 +94,18 @@ class Job(models.Model):
         sta = {0: 'Pending', 1: 'Approved', 2: 'Denied', 3: 'Canceled'}
         return sta[self.status]
 
+    def display_due(self, viewer):
+        return viewer.time.display(self.due_date, '%m/%d')
+
+    def get_last(self, admin=False):
+        if admin:
+            return self.comments().last()
+        return self.comments().exclude(is_private=1).last()
+
+    def display_last(self, viewer, admin=False):
+        last = self.get_last(admin)
+        return viewer.time.display(last.date_made, '%m/%d')
+
     def __str__(self):
         return self.title
 
@@ -64,9 +117,8 @@ class Job(models.Model):
     def locks(self):
         return self.category.locks
 
-    @property
-    def last_from(self):
-        last = JobComment.objects.filter(handler__job=self).order_by('date_made').last()
+    def last_from(self, admin):
+        last = self.get_last(admin)
         handler = last.handler
         if handler.is_owner:
             return 'Owner'
@@ -168,12 +220,14 @@ class Job(models.Model):
             message.append(viewer.render.separator())
             message.append(com.display(viewer, admin))
         message.append(viewer.render.footer())
+        handler, created = self.characters.get_or_create(character=viewer)
+        handler.check()
         return message
 
     def make_reply(self, enactor, contents):
         handler, created = self.characters.get_or_create(character=enactor)
         now = utcnow()
-        comm = handler.comments.create(text=contents, date_made=now, comment_mode=1)
+        handler.comments.create(text=contents, date_made=now, comment_mode=1)
         name = enactor.key
         if handler.is_owner and self.anonymous:
             name = 'Anonymous'
@@ -182,7 +236,7 @@ class Job(models.Model):
     def make_comment(self, enactor, contents):
         handler, created = self.characters.get_or_create(character=enactor)
         now = utcnow()
-        comm = handler.comments.create(text=contents, date_made=now, comment_mode=1, is_private=True)
+        handler.comments.create(text=contents, date_made=now, comment_mode=1, is_private=True)
         self.announce('%s added a |rSTAFF COMMENT|n.' % enactor, only_admin=True)
 
     def set_approved(self, enactor, contents):
@@ -190,7 +244,7 @@ class Job(models.Model):
             raise ValueError("Job is not pending, cannot be approved.")
         handler, created = self.characters.get_or_create(character=enactor)
         now = utcnow()
-        comm = handler.comments.create(text=contents, date_made=now, comment_mode=4)
+        handler.comments.create(text=contents, date_made=now, comment_mode=4)
         self.status = 1
         self.close_date = utcnow()
         self.save(update_fields=['status', 'close_date'])
@@ -201,7 +255,7 @@ class Job(models.Model):
             raise ValueError("Job is not pending, cannot be denied.")
         handler, created = self.characters.get_or_create(character=enactor)
         now = utcnow()
-        comm = handler.comments.create(text=contents, date_made=now, comment_mode=5)
+        handler.comments.create(text=contents, date_made=now, comment_mode=5)
         self.status = 2
         self.close_date = utcnow()
         self.save(update_fields=['status', 'close_date'])
@@ -212,7 +266,7 @@ class Job(models.Model):
             raise ValueError("Job is not pending, cannot be canceled.")
         handler, created = self.characters.get_or_create(character=enactor)
         now = utcnow()
-        comm = handler.comments.create(text=contents, date_made=now, comment_mode=6)
+        handler.comments.create(text=contents, date_made=now, comment_mode=6)
         self.status = 3
         self.close_date = utcnow()
         self.save(update_fields=['status', 'close_date'])
@@ -223,7 +277,7 @@ class Job(models.Model):
             raise ValueError("Job is not finished, cannot be revived.")
         handler, created = self.characters.get_or_create(character=enactor)
         now = utcnow()
-        comm = handler.comments.create(text=contents, date_made=now, comment_mode=7)
+        handler.comments.create(text=contents, date_made=now, comment_mode=7)
         self.status = 0
         self.close_date = None
         self.save(update_fields=['status', 'close_date'])
@@ -285,5 +339,5 @@ class JobComment(models.Model):
         if self.comment_mode in (3, 8, 9, 10, 11, 12):
             message += " %s" % self.text
         else:
-            message += "\n\n%s" % (self.text)
+            message += "\n\n%s" % self.text
         return message
