@@ -13,7 +13,7 @@ class CmdJob(AthCommand):
     aliases = ['+jobs']
     system_name = 'JOBS'
     player_switches = ['reply', 'old', 'approve', 'deny', 'cancel', 'revive', 'comment', 'due', 'claim', 'unclaim',
-                       'attn', 'scan', 'next', 'pending', 'addhelper', 'remhelper', 'brief', 'search']
+                       'scan', 'next', 'pending', 'addhelper', 'remhelper', 'brief', 'search', 'help']
     admin_switches = ['newcategory', 'delcategory', 'rencategory', 'lock', 'move', 'config']
     page = 1
     jobs = None
@@ -239,6 +239,33 @@ class CmdJob(AthCommand):
         handler.check()
         self.msg_lines(job.display(self.character))
 
+    def switch_pending(self, lhs, rhs):
+        if lhs:
+            cats = [self.valid_jobcategory(lhs, check_permission='admin'),]
+        else:
+            cats = [cat for cat in JobCategory.objects.all().order_by('key') if cat.jobs.filter(status=0).count()]
+        cats = [cat for cat in cats if cat.locks.check(self.character, 'admin')]
+        if not cats:
+            raise ValueError("No visible Pending jobs for applicable Job categories.")
+        message = list()
+        render = self.character.render
+        for cat in cats:
+            message.append(render.header('Pending Jobs - %s' % cat))
+            pen_table = render.make_table(["*", "ID", "From", "Title", "Due", "Handling", "Upd", "LstAct"],
+                                             width=[3, 4, 25, 18, 5, 10, 5, 10])
+            jobs = cat.jobs.filter(status=0).order_by('id').reverse()[:20]
+            jobs = list(jobs)
+            jobs.reverse()
+            for j in jobs:
+                sta = j.status_letter()
+                due = ''
+                handle = ', '.join([hand.character.key for hand in j.handlers()])
+                upd = ''
+                pen_table.add_row(sta, j.id, j.owner, j.title, due, handle, upd, j.last_from)
+            message.append(pen_table)
+        message.append(render.footer(()))
+        self.msg_lines(message)
+
     def switch_claim(self, lhs, rhs):
         job = self.valid_job(lhs)
         if not job.locks.check(self.character, 'admin'):
@@ -396,11 +423,6 @@ class CmdRequest(AthCommand):
             self.error("No opening text included!")
         category.make_job(self.character, title, opening)
 
-
-"""
-player_switches = ['reply', 'old', 'approve', 'deny', 'cancel', 'revive', 'comment', 'due', 'claim', 'unclaim',
-                   'attn', 'scan', 'next', 'pending', 'addplayer', 'remplayer', 'brief', 'search']
-"""
 
 class CmdMyJob(CmdJob):
     key = '+myjob'
