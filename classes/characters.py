@@ -77,8 +77,6 @@ class Character(DefaultCharacter):
 
     def at_post_unpuppet(self, player, session=None):
         super(Character, self).at_post_unpuppet(player, session)
-        if session:
-            session.msg(character_clear=((), {}))
         if not self.sessions.get():
             self.at_true_logout(player, session)
 

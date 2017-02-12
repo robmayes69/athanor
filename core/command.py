@@ -10,6 +10,7 @@ import re
 from evennia import Command as BaseCommand
 from evennia import default_cmds, CmdSet
 from evennia.utils.ansi import ANSIString
+from athanor.groups.models import find_group
 from athanor.utils.text import partial_match
 from athanor.utils.time import utc_from_string, duration_from_string
 from athanor.core.config import GLOBAL_SETTINGS
@@ -228,10 +229,12 @@ class AthCommand(MuxCommand):
 
     # When in doubt, use this setup.
     def func(self):
-        if not self.final_switches:
-            self.main()
-        else:
-            getattr(self, 'switch_%s' % self.final_switches[0])()
+        try:
+            if not self.final_switches:
+                return self._main()
+            return getattr(self, 'switch_%s' % self.final_switches[0])()
+        except ValueError as err:
+            return self.error(str(err))
 
     def valid_color(self, entry=None):
         if not entry:
@@ -278,6 +281,10 @@ class AthCommand(MuxCommand):
         if not num >= beyond:
             raise ValueError("Must enter a whole number greater than %s!" % beyond)
         return num
+
+    def valid_group(self, entry=None):
+        group = find_group(search_name=entry, exact=False)
+
 
 class ModeCmdSet(CmdSet):
     """

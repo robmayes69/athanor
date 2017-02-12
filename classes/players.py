@@ -191,7 +191,16 @@ class Player(DefaultPlayer):
         else:
             self.render.render_login(session)
 
-
+    def authority(self, checker):
+        if checker.is_superuser:
+            return True
+        if self.is_superuser and not checker.is_superuser:
+            return False
+        if checker.account.is_admin() and not self.account.is_admin():
+            return True
+        if self.account.is_immortal() and self == checker:
+            return True
+        return False
 
 class Guest(DefaultGuest, Player):
     """

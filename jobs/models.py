@@ -16,9 +16,10 @@ class JobCategory(WithKey, WithLocks):
     def make_job(self, source, title, opening):
         now = utcnow()
         due = now + self.due
-        job = self.jobs.create(title=title, due_date=due, anonymous=self.anonymous)
+        job = self.jobs.create(title=title, due_date=due, anonymous=self.anonymous, admin_update=now, public_update=now)
         handler = job.characters.create(character=source, is_owner=True, check_date=now)
-        handler.comments.create(text=opening, date_made=now, comment_mode=0)
+        handler.make_comment(text=opening, comment_mode=0)
+        handler.check()
         text = 'Submitted by: %s'
         if self.anonymous:
             msg = text % 'Anonymous'
@@ -43,6 +44,9 @@ class JobCategory(WithKey, WithLocks):
         elif mode == 'pending':
             jobs = self.pending()
             show = list(jobs[:20])
+        else:
+            jobs = mode
+            show = list(jobs)
         show.reverse()
         for j in show:
             job_table.add_row(j.status_letter(), j.id, j.owner, j.title, j.display_due(viewer),
@@ -63,6 +67,21 @@ class JobCategory(WithKey, WithLocks):
     def old(self):
         return self.jobs.exclude(status=0).order_by('id').reverse()
 
+    def new(self, viewer):
+        Q = models.Q
+        F = models.F
+        interval = utcnow() - duration_from_string('14d')
+        unseen_ids = self.jobs.exclude(characters__character=viewer)
+        #updated = Q(submit_date__gte=interval)
+        unseen = Q(id__in=unseen_ids)
+        if self.locks.check(viewer, 'admin'):
+            last = Q(characters__character=viewer, admin_update__gt=F('characters__check_date'))
+        else:
+            last = Q(characters__character=viewer, public_update__gt=F('characters__check_date'))
+        jobs = self.jobs.filter(last | unseen).exclude(submit_date__lt=interval)
+        jobs = jobs #.filter(unseen | last).order_by('id').reverse()
+        return jobs
+
 
 class Job(models.Model):
     category = models.ForeignKey('jobs.JobCategory', related_name='jobs')
@@ -73,6 +92,8 @@ class Job(models.Model):
     status = models.SmallIntegerField(default=0)
     # Status: 0 = Pending. 1 = Approved. 2 = Denied. 3 = Canceled
     anonymous = models.BooleanField(default=False)
+    public_update = models.DateTimeField(null=True)
+    admin_update = models.DateTimeField(null=True)
 
     def handlers(self):
         return self.characters.filter(is_handler=True)
@@ -103,8 +124,12 @@ class Job(models.Model):
         return self.comments().exclude(is_private=1).last()
 
     def display_last(self, viewer, admin=False):
-        last = self.get_last(admin)
-        return viewer.time.display(last.date_made, '%m/%d')
+        date = self.public_update
+        if admin:
+            date = self.admin_update
+        if not date:
+            date = self.submit_date
+        return viewer.time.display(date, '%m/%d')
 
     def __str__(self):
         return self.title
@@ -158,8 +183,7 @@ class Job(models.Model):
         handler.is_handler = True
         handler.save(update_fields=['is_handler'])
         self.announce('%s added %s to Handlers.' % (enactor, target))
-        now = utcnow()
-        ehandler.comments.create(comment_mode=8, date_made=now, text='%s' % target)
+        ehandler.make_comment(comment_mode=8, text='%s' % target)
 
     def remove_handler(self, enactor, target):
         ehandler, created1 = self.characters.get_or_create(character=enactor)
@@ -169,8 +193,7 @@ class Job(models.Model):
         handler.is_handler = False
         handler.save(update_fields=['is_handler'])
         self.announce('%s removed %s from Handlers.' % (enactor, target))
-        now = utcnow()
-        ehandler.comments.create(comment_mode=10, date_made=now, text='%s' % target)
+        ehandler.make_comment(comment_mode=10, text='%s' % target)
 
     def appoint_helper(self, enactor, target):
         ehandler, created1 = self.characters.get_or_create(character=enactor)
@@ -180,8 +203,7 @@ class Job(models.Model):
         handler.is_helper = True
         handler.save(update_fields=['is_helper'])
         self.announce('%s added %s to Helpers.' % (enactor, target))
-        now = utcnow()
-        ehandler.comments.create(comment_mode=8, date_made=now, text='%s' % target)
+        ehandler.make_comment(comment_mode=8, text='%s' % target)
 
     def remove_helper(self, enactor, target):
         ehandler, created1 = self.characters.get_or_create(character=enactor)
@@ -191,8 +213,7 @@ class Job(models.Model):
         handler.is_helper = False
         handler.save(update_fields=['is_helper'])
         self.announce('%s removed %s from Helpers.' % (enactor, target))
-        now = utcnow()
-        ehandler.comments.create(comment_mode=11, date_made=now, text='%s' % target)
+        ehandler.make_comment(comment_mode=11, text='%s' % target)
 
     def change_category(self, enactor, destination):
         oldcat = self.category
@@ -202,8 +223,7 @@ class Job(models.Model):
         self.announce('%s moved job from: %s' % (enactor, oldcat))
         self.save(update_fields=['category'])
         handler, created = self.characters.get_or_create(character=enactor)
-        now = utcnow()
-        handler.comments.create(comment_mode=3, date_made=now, text='%s to %s' % (oldcat, newcat))
+        handler.make_comment(comment_mode=3, text='%s to %s' % (oldcat, newcat))
 
     def display(self, viewer):
         admin = False
@@ -226,8 +246,7 @@ class Job(models.Model):
 
     def make_reply(self, enactor, contents):
         handler, created = self.characters.get_or_create(character=enactor)
-        now = utcnow()
-        handler.comments.create(text=contents, date_made=now, comment_mode=1)
+        handler.make_comment(text=contents, comment_mode=1)
         name = enactor.key
         if handler.is_owner and self.anonymous:
             name = 'Anonymous'
@@ -235,16 +254,14 @@ class Job(models.Model):
 
     def make_comment(self, enactor, contents):
         handler, created = self.characters.get_or_create(character=enactor)
-        now = utcnow()
-        handler.comments.create(text=contents, date_made=now, comment_mode=1, is_private=True)
+        handler.make_comment(text=contents, comment_mode=1, is_private=True)
         self.announce('%s added a |rSTAFF COMMENT|n.' % enactor, only_admin=True)
 
     def set_approved(self, enactor, contents):
         if not self.status == 0:
             raise ValueError("Job is not pending, cannot be approved.")
         handler, created = self.characters.get_or_create(character=enactor)
-        now = utcnow()
-        handler.comments.create(text=contents, date_made=now, comment_mode=4)
+        handler.make_comment(text=contents, comment_mode=4)
         self.status = 1
         self.close_date = utcnow()
         self.save(update_fields=['status', 'close_date'])
@@ -254,8 +271,7 @@ class Job(models.Model):
         if not self.status == 0:
             raise ValueError("Job is not pending, cannot be denied.")
         handler, created = self.characters.get_or_create(character=enactor)
-        now = utcnow()
-        handler.comments.create(text=contents, date_made=now, comment_mode=5)
+        handler.make_comment(text=contents, comment_mode=5)
         self.status = 2
         self.close_date = utcnow()
         self.save(update_fields=['status', 'close_date'])
@@ -265,8 +281,7 @@ class Job(models.Model):
         if not self.status == 0:
             raise ValueError("Job is not pending, cannot be canceled.")
         handler, created = self.characters.get_or_create(character=enactor)
-        now = utcnow()
-        handler.comments.create(text=contents, date_made=now, comment_mode=6)
+        handler.make_comment(text=contents, comment_mode=6)
         self.status = 3
         self.close_date = utcnow()
         self.save(update_fields=['status', 'close_date'])
@@ -276,8 +291,7 @@ class Job(models.Model):
         if self.status == 0:
             raise ValueError("Job is not finished, cannot be revived.")
         handler, created = self.characters.get_or_create(character=enactor)
-        now = utcnow()
-        handler.comments.create(text=contents, date_made=now, comment_mode=7)
+        handler.make_comment(text=contents, comment_mode=7)
         self.status = 0
         self.close_date = None
         self.save(update_fields=['status', 'close_date'])
@@ -287,8 +301,7 @@ class Job(models.Model):
         self.due_date = new_date
         self.save(update_fields=['due_date'])
         handler, created = self.characters.get_or_create(character=enactor)
-        now = utcnow()
-        handler.comments.create(comment_mode=12, date_made=now, text='%s' % self.due_date)
+        handler.make_comment(comment_mode=12, text='%s' % self.due_date)
         self.announce('%s changed the Due Date to: %s' % (enactor, self.due_date))
 
 
@@ -310,6 +323,13 @@ class JobHandler(models.Model):
         self.check_date = utcnow()
         self.save(update_fields=['check_date'])
 
+    def make_comment(self, comment_mode=1, text=None, is_private=False):
+        now = utcnow()
+        if not is_private:
+            self.job.public_update = now
+        self.job.admin_update = now
+        self.job.save(update_fields=['admin_update', 'public_update'])
+        self.comments.create(comment_mode=comment_mode, text=text, is_private=is_private, date_made=now)
 
 class JobComment(models.Model):
     handler = models.ForeignKey('jobs.JobHandler', related_name='comments')

@@ -138,8 +138,8 @@ class CharacterTypeSetting(Setting):
             manager.add(key)
 
     def from_db(self):
-        manager = getattr(self.model, self.field_name)
-        return list(manager.all())
+        manager = self.manager
+        return list(manager.objects.all())
 
     def display(self):
         return ', '.join(str(item) for item in self.value_storage)
@@ -581,7 +581,7 @@ class GameJob(BoolSetting):
 
 class GameClose(BoolSetting):
     key = 'character_close'
-    category = 'Character'
+    category = 'Characters'
     description = 'Use Open/Close system?'
 
 

@@ -40,6 +40,7 @@ class PlayerSetting(models.Model):
     timezone = models.CharField(max_length=100, default='UTC')
     penn_channels = models.BooleanField(default=True)
     enabled = models.BooleanField(default=True)
+    deleted = models.BooleanField(default=False)
     watch_list = models.ManyToManyField('objects.ObjectDB', related_name='on_watch')
     channel_muzzles = models.ManyToManyField('core.Muzzle', related_name='player_muzzles')
     extra_slots = models.SmallIntegerField(default=0)
@@ -111,6 +112,7 @@ class CharacterSetting(models.Model):
     group_focus = models.ForeignKey('groups.Group', related_name='+', null=True, on_delete=models.SET_NULL)
     last_played = models.DateTimeField(null=True)
     enabled = models.BooleanField(default=True)
+    deleted = models.BooleanField(default=False)
     character_type = models.ForeignKey('fclist.CharacterType', related_name='characters', null=True,
                                        on_delete=models.SET_NULL)
     character_status = models.ForeignKey('fclist.CharacterStatus', related_name='characters', null=True,

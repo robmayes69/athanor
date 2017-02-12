@@ -1,4 +1,49 @@
+from __future__ import unicode_literals
 import codecs, re
+
+def mxp(text="", command="", hints=""):
+    if text:
+        return "|lc%s|lt%s|le" % (command, text)
+    else:
+        return "|lc%s|lt%s|le" % (command, command)
+
+def re_color(match):
+    return match.group('text')
+    codes_text = match.group('codes')
+    text = match.group('text')
+    if not len(codes_text):
+        return text
+
+    codes = re.match(r'(?P<fg>.+?)(?:!(?P<bg>.+?))?',codes_text)
+
+    if '<' in codes.group('fg'):
+        pass
+
+def re_pueblo(match):
+    if match.group('command').startswith('send'):
+        find = re.match(r'(?is)(?P<pre>send \\"(?P<com>.+?)\\)"', match.group('command'))
+        return mxp(text=match.group('text'), command=find.group('com'))
+
+    if match.group('command').startswith('a'):
+        find = re.match(r'(?is)(?P<pre>a XCH_CMD=\\"(?P<com>.+?)\\)"', match.group('command'))
+        return mxp(text=match.group('text'), command=find.group('com'))
+
+    return match.group('text')
+
+def re_newlines(match):
+    return '\n'
+
+def re_tabs(match):
+    return '\t'
+
+def process_penntext(text):
+    if not len(text):
+        return text
+    text = re.sub(r'(?s)(?P<start>\002p(?P<command>.+?)\003)(?P<text>.+?)(?P<end>\002p\/\003)',re_pueblo,text)
+    text = re.sub(r'(?s)(?P<start>\002c(?P<codes>.+?)\003)(?P<text>.+?)(?P<end>\002c\/\003)',re_color,text)
+    text = re.sub(r'(?is)(?P<find>%r)',re_newlines,text)
+    text = re.sub(r'(?is)(?P<find>%t)', re_tabs, text)
+    return text
 
 
 class read_penn(object):
@@ -52,6 +97,7 @@ class read_penn(object):
         object_exits = None
         object_owner = None
         object_flags = None
+        object_powers = None
 
         attribute_start = list()
         for count, line in enumerate(lines):
@@ -84,13 +130,15 @@ class read_penn(object):
                 object_objid = u'%s:%s' % (object_dbref, entry)
             if subject == u'flags':
                 object_flags = entry
+            if subject == u'powers':
+                object_powers = entry
 
         attributes = self.parse_attributes(attribute_lines)
 
         self.mush_data[object_dbref] = {u'name': object_name, u'type': object_type, u'location': object_location,
                                       u'parent': object_parent, u'objid': object_objid, u'created': object_created,
                                       u'exits': object_exits, u'owner': object_owner, u'flags': object_flags,
-                                        u'attributes': attributes}
+                                        u'attributes': attributes, u'powers': object_powers}
 
     def parse_attributes(self, attribute_lines):
 
@@ -115,6 +163,6 @@ class read_penn(object):
             value_name, value = value.split(u' ', 1)
             value = value.strip(u'"')
             name = name.strip(u'"')
-            attributes[name] = value
+            attributes[name] = process_penntext(value)
 
         return attributes

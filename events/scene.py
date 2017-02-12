@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 from evennia.utils.ansi import ANSIString
 
 from athanor.core.command import AthCommand
-from athanor.scenes.models import Event
+from athanor.events.models import Event
 from athanor.utils.time import utcnow, duration_from_string, utc_from_string
 
 

@@ -64,7 +64,7 @@ class CmdMushConnect(MuxCommand):
         if not old_char:
             session.msg("Character has no old data!")
             return
-        player = char.db._owner
+        player = char.config.model.player
         if not player:
             session.msg("Character is not bound to a valid account.")
             return
@@ -82,15 +82,30 @@ class CmdMushConnect(MuxCommand):
             new_player.db._was_lost = True
             new_player.db._reset_email = True
             new_player.db._reset_username = True
-            new_player.bind_character(char)
+            new_player.account.bind_character(char)
             session.msg("Your temporary account name is: %s" % create_name)
             session.msg("Account created, using your PennMUSH password.")
+            flags = char.mush.flags.split(' ')
+            if char.mush.dbref == '#1':
+                new_player.is_superuser = True
+                new_player.permissions.add('Immortals')
+                char.permissions.add('Immortals')
+                new_player.save()
+                session.msg("Penn 'GOD' Bit detected, granting Superuser Player permission.")
+            if 'WIZARD' in flags:
+                new_player.permissions.add('Immortals')
+                char.permissions.add('Immortals')
+                session.msg("Penn 'WIZARD' Bit detected, granting Immortals Player permission.")
+            if 'ROYALTY' in flags:
+                new_player.permissions.add('Wizards')
+                char.permissions.add('Wizards')
+                session.msg("Penn 'ROYALTY' Bit detected, granting Wizards Player permission.")
         else:
             session.msg("Credentials accepted. You can now login to this account with the given password.\nPlease set your username and email with the listed commands.")
             new_player = player
             new_player.set_password(password)
         session.msg("Import process complete!")
-        for character in new_player.get_all_characters():
+        for character in new_player.account.characters():
             del character.db._import_ready
         session.sessionhandler.login(session, new_player)
 

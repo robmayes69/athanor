@@ -28,7 +28,7 @@ INSTALLED_APPS = INSTALLED_APPS + ('athanor.bbs.apps.BBS',
                                    'athanor.core.apps.Core',
                                    'athanor.mushimport.apps.Mushimport',
                                    'athanor.radio.apps.Radio',
-                                   'athanor.scenes.apps.Scenes',)
+                                   'athanor.events.apps.Events',)
 
 
 TEMPLATES[0]['DIRS'] += (os.path.join(GAME_DIR, 'athanor', 'site', 'templates'),)

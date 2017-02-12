@@ -248,11 +248,33 @@ class CmdJob(AthCommand):
                 if cat.locks.check(self.character, 'admin')]
         message = list()
         all_cats = list()
+        viewer = self.character
         for cat in cats:
-            pen_jobs = cat.jobs.filter()
+            pen_jobs = cat.new(viewer)
+            if pen_jobs:
+                all_cats.append((cat, pen_jobs))
+        if not all_cats:
+            raise ValueError("Nothing new to show!")
+        for group in all_cats:
+            head = 'Job Activity - %s' % group[0]
+            message += group[0].display(viewer, mode=group[1], header_text=head)
+        message.append(viewer.render.footer())
+        self.msg_lines(message)
 
     def switch_next(self, lhs, rhs):
-        pass
+        cats = [cat for cat in JobCategory.objects.all().order_by('key')
+                if cat.locks.check(self.character, 'admin')]
+        job = None
+        viewer = self.character
+        for cat in cats:
+            if job:
+                continue
+            job = cat.new(viewer).first()
+        if not job:
+            raise ValueError("Nothing new to show!")
+        handler, created = job.characters.get_or_create(character=viewer)
+        handler.check()
+        self.msg_lines(job.display(viewer))
 
     def switch_help(self, lhs, rhs):
         pass

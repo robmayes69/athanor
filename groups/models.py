@@ -13,6 +13,32 @@ class GroupCategory(WithKey):
     order = models.PositiveSmallIntegerField(default=0)
     description = models.TextField(blank=True, null=True, default=None)
 
+    def display(self, viewer, footer=False):
+        message = list()
+        message.append(viewer.render.header(self.key))
+        groups = self.groups.all().order_by('order')
+        if not groups:
+            if footer:
+                message.append(viewer.render.footer())
+            return message
+        who = set(viewer.who.visible_characters(viewer))
+        group_table = viewer.render.make_table(["Name", "Leader", "Second", "Conn"],
+                                               width=[30, 21, 21, 8])
+        for group in groups:
+            member_chars = set([mem.character for mem in group.members])
+            members_count = len(member_chars)
+            online = member_chars.intersection(who)
+            total_online = len(online)
+            group_table.add_row(group.name,
+                                ", ".join('%s' % char for char in group.members.filter(rank__num=1)),
+                                ", ".join('%s' % char for char in group.members.filter(rank__num=2)),
+                                "%s/%s" % (total_online, members_count)
+                                )
+        message.append(group_table)
+        if footer:
+            message.append(viewer.render.footer())
+        return message
+
 
 class Group(WithKey, WithLocks):
     category = models.ForeignKey('groups.GroupCategory', related_name='groups')
@@ -115,7 +141,7 @@ class Group(WithKey, WithLocks):
         self.sys_msg("%s is no longer a group member. Reason: %s" % (target, reason))
 
     def check_permission(self, checker, check, ignore_admin=False):
-        if not ignore_admin and checker.is_admin():
+        if not ignore_admin and checker.account.is_admin():
             return True
         membership = self.members.filter(character=checker).first()
         if not membership:
@@ -156,7 +182,7 @@ class Group(WithKey, WithLocks):
     def get_rank(self, checker=None, ignore_admin=False):
         if not checker:
             return False
-        if checker.is_admin() and not ignore_admin:
+        if checker.account.is_admin() and not ignore_admin:
             return 0
         rank_check = self.members.filter(character=checker, rank__num__gt=0).first()
         if rank_check:
@@ -189,7 +215,7 @@ class Group(WithKey, WithLocks):
         return rank
 
     def is_member(self, target, ignore_admin=False):
-        if target.is_admin() and not ignore_admin:
+        if target.account.is_admin() and not ignore_admin:
             return True
         if self.members.filter(character=target).count():
             return True
@@ -199,7 +225,7 @@ class Group(WithKey, WithLocks):
     def members(self):
         return self.participants.filter(rank__num__gt=0)
 
-    def display_group(self, viewer):
+    def display(self, viewer):
         message = list()
         message.append(viewer.render.header("Group: %s" % self))
         grouptable = viewer.render.make_table(["Name", "Rank", "Title", "Idle"], width=[24, 23, 23, 8])
@@ -326,4 +352,4 @@ def find_group(search_name=None, exact=False, checker=None):
     if find:
         return find
     else:
-        raise ValueError("Group '%s' not found. % search_name")
+        raise ValueError("Group '%s' not found." % search_name)

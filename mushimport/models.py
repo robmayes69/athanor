@@ -23,7 +23,8 @@ class MushObject(models.Model):
     parent = models.ForeignKey('MushObject', related_name='children', null=True)
     owner = models.ForeignKey('MushObject', related_name='owned', null=True)
     flags = models.TextField(blank=True)
-    recreated = models.BooleanField(default=0)
+    powers = models.TextField(blank=True)
+    recreated = models.BooleanField(default=False)
 
     def __unicode__(self):
         return self.name

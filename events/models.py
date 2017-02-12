@@ -3,11 +3,7 @@ from django.db import models
 from athanor.utils.time import utcnow
 
 
-# Create your models here.
-
-
 class Plot(models.Model):
-    owner = models.ForeignKey('objects.ObjectDB', related_name='plots')
     title = models.CharField(max_length=150)
     description = models.TextField(blank=True)
     date_start = models.DateTimeField(null=True)
@@ -43,24 +39,44 @@ class Plot(models.Model):
 
     @property
     def participants(self):
-        return Participant.objects.filter(scene__in=self.scenes).values_list('character', flat=True)
+        return Participant.objects.filter(event__in=self.events).values_list('character', flat=True)
 
     @property
-    def locations(self):
-        return Pose.objects.filter(scene__in=self.scenes).values_list('location', flat=True).distinct()
+    def owner(self):
+        found = self.runners.filter(owner=True).first()
+        if found:
+            return found.character
+        return None
 
 
-class Scene(models.Model):
-    owner = models.ForeignKey('objects.ObjectDB', related_name='scenes')
+class Runner(models.Model):
+    plot = models.ForeignKey('events.Plot', related_name='runners')
+    character = models.ForeignKey('objects.ObjectDB', related_name='plots')
+    owner = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = (('plot', 'character',),)
+
+
+class Event(models.Model):
     title = models.CharField(max_length=150, blank=True, null=True)
-    description = models.TextField(blank=True, null=True)
+    pitch = models.TextField(blank=True, null=True, default=None)
+    outcome = models.TextField(blank=True, null=True, default=None)
     date_created = models.DateTimeField()
+    date_scheduled = models.DateTimeField(null=True)
+    date_started = models.DateTimeField(null=True)
     date_finished = models.DateTimeField(null=True)
-    plot = models.ForeignKey('Plot', null=True, related_name='scenes')
-    status = models.SmallIntegerField(default=0, db_index=True)
+    plot = models.ForeignKey('Plot', null=True, related_name='events')
+    post = models.OneToOneField('bbs.Post', related_name='event', null=True)
+    public = models.BooleanField(default=True)
+    status = models.PositiveSmallIntegerField(default=0, db_index=True)
+    log_ooc = models.BooleanField(default=True)
+    log_channels = models.ManyToManyField('comms.ChannelDB', related_name='log_events')
+    private = models.BooleanField(default=False)
+    # Status: 0 = Active. 1 = Paused. 2 = ???. 3 = Finished. 4 = Scheduled. 5 = Canceled.
 
-    def display_scene(self, viewer):
-        message = []
+    def display(self, viewer):
+        message = list()
         message.append(viewer.render.header('Scene %i: %s' % (self.id, self.title)))
         message.append('Started: %s' % viewer.time.display(date=self.date_created))
         if self.date_finished:
@@ -77,12 +93,8 @@ class Scene(models.Model):
         return "\n".join([unicode(line) for line in message])
 
     def display_status(self):
-        if self.status == 0:
-            return 'Active'
-        if self.status == 1:
-            return 'Paused'
-        if self.status == 3:
-            return 'Finished'
+        sta = {0: 'Active', 1: 'Paused', 2: '???', 3: 'Finished', 4: 'Scheduled', 5: 'Canceled'}
+        return sta[self.status]
 
     def msg(self, text):
         for character in self.recipients:
@@ -96,28 +108,40 @@ class Scene(models.Model):
         return set(recip_list)
 
     @property
-    def locations(self):
-        return self.poses.values_list('location', flat=True).distinct()
-
-    @property
-    def poses(self):
-        return Pose.objects.filter(owner__scene=self)
+    def actions(self):
+        return Action.objects.filter(owner__event=self)
 
 
 class Participant(models.Model):
-    character = models.ForeignKey('objects.ObjectDB', related_name='scenes')
-    scene = models.ForeignKey('scenes.Scene', related_name='participants')
+    character = models.ForeignKey('objects.ObjectDB', related_name='events')
+    event = models.ForeignKey('events.Event', related_name='participants')
+    owner = models.BooleanField(default=False)
+    tag = models.BooleanField(default=False)
 
     class Meta:
-        unique_together = (("character", "scene"),)
+        unique_together = (("character", "event"),)
 
 
-class Pose(models.Model):
-    owner = models.ForeignKey('scenes.Participant', related_name='poses')
+class Source(models.Model):
+    key = models.CharField(max_length=255)
+    channel = models.ForeignKey('comms.ChannelDB', null=True, related_name='event_logs', on_delete=models.SET_NULL)
+    location = models.ForeignKey('objects.ObjectDB', null=True, related_name='poses_here', on_delete=models.SET_NULL)
+    mode = models.PositiveSmallIntegerField(default=0)
+    # mode: 0 = 'Location Pose'. 1 = Public Channel. 2 = Group IC. 3 = Group OOC. 4 = Radio. 5 = Local OOC. 6 = Combat
+
+    class Meta:
+        unique_together = (('key', 'channel', 'location'),)
+
+
+class Action(models.Model):
+    event = models.ForeignKey('events.Event', related_name='actions')
+    owner = models.ForeignKey('events.Participant', related_name='actions')
     ignore = models.BooleanField(default=False, db_index=True)
     date_made = models.DateTimeField(db_index=True)
     text = models.TextField(blank=True)
-    location = models.ForeignKey('objects.ObjectDB', null=True, related_name='poses_here', on_delete=models.SET_NULL)
+    codename = models.CharField(max_length=255, null=True, blank=True, default=None)
+    source = models.ForeignKey('events.Source', related_name='actions')
+
 
     def display_pose(self, viewer):
         message = []
@@ -126,7 +150,7 @@ class Pose(models.Model):
         message.append(self.text)
         return "\n".join([unicode(line) for line in message])
 
-
+"""
 class Event(models.Model):
     owner = models.ForeignKey('objects.ObjectDB', related_name='events')
     title = models.CharField(max_length=150)
@@ -192,6 +216,17 @@ class Event(models.Model):
             self.post.text = self.post_text()
             self.post.modify_date = utcnow()
             self.post.save(update_fields=['text', 'modify_date'])
+"""
+
+
+class Pairing(models.Model):
+    event = models.ForeignKey('events.Event', related_name='pairings')
+    number = models.PositiveSmallIntegerField(default=0)
+    description = models.TextField(blank=True, null=True, default=None)
+    characters = models.ManyToManyField('objects.ObjectDB', related_name='event_pairings')
+
+    class Meta:
+        unique_together = (('event', 'number',),)
 
 class Pot(models.Model):
     owner = models.ForeignKey('objects.ObjectDB', related_name='pot_poses')

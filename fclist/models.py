@@ -33,13 +33,7 @@ class FCList(WithKey):
     def display_cast(self, viewer, header=True):
         theme_table = viewer.render.make_table(["Name", "Faction", "Last On", "Type", "Status"], width=[21, 29, 9, 10, 9], header=header)
         for char in self.cast.all().order_by('db_key'):
-            try:
-                type = char.list_type
-            except:
-                type = 'N/A'
-            try:
-                status = char.list_status
-            except:
-                status = 'N/A'
-            theme_table.add_row(char, 'Test', char.last_or_idle_time(viewer=viewer), type, status)
+            type = char.config.model.character_type or 'N/A'
+            status = char.config.model.character_status or 'N/A'
+            theme_table.add_row(char, 'Test', char.time.last_or_idle_time(viewer=viewer), type, status)
         return theme_table

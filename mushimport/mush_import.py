@@ -11,17 +11,18 @@ from evennia.utils import create
 
 from athanor.bbs.models import BoardGroup
 from athanor.classes.characters import Character
+from athanor.classes.players import Player
 from athanor.core.command import AthCommand
-from athanor.fclist.models import FCList
+from athanor.fclist.models import FCList, CharacterStatus, CharacterType
 from athanor.grid.models import District
-from athanor.groups.models import Group
+from athanor.groups.models import Group, GroupCategory
 from athanor.jobs.models import JobCategory
-from athanor.mushimport.convpenn import read_penn
+from athanor.mushimport.convpenn import read_penn, process_penntext
 from athanor.mushimport.models import MushObject, cobj, pmatch, objmatch, MushAttributeName
 from athanor.radio.models import RadioFrequency
-from athanor.scenes.models import Plot, Event, Scene, Pose
+from athanor.events.models import Plot, Event, Runner, Source, Action
 from athanor.utils.text import partial_match, dramatic_capitalize, sanitize_string, penn_substitutions
-from athanor.utils.time import utcnow
+from athanor.utils.time import utcnow, duration_from_string
 
 
 def from_unixtimestring(secs):
@@ -79,7 +80,7 @@ class CmdImport(AthCommand):
             penn_data = penn_objects[entity]
             entry, created = MushObject.objects.get_or_create(dbref=entity, objid=penn_data['objid'],
                                                               type=penn_data['type'], name=penn_data['name'],
-                                                              flags=penn_data['flags'],
+                                                              flags=penn_data['flags'], powers=penn_data['powers'],
                                                               created=from_unixtimestring(penn_data['created']))
             if created:
                 entry.save()
@@ -136,7 +137,7 @@ class CmdImport(AthCommand):
             new_district.order = int(old_district.mushget('order') or 500)
             rooms = old_district.children.all()
             for room in rooms:
-                new_district.rooms.add(room.obj)
+                new_district.rooms.get_or_create(key=room.obj)
             new_district.save()
 
     def create_room(self, mush_room):
@@ -184,46 +185,88 @@ class CmdImport(AthCommand):
     def switch_accounts(self):
         char_typeclass = settings.BASE_CHARACTER_TYPECLASS
         accounts = cobj(abbr='accounts').children.all()
-        for acc_obj in sorted(accounts, key=lambda acc: int(acc.name.split(' ')[1])):
-            name = 'MushAcc %s' % acc_obj.name.split(' ')[1]
-            password = str(random.randrange(5000000,1000000000))
-            email = acc_obj.mushget('email') or None
-            new_player = create.create_player(name, email, password)
-            new_player.db._import_ready = True
-            new_player.db._reset_username = True
-            if new_player.email == 'dummy@dummy.com':
-                new_player.db._reset_email = True
+        for acc_obj in accounts:
+            set_wizard = False
+            set_immortal = False
+            set_super = False
+            if acc_obj.account:
+                new_player = acc_obj.account
+            else:
+                name = 'Imported - %s' % acc_obj.name
+                password = str(random.randrange(5000000, 1000000000))
+                email = acc_obj.mushget('email') or None
+                found = Player.objects.filter_family(username=name).first()
+                if found:
+                    new_player = found
+                else:
+                    new_player = create.create_player(name, email, password)
+                    acc_obj.account = new_player
+                    acc_obj.save(update_fields=['account'])
+                new_player.db._import_ready = True
+                new_player.db._reset_username = True
+                if new_player.email == 'dummy@dummy.com':
+                    new_player.db._reset_email = True
             objids = acc_obj.mushget('characters').split(' ')
-            mush_chars = MushObject.objects.filter(objid__in=objids)
+            mush_chars = MushObject.objects.filter(objid__in=objids, obj=None)
             for char in mush_chars:
                 new_char = create.create_object(typeclass=char_typeclass, key=char.name)
                 new_char.db.prelogout_location = char.location.obj
                 char.obj = new_char
                 char.save(update_fields=['obj'])
-                new_player.bind_character(new_char)
+                new_player.account.bind_character(new_char)
                 new_char.db._import_ready = True
-        unbound = MushObject.objects.filter(type=8, obj=None)
+                flags = char.flags.split(' ')
+                if char.dbref == '#1':
+                    set_super = True
+                if 'WIZARD' in flags:
+                    set_immortal = True
+                if 'ROYALTY' in flags:
+                    set_wizard = True
+            if set_super:
+                new_player.is_superuser = True
+                new_player.save()
+                continue
+            if set_immortal:
+                new_player.permissions.add('Immortals')
+                continue
+            if set_wizard:
+                new_player.permissions.add('Wizards')
+                continue
+        unbound = MushObject.objects.filter(type=8, obj=None, recreated=False).exclude(powers__icontains='Guest')
         if unbound:
             name = 'Lost and Found'
-            password = str(random.randrange(5000000,1000000000))
+            password = str(random.randrange(5000000, 1000000000))
             email = None
-            new_player = create.create_player(name, email, password)
+            found = Player.objects.filter_family(username=name).first()
+            if found:
+                new_player = found
+            else:
+                new_player = create.create_player(name, email, password)
             new_player.db._lost_and_found = True
+            new_player.config.model.enabled = False
+            new_player.config.model.save(update_fields=['enabled'])
             for char in unbound:
                 new_char = create.create_object(typeclass=char_typeclass, key=char.name)
                 new_char.db.prelogout_location = char.location.obj
                 char.obj = new_char
                 char.save(update_fields=['obj'])
-                new_player.bind_character(new_char)
+                new_player.account.bind_character(new_char)
                 new_char.db._import_ready = True
         self.sys_msg("Finished importing characters!")
 
-
     def switch_groups(self):
+        minor, cr = GroupCategory.objects.get_or_create(key='Minor', description='Minor Groups', order=1)
+        major, cr2 = GroupCategory.objects.get_or_create(key='Major', description='Major Groups', order=2)
         penn_groups = cobj('gop').children.all()
         for old_group in penn_groups:
             if not old_group.group:
-                old_group.group, created = Group.objects.get_or_create(key=old_group.name)
+                cat = old_group.mushget('SET`MAJOR') or '0'
+                cat = int(cat)
+                if cat:
+                    cat = major
+                else:
+                    cat = minor
+                old_group.group, created = Group.objects.get_or_create(key=old_group.name, category=cat)
                 old_group.save(update_fields=['group'])
             new_group = old_group.group
             new_group.description = old_group.mushget('DESCRIBE')
@@ -305,7 +348,6 @@ class CmdImport(AthCommand):
                                    creation_date=old_data['creation_date'], timeout=old_data['timeout'],
                                    text=old_data['text'], order=num+1)
 
-
     def switch_fclist(self):
         old_themes = cobj('themedb').children.all()
         for old_theme in old_themes:
@@ -323,12 +365,17 @@ class CmdImport(AthCommand):
             for char in old_characters:
                 if not char.obj:
                     continue
-                type = char.mushget('D`FINGER`TYPE') or 'N/A'
-                status = char.mushget('D`FINGER`STATUS') or 'N/A'
-                stat_kind, created = StatusKind.objects.get_or_create(key=status)
-                type_kind, created = TypeKind.objects.get_or_create(key=type)
-                stat_kind.characters.get_or_create(character=char.obj)
-                type_kind.characters.get_or_create(character=char.obj)
+                type_name = char.mushget('D`FINGER`TYPE')
+                if not type_name:
+                    type_name = 'N/A'
+                status_name = char.mushget('D`FINGER`STATUS')
+                if not status_name:
+                    status_name = 'N/A'
+                char_status, stcr = CharacterStatus.objects.get_or_create(key=status_name)
+                char_type, tycr = CharacterType.objects.get_or_create(key=type_name)
+                char.obj.config.model.character_type = char_type
+                char.obj.config.model.character_status = char_status
+                char.obj.config.model.save(update_fields=['character_type', 'character_status'])
                 new_theme.cast.add(char.obj)
             new_theme.save()
 
@@ -360,8 +407,6 @@ class CmdImport(AthCommand):
                     new_slot.codename = old_code
                 new_slot.save()
                 new_slot.frequency.channel.connect(char)
-
-
 
     def switch_ex2(self):
         characters = [char for char in Ex2Character.objects.filter_family() if hasattr(char, 'mush')]
@@ -727,7 +772,14 @@ class CmdImport(AthCommand):
         cat_dict = dict()
         old_categories = cobj('jobdb').children.all()
         for old_cat in old_categories:
-            new_cat, created = JobCategory.objects.get_or_create(key=old_cat.name)
+            anon = old_cat.mushget('ANONYMOUS') or 0
+            desc = old_cat.mushget('DESCRIBE') or None
+            if desc:
+                desc = desc.decode('utf-8', errors='ignore')
+                desc = process_penntext(desc)
+            due = duration_from_string('7d')
+            new_cat, created = JobCategory.objects.get_or_create(key=old_cat.name, anonymous=anon, description=desc,
+                                                                 due=due)
             if created:
                 new_cat.setup()
             cat_dict[old_cat.objid] = new_cat
@@ -750,11 +802,13 @@ class CmdImport(AthCommand):
                 char = match.obj
             else:
                 key = old_player['player_name']
-                char = create.create_object(typeclass='classes.characters.BaseCharacter', key=key)
+                char = create.create_object(typeclass=settings.BASE_CHARACTER_TYPECLASS, key=key)
+                char.config.model.enabled = False
+                char.config.model.save(update_fields=['enabled'])
                 objid = old_player['objid']
                 dbref, csecs = objid.split(':', 1)
                 cdate = from_unixtimestring(csecs)
-                MushObject.objects.create(objid=objid, dbref=dbref, created=cdate, type=8, recreated=1, obj=char)
+                MushObject.objects.create(objid=objid, dbref=dbref, created=cdate, type=8, recreated=True, obj=char)
             char_dict[old_player['player_id']] = char
 
         # Now that we have the Player ID->Stub dictionary, we can begin the process of actually importing job data!
@@ -778,25 +832,28 @@ class CmdImport(AthCommand):
             else:
                 submit_date = None
             title = row['job_title']
+            if title:
+                title = process_penntext(title.decode('utf-8', errors='ignore'))
             status = row['job_status']
             owner = char_dict[row['player_id']]
-            text = penn_substitutions(row['job_text'])
+            text = row['job_text']
+            if text:
+                text = process_penntext(text.decode('utf-8', errors='ignore'))
             category = cat_dict[row['job_objid']]
 
             handler_dict = dict()
             # We have our job row data prepped! Now to create the job and its opening comment as well as the owner-handler.
             new_job = category.jobs.create(title=title, submit_date=submit_date, due_date=due_date,
                                            close_date=close_date, status=status)
-            new_owner = new_job.characters.create(character=owner, is_owner=True, check_date=utcnow())
-            new_owner.comments.create(text=text, date_made=submit_date)
+            new_owner = new_job.characters.create(character=owner, is_owner=True)
+            new_owner.comments.create(text=text, date_made=submit_date, comment_mode=0)
             handler_dict[row['player_id']] = new_owner
 
             # Here it's time to import all of the job's claims, handlers, watchers, and create JobHandler rows for them.
             c.execute("""SELECT * from jobsys_claim WHERE job_id=%s""", (job_id,))
             claim_data = c.fetchall()
             for old_claim in claim_data:
-                stub = char_dict[old_claim['player_id']]
-                new_handler, created = new_job.characters.get_or_create(character=stub, check_date=utcnow())
+                new_handler, created = new_job.characters.get_or_create(character=char_dict[old_claim['player_id']])
                 if old_claim['claim_mode'] == 0:
                     new_handler.is_handler = True
                 if old_claim['claim_mode'] == 1:
@@ -809,8 +866,7 @@ class CmdImport(AthCommand):
             all_speakers = c.fetchall()
             for speaker in all_speakers:
                 if speaker['player_id'] not in handler_dict:
-                    new_handler, created = new_job.characters.get_or_create(character=char_dict[speaker['player_id']],
-                                                                            check_date=utcnow())
+                    new_handler, created = new_job.characters.get_or_create(character=char_dict[speaker['player_id']])
                     handler_dict[speaker['player_id']] = new_handler
 
             # And another round. This time it's a matter of importing handlers for anyone who ever CHECKED a job.
@@ -819,8 +875,7 @@ class CmdImport(AthCommand):
             old_checks = c.fetchall()
             for check in old_checks:
                 if check['player_id'] not in handler_dict:
-                    handler, created = new_job.characters.get_or_create(character=char_dict[check['player_id']],
-                                                                        check_date=utcnow())
+                    handler, created = new_job.characters.get_or_create(character=char_dict[check['player_id']])
                     handler_dict[check['player_id']] = new_handler
                 else:
                     handler = handler_dict[check['player_id']]
@@ -832,10 +887,17 @@ class CmdImport(AthCommand):
             old_comments = c.fetchall()
             for old_com in old_comments:
                 handler = handler_dict[old_com['player_id']]
-                comment_text = penn_substitutions(old_com['comment_text'])
+                comment_text = old_com['comment_text']
+                if comment_text:
+                    comment_text = process_penntext(comment_text.decode('utf-8', errors='ignore'))
                 comment_date = old_com['comment_date'].replace(tzinfo=pytz.utc)
                 private = old_com['comment_type']
-                handler.comments.create(text=comment_text, date_made=comment_date, is_private=private)
+                if private:
+                    mode = 2
+                else:
+                    mode = 1
+                handler.comments.create(text=comment_text, date_made=comment_date, is_private=private,
+                                        comment_mode=mode)
         db.close()
 
     def switch_scenes(self):
@@ -857,7 +919,9 @@ class CmdImport(AthCommand):
                 char = match.obj
             else:
                 key = old_player['player_name']
-                char = create.create_object(typeclass='classes.characters.BaseCharacter', key=key)
+                char = create.create_object(typeclass=settings.BASE_CHARACTER_TYPECLASS, key=key)
+                char.config.model.enabled = False
+                char.config.model.save(update_fields=['enabled'])
                 objid = old_player['objid']
                 dbref, csecs = objid.split(':', 1)
                 cdate = from_unixtimestring(csecs)
@@ -879,36 +943,31 @@ class CmdImport(AthCommand):
             else:
                 end_date = None
             owner = char_dict[old_plot['player_id']]
-            description = penn_substitutions(old_plot['plot_desc'])
+            description = old_plot['plot_desc']
+            if description:
+                description = process_penntext(description.decode('utf-8', errors='ignore'))
             plot_type = old_plot['plot_type']
-            title = old_plot['title']
-            new_plot = Plot.objects.create(owner=owner, description=description, title=title, date_start=start_date,
+            title = old_plot['plot_title']
+            if title:
+                title = process_penntext(old_plot['plot_title'].decode('utf-8', errors='ignore'))
+            new_plot = Plot.objects.create(description=description, title=title, date_start=start_date,
                                 date_end=end_date, type=plot_type)
+            new_plot.runners.create(character=owner, owner=True)
             plot_dict[old_plot['plot_id']]= new_plot
-
-        # Another easy one. Importing the Events calendar of scheduled scenes.
-        event_dict = dict()
-        c.execute("""SELECT * from scene_schedule ORDER BY schedule_id""")
-        old_events = c.fetchall()
-        for old_event in old_events:
-            owner = char_dict[old_event['player_id']]
-            schedule_date = old_event['schedule_date'].replace(tzinfo=pytz.utc)
-            description = penn_substitutions(old_event['schedule_desc'])
-            schedule_title = old_event['schedule_title']
-            plot = plot_dict.get(old_event['plot_id'], None)
-
-            new_event = Event.objects.create(owner=owner, date_schedule=schedule_date, description=description,
-                                             title=schedule_title, plot=plot)
-            event_dict[old_event['schedule_id']] = new_event
 
         # Now we begin the process of importing scenes. This is a very involved process!
         scene_dict = dict()
+        source_dict = dict()
         c.execute("""SELECT * FROM scene_scenes ORDER BY scene_id""")
         old_scenes = c.fetchall()
         for old_scene in old_scenes:
             owner = char_dict[old_scene['player_id']]
             scene_title = old_scene['scene_title']
+            if scene_title:
+                scene_title = process_penntext(scene_title.decode('utf-8', errors='ignore'))
             scene_desc = old_scene['scene_desc']
+            if scene_desc:
+                scene_desc = process_penntext(scene_desc.decode('utf-8', errors='ignore'))
             scene_status = int(old_scene['scene_state'])
 
             creation_date = old_scene['creation_date'].replace(tzinfo=pytz.utc)
@@ -920,21 +979,18 @@ class CmdImport(AthCommand):
 
             plot = plot_dict.get(old_scene['plot_id'], None)
             room_objid = old_scene['room_objid']
+            room_name = old_scene['room_name']
             old_loc = objmatch(room_objid)
             if old_loc.obj:
                 location = old_loc.obj
             else:
-                room_name = old_scene['room_name']
-                dbref, csecs = room_objid.split(':', 1)
-                cdate = from_unixtimestring(csecs)
-                location = create.create_object(typeclass='classes.rooms.BaseRoom', key=room_name)
-                new_mush, created = MushObject.objects.get_or_create(objid=room_objid, dbref=dbref, type=1, created=cdate)
-                new_mush.obj = location
-                new_mush.save()
+                location = None
+            source, scr = Source.objects.get_or_create(key=room_name, location=location)
 
-            new_scene = Scene.objects.create(owner=owner, title=scene_title, description=scene_desc, status=scene_status,
-                                             date_created=creation_date, date_finished=finish_date, plot=plot)
-
+            new_scene = Event.objects.create(title=scene_title, outcome=scene_desc, status=scene_status,
+                                             date_created=creation_date, date_started=creation_date,
+                                             date_finished=finish_date, plot=plot)
+            new_scene.participants.create(character=owner, owner=True)
             scene_dict[old_scene['scene_id']] = new_scene
 
             # In this section we'll be setting up the Participants for this scene and making an index dictionary
@@ -943,7 +999,7 @@ class CmdImport(AthCommand):
             c.execute("""SELECT DISTINCT player_id FROM scene_poses WHERE scene_id=%s""", (old_scene['scene_id'],))
             posers = c.fetchall()
             for poser in posers:
-                new_part = new_scene.participants.create(character=char_dict[poser['player_id']])
+                new_part, pcr = new_scene.participants.get_or_create(character=char_dict[poser['player_id']])
                 part_dict[poser['player_id']] = new_part
 
             # Finally it's time to import the individual poses!
@@ -951,13 +1007,55 @@ class CmdImport(AthCommand):
             c.execute("""SELECT * from scene_poses WHERE scene_id=%s""", (old_scene['scene_id'],))
             old_poses = c.fetchall()
             for pose in old_poses:
-                parse_pose = pose['pose'].decode('utf-8',errors='ignore')
+                parse_pose = pose['pose']
+                if parse_pose:
+                    parse_pose = parse_pose.decode('utf-8', errors='ignore')
                 owner = part_dict[pose['player_id']]
                 pose_date = pose['pose_time'].replace(tzinfo=pytz.utc)
                 ignore = bool(int(pose['pose_ignore']))
-                pose_text = penn_substitutions(parse_pose)
+                pose_text = process_penntext(parse_pose)
 
-                new_pose = Pose.objects.create(owner=owner, ignore=ignore, text=pose_text, date_made=pose_date,
-                                               location=location)
+                new_pose = new_scene.actions.create(owner=owner, ignore=ignore, text=pose_text, date_made=pose_date,
+                                                    source=source)
                 pose_dict[pose['pose_id']] = new_pose
+
+            # Last stage. We'll update any pairings if need be.
+            pair_dict = dict()
+            c.execute("""SELECT * from scene_pairs WHERE scene_id=%s""", (old_scene['scene_id'],))
+            old_pairs = c.fetchall()
+            for old_pair in old_pairs:
+                pair_id = old_pair['pair_id']
+                num = old_pair['pair_num']
+                new_pair, pacr = new_scene.pairings.get_or_create(number=num)
+                c.execute("""SELECT * from scene_match WHERE pair_id=%s""", (old_pair['pair_id'],))
+                old_match = c.fetchall()
+                for mat in old_match:
+                    char = char_dict[mat['player_id']]
+                    new_pair.characters.add(char)
+
+
+        # Another easy one. Importing the Events calendar of scheduled scenes.
+        event_dict = dict()
+        c.execute("""SELECT * from scene_schedule ORDER BY schedule_id""")
+        old_events = c.fetchall()
+        for old_event in old_events:
+            owner = char_dict[old_event['player_id']]
+            schedule_date = old_event['schedule_date'].replace(tzinfo=pytz.utc)
+            creation_date = schedule_date - duration_from_string('4d')
+            description = process_penntext(old_event['schedule_desc'])
+            schedule_title = process_penntext(old_event['schedule_title'])
+            plot = plot_dict.get(old_event['plot_id'], None)
+
+            new_event = Event.objects.create(date_scheduled=schedule_date, pitch=description,
+                                                title=schedule_title, plot=plot, date_created=creation_date)
+            new_event.participants.create(character=owner, owner=True)
+            event_dict[old_event['schedule_id']] = new_event
+
+            c.execute("""SELECT * from scene_tags WHERE schedule_id=%s""", (old_event['schedule_id'],))
+            old_tags = c.fetchall()
+            for tagger in old_tags:
+                tagee = char_dict[tagger['player_id']]
+                new_event.participants.get_or_create(character=tagee, tag=True)
+
+
         db.close()

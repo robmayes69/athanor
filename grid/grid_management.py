@@ -225,10 +225,11 @@ class CmdRoomList(AthCommand):
 
     def display_all(self):
         message = list()
+        viewer = self.character
         message.append(self.player.render.header('Destinations by District'))
         for district in District.objects.exclude(rooms=None).order_by('order') or []:
-            message.append(district.display_destinations(viewer=self.character))
-        message.append(self.player.render.header(viewer=self.character))
+            message.append(district.display_destinations(viewer=viewer))
+        message.append(viewer.render.footer())
         self.msg_lines(message)
 
     def display_search(self):

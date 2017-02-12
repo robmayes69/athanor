@@ -14,14 +14,15 @@ own cmdsets by inheriting from them or directly from `evennia.CmdSet`.
 
 """
 
-from athanor.core.account_management import CmdPlayerConfig, CmdAccount
+from athanor.core.users import CmdPlayerConfig, CmdUser
 from athanor.core.evennia_cmdsets import CharacterCmdSet as OldCharacter, SessionCmdSet as OldSession, \
     UnloggedinCmdSet as OldUnlogged, PlayerCmdSet as OldPlayer
 from athanor.core.help import CmdHelp, CmdAdminHelp
 from athanor.core.login import CmdMushConnect, CmdCharCreate
 
+from athanor.core.users import CmdUser
 from athanor.bbs.bbs import CmdBBAdmin, CmdBBList, CmdBBRead, CmdBBWrite, CmdGBAdmin, CmdGBList, CmdGBRead, CmdGBWrite
-from athanor.core.admin_management import CmdGameConfig, CmdAdmin
+from athanor.core.gameconfig import CmdGameConfig, CmdAdmin
 from athanor.core.channels import CmdChannels, CmdSend
 from athanor.core.community import CmdWho
 from athanor.core.page import CmdPage
@@ -31,7 +32,7 @@ from athanor.groups.groups import GROUP_COMMANDS
 from athanor.info.info_files import CmdInfo
 from athanor.mushimport.mush_import import CmdImport
 from athanor.radio.radio import CmdRadio
-from athanor.scenes.scene import CmdEvents
+from athanor.events.scene import CmdEvents
 from athanor.jobs.jobs import CmdJob, CmdRequest, CmdMyJob
 
 from storyteller.editor import Chargen
@@ -71,7 +72,6 @@ class CharacterCmdSet(OldCharacter):
         self.add(CmdRadio())
         self.add(CmdFCList())
         self.add(CmdEvents())
-        self.add(CmdAccount())
         self.add(CmdPlayerConfig())
         self.add(CmdSend())
         self.add(CmdPage())
@@ -106,6 +106,7 @@ class PlayerCmdSet(OldPlayer):
         self.add(CmdHelp())
         self.add(CmdAdminHelp())
         self.add(CmdAdmin())
+        self.add(CmdUser)
 
 
 class UnloggedinCmdSet(OldUnlogged):

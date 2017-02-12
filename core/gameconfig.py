@@ -1,37 +1,53 @@
 from __future__ import unicode_literals
 
 from athanor.core.command import AthCommand
-from athanor.core.config import GLOBAL_SETTINGS
 from athanor.core.models import StaffEntry
 
 
 class CmdGameConfig(AthCommand):
     """
     Used to configure global options.
+
+    Usage:
+        @gameconfig
+        @gameconfig <setting>=<value>
+
+    Without arguments it displays the global settings and information on how they can be used.
+    Any admin can view the settings, but only an Immortal can change them.
+
+    Types:
+
+    Bool - Enter the value 0 or 1 for Off/On.
+    List - Enter a comma-separated list. Example: @gameconfig <setting>=Thing1,Thing2,Thing3
+    Number - Enter a whole number.
+    Email - Enter a valid email.
+    Color - Enter a simple foreground color code.
+    Channels - As a List, but a List of Channels.
+    BBS - The name of a BBS Board.
+    Duration - w for weeks, d for days, h for hours, m for minutes. Example: @gameconfig <setting>=3d 5m - this will
+        result in 3 days and 5 minutes.
     """
-    key = '+gameconfig'
-    aliases = ['+gconf']
-    locks = 'cmd:perm(Wizards) or perm(gameconfig)'
+    key = '@gameconfig'
+    locks = 'cmd:perm(Wizards) or perm(Gameconfig)'
     help_category = 'System'
-    admin_switches = []
 
     def func(self):
-        if not self.final_switches:
-            self.main()
-        else:
-            getattr(self, 'switch_%s' % self.final_switches[0])()
+        try:
+            if not self.final_switches:
+                return self.main()
+            else:
+                return getattr(self, 'switch_%s' % self.final_switches[0])()
+        except ValueError as err:
+            return self.error(str(err))
 
     def main(self):
         if not self.args:
-            self.msg_lines(GLOBAL_SETTINGS.display(self.player))
-            return
+            return self.msg_lines(self.settings.display(self.player))
+        if not self.player.account.is_immortal():
+            raise ValueError("Permission denied.")
         op = self.lhs
         val = self.rhs
-        try:
-            msg = GLOBAL_SETTINGS.set(op, val, self.rhslist)
-        except ValueError as err:
-            self.error(str(err))
-            return
+        msg = self.settings.set(op, val, self.rhslist)
         self.sys_msg(msg)
         self.sys_report(msg)
 

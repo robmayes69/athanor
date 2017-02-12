@@ -120,8 +120,22 @@ class PlayerAccount(object):
     def is_admin(self):
         return self.owner.locks.check_lockstring(self.owner, "dummy:perm(Wizards)")
 
+    def is_wizard(self):
+        return self.owner.locks.check_lockstring(self.owner, "dummy:perm(Wizards)")
+
     def is_immortal(self):
         return self.owner.locks.check_lockstring(self.owner, "dummy:perm(Immortals)")
+
+    def status_name(self):
+        if self.owner.is_superuser:
+            return 'Superuser'
+        if self.is_immortal():
+            return 'Immortal'
+        if self.is_wizard():
+            return 'Wizard'
+        if self.is_admin():
+            return 'Admin'
+        return 'Mortal'
 
     def characters(self):
         """
@@ -253,7 +267,7 @@ class PlayerRender(object):
         sessions = self.owner.sessions.all()
         message = list()
         message.append(self.subheader('Sessions'))
-        sesstable = self.make_table(['ID', 'Protocol', 'Address', 'Connected'], width=[7, 22, 22, 27])
+        sesstable = self.make_table(['ID', 'Protocol', 'Address', 'Connected'], width=[7, 23, 23, 27])
         for session in sessions:
             conn_duration = time.time() - session.conn_time
             sesstable.add_row(session.sessid, session.protocol_key,
@@ -268,14 +282,15 @@ class PlayerRender(object):
         message = list()
         characters = self.owner.account.characters()
         message.append(self.subheader('Characters'))
-        chartable = self.make_table(['ID', 'Name', 'Type', 'Last Login'], width=[7, 36, 15, 20])
+        chartable = self.make_table(['ID', 'Name', 'Type', 'Last Login'], width=[7, 37, 16, 20])
         for character in characters:
             login = character.character_settings.last_played
             if login:
                 login = self.owner.time.display(date=login)
             else:
                 login = 'N/A'
-            chartable.add_row(character.id, character.key, '', login)
+            type = character.config.model.character_type or 'N/A'
+            chartable.add_row(character.id, character.key, type, login)
         message.append(chartable)
         # message.append(separator())
         return message

@@ -18,7 +18,8 @@ class CharacterWeb(object):
         return {'id': self.owner.id, 'key': self.owner.key, 'admin': self.owner.is_admin()}
 
     def full_update(self):
-        self.owner.who.update_character(self.owner)
+        return
+        #self.owner.who.update_character(self.owner)
 
 
 class CharacterTime(object):

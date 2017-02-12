@@ -20,7 +20,7 @@ class District(WithKey, WithLocks):
     owner = models.ForeignKey('objects.ObjectDB', related_name='owned_districts', null=True)
 
     def list_destinations(self, viewer):
-        return sorted([room for room in self.rooms.all()],
+        return sorted([room.key for room in self.rooms.all()],
                       key=lambda room: room.key.lower())
 
     def display_destinations(self, viewer):
