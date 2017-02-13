@@ -41,21 +41,21 @@ class PlayerSetting(models.Model):
     penn_channels = models.BooleanField(default=True)
     enabled = models.BooleanField(default=True)
     deleted = models.BooleanField(default=False)
-    watch_list = models.ManyToManyField('objects.ObjectDB', related_name='on_watch')
+    friends = models.ManyToManyField('objects.ObjectDB', related_name='on_watch')
     channel_muzzles = models.ManyToManyField('core.Muzzle', related_name='player_muzzles')
     extra_slots = models.SmallIntegerField(default=0)
     last_played = models.DateTimeField(null=True)
 
-    def display_watch(self, viewer, connected_only=False):
+    def display_friends(self, viewer, connected_only=False):
         message = list()
-        message.append(viewer.render.header('Watch List'))
-        characters = self.watch_list.all().order_by('db_key')
+        message.append(viewer.render.header('Friend List'))
+        characters = self.friends.all().order_by('db_key')
         if connected_only:
-            characters = [char for char in characters if char.has_player]
-        watch_table = viewer.render.make_table('Name', 'Conn', 'Idle', 'Location', width=[24, 8, 8, 38], viewer=viewer)
+            characters = [char for char in characters if viewer.time.can_see(char)]
+        watch_table = viewer.render.make_table(['Name', 'Conn', 'Idle', 'Location'], width=[26, 8, 8, 38])
         for char in characters:
-            watch_table.add_row(char.key, char.last_or_conn_time(viewer=viewer), char.last_or_idle_time(viewer=viewer),
-                                str(char.location))
+            watch_table.add_row(char.key, char.time.last_or_conn_time(viewer=viewer),
+                                char.time.last_or_idle_time(viewer=viewer), str(char.location))
         message.append(watch_table)
         message.append(viewer.render.footer())
         return "\n".join([unicode(line) for line in message])

@@ -110,7 +110,7 @@ class CmdTz(AthCommand):
     def _main(self):
 
         if not self.args: # Nothing was entered, so we'll remind of current timezone.
-            current_tz = self.player.player_settings.timezone
+            current_tz = self.player.config['timezone']
             now = utcnow().astimezone(current_tz)
             self.sys_msg("Your Current Timezone is '%s'. Is it %s where you are right now?" %
                          (str(current_tz), now.strftime('%c %Z')))
@@ -186,7 +186,7 @@ class CmdFriend(AthCommand):
         Used to display online friends.
 
         """
-        msg = self.player.config.model.display_watch(viewer=self.character, connected_only=True)
+        msg = self.player.config.model.display_friends(viewer=self.character, connected_only=True)
         self.character.msg(msg)
 
     def switch_list(self):
@@ -194,7 +194,7 @@ class CmdFriend(AthCommand):
         Display all friends, even offline ones.
 
         """
-        msg = self.player.config.model.display_watch(viewer=self.character, connected_only=False)
+        msg = self.player.config.model.display_friends(viewer=self.character, connected_only=False)
         self.character.msg(msg)
 
     def switch_add(self):
@@ -203,7 +203,7 @@ class CmdFriend(AthCommand):
 
         """
         found = self.character.search_character(self.args)
-        self.player.config.model.watch_list.add(found)
+        self.player.config.model.friends.add(found)
         self.sys_msg("Added '%s' to your Friend list." % found)
 
     def switch_remove(self):
@@ -214,7 +214,7 @@ class CmdFriend(AthCommand):
         found = self.character.search_character(self.args)
         if found not in self.player.player_settings.watch_list.all():
             raise ValueError("They are not a friend!")
-        self.player.config.model.watch_list.remove(found)
+        self.player.config.model.friends.remove(found)
         self.sys_msg("Removed '%s' from your Friend list." % found)
 
     def switch_hide(self):
@@ -237,24 +237,26 @@ class CmdFriend(AthCommand):
 
 class CmdUser(AthCommand):
     """
-    General admin tool for managing Users. (Users are known in Evennia lingo as Players. They are the Accounts used
-    to login to the game.)
+    General admin tool for managing Users. (Users are known in Evennia lingo as
+    Players. They are the Accounts used to login to the game.)
 
     Usage:
         @user <user>
         @user/logins <user>
 
-    Displays information about a specific user, or your own User if no User is provided. Only admin can view other User
-    data. The /logins switch shows login records.
+    Displays information about a specific user, or your own User if no User is
+    provided. Only admin can view other User data. The /logins switch shows
+    login records.
 
     Staff:
 
     @user/list <name>
-        List all active users beginning with <name>. If <name> is empty it displays them all.
+        List all active users beginning with <name>. If <name> is empty it
+        displays them all.
 
     @user/inactive <name>
-        List inactive users, as with /list. Inactive users are Disabled ones or those who have not logged in within
-        90 days.
+        List inactive users, as with /list. Inactive users are Disabled ones
+        or those who have not logged in within 90 days.
 
     @user/create <name>=<password>
         Create a new user.
@@ -272,11 +274,12 @@ class CmdUser(AthCommand):
         Create a new character for a user.
 
     @user/super <user>
-        Grant Superuser power to a user. Only Superusers can use this, and not on themselves.
+        Grant Superuser power to a user. Only Superusers can use this, and not on
+        themselves.
 
     @user/disable <user>
-        Disable a user. They will not appear in the normal list and cannot login. This is how you 'delete' a User. Or
-        for a soft-ban/suspension.
+        Disable a user. They will not appear in the normal list and cannot login.
+        This is how you 'delete' a User. Or for a soft-ban/suspension.
 
     @user/enable <user>
         Re-enable a disabled User account.
@@ -292,13 +295,14 @@ class CmdUser(AthCommand):
     admin_switches = ['list', 'create', 'password', 'inactive', 'disable', 'enable', 'email',
                       'newcharacter', 'super', 'rename', 'mothballed']
 
-    def _target(self, must_enter=False, enabled=True):
+    def _target(self, must_enter=False, enabled=True, authority=False):
         """
         Internal method used for the various switches. Uses command arguments to target a player.
 
         Args:
             must_enter (bool): If false, no entry means return the caller's Player object.
             enabled (bool): Return only Enabled Players.
+            authority (bool): Run authority check.
 
         Returns:
             (PlayerDB): The targeted User.
@@ -313,6 +317,9 @@ class CmdUser(AthCommand):
             target = Player.objects.filter_family(username__iexact=self.lhs, player_settings__enabled=enabled).first()
         if not target:
             raise ValueError("User not found.")
+        if authority:
+            if not target.authority(self.player):
+                raise ValueError("Permission denied. %s is a %s!" % (target, target.account.status_name()))
         return target
 
     def func(self):
@@ -410,11 +417,7 @@ class CmdUser(AthCommand):
         Change a User's password.
 
         """
-        target = self._target(must_enter=True)
-        if not target:
-            raise ValueError("Must target a User!")
-        if not target.authority(self.player):
-            raise ValueError("Permission denied. %s is a %s!" % (target, target.account.status_name()))
+        target = self._target(must_enter=True, authority=True)
         if not self.rhs:
             raise ValueError("No password entered!")
         target.set_password(self.rhs)
@@ -447,11 +450,7 @@ class CmdUser(AthCommand):
         Renames a user.
 
         """
-        target = self._target(must_enter=True)
-        if not target:
-            raise ValueError("Must target a User!")
-        if not target.authority(self.player):
-            raise ValueError("Permission denied. %s is a %s!" % (target, target.account.status_name()))
+        target = self._target(must_enter=True, authority=True)
         name = normal_string(self.rhs)
         if not name:
             raise ValueError("Must enter a new name!")
@@ -469,7 +468,8 @@ class CmdUser(AthCommand):
         Enable a disabled user. I haven't written it yet.
 
         """
-        pass
+        target = self._target(must_enter=True, authority=True)
+
 
     def switch_disable(self):
         """
@@ -477,6 +477,3 @@ class CmdUser(AthCommand):
 
         """
         pass
-
-
-ACCOUNT_COMMANDS = [CmdPlayerConfig, CmdTz, CmdWatch, CmdUser]

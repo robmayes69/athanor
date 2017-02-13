@@ -14,7 +14,7 @@ own cmdsets by inheriting from them or directly from `evennia.CmdSet`.
 
 """
 
-from athanor.core.users import CmdPlayerConfig, CmdUser
+from athanor.core.users import CmdPlayerConfig, CmdUser, CmdFriend, CmdTz
 from athanor.core.evennia_cmdsets import CharacterCmdSet as OldCharacter, SessionCmdSet as OldSession, \
     UnloggedinCmdSet as OldUnlogged, PlayerCmdSet as OldPlayer
 from athanor.core.help import CmdHelp, CmdAdminHelp
@@ -53,28 +53,28 @@ class CharacterCmdSet(OldCharacter):
         #
         # any commands you add below will overload the default ones.
         #
-        self.add(CmdInfo())
-        self.add(CmdBBAdmin())
-        self.add(CmdBBList())
-        self.add(CmdBBRead())
-        self.add(CmdBBWrite())
-        self.add(CmdGBAdmin())
-        self.add(CmdGBList())
-        self.add(CmdGBRead())
-        self.add(CmdGBWrite())
+        self.add(CmdInfo)
+        self.add(CmdBBAdmin)
+        self.add(CmdBBList)
+        self.add(CmdBBRead)
+        self.add(CmdBBWrite)
+        self.add(CmdGBAdmin)
+        self.add(CmdGBList)
+        self.add(CmdGBRead)
+        self.add(CmdGBWrite)
         for group_cmd in GROUP_COMMANDS:
-            self.add(group_cmd())
+            self.add(group_cmd)
         for district_cmd in DISTRICT_COMMANDS:
-            self.add(district_cmd())
-        self.add(CmdImport())
-        self.add(CmdGameConfig())
-        self.add(CmdChannels())
-        self.add(CmdRadio())
-        self.add(CmdFCList())
-        self.add(CmdEvents())
-        self.add(CmdPlayerConfig())
-        self.add(CmdSend())
-        self.add(CmdPage())
+            self.add(district_cmd)
+        self.add(CmdImport)
+        self.add(CmdGameConfig)
+        self.add(CmdChannels)
+        self.add(CmdRadio)
+        self.add(CmdFCList)
+        self.add(CmdEvents)
+        self.add(CmdPlayerConfig)
+        self.add(CmdSend)
+        self.add(CmdPage)
         self.add(CmdJob)
         self.add(CmdRequest)
         self.add(CmdMyJob)
@@ -101,12 +101,14 @@ class PlayerCmdSet(OldPlayer):
         # any commands you add below will overload the default ones.
         #
         #self.add(CmdOOCLook())
-        self.add(CmdWho())
-        self.add(CmdCharCreate())
-        self.add(CmdHelp())
-        self.add(CmdAdminHelp())
-        self.add(CmdAdmin())
+        self.add(CmdWho)
+        self.add(CmdCharCreate)
+        self.add(CmdHelp)
+        self.add(CmdAdminHelp)
+        self.add(CmdAdmin)
         self.add(CmdUser)
+        self.add(CmdFriend)
+        self.add(CmdTz)
 
 
 class UnloggedinCmdSet(OldUnlogged):
@@ -124,7 +126,7 @@ class UnloggedinCmdSet(OldUnlogged):
         #
         # any commands you add below will overload the default ones.
         #
-        self.add(CmdMushConnect())
+        self.add(CmdMushConnect)
 
 
 class SessionCmdSet(OldSession):
