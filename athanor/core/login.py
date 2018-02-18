@@ -5,7 +5,7 @@ import time
 
 from django.conf import settings
 from evennia.commands.default.unloggedin import _LATEST_FAILED_LOGINS, _throttle
-from evennia.utils.create import create_player
+from evennia.utils.create import create_account
 
 from athanor.classes.characters import Character
 from athanor.core.command import MuxCommand, AthCommand
@@ -78,7 +78,7 @@ class CmdMushConnect(MuxCommand):
         if player.db._lost_and_found:
             session.msg("Credentials accepted. Character is in the Lost and Found.\nCreating a new account for them.")
             create_name = unicode(float(time.time())).replace('.', '-')
-            new_player = create_player(create_name, email=None, password=password)
+            new_player = create_account(create_name, email=None, password=password)
             new_player.db._was_lost = True
             new_player.db._reset_email = True
             new_player.db._reset_username = True

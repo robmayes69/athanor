@@ -11,16 +11,16 @@ def sessions():
     return evennia.SESSION_HANDLER.values()
 
 
-def players():
+def accounts():
     """
     Uses the current online sessions to derive a list of connected players.
 
     Returns:
         list
     """
-    from athanor.classes.players import Player
+    from athanor.classes.accounts import Account
     return sorted([player for player in evennia.SESSION_HANDLER.all_connected_players()
-            if player.is_typeclass(Player, exact=False)], key=lambda play: play.key)
+            if player.is_typeclass(Account, exact=False)], key=lambda play: play.key)
 
 def characters():
     """

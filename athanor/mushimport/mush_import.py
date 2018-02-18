@@ -11,7 +11,7 @@ from evennia.utils import create
 
 from athanor.bbs.models import BoardGroup
 from athanor.classes.characters import Character
-from athanor.classes.players import Player
+from athanor.classes.accounts import Account
 from athanor.core.command import AthCommand
 from athanor.fclist.models import FCList, CharacterStatus, CharacterType
 from athanor.grid.models import District
@@ -195,11 +195,11 @@ class CmdImport(AthCommand):
                 name = 'Imported - %s' % acc_obj.name
                 password = str(random.randrange(5000000, 1000000000))
                 email = acc_obj.mushget('email') or None
-                found = Player.objects.filter_family(username=name).first()
+                found = Account.objects.filter_family(username=name).first()
                 if found:
                     new_player = found
                 else:
-                    new_player = create.create_player(name, email, password)
+                    new_player = create.create_account(name, email, password)
                     acc_obj.account = new_player
                     acc_obj.save(update_fields=['account'])
                 new_player.db._import_ready = True
@@ -237,11 +237,11 @@ class CmdImport(AthCommand):
             name = 'Lost and Found'
             password = str(random.randrange(5000000, 1000000000))
             email = None
-            found = Player.objects.filter_family(username=name).first()
+            found = Account.objects.filter_family(username=name).first()
             if found:
                 new_player = found
             else:
-                new_player = create.create_player(name, email, password)
+                new_player = create.create_account(name, email, password)
             new_player.db._lost_and_found = True
             new_player.config.model.enabled = False
             new_player.config.model.save(update_fields=['enabled'])

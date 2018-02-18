@@ -1,5 +1,5 @@
 from __future__ import unicode_literals
-from athanor.classes.players import Player
+from athanor.classes.accounts import Player
 
 
 

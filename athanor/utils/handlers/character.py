@@ -86,19 +86,19 @@ class CharacterTime(object):
         return not (target.time.is_dark() or target.time.is_hidden())
 
 
-class CharacterAccount(object):
+class CharacterSub(object):
 
     def __init__(self, owner):
         self.owner = owner
 
-    def reset_puppet_locks(self, player):
+    def reset_puppet_locks(self, account):
         """
         Called by the processes for binding a character to a player.
         """
-        self.owner.locks.add("puppet:id(%i) or pid(%i) or perm(Immortals) or pperm(Immortals)" % (self.owner.id, player.id))
+        self.owner.locks.add("puppet:id(%i) or pid(%i) or perm(Developer) or pperm(Admin)" % (self.owner.id, account.id))
 
     def is_admin(self):
-        return self.owner.locks.check_lockstring(self.owner, "dummy:perm(Wizards)")
+        return self.owner.locks.check_lockstring(self.owner, "dummy:perm(Admin)")
 
     def cost(self, update=None):
         if update is not None:
@@ -113,15 +113,15 @@ class CharacterAccount(object):
             self.owner.sys_msg("This Character is now worth %i Character Slots." % new_value)
         return self.owner.config.model.slot_cost
 
-    def update_owner(self, player=None):
-        if player:
-            self.reset_puppet_locks(player)
-            self.owner.config.model.player = player
-            self.owner.config.model.save(update_fields=['player'])
+    def update_owner(self, account=None):
+        if account:
+            self.reset_puppet_locks(account)
+            self.owner.config.model.player = account
+            self.owner.config.model.save(update_fields=['account'])
         else:
             self.owner.locks.add("puppet:none()")
             self.owner.config.model.player = None
-            self.owner.config.model.save(update_fields=['player'])
+            self.owner.config.model.save(update_fields=['account'])
 
     def status(self):
         return 'Playable'

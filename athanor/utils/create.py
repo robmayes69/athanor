@@ -2,12 +2,12 @@ from __future__ import unicode_literals
 
 from evennia import ObjectDB
 from django.conf import settings
-from evennia.utils.create import create_channel, create_player, create_object
+from evennia.utils.create import create_channel, create_account, create_object
 from athanor.utils.text import Speech, sanitize_string
 
 
-def player(key, password, email=None):
-    return create_player(key, email, password)
+def account(key, password, email=None):
+    return create_account(key, email, password)
 
 class SpeechFactory(object):
 

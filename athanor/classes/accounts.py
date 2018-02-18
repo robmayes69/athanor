@@ -25,14 +25,14 @@ several more options for customizing the Guest account system.
 from __future__ import unicode_literals
 
 
-from evennia import DefaultPlayer, DefaultGuest
+from evennia import DefaultAccount, DefaultGuest
 
 from evennia.utils.utils import lazy_property, is_iter
 from evennia.utils.ansi import ANSIString
-from athanor.utils.handlers.player import PlayerWeb, PlayerTime, PlayerAccount, PlayerRender, ColorHandler
-from athanor.core.config import PlayerSettings
+from athanor.utils.handlers.account import AccountWeb, AccountTime, AccountSub, AccountRender, ColorHandler
+from athanor.core.config import AccountSettings
 
-class Player(DefaultPlayer):
+class Account(DefaultAccount):
     """
     This class describes the actual OOC player (i.e. the user connecting
     to the MUD). It does NOT have visual appearance in the game world (that
@@ -101,23 +101,23 @@ class Player(DefaultPlayer):
     """
     @lazy_property
     def config(self):
-        return PlayerSettings(self)
+        return AccountSettings(self)
 
     @lazy_property
     def web(self):
-        return PlayerWeb(self)
+        return AccountWeb(self)
 
     @lazy_property
-    def account(self):
-        return PlayerAccount(self)
+    def accountsub(self):
+        return AccountSub(self)
 
     @lazy_property
     def time(self):
-        return PlayerTime(self)
+        return AccountTime(self)
 
     @lazy_property
     def render(self):
-        return PlayerRender(self)
+        return AccountRender(self)
 
     @lazy_property
     def colors(self):
@@ -126,14 +126,14 @@ class Player(DefaultPlayer):
     def _send_to_connect_channel(self, message):
         return
 
-    def at_player_creation(self):
-        super(Player, self).at_player_creation()
+    def at_account_creation(self):
+        super(Account, self).at_account_creation()
 
         # All Players need a Settings entry!
         settings = self.config
 
     def at_post_login(self, session=None):
-        super(Player, self).at_post_login(session)
+        super(Account, self).at_post_login(session)
 
         if len(self.sessions.all()) == 1:
             self.at_true_login(session)
@@ -148,7 +148,7 @@ class Player(DefaultPlayer):
         self.config.update_last_played()
 
     def at_failed_login(self, session=None):
-        super(Player, self).at_failed_login(session)
+        super(Account, self).at_failed_login(session)
         self.sys_msg('WARNING: Detected a failed login.')
 
     def is_admin(self):
@@ -158,7 +158,7 @@ class Player(DefaultPlayer):
         """
         Replaces the default method. Only difference is that it sorts them!
         """
-        return sorted(super(Player, self).get_all_puppets(), key=lambda char: char.key)
+        return sorted(super(Account, self).get_all_puppets(), key=lambda char: char.key)
 
     def sys_msg(self, message, sys_name='SYSTEM', error=False):
         if error:
@@ -202,7 +202,7 @@ class Player(DefaultPlayer):
             return True
         return False
 
-class Guest(DefaultGuest, Player):
+class Guest(DefaultGuest, Account):
     """
     This class is used for guest logins. Unlike Players, Guests and their
     characters are deleted after disconnection.

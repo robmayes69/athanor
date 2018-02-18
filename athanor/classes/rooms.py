@@ -16,16 +16,16 @@ class BaseRoom(DefaultRoom):
 
     def return_appearance(self, caller):
         message = []
-        message.append(caller.player.render.header(self.key))
+        message.append(caller.render.header(self.key))
         message.append(self.db.desc)
         chars = self.online_characters(viewer=caller)
         if chars:
-            message.append(caller.player.render.subheader("Characters"))
+            message.append(caller.render.subheader("Characters"))
             message.append(self.format_character_list(chars, caller))
         if self.exits:
-            message.append(caller.player.render.subheader("Exits"))
+            message.append(caller.render.subheader("Exits"))
             message.append(self.format_exit_list(self.exits, caller))
-        message.append(caller.player.render.footer())
+        message.append(caller.render.footer())
         message2 = []
         for line in message:
             message2.append(unicode(line))
@@ -46,7 +46,7 @@ class BaseRoom(DefaultRoom):
             char.sys_msg(message, sys_name, error=error)
 
     def format_character_list(self, characters, caller):
-        char_table = caller.player.render.make_table(["Name", "Description"], border=None, width=[20, 40])
+        char_table = caller.render.make_table(["Name", "Description"], border=None, width=[20, 40])
         for char in characters:
             char_table.add_row(char.key, char.db.shortdesc)
         return char_table

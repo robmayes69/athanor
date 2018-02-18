@@ -14,9 +14,9 @@ own cmdsets by inheriting from them or directly from `evennia.CmdSet`.
 
 """
 
-from athanor.core.users import CmdPlayerConfig, CmdUser, CmdFriend, CmdTz
+from athanor.core.users import CmdAccountConfig, CmdUser, CmdFriend, CmdTz
 from athanor.core.evennia_cmdsets import CharacterCmdSet as OldCharacter, SessionCmdSet as OldSession, \
-    UnloggedinCmdSet as OldUnlogged, PlayerCmdSet as OldPlayer
+    UnloggedinCmdSet as OldUnlogged, AccountCmdSet as OldAccount
 from athanor.core.help import CmdHelp, CmdAdminHelp
 from athanor.core.login import CmdMushConnect, CmdCharCreate
 
@@ -72,7 +72,7 @@ class CharacterCmdSet(OldCharacter):
         self.add(CmdRadio)
         self.add(CmdFCList)
         self.add(CmdEvents)
-        self.add(CmdPlayerConfig)
+        self.add(CmdAccountConfig)
         self.add(CmdSend)
         self.add(CmdPage)
         self.add(CmdJob)
@@ -83,7 +83,7 @@ class CharacterCmdSet(OldCharacter):
         self.add(Chargen)
 
 
-class PlayerCmdSet(OldPlayer):
+class AccountCmdSet(OldAccount):
     """
     This is the cmdset available to the Player at all times. It is
     combined with the `CharacterCmdSet` when the Player puppets a
@@ -96,7 +96,7 @@ class PlayerCmdSet(OldPlayer):
         """
         Populates the cmdset
         """
-        super(PlayerCmdSet, self).at_cmdset_creation()
+        super(AccountCmdSet, self).at_cmdset_creation()
         #
         # any commands you add below will overload the default ones.
         #

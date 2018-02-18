@@ -10,7 +10,7 @@ from evennia.utils.utils import string_suggestions
 from athanor.core.command import AthCommand
 
 _DEFAULT_WIDTH = settings.CLIENT_DEFAULT_WIDTH
-_SEP = "{C" + "-" * _DEFAULT_WIDTH + "{n"
+_SEP = "|C" + "-" * _DEFAULT_WIDTH + "|n"
 
 def format_help_entry(title, help_text, aliases=None, suggested=None):
     """
@@ -18,14 +18,14 @@ def format_help_entry(title, help_text, aliases=None, suggested=None):
     """
     string = _SEP + "\n"
     if title:
-        string += "{CHelp for {w%s{n" % title
+        string += "|CHelp for |w%s|n" % title
     if aliases:
-        string += " {C(aliases: %s{C){n" % ("{C,{n ".join("{w%s{n" % ali for ali in aliases))
+        string += " |C(aliases: %s|C)|n" % ("|C,|n ".join("|w%s|n" % ali for ali in aliases))
     if help_text:
         string += "\n%s" % dedent(help_text.rstrip())
     if suggested:
-        string += "\n\n{CSuggested:{n "
-        string += "%s" % fill("{C,{n ".join("{w%s{n" % sug for sug in suggested))
+        string += "\n\n|CSuggested:|n "
+        string += "%s" % fill("|C,|n ".join("|w%s|n" % sug for sug in suggested))
     string.strip()
     string += "\n" + _SEP
     return string
@@ -39,16 +39,16 @@ def format_help_list(hdict_cmds, hdict_db, viewer):
     """
     string = list()
     if hdict_cmds and any(hdict_cmds.values()):
-        string.append(viewer.player.render.header('Command Help Entries'))
-        help_table = viewer.player.render.make_table(["Category", "Files"], width=[16, 62], border='cells')
+        string.append(viewer.render.header('Command Help Entries'))
+        help_table = viewer.render.make_table(["Category", "Files"], width=[16, 62], border='cells')
         for category in sorted(hdict_cmds.keys()):
             help_table.add_row('|w' + str(category).title() + '|n', ", ".join(sorted(hdict_cmds[category])))
         string.append(help_table)
     if hdict_db and any(hdict_db.values()):
-        string.append(viewer.player.render.header('Other Help Entries'))
-        other_table = viewer.player.render.make_table(["Category", "Files"], width=[16, 62], border='cells')
+        string.append(viewer.render.header('Other Help Entries'))
+        other_table = viewer.render.make_table(["Category", "Files"], width=[16, 62], border='cells')
         for category in sorted(hdict_db.keys()):
-            other_table.add('|w' + str(category).title() + '|n', "{G" + fill(", ".join(sorted([str(topic) for topic in hdict_db[category]]))) + "{n")
+            other_table.add('|w' + str(category).title() + '|n', "|G" + fill(", ".join(sorted([str(topic) for topic in hdict_db[category]]))) + "|n")
         string.append(other_table)
     return '\n'.join(unicode(line) for line in string)
 

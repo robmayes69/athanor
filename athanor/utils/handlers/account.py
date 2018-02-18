@@ -9,7 +9,7 @@ from evennia.utils.ansi import ANSIString
 from athanor.utils.time import utcnow
 
 
-class PlayerWeb(object):
+class AccountWeb(object):
     def __init__(self, owner):
         self.owner = owner
 
@@ -23,7 +23,7 @@ class PlayerWeb(object):
         return {'id': self.owner.id, 'key': self.owner.key, 'admin': self.owner.is_admin()}
 
 
-class PlayerTime(object):
+class AccountTime(object):
     def __init__(self, owner):
         self.owner = owner
         self.config = owner.config
@@ -95,7 +95,7 @@ class PlayerTime(object):
 
 
 
-class PlayerAccount(object):
+class AccountSub(object):
 
     def __init__(self, owner):
         self.owner = owner
@@ -181,7 +181,7 @@ class PlayerAccount(object):
         self.owner.sys_msg("Your password has been changed.", sys_name='ACCOUNT')
 
     def change_email(self, new_email):
-        fixed_email = evennia.PlayerDB.objects.normalize_email(new_email)
+        fixed_email = evennia.AccountDB.objects.normalize_email(new_email)
         self.owner.email = fixed_email
         self.owner.save()
         self.owner.sys_msg("Your Account Email was changed to: %s" % fixed_email)
@@ -215,14 +215,14 @@ class PlayerAccount(object):
         self.config.model.save(update_fields=['extra_slots'])
 
 
-class PlayerRender(object):
+class AccountRender(object):
     def __init__(self, owner):
         self.owner = owner
         self.config = owner.config
         self.cache = dict()
 
     def render_login(self, session=None):
-        characters = self.owner.account.characters()
+        characters = self.owner.accountsub.characters()
         message = list()
         message.append(self.header("%s: Account Management" % settings.SERVERNAME))
         message += self.at_look_info_section()
@@ -230,22 +230,22 @@ class PlayerRender(object):
         message.append(self.subheader('Commands'))
         command_column = self.make_table([], header=False)
         command_text = list()
-        command_text.append(unicode(ANSIString(" {whelp{n - more commands")))
+        command_text.append(unicode(ANSIString(" |whelp|n - more commands")))
         if self.owner.db._reset_username:
-            command_text.append(" {w@username <name>{n - Set your username!")
+            command_text.append(" |w@username <name>|n - Set your username!")
         if self.owner.db._reset_email or self.owner.email == 'dummy@dummy.com':
-            command_text.append(" {w@email <address>{n - Set your email!")
+            command_text.append(" |w@email <address>|n - Set your email!")
         if self.owner.db._was_lost:
-            command_text.append(" {w@penn <character>=<password>{n - Link an imported PennMUSH character.")
-        command_text.append(" {w@charcreate <name> [=description]{n - create new character")
-        command_text.append(" {w@ic <character>{n - enter the game ({w@ooc{n to get back here)")
+            command_text.append(" |w@penn <character>=<password>|n - Link an imported PennMUSH character.")
+        command_text.append(" |w@charcreate <name> [=description]|n - create new character")
+        command_text.append(" |w@ic <character>|n - enter the game (|w@ooc|n to get back here)")
         command_column.add_row("\n".join(command_text), width=80)
         message.append(command_column)
         if characters:
             message += self.at_look_character_menu()
 
         message.append(self.subheader('Open Char Slots: %s/%s' % (
-            self.owner.account.available_slots, self.owner.account.max_slots)))
+            self.owner.accountsub.available_slots, self.owner.accountsub.max_slots)))
         self.owner.msg('\n'.join(unicode(line) for line in message))
 
 
@@ -255,10 +255,10 @@ class PlayerRender(object):
         message = list()
         info_column = self.make_table([], header=False)
         info_text = list()
-        info_text.append(unicode(ANSIString("Account:".rjust(8) + " {g%s{n" % (self.owner.key))))
+        info_text.append(unicode(ANSIString("Account:".rjust(8) + " |g%s|n" % (self.owner.key))))
         email = self.owner.email if self.owner.email != 'dummy@dummy.com' else '<blank>'
-        info_text.append(unicode(ANSIString("Email:".rjust(8) + ANSIString(" {g%s{n" % email))))
-        info_text.append(unicode(ANSIString("Perms:".rjust(8) + " {g%s{n" % ", ".join(self.owner.permissions.all()))))
+        info_text.append(unicode(ANSIString("Email:".rjust(8) + ANSIString(" |g%s|n" % email))))
+        info_text.append(unicode(ANSIString("Perms:".rjust(8) + " |g%s|n" % ", ".join(self.owner.permissions.all()))))
         info_column.add_row("\n".join(info_text), width=80)
         message.append(info_column)
         return message
@@ -280,7 +280,7 @@ class PlayerRender(object):
 
     def at_look_character_menu(self):
         message = list()
-        characters = self.owner.account.characters()
+        characters = self.owner.accountsub.characters()
         message.append(self.subheader('Characters'))
         chartable = self.make_table(['ID', 'Name', 'Type', 'Last Login'], width=[7, 37, 16, 20])
         for character in characters:
@@ -299,13 +299,13 @@ class PlayerRender(object):
         border_color = self.config['border_color']
         column_color = self.config['column_color']
 
-        colornames = ['{%s%s{n' % (column_color, name) for name in names]
-        header_line_char = ANSIString('{%s-{n' % border_color)
-        corner_char = ANSIString('{%s+{n' % border_color)
-        border_left_char = ANSIString('{%s|{n' % border_color)
-        border_right_char = ANSIString('{%s|{n' % border_color)
-        border_bottom_char = ANSIString('{%s-{n' % border_color)
-        border_top_char = ANSIString('{%s-{n' % border_color)
+        colornames = ['|%s%s|n' % (column_color, name) for name in names]
+        header_line_char = ANSIString('|%s-|n' % border_color)
+        corner_char = ANSIString('|%s+|n' % border_color)
+        border_left_char = ANSIString('|%s|||n' % border_color)
+        border_right_char = ANSIString('|%s|||n' % border_color)
+        border_bottom_char = ANSIString('|%s-|n' % border_color)
+        border_top_char = ANSIString('|%s-|n' % border_color)
 
         table = evtable.EvTable(*colornames, border=border, pad_width=0, valign='t', header_line_char=header_line_char,
                                 corner_char=corner_char, border_left_char=border_left_char,

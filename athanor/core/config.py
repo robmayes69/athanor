@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
 from athanor.utils.text import partial_match
-from athanor.core.models import GameSetting, PlayerSetting, CharacterSetting
+from athanor.core.models import GameSetting, AccountSetting, CharacterSetting
 from athanor.core.settings_info import GAME_SETTINGS, PLAYER_SETTINGS, CHARACTER_SETTINGS, ColorSetting
 
 
@@ -81,11 +81,11 @@ class GameSettings(SettingManager):
     def set_after(self, setting):
         return 'Setting %s is now: %s' % (setting, setting.display())
 
-class PlayerSettings(SettingManager):
+class AccountSettings(SettingManager):
     setting_classes = PLAYER_SETTINGS
 
     def ready_db(self, id):
-        self.model, created = PlayerSetting.objects.get_or_create(player=id)
+        self.model, created = AccountSetting.objects.get_or_create(player=id)
         if not self.owner.db._color_names:
             self.owner.db._color_names = dict()
         self.color_dict = self.owner.db._color_names
@@ -118,7 +118,7 @@ class PlayerSettings(SettingManager):
         pass
 
 
-class CharacterSettings(PlayerSettings):
+class CharacterSettings(AccountSettings):
     setting_classes = CHARACTER_SETTINGS
 
     def ready_db(self, id):

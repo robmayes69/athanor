@@ -2,15 +2,15 @@ from __future__ import unicode_literals
 
 import pytz
 from django.db.models import Q
-from athanor.classes.players import Player
+from athanor.classes.accounts import Account
 from athanor.core.command import AthCommand
-from athanor.utils.create import player as make_player
+from athanor.utils.create import account as make_account
 from athanor.utils.menu import make_menu
 from athanor.utils.time import utcnow, duration_from_string
 from athanor.utils.text import normal_string
 
 
-class CmdPlayerConfig(AthCommand):
+class CmdAccountConfig(AthCommand):
     """
     Command for setting account-wide options that affect command and system behavior.
 
@@ -314,7 +314,7 @@ class CmdUser(AthCommand):
         if not self.args or not self.is_admin:
             target = self.player
         elif self.lhs and self.is_admin:
-            target = Player.objects.filter_family(username__iexact=self.lhs, player_settings__enabled=enabled).first()
+            target = Account.objects.filter_family(username__iexact=self.lhs, player_settings__enabled=enabled).first()
         if not target:
             raise ValueError("User not found.")
         if authority:
@@ -352,7 +352,7 @@ class CmdUser(AthCommand):
             raise ValueError("No name entered.")
         if not password:
             raise ValueError("No password entered.")
-        target = make_player(name, password)
+        target = make_account(name, password)
         self.sys_msg("User created! Don't forget to set its email with @user/email.")
         self.sys_report("Created New User: %s" % target)
 
@@ -369,10 +369,10 @@ class CmdUser(AthCommand):
         message = list()
         message.append(self.caller.render.header('Users'))
         if self.args: # If you entered a name... filter by it!
-            found = Player.objects.filter_family(username__istartswith=self.args,
+            found = Account.objects.filter_family(username__istartswith=self.args,
                                                  player_settings__enabled=enabled).order_by('player_settings__last_played')
         else: # And if not...
-            found = Player.objects.filter_family().order_by('player_settings__last_played')
+            found = Account.objects.filter_family().order_by('player_settings__last_played')
 
         # Prepare time cutoff for active/inactive check.
         cutoff = duration_from_string('90d')
@@ -454,7 +454,7 @@ class CmdUser(AthCommand):
         name = normal_string(self.rhs)
         if not name:
             raise ValueError("Must enter a new name!")
-        if Player.objects.filter_family(username__iexact=name).exclude(id=target.id).count():
+        if Account.objects.filter_family(username__iexact=name).exclude(id=target.id).count():
             raise ValueError("Usernames must be unique.")
         oldname = target.username
         target.username = name

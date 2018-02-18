@@ -14,7 +14,7 @@ from evennia.utils.utils import lazy_property
 from evennia.utils.ansi import ANSIString
 from athanor.utils.text import mxp
 from athanor.managers import ALL_MANAGERS
-from athanor.utils.handlers.character import CharacterWeb, CharacterTime, CharacterAccount, CharacterMode
+from athanor.utils.handlers.character import CharacterWeb, CharacterTime, CharacterSub, CharacterMode
 from athanor.utils.handlers.character import CharacterChannel, CharacterPage
 from athanor.core.config import CharacterSettings
 from athanor.core.models import CharacterSetting
@@ -60,8 +60,8 @@ class Character(DefaultCharacter):
         return CharacterSettings(self)
 
     @lazy_property
-    def account(self):
-        return CharacterAccount(self)
+    def accountSub(self):
+        return CharacterSub(self)
 
     @lazy_property
     def channels(self):
@@ -75,10 +75,10 @@ class Character(DefaultCharacter):
     def mode(self):
         return CharacterMode(self)
 
-    def at_post_unpuppet(self, player, session=None):
-        super(Character, self).at_post_unpuppet(player, session)
+    def at_post_unpuppet(self, account, session=None):
+        super(Character, self).at_post_unpuppet(account, session)
         if not self.sessions.get():
-            self.at_true_logout(player, session)
+            self.at_true_logout(account, session)
 
     def at_true_logout(self, player, session=None):
         """
@@ -96,7 +96,7 @@ class Character(DefaultCharacter):
     def at_post_puppet(self):
         super(Character, self).at_post_puppet()
         self.config.update_last_played()
-        self.puppet_logs.create(player=self.player)
+        self.puppet_logs.create(account=self.account)
 
         # Update webclient data...
         self.who.add(self)
@@ -152,9 +152,9 @@ class Character(DefaultCharacter):
 
         if error:
             message = '|rERROR:|n %s' % message
-        alert = '|%s-=<|n{%s%s|n|%s>=-|n ' % (self.player_config['msgborder_color'],
-                                              self.player_config['msgtext_color'],
-                                            sys_name.upper(), self.player_config['msgborder_color'])
+        alert = '|%s-=<|n{%s%s|n|%s>=-|n ' % (self.account_config['msgborder_color'],
+                                              self.account_config['msgtext_color'],
+                                            sys_name.upper(), self.account_config['msgborder_color'])
         send_string = alert + message
         self.msg(unicode(ANSIString(send_string)))
 
@@ -166,14 +166,14 @@ class Character(DefaultCharacter):
 
     @lazy_property
     def owner(self):
-        return self.config.model.player
+        return self.config.model.account
 
     @property
     def render(self):
-        return self.player.render
+        return self.account.render
 
     @lazy_property
-    def player_config(self):
+    def account_config(self):
         return self.owner.config
 
     def oob(self, *args, **kwargs):

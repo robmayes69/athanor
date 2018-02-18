@@ -39,7 +39,7 @@ INPUT_FUNC_MODULES = INPUT_FUNC_MODULES + ['athanor.core.inputfuncs']
 
 # TYPECLASS STUFF
 # Typeclass for player objects (linked to a character) (fallback)
-BASE_PLAYER_TYPECLASS = "athanor.classes.players.Player"
+BASE_ACCOUNT_TYPECLASS = "athanor.classes.accounts.Account"
 # Typeclass and base for all objects (fallback)
 #BASE_OBJECT_TYPECLASS = "classes.objects.Object"
 # Typeclass for character objects linked to a player (fallback)
@@ -59,7 +59,7 @@ WEBSOCKET_ENABLED = True
 CMDSET_UNLOGGEDIN = "athanor.core.default_cmdsets.UnloggedinCmdSet"
 CMDSET_SESSION = "athanor.core.default_cmdsets.SessionCmdSet"
 CMDSET_CHARACTER = "athanor.core.default_cmdsets.CharacterCmdSet"
-CMDSET_PLAYER = "athanor.core.default_cmdsets.PlayerCmdSet"
+CMDSET_ACCOUNT = "athanor.core.default_cmdsets.AccountCmdSet"
 
 INLINEFUNC_ENABLED = True
 #INLINEFUNC_MODULES += []

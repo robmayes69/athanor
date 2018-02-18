@@ -114,7 +114,7 @@ class AccountAll(Request):
     command_name = 'account_all'
 
     def doRequest(self):
-        from athanor.classes.players import Player
+        from athanor.classes.accounts import Player
         formatted = []
         for player in Player.objects.filter_family():
             formatted.append({'id': player.id, 'key': player.key, 'email': player.email})
@@ -125,7 +125,7 @@ class AccountGet(Request):
     command_name = 'account_get'
 
     def doRequest(self):
-        from athanor.classes.players import Player
+        from athanor.classes.accounts import Player
         play = Player.objects.filter_family(id=self.args[0]).first()
         player = {'id': play.id, 'key': play.key, 'email': play.email}
         self.output([], {'data': player})

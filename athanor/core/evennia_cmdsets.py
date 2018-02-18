@@ -1,5 +1,5 @@
 from evennia.commands.cmdset import CmdSet
-from evennia.commands.default import unloggedin, player, building, general, help, comms, admin, system, batchprocess
+from evennia.commands.default import unloggedin, account, building, general, help, comms, admin, system, batchprocess
 
 class UnloggedinCmdSet(CmdSet):
     """
@@ -32,7 +32,7 @@ class SessionCmdSet(CmdSet):
         #self.add(player.CmdSessions())
         pass
 
-class PlayerCmdSet(CmdSet):
+class AccountCmdSet(CmdSet):
     """
     Implements the player command set.
     """
@@ -44,17 +44,17 @@ class PlayerCmdSet(CmdSet):
         "Populates the cmdset"
 
         # Player-specific commands
-        self.add(player.CmdOOCLook())
-        self.add(player.CmdIC())
-        self.add(player.CmdOOC())
-        self.add(player.CmdCharCreate())
+        self.add(account.CmdOOCLook())
+        self.add(account.CmdIC())
+        self.add(account.CmdOOC())
+        self.add(account.CmdCharCreate())
         #self.add(player.CmdSessions())
-        self.add(player.CmdWho())
-        self.add(player.CmdOption())
-        self.add(player.CmdQuit())
+        self.add(account.CmdWho())
+        self.add(account.CmdOption())
+        self.add(account.CmdQuit())
         #self.add(player.CmdPassword())
-        self.add(player.CmdColorTest())
-        self.add(player.CmdQuell())
+        self.add(account.CmdColorTest())
+        self.add(account.CmdQuell())
 
         # testing
         self.add(building.CmdExamine())
