@@ -8,6 +8,7 @@ from athanor.core.command import AthCommand
 from athanor.groups.models import Group, valid_groupname, find_group, GroupPermissions, GroupCategory
 from athanor.utils.text import partial_match, normal_string
 from athanor.utils.time import duration_from_string, utcnow
+from athanor.managers import ALL_MANAGERS
 
 
 class GroupCommand(AthCommand):
@@ -89,31 +90,35 @@ class CmdGroupDisplay(GroupCommand):
         self.character.msg(group.display(viewer=self.character))
 
 
-class CmdGroupCreate(GroupCommand):
+class CmdGroupAdmin(GroupCommand):
     """
-    Used for creating new Groups.
+    Used for administrating Groups.
 
     Usage:
-        +gcreate <name>[=<leader>]
+        +gadmin/create <name>[=<leader>]
             Creates the <name> group. if <leader> is specified, tries to locate the target and make them leader.
-    """
-    key = "+gcreate"
-    locks = "cmd:perm(Wizards)"
 
-    def run_command(self):
+
+    """
+    key = "+gadmin"
+    locks = "cmd:perm(Admin)"
+    admin_switches = ['create', 'rename', 'disband', 'describe', 'config']
+    player_switches = ['set']
+
+    def switch_create(self):
         rhs = self.rhs
         lhs = self.lhs
 
-        group_name = valid_groupname(lhs)
-        if Group.objects.filter(key__iexact=group_name):
-            raise ValueError("That name is already in use.")
-        catname = normal_string(rhs)
-        if not catname:
-            raise ValueError("Must enter a group category name.")
-        found = GroupCategory.objects.filter(key__istartswith=catname).first()
-        if not found:
-            raise ValueError("Group Category not found.")
-        new_group = Group.objects.create(key=group_name, category=found)
+        tier_number = 0
+        private = True
+
+        manager = ALL_MANAGERS.get_group()
+        new_group = manager.create_group(self.lhs, tier_number, private)
+        if self.rhs:
+            found = self.character.search_character(self.rhs)
+            if found:
+                new_group.add_member(found, 1)
+
         self.sys_msg("Group '%s' Created!" % new_group)
         self.character.db.group = new_group
         self.sys_msg("Focus changed to: %s" % new_group)

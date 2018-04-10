@@ -117,24 +117,24 @@ class AccountSub(object):
             message.append(viewer.render.footer())
         return '\n'.join(unicode(line) for line in message)
 
+    def is_builder(self):
+        return self.owner.locks.check_lockstring(self.owner, "dummy:perm(Builder)")
+
     def is_admin(self):
-        return self.owner.locks.check_lockstring(self.owner, "dummy:perm(Wizards)")
+        return self.owner.locks.check_lockstring(self.owner, "dummy:perm(Admin)")
 
-    def is_wizard(self):
-        return self.owner.locks.check_lockstring(self.owner, "dummy:perm(Wizards)")
-
-    def is_immortal(self):
-        return self.owner.locks.check_lockstring(self.owner, "dummy:perm(Immortals)")
+    def is_developer(self):
+        return self.owner.locks.check_lockstring(self.owner, "dummy:perm(Developer)")
 
     def status_name(self):
         if self.owner.is_superuser:
             return 'Superuser'
-        if self.is_immortal():
-            return 'Immortal'
-        if self.is_wizard():
-            return 'Wizard'
+        if self.is_developer():
+            return 'Developer'
         if self.is_admin():
             return 'Admin'
+        if self.is_builder():
+            return 'Builder'
         return 'Mortal'
 
     def characters(self):
@@ -151,10 +151,10 @@ class AccountSub(object):
         Args:
             character (objectdb): The character being bound.
         """
-        character.account.update_owner(self.owner)
+        character.accountsub.update_owner(self.owner)
 
     def unbind_character(self, character):
-        character.account.update_owner(None)
+        character.accountsub.update_owner(None)
 
     def disable(self, enactor=None):
         if enactor.player == self.owner:

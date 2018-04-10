@@ -35,8 +35,6 @@ from athanor.radio.radio import CmdRadio
 from athanor.events.scene import CmdEvents
 from athanor.jobs.jobs import CmdJob, CmdRequest, CmdMyJob
 
-from storyteller.editor import Chargen
-
 class CharacterCmdSet(OldCharacter):
     """
     The `CharacterCmdSet` contains general in-game commands like `look`,
@@ -78,9 +76,6 @@ class CharacterCmdSet(OldCharacter):
         self.add(CmdJob)
         self.add(CmdRequest)
         self.add(CmdMyJob)
-
-        # Just testing this
-        self.add(Chargen)
 
 
 class AccountCmdSet(OldAccount):

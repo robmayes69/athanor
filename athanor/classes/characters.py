@@ -60,7 +60,7 @@ class Character(DefaultCharacter):
         return CharacterSettings(self)
 
     @lazy_property
-    def accountSub(self):
+    def accountsub(self):
         return CharacterSub(self)
 
     @lazy_property

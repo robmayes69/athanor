@@ -60,7 +60,7 @@ SPEECH_FACTORY = SpeechFactory()
 def make_speech(speaker, speech_text, alternate_name=None, title=None, mode='ooc', targets=None):
     return SPEECH_FACTORY.create(speaker, speech_text, alternate_name, title, mode, targets)
 
-def character(key, player):
+def character(key, account):
     from athanor.core.config import GLOBAL_SETTINGS
     key = sanitize_string(key, strip_ansi=True)
     typeclass = settings.BASE_CHARACTER_TYPECLASS
@@ -68,6 +68,6 @@ def character(key, player):
     if key.upper() in SPEECH_FACTORY.upper():
         raise ValueError("That character name is already in use!")
     char = create_object(typeclass=typeclass, key=key, location=home, home=home)
-    player.account.bind_character(char)
+    account.accountsub.bind_character(char)
     SPEECH_FACTORY.update(char)
     return char

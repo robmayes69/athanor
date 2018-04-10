@@ -37,7 +37,7 @@ class AccountCmdSet(CmdSet):
     Implements the player command set.
     """
 
-    key = "DefaultPlayer"
+    key = "DefaultAccount"
     priority = -10
 
     def at_cmdset_creation(self):
@@ -108,7 +108,7 @@ class CharacterCmdSet(CmdSet):
         self.add(general.CmdInventory())
         self.add(general.CmdPose())
         self.add(general.CmdNick())
-        self.add(general.CmdDesc())
+        self.add(building.CmdDesc())
         self.add(general.CmdGet())
         self.add(general.CmdDrop())
         self.add(general.CmdGive())

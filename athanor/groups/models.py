@@ -9,14 +9,20 @@ from athanor.core.models import validate_color
 # Create your models here.
 
 
-class GroupCategory(WithKey):
-    order = models.PositiveSmallIntegerField(default=0)
-    description = models.TextField(blank=True, null=True, default=None)
+class GroupTier(models.Model):
+    number = models.PositiveSmallIntegerField(default=0)
+    name = models.CharField(blank=True, null=True, default=None)
+    private = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = (('number', 'name', 'private',),)
 
     def display(self, viewer, footer=False):
         message = list()
-        message.append(viewer.render.header(self.key))
-        groups = self.groups.all().order_by('order')
+        message.append(viewer.render.header("Tier %s: %s" % (self.number, self.name)))
+        groups = self.groups.all().order_by('key')
+        if self.private:
+            groups = [group for group in groups if group.visible_to(viewer)]
         if not groups:
             if footer:
                 message.append(viewer.render.footer())
@@ -24,6 +30,7 @@ class GroupCategory(WithKey):
         who = set(viewer.who.visible_characters(viewer))
         group_table = viewer.render.make_table(["Name", "Leader", "Second", "Conn"],
                                                width=[30, 21, 21, 8])
+
         for group in groups:
             member_chars = set([mem.character for mem in group.members])
             members_count = len(member_chars)
@@ -41,12 +48,10 @@ class GroupCategory(WithKey):
 
 
 class Group(WithKey, WithLocks):
-    category = models.ForeignKey('groups.GroupCategory', related_name='groups')
-    order = models.IntegerField(default=0)
+    tier = models.ForeignKey('groups.GroupTier', related_name='groups')
     abbreviation = models.CharField(max_length=10)
     color = models.CharField(max_length=20, default='n', validators=[validate_color])
-    member_permissions = models.ManyToManyField('GroupPermissions')
-    guest_permissions = models.ManyToManyField('GroupPermissions')
+    permissions = models.ManyToManyField('GroupPermissions')
     start_rank = models.ForeignKey('GroupRank', null=True)
     alert_rank = models.ForeignKey('GroupRank', null=True)
     description = models.TextField(blank=True, null=True, default=None)
@@ -56,7 +61,6 @@ class Group(WithKey, WithLocks):
     ic_enabled = models.BooleanField(default=True)
     ooc_enabled = models.BooleanField(default=True)
     display_type = models.SmallIntegerField(default=0)
-    timeout = models.DurationField(null=True)
 
 
     def delete(self, *args, **kwargs):
@@ -220,6 +224,17 @@ class Group(WithKey, WithLocks):
         if self.members.filter(character=target).count():
             return True
         return self.locks.check(target, 'member')
+
+    def visible_to(self, target):
+        if target.account.is_admin():
+            return True
+        membership = self.members.filter(character=target).first()
+        if not membership:
+            return False
+        if membership.rank:
+            return True
+        return bool(membership.permissions.all())
+
 
     @property
     def members(self):

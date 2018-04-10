@@ -1,4 +1,5 @@
 from athanor.classes.scripts import WhoManager
+from athanor.groups.scripts import GroupManager
 from evennia import create_script
 
 class Manager(object):
@@ -13,6 +14,12 @@ class Manager(object):
         if found:
             return found
         return create_script(WhoManager, persistent=False, obj=None)
+
+    def get_group(self):
+        found = GroupManager.objects.filter_family(db_key='Group Manager').first()
+        if found:
+            return found
+        return create_script(GroupManager, persistent=False, obj=None)
 
 
 ALL_MANAGERS = Manager(1)

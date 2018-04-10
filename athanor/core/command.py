@@ -189,12 +189,12 @@ class AthCommand(MuxCommand):
             self.rhs = unicode(self.rhs.strip())
         if self.lhs:
             self.lhs = unicode(self.lhs.strip())
-        if hasattr(self.caller, "player"):
-            self.player = self.caller.player
+        if hasattr(self.caller, "account"):
+            self.account = self.caller.account
             self.character = self.caller
             self.isic = True
         else:
-            self.player = self.caller
+            self.account = self.caller
             self.isic = False
             self.character = None
         self.is_admin = self.caller.account.is_admin()
@@ -212,11 +212,11 @@ class AthCommand(MuxCommand):
                 self.final_switches.append(found_switches)
 
     def verify(self, checkstr):
-        if checkstr == str(self.player.db.verify):
-            del self.player.db.verify
+        if checkstr == str(self.account.db.verify):
+            del self.account.db.verify
             return True
         else:
-            self.player.db.verify = checkstr
+            self.account.db.verify = checkstr
             return False
 
     def msg_lines(self, message=None):

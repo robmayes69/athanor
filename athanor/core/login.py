@@ -123,25 +123,25 @@ class CmdCharCreate(AthCommand):
     if you want.
     """
     key = "@charcreate"
-    locks = "cmd:pperm(Players)"
+    locks = "cmd:pperm(Player)"
     help_category = "General"
 
     def func(self):
         "create the new character"
-        player = self.player
+        account = self.account
         if not self.args:
             self.msg("Usage: @charcreate <charname> [= description]")
             return
         key = self.lhs
         desc = self.rhs
 
-        available = player.account.available_slots
+        available = account.accountsub.available_slots
 
         if available < 1 and not self.is_admin:
             self.error("You may not create more characters.")
             return
         # create the character
-        new_character = make_character(key, player)
+        new_character = make_character(key, account)
 
         if desc:
             new_character.db.desc = desc
