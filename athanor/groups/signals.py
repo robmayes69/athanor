@@ -14,14 +14,14 @@ def setup_group(sender, **kwargs):
     if kwargs['created']:
         instance = kwargs['instance']
         if not GroupPermissions.objects.all():
-            for entry in ['manage', 'moderate', 'gbadmin', 'ic', 'ooc', 'titleself', 'titleother', 'board']:
+            for entry in ['manage', 'moderate', 'bbadmin', 'ic', 'ooc', 'titleself', 'titleother']:
                 GroupPermissions.objects.create(name=entry)
-        rank_1_perms = ['manage', 'moderate', 'gbadmin', 'ic', 'ooc', 'titleself', 'titleother', 'board']
+        rank_1_perms = ['manage', 'moderate', 'bbadmin', 'ic', 'ooc', 'titleself', 'titleother']
         rank_2_perms = rank_1_perms
         rank_3_perms = ['moderate', 'manage', 'ic', 'ooc']
         rank_4_perms = []
-        rank_all_perms = ['ic', 'ooc', 'board']
-        rank_guest_perms = ['ic', 'ooc', 'board']
+        rank_all_perms = ['ic', 'ooc']
+        rank_guest_perms = ['ic', 'ooc']
         rank1 = instance.ranks.create(num=1, name="Leader")
         rank1.permissions.add(*GroupPermissions.objects.filter(name__in=rank_1_perms))
         rank2 = instance.ranks.create(num=2, name="Second in Command")

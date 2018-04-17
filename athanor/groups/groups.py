@@ -5,10 +5,11 @@ import re
 from evennia.utils.ansi import ANSIString
 
 from athanor.core.command import AthCommand
-from athanor.groups.models import Group, valid_groupname, find_group, GroupPermissions, GroupCategory
+from athanor.groups.models import Group, valid_groupname, find_group, GroupPermissions, GroupTier
 from athanor.utils.text import partial_match, normal_string
 from athanor.utils.time import duration_from_string, utcnow
 from athanor.managers import ALL_MANAGERS
+
 
 
 class GroupCommand(AthCommand):
@@ -106,9 +107,6 @@ class CmdGroupAdmin(GroupCommand):
     player_switches = ['set']
 
     def switch_create(self):
-        rhs = self.rhs
-        lhs = self.lhs
-
         tier_number = 0
         private = True
 
@@ -123,44 +121,13 @@ class CmdGroupAdmin(GroupCommand):
         self.character.db.group = new_group
         self.sys_msg("Focus changed to: %s" % new_group)
 
+    def switch_rename(self):
+        manager = ALL_MANAGERS.get_group()
+        manager.rename_group(self.character, self.lhs, self.rhs)
 
-class CmdGroupMakeCat(GroupCommand):
-    key = '+gmakecat'
-    locks = "cmd:perm(Wizards)"
-
-    def run_command(self):
-        rhs = self.rhs
-        lhs = self.lhs
-        name = normal_string(lhs)
-        if not name:
-            raise ValueError("No category name entered.")
-        if GroupCategory.objects.filter(key__iexact=name).count():
-            raise ValueError("Category name is already in use.")
-        new_cat = GroupCategory.objects.create(key=name)
-        self.sys_report("Group Category %s created!" % name)
-        self.sys_msg("Created group category %s" % name)
-
-
-class CmdGroupDescribe(GroupCommand):
-    """
-    Used to change a group's description.
-
-    Usage:
-        +gdesc <description>
-    """
-    key = '+gdesc'
-    locks = "cmd:perm(Wizards)"
-
-    def run_command(self):
-        desc = self.args
-        if not desc:
-            raise ValueError("Nothing entered to set.")
-        group = self.get_focus()
-        group.check_permission_error(self.character, "admin")
-        group.description = desc
-        group.save(update_fields=['description'])
-        group.sys_msg("%s changed the group desc." % self.character.key, sender=self.character)
-        self.sys_msg("You change the desc for the %s Group" % group)
+    def switch_disband(self):
+        manager = ALL_MANAGERS.get_group()
+        manager.disband_group(self.character, self.lhs, self.rhs)
 
 
 class CmdGroupDisband(GroupCommand):

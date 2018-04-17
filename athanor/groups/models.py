@@ -1,10 +1,15 @@
 from __future__ import unicode_literals
+import re
 from django.db import models
 from athanor.utils.text import sanitize_string, partial_match
 from evennia.utils.ansi import ANSIString
 from evennia.utils.create import create_channel
 from athanor.core.models import WithLocks, WithKey
 from athanor.core.models import validate_color
+
+SYSTEM_PERMISSIONS = ['manage', 'moderate', 'bbadmin', 'ic', 'ooc', 'titleself', 'titleother']
+
+RE_PERM = re.compile(r'^\w+$')
 
 # Create your models here.
 
@@ -51,9 +56,8 @@ class Group(WithKey, WithLocks):
     tier = models.ForeignKey('groups.GroupTier', related_name='groups')
     abbreviation = models.CharField(max_length=10)
     color = models.CharField(max_length=20, default='n', validators=[validate_color])
-    permissions = models.ManyToManyField('GroupPermissions')
-    start_rank = models.ForeignKey('GroupRank', null=True)
-    alert_rank = models.ForeignKey('GroupRank', null=True)
+    start_rank = models.ForeignKey('groups.GroupRank', null=True)
+    alert_rank = models.ForeignKey('groups.GroupRank', null=True)
     description = models.TextField(blank=True, null=True, default=None)
     ic_channel = models.OneToOneField('comms.ChannelDB', null=True, related_name='group')
     ooc_channel = models.OneToOneField('comms.ChannelDB', null=True, related_name='group')
@@ -61,6 +65,7 @@ class Group(WithKey, WithLocks):
     ic_enabled = models.BooleanField(default=True)
     ooc_enabled = models.BooleanField(default=True)
     display_type = models.SmallIntegerField(default=0)
+    parent = models.ForeignKey('groups.Group', null=True, related_name='divisions')
 
 
     def delete(self, *args, **kwargs):
@@ -88,25 +93,22 @@ class Group(WithKey, WithLocks):
     def abbr(self):
         return ANSIString('|%s%s|n' % (self.color, self.abbreviation))
 
-    def rename(self, new_name=None):
-        name = valid_groupname(new_name)
-        super(Group, self).rename(name)
-        if self.ic_channel:
-            self.ic_channel.key = 'group_%s_ic' % self.key
-        if self.ooc_channel:
-            self.ooc_channel.key = 'group_%s_ooc' % self.key
+    def change_description(self, new_desc):
+        new_desc = sanitize_string(new_desc)
+        if not new_desc:
+            raise ValueError("Description field empty!")
+        self.description = new_desc
+        self.save(update_fields=['description'])
 
     def setup_channels(self):
         if self.ic_channel:
-            ic_channel = self.ic_channel
-            ic_channel.key = 'group_%s_ic' % self.key
+            self.ic_channel.key = 'group_%s_ic' % self.key
         else:
             self.ic_channel = create_channel('group_%s_ic' % self.key, typeclass='athanor.classes.channels.GroupIC')
             self.save(update_fields=['ic_channel'])
             self.ic_channel.init_locks(group=self)
         if self.ooc_channel:
-            ooc_channel = self.ooc_channel
-            ooc_channel.key = 'group_%s_ooc' % self.key
+            self.ooc_channel.key = 'group_%s_ooc' % self.key
         else:
             self.ooc_channel = create_channel('group_%s_ooc' % self.key, typeclass='athanor.classes.channels.GroupOOC')
             self.save(update_fields=['ooc_channel'])
@@ -115,6 +117,9 @@ class Group(WithKey, WithLocks):
     def add_member(self, target=None, setrank=None, reason='accepted invite'):
         if not target:
             raise ValueError("No target to add.")
+        if self.parent:
+            if not self.parent.members.filter(character=target).count():
+                raise ValueError("'%s' must first be added to the parent group!")
         if self.members.filter(character=target):
             raise ValueError("'%s' is already a member of '%s'" % (target.key, self.key))
         if setrank:
@@ -135,6 +140,8 @@ class Group(WithKey, WithLocks):
         membership = self.members.filter(character=target).first()
         if not membership:
             raise ValueError("'%s' is not a member of '%s'" % (target.key, self.key))
+        for div in self.divisions.all():
+            div.remove_member(target, reason)
         membership.rank = None
         membership.save(update_fields=['rank'])
         for k, v in {'ic': self.ic_channel, 'ooc': self.ooc_channel}.iteritems():
@@ -143,6 +150,28 @@ class Group(WithKey, WithLocks):
         if not self.check_permission(target, 'member'):
             membership.delete()
         self.sys_msg("%s is no longer a group member. Reason: %s" % (target, reason))
+
+    def create_permission(self, permission_name):
+        permission_name = sanitize_string(permission_name).lower()
+        if not permission_name:
+            raise ValueError("Permission name empty!")
+        if not RE_PERM.match(permission_name):
+            raise ValueError("Permissions must be simple words with no spaces!")
+        if self.permissions.filter(permission__name__iexact=permission_name).count():
+            raise ValueError("Permission names must be unique!")
+
+    def delete_permission(self, permission_name):
+        permission_name = sanitize_string(permission_name).lower()
+        if not permission_name:
+            raise ValueError("Permission name empty!")
+        if not RE_PERM.match(permission_name):
+            raise ValueError("Permissions must be simple words with no spaces!")
+        if permission_name in SYSTEM_PERMISSIONS:
+            raise ValueError("Base Permissions cannot be deleted!")
+        found = self.permissions.filter(permission__name__iexact=permission_name).first()
+        if not found:
+            raise ValueError("Permission not found!")
+        found.delete()
 
     def check_permission(self, checker, check, ignore_admin=False):
         if not ignore_admin and checker.account.is_admin():
@@ -276,7 +305,6 @@ class GroupRank(models.Model):
     num = models.IntegerField(default=0)
     group = models.ForeignKey(Group, related_name='ranks')
     name = models.CharField(max_length=35)
-    permissions = models.ManyToManyField('GroupPermissions')
 
     def __str__(self):
         return self.name
@@ -305,7 +333,6 @@ class GroupParticipant(models.Model):
     character = models.ForeignKey('objects.ObjectDB', related_name='groups')
     group = models.ForeignKey(Group, related_name='participants')
     rank = models.ForeignKey('GroupRank', null=True, related_name='holders')
-    permissions = models.ManyToManyField('GroupPermissions')
     title = models.CharField(max_length=120, blank=True, null=True)
 
     def __unicode__(self):
@@ -320,6 +347,23 @@ class GroupPermissions(models.Model):
 
     def __unicode__(self):
         return self.name
+
+class GroupPermissionsLink(models.Model):
+    group = models.ForeignKey('groups.Group', related_name='permissions')
+    permission = models.ForeignKey('groups.GroupPermissions', related_name='groups')
+    ranks = models.ManyToManyField('groups.GroupRanks', related_name='permissions')
+    participants = models.ManyToManyField('groups.GroupParticipant', related_name='permissions')
+
+    class Meta:
+        unique_together = (('group', 'permission'),)
+
+    def delete(self, *args, **kwargs):
+        """
+        Re-implementation of delete() that will handle deleting GroupPermissions if this is the last link.
+        :param args:
+        :param kwargs:
+        :return:
+        """
 
 
 def valid_groupname(newname=None):

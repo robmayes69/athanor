@@ -16,16 +16,13 @@ def sanitize_group_name(name):
 
 class GroupManager(AthanorScript):
 
-    def at_script_manager(self):
+    def at_script_creation(self):
         self.key = "Group Manager"
         self.desc = "Organizes Groups"
 
     def at_start(self):
-        self.cache_groups()
-
-    def cache_groups(self):
-        self.public = Group.objects.filter(tier__private=False)
-        self.private = Group.objects.filter(tier__private=True)
+        GroupTier.objects.get_or_create(number=0,private=False)
+        GroupTier.objects.get_or_create(number=0,private=True)
 
     def find_tier(self,number,private):
         try:
@@ -37,7 +34,6 @@ class GroupManager(AthanorScript):
         if not tier:
             raise ValueError("Tier not found!")
         return tier
-
 
     def create_tier(self,number,name,private):
         try:
@@ -79,13 +75,10 @@ class GroupManager(AthanorScript):
 
     def create_group(self, name, tier_number, private):
         name = sanitize_group_name(name)
-        if not name:
-            raise ValueError("Groups must have a name!")
-        tier = self.find_tier(tier_number,private)
+        tier = self.find_tier(tier_number, private)
         if Group.objects.filter(key__iexact=name).first():
             raise ValueError("Group already exists! Names must be unique.")
         group = Group.objects.create(tier=tier,key=name)
-        self.cache_groups()
         return group
 
     def find_group(self, viewer, name, ignore_permissions=False):
@@ -98,7 +91,6 @@ class GroupManager(AthanorScript):
             raise ValueError("Group '%s' not found!" % name)
         return group
 
-
     def rename_group(self, viewer, name, new_name):
         group = self.find_group(viewer, name)
         new_name = sanitize_group_name(new_name)
@@ -107,10 +99,19 @@ class GroupManager(AthanorScript):
             raise ValueError("Group names must be unique!")
         group.key = new_name
         group.save(update_fields=['key'])
+        group.setup_channels()
 
     def change_tier(self, viewer, name, new_tier, private):
         tier = self.find_tier(new_tier, private)
         group = self.find_group(viewer, name)
         group.tier = tier
         group.save(update_fields=['tier'])
-        self.cache_groups()
+
+    def disband_group(self, viewer, name, confirm_name):
+        group = self.find_group(viewer, name)
+        confirm_name = sanitize_string(confirm_name)
+        if not Group.objects.filter(id=group.id, key__iexact=confirm_name).count():
+            raise ValueError("Must enter the group's full case-insensitive name to continue!")
+        if not group.check_permission(viewer, 'admin'):
+            raise ValueError("Permission denied!")
+        group.delete()
