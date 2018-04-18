@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from athanor.groups.models import Group, GroupPermissions
+from athanor.groups.models import Group, GroupPermissions, GroupPermissionsLink
 from evennia.utils.create import create_channel
 
 
@@ -12,27 +12,40 @@ def setup_group(sender, **kwargs):
     """
 
     if kwargs['created']:
+        group_perms = {}
         instance = kwargs['instance']
-        if not GroupPermissions.objects.all():
-            for entry in ['manage', 'moderate', 'bbadmin', 'ic', 'ooc', 'titleself', 'titleother']:
-                GroupPermissions.objects.create(name=entry)
-        rank_1_perms = ['manage', 'moderate', 'bbadmin', 'ic', 'ooc', 'titleself', 'titleother']
-        rank_2_perms = rank_1_perms
-        rank_3_perms = ['moderate', 'manage', 'ic', 'ooc']
-        rank_4_perms = []
-        rank_all_perms = ['ic', 'ooc']
-        rank_guest_perms = ['ic', 'ooc']
-        rank1 = instance.ranks.create(num=1, name="Leader")
-        rank1.permissions.add(*GroupPermissions.objects.filter(name__in=rank_1_perms))
-        rank2 = instance.ranks.create(num=2, name="Second in Command")
-        rank2.permissions.add(*GroupPermissions.objects.filter(name__in=rank_2_perms))
-        rank3 = instance.ranks.create(num=3, name="Officer")
-        rank3.permissions.add(*GroupPermissions.objects.filter(name__in=rank_3_perms))
-        rank4 = instance.ranks.create(num=4, name="Member")
-        instance.member_permissions.add(*GroupPermissions.objects.filter(name__in=rank_all_perms))
-        instance.guest_permissions.add(*GroupPermissions.objects.filter(name__in=rank_guest_perms))
-        instance.start_rank = rank4
-        instance.alert_rank = rank3
+        for entry in ['manage', 'moderate', 'bbadmin', 'ic', 'ooc', 'titleself', 'titleother']:
+            perm, created = GroupPermissions.objects.get_or_create(name=entry)
+            group_perms[entry] = GroupPermissionsLink.objects.create(group=instance, permission=perm)
+
+        rank_data = (
+            {'rank': 1,
+             'title': 'Leader',
+             'perms': ('manage', 'moderate', 'bbadmin', 'ic', 'ooc', 'titleself', 'titleother')
+             },
+            {'rank': 2,
+             'title': 'Second in Command',
+             'perms': ('manage', 'moderate', 'bbadmin', 'ic', 'ooc', 'titleself', 'titleother')
+             },
+            {'rank': 3,
+             'title': 'Officer',
+             'perms': ('moderate', 'manage', 'ic', 'ooc', 'titleself', 'titleother')
+             },
+            {'rank': 4,
+             'title': 'Member',
+             'perms': ('ic', 'ooc', 'titleself')
+             }
+        )
+        ranks = {}
+        for rnk in rank_data:
+            rank = instance.ranks.create(num=rnk['rank'], name=rnk['title'])
+            ranks[rnk['rank']] = rank
+            for perm in rnk['perms']:
+                group_perms[perm].ranks.add(rank)
+
+
+        instance.start_rank = ranks[4]
+        instance.alert_rank = ranks[3]
         locks = 'member:group(##)'
         instance.lock_storage = locks.replace('##', str(instance.id))
         instance.save()

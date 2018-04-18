@@ -110,7 +110,7 @@ class CmdGroupAdmin(GroupCommand):
         tier_number = 0
         private = True
 
-        manager = ALL_MANAGERS.get_group()
+        manager = ALL_MANAGERS.group
         new_group = manager.create_group(self.lhs, tier_number, private)
         if self.rhs:
             found = self.character.search_character(self.rhs)
@@ -122,11 +122,11 @@ class CmdGroupAdmin(GroupCommand):
         self.sys_msg("Focus changed to: %s" % new_group)
 
     def switch_rename(self):
-        manager = ALL_MANAGERS.get_group()
+        manager = ALL_MANAGERS.group
         manager.rename_group(self.character, self.lhs, self.rhs)
 
     def switch_disband(self):
-        manager = ALL_MANAGERS.get_group()
+        manager = ALL_MANAGERS.group
         manager.disband_group(self.character, self.lhs, self.rhs)
 
 

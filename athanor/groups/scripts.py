@@ -8,7 +8,7 @@ def sanitize_group_name(name):
     name = sanitize_string(name)
     if not name:
         raise ValueError("Group names must not be empty!")
-    for char in ['/','|']:
+    for char in ['/','|','=']:
         if char in name:
             raise ValueError("%s is not allowed in Group names!" % char)
     return name

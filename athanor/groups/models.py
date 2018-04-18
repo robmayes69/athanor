@@ -12,8 +12,6 @@ SYSTEM_PERMISSIONS = ['manage', 'moderate', 'bbadmin', 'ic', 'ooc', 'titleself',
 RE_PERM = re.compile(r'^\w+$')
 
 # Create your models here.
-
-
 class GroupTier(models.Model):
     number = models.PositiveSmallIntegerField(default=0)
     name = models.CharField(blank=True, null=True, default=None)
@@ -171,7 +169,10 @@ class Group(WithKey, WithLocks):
         found = self.permissions.filter(permission__name__iexact=permission_name).first()
         if not found:
             raise ValueError("Permission not found!")
+        perm = found.permission
         found.delete()
+        if not perm.groups.count():
+            perm.delete()
 
     def check_permission(self, checker, check, ignore_admin=False):
         if not ignore_admin and checker.account.is_admin():
@@ -183,11 +184,9 @@ class Group(WithKey, WithLocks):
             member = False
         all_permissions = list()
         if membership:
-            all_permissions += self.member_permissions.all()
             all_permissions += membership.rank.permissions.all()
             all_permissions += membership.permissions.all()
         if member:
-            all_permissions += self.guest_permissions.all()
             all_permissions += membership.permissions.all()
         return check.lower() in set(all_permissions)
 
@@ -356,14 +355,6 @@ class GroupPermissionsLink(models.Model):
 
     class Meta:
         unique_together = (('group', 'permission'),)
-
-    def delete(self, *args, **kwargs):
-        """
-        Re-implementation of delete() that will handle deleting GroupPermissions if this is the last link.
-        :param args:
-        :param kwargs:
-        :return:
-        """
 
 
 def valid_groupname(newname=None):
