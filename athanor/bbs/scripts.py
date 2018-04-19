@@ -1,20 +1,11 @@
 from __future__ import unicode_literals
+from evennia.locks.lockhandler import LockException
 from athanor.classes.scripts import AthanorScript
-from athanor.utils.text import sanitize_string, partial_match, mxp
+from athanor.utils.text import sanitize_string, partial_match, mxp, sanitize_board_name
 from athanor.bbs.models import Board
 
 
-def sanitize_board_name(name):
-    name = sanitize_string(name)
-    if not name:
-        raise ValueError("Board names must not be empty!")
-    for char in ['/','|','=']:
-        if char in name:
-            raise ValueError("%s is not allowed in Board names!" % char)
-    return name
-
-
-class BBSManager(AthanorScript):
+class BoardManager(AthanorScript):
 
     def at_script_creation(self):
         self.key = "BBS Manager"
@@ -48,26 +39,34 @@ class BBSManager(AthanorScript):
             return board_dict[find_name.upper()]
         raise ValueError("Board '%s' not found!" % find_name)
 
-    def boards_list(self, checker, viewer):
+    def list_boards(self, viewer):
         message = list()
-        message.append(viewer.player.render.header(self.name))
-        bbtable = viewer.player.render.make_table(["ID", "RPA", "Name", "Locks", "On"], width=[4, 4, 25, 43, 4])
-        for board in self.usable_boards(checker=checker):
-            if checker in board.ignore_list.all():
+        message.append(viewer.render.header(self.name))
+        bbtable = viewer.render.make_table(["ID", "RPA", "Name", "Locks", "On"], width=[4, 4, 25, 43, 4])
+        for board in self.usable_boards(checker=viewer):
+            if viewer in board.ignore_list.all():
                 member = "No"
             else:
                 member = "Yes"
-            bbtable.add_row(mxp(board.order, "+bbread %s" % board.order), board.display_permissions(checker),
+            bbtable.add_row(mxp(board.order, "+bbread %s" % board.order), board.display_permissions(viewer),
                             mxp(board, "+bbread %s" % board.order), board.lock_storage, member)
         message.append(bbtable)
-        message.append(viewer.account.render.footer())
+        message.append(viewer.render.footer())
         return '\n'.join(unicode(line) for line in message)
 
-    def create_board(self, name=None, group=None, order=None):
+    def create_board(self, enactor, name=None, group=None, order=None):
         name = sanitize_board_name(name)
+        if group:
+            group.check_permission_error(enactor, 'bbadmin')
+        else:
+            if not enactor.accountsub.is_admin():
+                raise ValueError("Permission denied!")
+        if Board.objects.filter(key__iexact=name, group=group).exist():
+            raise ValueError("Names must be unique!")
         if not order:
             order = max([board.order for board in self.boards() if board.group == group]) + 1
         else:
+            order = int(order)
             if Board.objects.filter(group=group,order=order).count():
                 raise ValueError("Orders must be unique per group!")
         board = self.boards.create(key=name, group=group, order=order)
@@ -77,11 +76,82 @@ class BBSManager(AthanorScript):
     def delete_board(self, enactor, name, verify):
         name = sanitize_board_name(name)
         board = self.find_board(name, enactor, visible_only=False)
-        if not board.check_permission(enactor, mode='admin'):
-            raise ValueError("Permission Denied.")
+        if board.group:
+            board.group.check_permission_error(enactor, 'bbadmin')
+        else:
+            if not enactor.accountsub.is_admin():
+                raise ValueError("Permission denied!")
         if not sanitize_string(verify).lower() == board.key.lower():
             raise ValueError("Verify field does not match Board name!")
         board.delete()
+        
+    def rename_board(self, enactor, name=None, new_name=None):
+        name = sanitize_board_name(name)
+        board = self.find_board(name, enactor, visible_only=False)
+        if board.group:
+            board.group.check_permission_error(enactor, 'bbadmin')
+        else:
+            if not enactor.accountsub.is_admin():
+                raise ValueError("Permission denied!")
+        new_name = sanitize_board_name(new_name)
+        if name == new_name:
+            raise ValueError("No point... names are the same.")
+        if Board.objects.exclude(id=board.id).filter(key__iexact=new_name, group=board.group).exist():
+            raise ValueError("Names must be unique!")
+        old_name = board.key
+        board.key = new_name
+        board.save(update_fields=['key'])
+
+    def order_board(self, enactor, name=None, order=None):
+        name = sanitize_board_name(name)
+        board = self.find_board(name, enactor, visible_only=False)
+        if board.group:
+            board.group.check_permission_error(enactor, 'bbadmin')
+        else:
+            if not enactor.accountsub.is_admin():
+                raise ValueError("Permission denied!")
+        if not order:
+            raise ValueError("No order entered!")
+        try:
+            order = int(order)
+        except:
+            raise ValueError("Entered order must be an integer!")
+        if board.order == order:
+            raise ValueError("No point to this operation.")
+        if Board.objects.exclude(id=board.id).filter(group=board.group, order=order).exist():
+            raise ValueError("Orders must be unique!")
+        old_order = board.order
+        board.order = order
+        board.save(update_fields=['order'])
+        
+    def lock_board(self, enactor, name=None, lock=None):
+        name = sanitize_board_name(name)
+        board = self.find_board(name, enactor, visible_only=False)
+        if board.group:
+            board.group.check_permission_error(enactor, 'bbadmin')
+        else:
+            if not enactor.accountsub.is_admin():
+                raise ValueError("Permission denied!")
+        
+        if not lock:
+            raise ValueError("Must enter a lockstring.")
+
+        for locksetting in lock.split(';'):
+            access_type, lockfunc = locksetting.split(':', 1)
+            if not access_type:
+                raise ValueError("Must enter an access type: read, write, or admin.")
+            accmatch = partial_match(access_type, ['read', 'write', 'admin'])
+            if not accmatch:
+                raise ValueError("Access type must be read, write, or admin.")
+            if not lockfunc:
+                raise ValueError("Lock func not entered.")
+            ok = False
+            try:
+                ok = board.locks.add(lock)
+                board.save(update_fields=['lock_storage'])
+            except LockException as e:
+                raise ValueError(unicode(e))
+
 
     def display_boards(self, checker, viewer):
         message = list()

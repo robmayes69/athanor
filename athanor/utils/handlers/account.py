@@ -7,114 +7,50 @@ from evennia.utils import evtable
 from evennia.utils import time_format
 from evennia.utils.ansi import ANSIString
 from athanor.utils.time import utcnow
+from athanor.core.config.settings_templates import __SettingManager
+from athanor.core.config.account_settings import ACCOUNT_SYSTEM_SETTINGS
 
 
-class AccountWeb(object):
-    def __init__(self, owner):
-        self.owner = owner
-
-    def serialize(self, viewer):
-        return {'id': self.owner.id, 'key': self.owner.key, 'conn': self.owner.connection_time,
-                'idle': self.owner.idle_time,
-                'conn_pretty': self.owner.who.off_or_conn_time(viewer),
-                'idle_pretty': self.owner.who.last_or_idle_time(viewer)}
-
-    def login_serialize(self):
-        return {'id': self.owner.id, 'key': self.owner.key, 'admin': self.owner.is_admin()}
+class __AccountManager(__SettingManager):
+    pass
 
 
-class AccountTime(object):
-    def __init__(self, owner):
-        self.owner = owner
-        self.config = owner.config
+class AccountSystem(__AccountManager):
+    setting_classes = ACCOUNT_SYSTEM_SETTINGS
+    style = 'login'
+    system_name = 'SYSTEM'
+    
+    @property
+    def base_character_slots(self):
+        return settings.MAX_NR_CHARACTERS
 
-    def last_played(self, update=False):
-        if update:
-            self.config.update_last_played()
-        return self.config.last_played
+    @property
+    def extra_character_slots(self):
+        return self.settings_dict['extra_character_slots'].value   
 
-    def off_or_idle_time(self):
-        idle = self.owner.idle_time
-        if idle is None:
-            return '|XOff|n'
-        return time_format(idle, style=1)
+    @property
+    def available_character_slots(self):
+        return self.max_character_slots - self.owner.characters.used_slots()
 
-    def off_or_conn_time(self):
-        conn = self.owner.connection_time
-        if conn is None:
-            return '|XOff|n'
-        return time_format(conn, style=1)
-
-    def last_or_idle_time(self, viewer):
-        idle = self.owner.idle_time
-        last = self.config.last_played
-        if not idle:
-            return viewer.time.display(date=last, format='%b %d')
-        return time_format(idle, style=1)
-
-    def last_or_conn_time(self, viewer):
-        conn = self.owner.connection_time
-        last = self.config.last_played
-        if not conn:
-            return viewer.time.display(date=last, format='%b %d')
-        return time_format(conn, style=1)
-
-    def display(self, date=None, format=None):
-        if not format:
-            format = '%b %d %I:%M%p %Z'
-        if not date:
-            date = utcnow()
-        tz = self.config['timezone']
-        time = date.astimezone(tz)
-        return time.strftime(format)
-
-
-    def is_dark(self, value=None):
-        """
-        Dark characters appear offline except to admin.
-        """
-        if value is not None:
-            self.owner.db._dark = value
-            self.owner.sys_msg("You %s DARK." % ('are now' if value else 'are no longer'))
-        return self.owner.db._dark
-
-    def is_hidden(self, value=None):
-        """
-        Hidden characters only appear on the who list to admin.
-        """
-        if value is not None:
-            self.owner.db._hidden = value
-            self.owner.sys_msg("You %s HIDDEN." % ('are now' if value else 'are no longer'))
-        return self.owner.db._hidden
-
-    def can_see(self, target):
-        if self.owner.is_admin():
-            return True
-        return not (target.who.is_dark() or target.who.is_hidden())
-
-
-
-
-class AccountSub(object):
-
-    def __init__(self, owner):
-        self.owner = owner
-        self.config = owner.config
+    @property
+    def max_character_slots(self):
+        return self.base_character_slots + self.extra_character_slots
 
     def display(self, viewer, footer=True):
         message = list()
-        message.append(viewer.render.subheader('Account: %s' % self.owner.key))
+        message.append(viewer.render.subheader('Account: %s' % self.owner.key, style=self.style))
         message.append('Email: %s' % self.owner.email)
-        message.append('Slots: %s/%s(%s)' % (self.available_slots, self.max_slots, self.extra_slots))
-        chars = self.characters()
+        message.append('Slots: %s/%s(%s)' % (self.available_character_slots, self.max_character_slots,
+                                             self.extra_character_slots))
+        chars = self.owner.characters.all()
         if chars:
-            message.append(viewer.render.separator('Characters'))
-            char_table = viewer.render.make_table(['Name', 'Status', 'Cost'], width=[52, 20, 6])
+            message.append(viewer.render.separator('Characters', style=self.style))
+            char_table = viewer.render.make_table(['Name', 'Status', 'Cost'], width=[52, 20, 6], style=self.style)
             for char in chars:
-                char_table.add_row(char.key, char.account.status(), char.account.cost())
+                char_table.add_row(char.key, char.system.status(), char.system.cost())
             message.append(char_table)
         if footer:
-            message.append(viewer.render.footer())
+            message.append(viewer.render.footer(style=self.style))
         return '\n'.join(unicode(line) for line in message)
 
     def is_builder(self):
@@ -137,39 +73,6 @@ class AccountSub(object):
             return 'Builder'
         return 'Mortal'
 
-    def characters(self):
-        """
-        Returns a list of all valid playable characters.
-        """
-        return sorted([setting.character for setting in self.owner.char_settings.filter(enabled=True)],
-                      key=lambda char: char.key)
-
-    def bind_character(self, character):
-        """
-        This method is used to attach a character to a player.
-
-        Args:
-            character (objectdb): The character being bound.
-        """
-        character.accountsub.update_owner(self.owner)
-
-    def unbind_character(self, character):
-        character.accountsub.update_owner(None)
-
-    def disable(self, enactor=None):
-        if enactor.player == self.owner:
-            raise ValueError("Cannot disable yourself!")
-
-        self.config.model.enabled = False
-        self.config.model.save(update_fields=['enabled'])
-        self.owner.sys_msg("Your account has been disabled!", sys_name='ACCOUNT')
-        for session in self.owner.sessions.all():
-            self.owner.disconnect_session_from_player(session)
-
-    def enable(self, enactor=None):
-        self.config.model.enabled = True
-        self.config.model.save(update_fields=['enabled'])
-
     def change_password(self, enactor, old=None, new=None):
         if enactor.player == self.owner:
             if not self.owner.check_password(old):
@@ -178,57 +81,154 @@ class AccountSub(object):
             raise ValueError("No new password entered!")
         self.owner.set_password(new)
         self.owner.save()
-        self.owner.sys_msg("Your password has been changed.", sys_name='ACCOUNT')
+        self.sys_msg("Your password has been changed.", enactor=enactor)
 
-    def change_email(self, new_email):
+    def change_email(self, enactor, new_email):
         fixed_email = evennia.AccountDB.objects.normalize_email(new_email)
         self.owner.email = fixed_email
         self.owner.save()
-        self.owner.sys_msg("Your Account Email was changed to: %s" % fixed_email)
+        self.sys_msg("Your Account Email was changed to: %s" % fixed_email, enactor=enactor)
+
+    def display_time(self, date=None, format=None):
+        """
+        Displays a DateTime in a localized timezone to the account.
+
+        :param date: A datetime object. Will be utcnow() if not provided.
+        :param format: a strftime formatter.
+        :return: Time as String
+        """
+        if not format:
+            format = '%b %d %I:%M%p %Z'
+        if not date:
+            date = utcnow()
+        tz = self['timezone']
+        time = date.astimezone(tz)
+        return time.strftime(format)
+
+    def update_last_played(self):
+        self.settings_dict['last_played'].set(utcnow(), [], self.owner)
 
     @property
-    def available_slots(self):
-        return self.max_slots - self.used_slots
+    def last_played(self):
+        return self['last_played']
 
-    @property
-    def max_slots(self):
-        return self.base_slots + self.extra_slots
+    def off_or_idle_time(self):
+        idle = self.owner.idle_time
+        if idle is None:
+            return '|XOff|n'
+        return time_format(idle, style=1)
 
-    @property
-    def base_slots(self):
-        return settings.MAX_NR_CHARACTERS
+    def off_or_conn_time(self):
+        conn = self.owner.connection_time
+        if conn is None:
+            return '|XOff|n'
+        return time_format(conn, style=1)
 
-    @property
-    def extra_slots(self):
-        return self.config.model.extra_slots
+    def last_or_idle_time(self, viewer):
+        idle = self.owner.idle_time
+        last = self.last_played
+        if not idle:
+            return viewer.system.display(date=last, format='%b %d')
+        return time_format(idle, style=1)
 
-    @property
-    def used_slots(self):
-        return sum(self.owner.char_settings.filter(enabled=True).values_list('slot_cost', flat=True))
+    def last_or_conn_time(self, viewer):
+        conn = self.owner.connection_time
+        last = self.last_played
+        if not conn:
+            return viewer.system.display(date=last, format='%b %d')
+        return time_format(conn, style=1)
 
-    def set_slots(self, value):
-        try:
-            value = int(value)
-        except ValueError:
-            raise ValueError("Slots must be set to a whole number!")
-        self.config.model.extra_slots = value
-        self.config.model.save(update_fields=['extra_slots'])
+    def can_see(self, target):
+        if self.owner.system.is_admin():
+            return True
+        return not (target.system.dark() or target.system.hidden())
 
 
-class AccountRender(object):
-    def __init__(self, owner):
-        self.owner = owner
-        self.config = owner.config
-        self.cache = dict()
+class AccountStyles(__AccountManager):
+    style = 'style'
+    key = 'style'
+    system_name = 'STYLE'
 
-    def render_login(self, session=None):
-        characters = self.owner.accountsub.characters()
+    def __init__(self, owner, style_choices):
+        super(AccountStyles, self).__init__(owner)
+        self.styles_list = list()
+        self.styles_dict = dict()
+        self.style_choices = style_choices
+        self.load()
+
+    def __getitem__(self, item):
+        return self.styles_dict[item]
+
+    def load(self):
+        self.styles_list = list()
+        self.styles_dict = dict()
+
+        for style in self.style_choices:
+            new_style = style(self.owner)
+            self.styles_list.append(new_style)
+            self.styles_dict[new_style.key] = new_style
+
+    def display(self, viewer):
         message = list()
-        message.append(self.header("%s: Account Management" % settings.SERVERNAME))
-        message += self.at_look_info_section()
-        message += self.at_look_session_menu()
-        message.append(self.subheader('Commands'))
-        command_column = self.make_table([], header=False)
+        message.append(viewer.render.header('All Styles', style=self.style))
+        style_table = viewer.render.make_table(['Name', 'Description'], width=[20, 60], style=self.style)
+        for style in self.styles_list:
+            style_table.add_row(style.key, style.description)
+        message.append(style_table)
+        message.append(viewer.render.footer(style=self.style))
+        return '\n'.join([unicode(line) for line in message])
+
+
+    def clear(self, enactor, viewer, style):
+        for style in self.styles_list:
+            style.clear(suppress_output=True)
+
+
+class AccountCharacters(__AccountManager):
+    style = 'account_appearance'
+    
+    def __init__(self, owner):
+        super(AccountCharacters, self).__init__(owner)
+        self.character_list = list()
+        self.load()
+        
+    def load(self):
+        if not self.owner.attributes.has(key='character_list', category='athanor_settings'):
+            self.owner.attributes.set(key='character_list', value=list(), category='athanor_settings')
+        char_list = self.owner.attributes.get(key='character_list', category='athanor_settings')
+        cleaned = sorted([char for char in char_list if char], key=lambda char: char.key)
+        if len(char_list) != len(cleaned):
+            self.owner.attributes.add(key='character_list', value=char_list, category='athanor_settings')
+        self.character_list = cleaned
+    
+    def all(self):
+        cleaned = sorted([char for char in self.character_list if char], key=lambda char: char.key)
+        if len(cleaned) != len(self.character_list):
+            self.owner.attributes.add(key='character_list', value=cleaned, category='athanor_settings')
+            self.character_list = cleaned
+        return cleaned
+    
+    def add(self, character):
+        pass
+    
+    def remove(self, character):
+        pass
+        
+    def create(self, name):
+        pass
+
+
+class AccountLogin(__AccountManager):
+    style = 'login'
+
+    def render_login(self, viewer):
+        characters = self.owner.characters.all()
+        message = list()
+        message.append(viewer.render.header("%s: Account Management" % settings.SERVERNAME, style=self.style))
+        message += self.at_look_info_section(viewer)
+        message += self.at_look_session_menu(viewer)
+        message.append(viewer.render.subheader('Commands', style=self.style))
+        command_column = viewer.render.make_table([], header=False, style=self.style)
         command_text = list()
         command_text.append(unicode(ANSIString(" |whelp|n - more commands")))
         if self.owner.db._reset_username:
@@ -242,18 +242,14 @@ class AccountRender(object):
         command_column.add_row("\n".join(command_text), width=80)
         message.append(command_column)
         if characters:
-            message += self.at_look_character_menu()
-
-        message.append(self.subheader('Open Char Slots: %s/%s' % (
-            self.owner.accountsub.available_slots, self.owner.accountsub.max_slots)))
+            message += self.at_look_character_menu(viewer)
+        message.append(viewer.render.subheader('Open Char Slots: %s/%s' % (
+            self.owner.system.available_chracter_slots, self.owner.system.max_character_slots), syle=self.style))
         self.owner.msg('\n'.join(unicode(line) for line in message))
 
-
-    def at_look_info_section(self, viewer=None):
-        if not viewer:
-            viewer = self
+    def at_look_info_section(self, viewer):
         message = list()
-        info_column = self.make_table([], header=False)
+        info_column = viewer.render.make_table([], header=False, style=self.style)
         info_text = list()
         info_text.append(unicode(ANSIString("Account:".rjust(8) + " |g%s|n" % (self.owner.key))))
         email = self.owner.email if self.owner.email != 'dummy@dummy.com' else '<blank>'
@@ -263,11 +259,11 @@ class AccountRender(object):
         message.append(info_column)
         return message
 
-    def at_look_session_menu(self):
+    def at_look_session_menu(self, viewer):
         sessions = self.owner.sessions.all()
         message = list()
-        message.append(self.subheader('Sessions'))
-        sesstable = self.make_table(['ID', 'Protocol', 'Address', 'Connected'], width=[7, 23, 23, 27])
+        message.append(viewer.render.subheader('Sessions', style=self.style))
+        sesstable = viewer.render.make_table(['ID', 'Protocol', 'Address', 'Connected'], width=[7, 23, 23, 27], style=self.style)
         for session in sessions:
             conn_duration = time.time() - session.conn_time
             sesstable.add_row(session.sessid, session.protocol_key,
@@ -278,11 +274,11 @@ class AccountRender(object):
         # message.append(separator())
         return message
 
-    def at_look_character_menu(self):
+    def at_look_character_menu(self, viewer):
         message = list()
-        characters = self.owner.accountsub.characters()
-        message.append(self.subheader('Characters'))
-        chartable = self.make_table(['ID', 'Name', 'Type', 'Last Login'], width=[7, 37, 16, 20])
+        characters = self.owner.characters.all()
+        message.append(viewer.render.subheader('Characters', style=self.style))
+        chartable = viewer.render.make_table(['ID', 'Name', 'Type', 'Last Login'], width=[7, 37, 16, 20], style=self.style)
         for character in characters:
             login = character.character_settings.last_played
             if login:
@@ -295,9 +291,12 @@ class AccountRender(object):
         # message.append(separator())
         return message
 
-    def make_table(self, names, border='cols', header=True, **kwargs):
-        border_color = self.config['border_color']
-        column_color = self.config['column_color']
+
+class AccountRender(__AccountManager):
+
+    def make_table(self, names, border='cols', header=True, style='fallback', **kwargs):
+        border_color = self.owner.styles[style]['border_color']
+        column_color = self.owner.styles[style]['table_column_header_text_color']
 
         colornames = ['|%s%s|n' % (column_color, name) for name in names]
         header_line_char = ANSIString('|%s-|n' % border_color)
@@ -317,14 +316,15 @@ class AccountRender(object):
                 table.reformat_column(count, width=width)
         return table
 
-    def header(self, header_text=None, fill_character=None, edge_character=None, mode='header', color_header=True):
-        key = (header_text, mode, edge_character)
-        if key in self.cache.keys():
-            return self.cache[key]
+    def header(self, header_text=None, fill_character=None, edge_character=None, mode='header', color_header=True,
+               style='fallback'):
+
         colors = {}
-        colors['border'] = self.config['border_color']
-        colors['headertext'] = self.config['headertext_color']
-        colors['headerstar'] = self.config['headerstar_color']
+        colors['border'] = self.owner.styles[style]['%s_fill_color' % mode]
+        colors['headertext'] = self.owner.styles[style]['%s_text_color' % mode]
+        colors['headerstar'] = self.owner.styles[style]['%s_star_color' % mode]
+    
+
         width = 80
         if edge_character:
             width -= 2
@@ -341,13 +341,8 @@ class AccountRender(object):
                 center_string = ANSIString('|n |%s%s |n' % (colors['headertext'], header_text))
         else:
             center_string = ''
-
-        if not fill_character and mode in ['header', 'footer']:
-            fill_character = '='
-        elif not fill_character and mode == 'subheader':
-            fill_character = '='
-        elif not fill_character:
-            fill_character = '-'
+        
+        fill_character = self.owner.styles[style]['%s_fill' % mode]
         fill = ANSIString('|n|%s%s|n' % (colors['border'], fill_character))
 
         if edge_character:
@@ -356,7 +351,6 @@ class AccountRender(object):
             final_send = ANSIString(edge_fill) + ANSIString(main_string) + ANSIString(edge_fill)
         else:
             final_send = ANSIString(center_string).center(width, fill)
-        self.cache[key] = final_send
         return final_send
 
     def subheader(self, *args, **kwargs):
@@ -373,41 +367,3 @@ class AccountRender(object):
         if 'mode' not in kwargs:
             kwargs['mode'] = 'footer'
         return self.header(*args, **kwargs)
-
-    def clear_cache(self):
-        self.cache = dict()
-
-class ColorHandler(object):
-
-    def __init__(self, owner):
-        self.owner = owner
-        self.models = {'groups': owner.group_colors, 'channels': owner.channel_colors,
-                       'characters': owner.char_colors}
-        for key in self.models.keys():
-            data = {dat.target: dat.color for dat in self.models[key].all()}
-            setattr(self, key, data)
-
-    def set(self, target=None, value=None, mode='characters'):
-        model = self.models[mode]
-        if not target:
-            raise ValueError("Nothing entered to set!")
-        if not value:
-            return self.clear(target, mode)
-        if len(ANSIString('|%s|n' % value)):
-            raise ValueError("You must enter a valid color code!")
-        data = getattr(self, mode)
-        data[target] = value
-        dat, created = model.get_or_create(target=target)
-        dat.color = value
-        dat.save()
-        return "You will now see %s as |%s%s|n!" % (target, value, target)
-
-    def clear(self, target, mode):
-        if target in getattr(self, mode).keys():
-            data = getattr(self, mode)
-            del data[target]
-        else:
-            raise ValueError("Cannot clean an entry you don't have!")
-        model = self.models[mode]
-        model.objects.filter(target=target).delete()
-        return "Custom color for %s cleared." % target

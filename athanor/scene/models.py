@@ -50,7 +50,7 @@ class Plot(models.Model):
 
 
 class Runner(models.Model):
-    plot = models.ForeignKey('events.Plot', related_name='runners')
+    plot = models.ForeignKey('scene.Plot', related_name='runners')
     character = models.ForeignKey('objects.ObjectDB', related_name='plots')
     owner = models.BooleanField(default=False)
 
@@ -66,7 +66,7 @@ class Event(models.Model):
     date_scheduled = models.DateTimeField(null=True)
     date_started = models.DateTimeField(null=True)
     date_finished = models.DateTimeField(null=True)
-    plot = models.ForeignKey('Plot', null=True, related_name='events')
+    plot = models.ForeignKey('Plot', null=True, related_name='scene')
     post = models.OneToOneField('bbs.Post', related_name='event', null=True)
     public = models.BooleanField(default=True)
     status = models.PositiveSmallIntegerField(default=0, db_index=True)
@@ -113,8 +113,8 @@ class Event(models.Model):
 
 
 class Participant(models.Model):
-    character = models.ForeignKey('objects.ObjectDB', related_name='events')
-    event = models.ForeignKey('events.Event', related_name='participants')
+    character = models.ForeignKey('objects.ObjectDB', related_name='scene')
+    event = models.ForeignKey('scene.Event', related_name='participants')
     owner = models.BooleanField(default=False)
     tag = models.BooleanField(default=False)
 
@@ -134,13 +134,13 @@ class Source(models.Model):
 
 
 class Action(models.Model):
-    event = models.ForeignKey('events.Event', related_name='actions')
-    owner = models.ForeignKey('events.Participant', related_name='actions')
+    event = models.ForeignKey('scene.Event', related_name='actions')
+    owner = models.ForeignKey('scene.Participant', related_name='actions')
     ignore = models.BooleanField(default=False, db_index=True)
     date_made = models.DateTimeField(db_index=True)
     text = models.TextField(blank=True)
     codename = models.CharField(max_length=255, null=True, blank=True, default=None)
-    source = models.ForeignKey('events.Source', related_name='actions')
+    source = models.ForeignKey('scene.Source', related_name='actions')
 
 
     def display_pose(self, viewer):
@@ -152,11 +152,11 @@ class Action(models.Model):
 
 """
 class Event(models.Model):
-    owner = models.ForeignKey('objects.ObjectDB', related_name='events')
+    owner = models.ForeignKey('objects.ObjectDB', related_name='scene')
     title = models.CharField(max_length=150)
     description = models.TextField(blank=True)
     date_schedule = models.DateTimeField(db_index=True)
-    plot = models.ForeignKey('Plot', null=True, related_name='events')
+    plot = models.ForeignKey('Plot', null=True, related_name='scene')
     interest = models.ManyToManyField('objects.ObjectDB')
     post = models.OneToOneField('bbs.Post', related_name='event', null=True)
 
@@ -220,7 +220,7 @@ class Event(models.Model):
 
 
 class Pairing(models.Model):
-    event = models.ForeignKey('events.Event', related_name='pairings')
+    event = models.ForeignKey('scene.Event', related_name='pairings')
     number = models.PositiveSmallIntegerField(default=0)
     description = models.TextField(blank=True, null=True, default=None)
     characters = models.ManyToManyField('objects.ObjectDB', related_name='event_pairings')

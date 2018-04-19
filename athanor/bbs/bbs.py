@@ -1,13 +1,10 @@
 from __future__ import unicode_literals
 
-from evennia.locks.lockhandler import LockException
-from evennia.utils.utils import time_format
+from athanor.managers import ALL_MANAGERS
 
-from athanor.bbs.models import BoardGroup
 from athanor.core.command import AthCommand
 from athanor.groups.models import Group
-from athanor.utils.text import mxp, sanitize_string, penn_substitutions, partial_match
-from athanor.utils.time import duration_from_string
+from athanor.utils.text import sanitize_string, penn_substitutions, partial_match
 
 
 class BBCommand(AthCommand):
@@ -19,112 +16,6 @@ class BBCommand(AthCommand):
     locks = "cmd:bbs_enabled()"
     arg_rexex = r"\s+"
 
-    @property
-    def board_group(self):
-        board_group, created_check = BoardGroup.objects.get_or_create(main=1, group=None)
-        return board_group
-
-    def func(self):
-
-        rhs = self.rhs
-        lhs = self.lhs
-        cstr = self.cmdstring.lower()[3:]
-        self.group = None
-        self.choose_command(lhs, rhs, cstr)
-
-    def choose_command(self, lhs=None, rhs=None, cstr=None):
-
-        if 'newgroup' == cstr:
-            self.board_newgroup(self.args)
-            return
-
-        if 'cleargroup' == cstr:
-            self.board_cleargroup(self.args)
-            return
-
-        if 'config' == cstr:
-            self.board_config(lhs, rhs)
-            return
-
-        if 'timeout' == cstr:
-            self.board_timeout(lhs, rhs)
-            return
-
-        if 'order' == cstr:
-            self.board_order(lhs, rhs)
-            return
-
-        if 'lock' == cstr:
-            self.board_lock(lhs, rhs)
-            return
-
-        if 'leave' == cstr:
-            self.board_leave(lhs, rhs)
-            return
-
-        if 'join' == cstr:
-            self.board_join(lhs, rhs)
-            return
-
-        if 'post' == cstr:
-            self.board_post(lhs, rhs)
-            return
-
-        if 'list' == cstr:
-            self.board_list()
-            return
-
-        if 'write' in cstr or not cstr:
-            self.post_write(self.args)
-            return
-
-        if 'proof' == cstr:
-            self.post_proof()
-            return
-
-        if 'toss' == cstr:
-            self.post_toss()
-            return
-
-        if 'edit' == cstr:
-            self.post_edit(lhs, rhs)
-            return
-
-        if 'remove' == cstr:
-            self.post_remove(lhs, rhs)
-            return
-
-        if 'move' == cstr:
-            self.post_move(lhs, rhs)
-            return
-
-        if 'read' == cstr:
-            self.board_read(lhs, rhs)
-            return
-
-        if 'new' in cstr or 'next' == cstr:
-            self.read_next()
-            return
-
-        if 'catchup' == cstr:
-            self.read_catchup(lhs, rhs)
-            return
-
-        if 'scan' == cstr:
-            self.read_scan()
-            return
-
-        if 'search' == cstr:
-            self.board_search(lhs, rhs)
-            return
-
-        if 'check' == cstr:
-            self.board_check()
-            return
-
-    def get_focus(self):
-        return self.caller.db.group
-
 
 class CmdBBList(BBCommand):
     """
@@ -134,46 +25,29 @@ class CmdBBList(BBCommand):
 
     Board Membership
         +bblist - Shows all visible boards.
-        +bbleave <board> - Leave a board. You won't hear notices from it.
-        +bbjoin <board> - Re-join a board you've left.
+        +bbjoin <alias> - Join a Board.
+        +bbleave <alias> - Leave a board.
     """
 
     key = '+bblist'
-    aliases = ['+bbleave', '+bbjoin']
 
-    def board_list(self):
-        try:
-            board_group = self.board_group
-        except ValueError as err:
-            self.error(unicode(err))
-        self.msg(board_group.boards_list(checker=self.character, viewer=self.character))
+    def switch_main(self):
+        boards_manager = ALL_MANAGERS.board
+        self.msg(boards_manager.list_boards(self.character))
 
-    def board_leave(self, lhs=None, rhs=None):
-        try:
-            board_group = self.board_group
-            board = board_group.find_board(find_name=lhs.strip(), checker=self.character)
-        except ValueError as err:
-            self.error(unicode(err))
-            return
-        if self.character in board.ignore_list.all():
-            self.sys_msg("You are already ignoring that board.")
-            return
-        board.ignore_list.add(self.character)
-        self.sys_msg("You will no longer receive announcements for Board %s: %s" % (board.order, board))
+class CmdBBJoin(BBCommand):
+    key = '+bbjoin'
+    
+    def switch_main(self):
+        self.character.bbs.join_board(enactor=self.character, name=self.lhs)
 
-    def board_join(self, lhs=None, rhs=None):
-        try:
-            board_group = self.board_group
-            board = board_group.find_board(find_name=lhs.strip(), checker=self.character)
-        except ValueError as err:
-            self.error(unicode(err))
-            return
-        if self.character not in board.ignore_list.all():
-            self.sys_msg("You are already listening to that board.")
-            return
-        board.ignore_list.remove(self.character)
-        self.sys_msg("You will now receive announcements for Board %s: %s" % (board.order, board))
 
+class CmdBBLeave(BBCommand):
+    key = '+bbleave'
+    
+    def switch_main(self):
+        self.character.bbs.leave_board(enactor=self.character, name=self.lhs)
+    
 
 class CmdBBAdmin(BBCommand):
     """
@@ -199,110 +73,48 @@ class CmdBBAdmin(BBCommand):
             and write.
 
             The default lock for a board is:
-                read:all();write:all();admin:pperm(wizards)
+                read:all();write:all();admin:perm(Admin)
 
             Example lockstring for a staff announcement board:
-                read:all();write:pperm(wizards);admin:pperm(wizards)
+                read:all();write:perm(Admin);admin:perm(Admin)
 
     """
 
-    key = "+bbconfig"
-    aliases = ['+bbnewgroup', '+bbcleargroup', '+bborder', '+bblock']
+    key = "+bbadmin"
+    player_switches = ['create', 'delete', 'rename', 'order', 'lock', 'unlock', 'set']
 
-    locks = "cmd:pperm(Wizards)"
+    locks = "cmd:perm(Admin)"
 
-    def board_newgroup(self, lhs=None):
-        try:
-            board_group = self.board_group
-            if self.group:
-                if not self.group.check_permission(checker=self.character, check="gbadmin"):
-                    self.error("Permission denied.")
-                    return
-            else:
-                if not self.is_admin:
-                    self.error("Permission denied.")
-                    return
-            new_board = board_group.make_board(key=lhs)
-        except ValueError as err:
-            self.error(unicode(err))
-            return
-        self.sys_msg("Board '%s' created!" % new_board)
+    def switch_create(self):
+        boards_manager = ALL_MANAGERS.board
+        group = None
+        board_name = self.lhs
+        if '/' in self.lhs:
+            group_name, board_name = self.lhs.split('/')
+            group = ALL_MANAGERS.group.find_group(self.character, group_name)
+        boards_manager.create_board(enactor=self.character, name=board_name, group=group, order=self.rhs)
+        
+    def switch_delete(self):
+        boards_manager = ALL_MANAGERS.board
+        boards_manager.delete_board(enactor=self.character, name=self.lhs, verify=self.rhs)
 
-    def board_cleargroup(self, name):
-        try:
-            board_group = self.board_group
-            board = board_group.find_board(find_name=name.strip(), checker=self.character)
-        except ValueError as err:
-            self.error(unicode(err))
-            return
-        if not self.verify("Delete Board %s" % board.order):
-            message = "Deleting Board %s - This will clear all of its posts. Enter the command again to confirm."
-            self.sys_msg(message % board.key)
-            return
-        board.delete()
-        self.sys_msg("Board deleted!")
+    def switch_rename(self):
+        boards_manager = ALL_MANAGERS.board
+        boards_manager.rename_board(enactor=self.character, name=self.lhs, new_name=self.rhs)
 
-    def board_config(self, lhs=None, rhs=None):
+    def switch_set(self):
         pass
 
-    def board_order(self, lhs=None, rhs=None):
-        if not rhs:
-            self.error("No new order entered!")
-            return
-        try:
-            board_group = self.board_group
-            board = board_group.find_board(find_name=lhs.strip(), checker=self.character)
-            new_order = int(rhs)
-        except ValueError as err:
-            self.error(unicode(err))
-            return
-        if new_order < 1:
-            self.error("Board orders must be positive.")
-            return
-        if board_group.boards.filter(order=new_order).count():
-            self.error("Board orders must be unique.")
-            return
-        board.order = new_order
-        board.save(update_fields=['order'])
-        self.sys_msg("Board re-ordered.")
+    def switch_order(self):
+        boards_manager = ALL_MANAGERS.board
+        boards_manager.order_board(enactor=self.character, name=self.rhs, order=self.lhs)
 
-    def board_lock(self, lhs=None, rhs=None):
-        try:
-            board_group = self.board_group
-            board = board_group.find_board(find_name=lhs.strip(), checker=self.character)
-        except ValueError as err:
-            self.error(unicode(err))
-            return
-        if not board.check_permission(checker=self.character, type='admin', checkadmin=False):
-            self.error("Permission denied.")
-            return
-        if not rhs:
-            self.error("Must enter a lockstring.")
-            return
-        for locksetting in rhs.split(';'):
-            access_type, lockfunc = locksetting.split(':', 1)
-            if not access_type:
-                self.error("Must enter an access type: read, write, or admin.")
-                return
-            accmatch = partial_match(access_type, ['read', 'write', 'admin'])
-            if not accmatch:
-                self.error("Access type must be read, write, or admin.")
-                return
-            if not lockfunc:
-                self.error("Lock func not entered.")
-                return
-            ok = False
-            try:
-                ok = board.locks.add(rhs)
-                board.save(update_fields=['lock_storage'])
-            except LockException as e:
-                self.error(unicode(e))
-            if ok:
-                self.sys_msg("Added lock '%s' to %s." % (rhs, board))
-            return
+    def switch_lock(self):
+        boards_manager = ALL_MANAGERS.board
+        boards_manager.lock_board(enactor=self.character, name=self.rhs, lock=self.lhs)
 
 
-class CmdBBWrite(BBCommand):
+class CmdBBPost(BBCommand):
     """
     The BBS is a global, multi-threaded board with a rich set of features that grew
     from a rewrite of Myrddin's classical BBS. It shares almost identical command
@@ -333,40 +145,8 @@ class CmdBBWrite(BBCommand):
     """
 
     key = "+bbpost"
-    aliases = ['+bbwrite', '+bbedit', '+bbtoss', '+bbmove', '+bbremove', '+bbtimeout', '+bb', '+bbproof']
-
-    def post_write(self, lhs):
-        if not lhs:
-            self.error("Nothing to enter!")
-            return
-        if not self.character.db.curpost:
-            self.error("You do not have a post in progress.")
-            return
-        curpost = self.character.db.curpost
-        curpost['text'] = curpost.get('text', "") + penn_substitutions(lhs)
-        self.character.db.curpost = curpost
-        self.sys_msg("Text added to post in progress.")
-
-    def post_proof(self):
-        if not self.character.db.curpost:
-            self.error("You do not have a post in progress.")
-            return
-        curpost = dict(self.character.db.curpost)
-        message = list()
-        message.append(self.player.render.header("Post in Progress"))
-        message.append('Board: %s, Group: %s' % (curpost['board'], curpost['group']))
-        message.append("Subject: %s" % curpost['subject'])
-        message.append(curpost['text'])
-        message.append(self.player.render.header(viewer=self.character))
-        self.msg_lines(message)
-
-    def post_toss(self):
-        if not self.character.db.curpost:
-            self.error("You do not have a post in progress.")
-            return
-        self.sys_msg("Post in progress deleted.")
-        del self.character.db.curpost
-
+    
+    
     def board_post(self, lhs=None, rhs=None):
         if not lhs:
             self.board_post_finish()
@@ -448,7 +228,55 @@ class CmdBBWrite(BBCommand):
         board.make_post(character=self.character, subject=sanitize_string(subject),
                         text=penn_substitutions(rhs.strip()))
 
-    def post_edit(self, lhs, rhs):
+class CmdBBWrite(BBCommand):
+    key = '+bbwrite'
+    aliases = ['+bb',]
+    
+    def switch_main(self):
+        if not self.lhs:
+            self.error("Nothing to enter!")
+            return
+        if not self.character.db.curpost:
+            self.error("You do not have a post in progress.")
+            return
+        curpost = self.character.db.curpost
+        curpost['text'] = curpost.get('text', "") + penn_substitutions(self.lhs)
+        self.character.db.curpost = curpost
+        self.sys_msg("Text added to post in progress.")
+
+
+class CmdBBProof(BBCommand):
+    key = '+bbproof'
+    
+    def switch_main(self):
+        if not self.character.db.curpost:
+            self.error("You do not have a post in progress.")
+            return
+        curpost = dict(self.character.db.curpost)
+        message = list()
+        message.append(self.player.render.header("Post in Progress"))
+        message.append('Board: %s, Group: %s' % (curpost['board'], curpost['group']))
+        message.append("Subject: %s" % curpost['subject'])
+        message.append(curpost['text'])
+        message.append(self.player.render.header(viewer=self.character))
+        self.msg_lines(message)
+
+class CmdBBToss(BBCommand):
+    key = '+bbtoss'
+    
+    def switch_main(self):
+        if not self.character.db.curpost:
+            self.error("You do not have a post in progress.")
+            return
+        self.sys_msg("Post in progress deleted.")
+        del self.character.db.curpost
+
+class CmdBBEdit(BBCommand):
+    key = '+bbedit'
+    
+    def switch_main(self):
+        lhs = self.lhs
+        rhs = self.rhs
         if not lhs:
             self.error("What will you edit?")
             return
@@ -509,8 +337,15 @@ class CmdBBWrite(BBCommand):
                 self.sys_msg("Post %s: %s edited!" % (post.num, post.subject))
             else:
                 self.error("Permission denied for Post %s: %s" % (post.num, post.subject))
+    
 
-    def post_move(self, lhs, rhs):
+
+class CmdBBMove(BBCommand):
+    key = '+bbmove'
+    
+    def switch_main(self):
+        rhs = self.rhs
+        lhs = self.lhs
         if not lhs:
             self.error("No board to check!")
             return
@@ -544,7 +379,14 @@ class CmdBBWrite(BBCommand):
                 self.error("Permission denied for %s" % post)
         board.squish_posts()
 
-    def post_remove(self, lhs, rhs):
+
+class CmdBBRemove(BBCommand):
+    key = '+bbremove'
+    aliases = ['+bbdelete',]
+
+    def switch_main(self):
+        rhs = self.rhs
+        lhs = self.lhs
         if not lhs:
             self.error("No board to check!")
             return
@@ -569,82 +411,6 @@ class CmdBBWrite(BBCommand):
                 self.error("Permission denied for %s" % post)
         board.posts.filter(id__in=postdel).delete()
         board.squish_posts()
-
-    def board_timeout(self, lhs, rhs):
-        if '/' in lhs:
-            self.board_timeout_posts(lhs, rhs)
-        else:
-            self.board_timeout_board(lhs, rhs)
-
-    def board_timeout_posts(self, lhs, rhs):
-        boardname, postnums = lhs.split('/', 1)
-        boardname.strip()
-        postnums.strip()
-        try:
-            board_group = self.board_group
-            board = board_group.find_board(find_name=boardname, checker=self.character)
-            posts = board.parse_postnums(player=self.player, check=postnums)
-        except ValueError as err:
-            self.error(unicode(err))
-            return
-        if not board.timeout:
-            self.error("'%s' has disabled timeouts." % board)
-            return
-        admin = board.perm_check(self.caller, 'admin')
-        new_timeout = duration_from_string(rhs)
-        if new_timeout.total_seconds() == 0 and not admin:
-            self.error("Only board admins may sticky a post.")
-            return
-        if new_timeout > board.timeout and not admin:
-            self.error("Only admin may set post timeouts above the board timeout.")
-            return
-        for post in posts:
-            if not post.can_edit(self.player):
-                self.error("Cannot Edit post '%s: %s' - Permission denied." % (post.order, post.subject))
-            else:
-                post.timeout = new_timeout
-                post.save(update_fields=['timeout'])
-                self.sys_msg("Timeout set for post '%s: %s' - now %s" % (post.order, post.subject,
-                                                                         time_format(new_timeout, style=1)))
-
-    def board_timeout_board(self, lhs, rhs):
-        if lhs:
-            self.board_timeout_board_set(lhs, rhs)
-        else:
-            self.board_timeout_list(lhs, rhs)
-
-    def board_timeout_board_set(self, lhs, rhs):
-        try:
-            board_group = self.board_group
-            board = board_group.find_board(find_name=lhs, group=self.group, checker=self.character)
-        except ValueError as err:
-            self.error(unicode(err))
-            return
-        if not board.perm_check(self.player, 'admin'):
-            self.error("Permission denied.")
-            return
-        new_timeout = duration_from_string(rhs)
-        timeout_string = time_format(new_timeout.total_seconds(), style=1) if new_timeout else '0 - Permanent'
-        board.timeout = new_timeout
-        board.save(update_fields=['timeout'])
-        self.sys_msg("'%s' timeout set to: %s" % (board, timeout_string))
-
-    def board_timeout_list(self, lhs, rhs):
-        try:
-            board_group = self.board_group
-        except ValueError as err:
-            self.error(unicode(err))
-            return
-        message = list()
-        message.append(self.board_header())
-        bbtable = self.player.render.make_table(["ID", "RWA", "Name", "Timeout"], width=[4, 4, 23, 47])
-        for board in board_group.visible_boards(checker=self.player):
-            bbtable.add_row(mxp(board.order, "+bbread %s" % board.order),
-                            board.display_permissions(self.character), mxp(board, "+bbread %s" % board.order),
-                            time_format(board.timeout.total_seconds()) if board.timeout else '0 - Permanent')
-        message.append(bbtable)
-        message.append(self.player.render.footer())
-        self.msg_lines(message)
 
 
 class CmdBBRead(BBCommand):
@@ -671,9 +437,10 @@ class CmdBBRead(BBCommand):
         +bbsearch <board>=<player> - Search for posts by a specific person.
     """
     key = '+bbread'
-    aliases = ['+bbnext', '+bbcatchup', '+bbnew', '+bbscan', '+bbsearch']
 
-    def board_read(self, lhs=None, rhs=None):
+    def switch_main(self):
+        rhs = self.rhs
+        lhs = self.lhs
         if not lhs:
             self.board_read_list()
         elif len(lhs.split('/')) > 1:
@@ -719,7 +486,12 @@ class CmdBBRead(BBCommand):
             return
         self.caller.msg(board.display_board(self.player))
 
-    def read_next(self):
+
+class CmdBBNext(BBCommand):
+    key = '+bbnext'
+    aliases = ['+bbnew',]
+
+    def switch_main(self):
         try:
             board_group = self.board_group
         except ValueError as err:
@@ -732,7 +504,12 @@ class CmdBBRead(BBCommand):
                 return
         self.sys_msg("There are no unread posts to see.")
 
-    def read_catchup(self, lhs=None, rhs=None):
+class CmdBBCatchup(BBCommand):
+    key = '+bbcatchup'
+
+    def switch_main(self):
+        rhs = self.rhs
+        lhs = self.lhs
         try:
             board_group = self.board_group
         except ValueError as err:
@@ -761,7 +538,10 @@ class CmdBBRead(BBCommand):
                 post.read.add(self.player)
             self.sys_msg("All posts for Board %s: %s marked read." % (board.order, board.key))
 
-    def read_scan(self):
+class CmdBBScan(BBCommand):
+    key = '+bbscan'
+
+    def switch_scan(self):
         if self.group:
             self.read_scan_gb()
             return
@@ -820,131 +600,5 @@ class CmdBBRead(BBCommand):
         elif standalone:
             self.sys_msg("There are no unread posts on the %s GBS." % group)
 
-
-class GBCommand(BBCommand):
-    """
-    This is the class template for group bb commands.
-    """
-    help_category = "Groups"
-    system_name = "GBS"
-    locks = "cmd:all()"
-
-    def func(self):
-        """
-        Here we go!
-        """
-        rhs = self.rhs
-        lhs = self.lhs
-        cstr = self.cmdstring
-
-        cstr = cstr[2:]
-
-        self.group = self.get_focus()
-        if not self.group:
-            self.error("No group focused on to check.")
-            return
-
-        self.choose_command(lhs, rhs, cstr)
-
-    @property
-    def board_group(self):
-        board_group, created_check = BoardGroup.objects.get_or_create(main=0, group=self.group).first()
-        return board_group
-
-class CmdGBList(GBCommand, CmdBBList):
-    """
-    The BBS is a global, multi-threaded board with a rich set of features that grew
-    from a rewrite of Myrddin's classical BBS. It shares almost identical command
-    syntax and appearance.
-
-    These commands use the Group Board System. You must be focused to a Group to use them.
-
-    Board Membership
-        +gblist - Shows all visible boards.
-        +gbleave <board> - Leave a board. You won't hear notices from it.
-        +gbjoin <board> - Re-join a board you've left.
-    """
-
-    key = '+gblist'
-    aliases = ['+gbleave', '+gbjoin']
-
-
-class CmdGBAdmin(GBCommand, CmdBBAdmin):
-    """
-    The BBS is a global, multi-threaded board with a rich set of features that grew
-    from a rewrite of Myrddin's classical BBS. It shares almost identical command
-    syntax and appearance.
-
-    These commands use the Group Board System. You must be focused to a Group to use them.
-
-    Managing Boards - Requires the GBManage Permission
-        +gbnewgroup <name> - Creates a new board.
-        +gbcleargroup <board> - Deletes a board and all posts.
-        +gborder <new order> - Reorders board display order. Must use all board
-            numbers in new order. Example: If you had five boards, and wanted to
-            make the final board the first, you'd use +bborder 5 1 2 3 4
-        +gbconfig <board>/<parameter>=<value> - Sets a board's <option> to
-            <value>. Entering no <value> clears the option. Available Options:
-            anonymous - Set to <name> makes all posts appear to be from <name>
-            as long as it's set. Admin still see real poster.
-
-    """
-
-    key = "+gbconfig"
-    aliases = ['+gbnewgroup', '+gbcleargroup', '+gborder', '+gblock']
-    locks = "cmd:pperm(Wizards) or gbmanage()"
-
-
-class CmdGBWrite(GBCommand, CmdBBWrite):
-    """
-    The BBS is a global, multi-threaded board with a rich set of features that grew
-    from a rewrite of Myrddin's classical BBS. It shares almost identical command
-    syntax and appearance.
-
-    These commands use the Group Board System. You must be focused to a Group to use them.
-
-    Writing Posts
-        +gbpost <board>/<title> - Begins writing a post.
-        +gbwrite <text> - Writes to post in progress. +bb <text> also works.
-        +gbproof - Show post in progress.
-        +gbedit <type>=<search>/<replace> - Edits post in progress. <type> must
-            be TEXT or TITLE. Any text matching <search> will be replaced with
-            <replace>.
-        +gbtoss - Erases a post in progress.
-        +gbpost - Submits finalized post.
-        +gbpost <board>/<title>=<text> - Quick posts to a board.
-        +gbedit <board>/<#>=<search>/<replace> - Edits a post on the board. Must
-            be original poster or staff.
-        +gbmove <board>/<#>=<board> - Relocates a post. Must be original poster or
-            staff.
-        +gbremove <board>/<list> - Removes a list of posts. <list> works like with
-            +bbread. Must be original poster or staff.
-
-    """
-
-    key = "+gbpost"
-    aliases = ['+gbwrite', '+gbedit', '+gbtoss', '+gbmove', '+gbremove', '+gbtimeout', '+gb', '+gbproof']
-
-
-class CmdGBRead(GBCommand, CmdBBRead):
-    """
-    The BBS is a global, multi-threaded board with a rich set of features that grew
-    from a rewrite of Myrddin's classical BBS. It shares almost identical command
-    syntax and appearance.
-
-    Reading Posts
-        +gbread - Show all message boards.
-        +gbread <board> - Shows a board's messages. <board> can be its name
-            (supports partial matches) or number.
-        +gbread <board>/<list> - Read a message. <list> is comma-seperated.
-            Entries can be single numbers, number ranges (ie. 1-6), and u (for 'all
-            unread'), in any combination or order - duplicates will not be shown.
-        +gbnext - shows first available unread message.
-        +gbnew - Same as +bbnext.
-        +gbcatchup <board> - Mark all messages on a board read. +bbcatchup ALL
-            sets ALL boards 'read.'
-        +gbscan - Lists unread messages.
-        +gbcheck - Enable or disable automatic board checking at connect.
-    """
-    key = '+gbread'
-    aliases = ['+gbnext', '+gbcatchup', '+gbnew', '+gbscan', '+gbcheck', '+gbsearch']
+BB_COMMANDS = [CmdBBList, CmdBBJoin, CmdBBLeave, CmdBBAdmin, CmdBBWrite, CmdBBPost, CmdBBProof,
+               CmdBBToss, CmdBBEdit, CmdBBMove, CmdBBRemove, CmdBBRead, CmdBBNext, CmdBBScan]

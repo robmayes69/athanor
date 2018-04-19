@@ -20,7 +20,7 @@ from athanor.jobs.models import JobCategory
 from athanor.mushimport.convpenn import read_penn, process_penntext
 from athanor.mushimport.models import MushObject, cobj, pmatch, objmatch, MushAttributeName
 from athanor.radio.models import RadioFrequency
-from athanor.events.models import Plot, Event, Runner, Source, Action
+from athanor.scene.models import Plot, Event, Runner, Source, Action
 from athanor.utils.text import partial_match, dramatic_capitalize, sanitize_string, penn_substitutions
 from athanor.utils.time import utcnow, duration_from_string
 

@@ -2,6 +2,9 @@
 import os
 from evennia.settings_default import *
 
+# Import Athanor Styles Configuration
+from athanor.athanor_styles import ATHANOR_COLORS, ATHANOR_FILL
+
 # ATHANOR SETTINGS
 
 MULTISESSION_MODE = 3
@@ -28,7 +31,7 @@ INSTALLED_APPS = INSTALLED_APPS + ('athanor.bbs.apps.BBS',
                                    'athanor.core.apps.Core',
                                    'athanor.mushimport.apps.Mushimport',
                                    'athanor.radio.apps.Radio',
-                                   'athanor.events.apps.Events',)
+                                   'athanor.scene.apps.Events',)
 
 
 TEMPLATES[0]['DIRS'] += (os.path.join(GAME_DIR, 'athanor', 'site', 'templates'),)

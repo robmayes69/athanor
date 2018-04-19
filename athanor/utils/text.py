@@ -71,6 +71,22 @@ def penn_substitutions(input=None):
         input = input.replace(bad_char, '|-')
     return input
 
+SYSTEM_CHARACTERS = ('/','|','=',',')
+
+def sanitize_name(name, system_name):
+    name = sanitize_string(name)
+    if not name:
+        raise ValueError("%s names must not be empty!" % system_name)
+    for char in SYSTEM_CHARACTERS:
+        if char in name:
+            raise ValueError("%s is not allowed in %s names!" % (char, system_name))
+    return name
+
+def sanitize_board_name(name):
+    return sanitize_name(name, 'Board')
+
+def sanitize_group_name(name):
+    return sanitize_name(name, 'Group')
 
 def partial_match(match_text, candidates):
     candidate_list = sorted(candidates, key=lambda item: len(str(item)))

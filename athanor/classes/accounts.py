@@ -23,14 +23,12 @@ several more options for customizing the Guest account system.
 """
 
 from __future__ import unicode_literals
-
-
 from evennia import DefaultAccount, DefaultGuest
-
 from evennia.utils.utils import lazy_property, is_iter
 from evennia.utils.ansi import ANSIString
-from athanor.utils.handlers.account import AccountWeb, AccountTime, AccountSub, AccountRender, ColorHandler
-from athanor.core.config import AccountSettings
+from athanor.utils.handlers.account import AccountSystem, AccountRender, AccountCharacters, AccountStyles
+from athanor.core.config.game_styles import ACCOUNT_STYLES
+
 
 class Account(DefaultAccount):
     """
@@ -100,28 +98,20 @@ class Account(DefaultAccount):
 
     """
     @lazy_property
-    def config(self):
-        return AccountSettings(self)
-
-    @lazy_property
-    def web(self):
-        return AccountWeb(self)
-
-    @lazy_property
-    def accountsub(self):
-        return AccountSub(self)
-
-    @lazy_property
-    def time(self):
-        return AccountTime(self)
+    def system(self):
+        return AccountSystem(self)
 
     @lazy_property
     def render(self):
         return AccountRender(self)
 
     @lazy_property
-    def colors(self):
-        return ColorHandler(self)
+    def characters(self):
+        return AccountCharacters(self)
+    
+    @lazy_property
+    def styles(self):
+        return AccountStyles(self, ACCOUNT_STYLES)
 
     def _send_to_connect_channel(self, message):
         return
@@ -129,30 +119,19 @@ class Account(DefaultAccount):
     def at_account_creation(self):
         super(Account, self).at_account_creation()
 
-        # All Players need a Settings entry!
-        settings = self.config
-
     def at_post_login(self, session=None):
         super(Account, self).at_post_login(session)
 
         if len(self.sessions.all()) == 1:
             self.at_true_login(session)
 
-        #Update webclient data...
-        if session:
-            if session.ndb.gui:
-                session.msg(login_player=((), {'data': self.web.login_serialize()}))
-
-
     def at_true_login(self, session=None):
-        self.config.update_last_played()
+        self.system.update_last_played()
 
     def at_failed_login(self, session=None):
         super(Account, self).at_failed_login(session)
         self.sys_msg('WARNING: Detected a failed login.')
 
-    def is_admin(self):
-        return self.locks.check_lockstring(self, "dummy:perm(Wizards)")
 
     def get_all_puppets(self):
         """
@@ -160,11 +139,11 @@ class Account(DefaultAccount):
         """
         return sorted(super(Account, self).get_all_puppets(), key=lambda char: char.key)
 
-    def sys_msg(self, message, sys_name='SYSTEM', error=False):
+    def sys_msg(self, message, enactor=None, style='fallback', sys_name='SYSTEM', error=False):
         if error:
-            message = '{rERROR:{n %s' % message
+            message = '|rERROR:|n %s' % message
         settings = self.config
-        alert = '{%s-=<{n{%s%s{n{%s>=-{n ' % (settings['msgborder_color'], settings['msgtext_color'],
+        alert = '|%s-=<|n|%s%s|n|%s>=-|n ' % (settings['msgborder_color'], settings['msgtext_color'],
                                             sys_name.upper(), settings['msgborder_color'])
         send_string = alert + '(Account) ' + message
         self.msg(unicode(ANSIString(send_string)))

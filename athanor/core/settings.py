@@ -32,7 +32,7 @@ class CmdEvents(AthCommand):
 
     |cGeneral Commands|n
         |w+schedule|n
-            Views a list of scheduled events.
+            Views a list of scheduled scene.
         |w+schedule <id>|n
             View details about a scheduled scene. The owner can see interested parties.
         |w+schedule/tag <id>|n
@@ -41,7 +41,7 @@ class CmdEvents(AthCommand):
             Remove a tag if you change your mind.
     """
     key = "+schedule"
-    aliases = ["+events", "+event", "+schedule"]
+    aliases = ["+scene", "+event", "+schedule"]
     locks = "cmd:all()"
     help_category = "Roleplaying"
     player_switches = ['add', 'delete', 'reschedule', 'desc', 'title', 'plot', 'tag', 'untag', 'mail', 'mine', 'invite']

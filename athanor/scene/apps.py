@@ -1,4 +1,4 @@
 from django.apps import AppConfig
 
 class Events(AppConfig):
-    name = 'athanor.events'
+    name = 'athanor.scene'

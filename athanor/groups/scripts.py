@@ -1,17 +1,7 @@
 from __future__ import unicode_literals
 from athanor.classes.scripts import AthanorScript
-from athanor.utils.text import sanitize_string, partial_match
+from athanor.utils.text import sanitize_string, partial_match, sanitize_group_name
 from athanor.groups.models import GroupTier, Group
-
-
-def sanitize_group_name(name):
-    name = sanitize_string(name)
-    if not name:
-        raise ValueError("Group names must not be empty!")
-    for char in ['/','|','=']:
-        if char in name:
-            raise ValueError("%s is not allowed in Group names!" % char)
-    return name
 
 
 class GroupManager(AthanorScript):

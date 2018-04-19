@@ -4,7 +4,7 @@ from athanor.core.models import WithKey, WithLocks
 from athanor.utils.time import utcnow, duration_from_string
 
 
-class JobCategory(WithKey, WithLocks):
+class JobBucket(WithKey, WithLocks):
     anonymous = models.BooleanField(default=False)
     due = models.DurationField()
     description = models.TextField(blank=True, null=True, default=None)
@@ -84,7 +84,7 @@ class JobCategory(WithKey, WithLocks):
 
 
 class Job(models.Model):
-    category = models.ForeignKey('jobs.JobCategory', related_name='jobs')
+    bucket = models.ForeignKey('jobs.JobBucket', related_name='jobs')
     title = models.CharField(max_length=255)
     submit_date = models.DateTimeField(auto_now_add=True)
     due_date = models.DateTimeField()

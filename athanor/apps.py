@@ -46,4 +46,4 @@ class Radio(AppConfig):
 
 
 class Events(AppConfig):
-    name = 'athanor.events'
+    name = 'athanor.scene'

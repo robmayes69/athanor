@@ -8,16 +8,15 @@ creation commands.
 
 """
 from __future__ import unicode_literals
-
 from evennia import DefaultCharacter
 from evennia.utils.utils import lazy_property
 from evennia.utils.ansi import ANSIString
 from athanor.utils.text import mxp
 from athanor.managers import ALL_MANAGERS
-from athanor.utils.handlers.character import CharacterWeb, CharacterTime, CharacterSub, CharacterMode
-from athanor.utils.handlers.character import CharacterChannel, CharacterPage
-from athanor.core.config import CharacterSettings
-from athanor.core.models import CharacterSetting
+from athanor.utils.handlers.character import CharacterSystem, CharacterMode, CharacterStyles
+from athanor.utils.handlers.character import CharacterChannel, CharacterPage, CharacterBBS
+from athanor.utils.handlers.character import CharacterRender
+from athanor.core.config.game_styles import CHARACTER_STYLES
 
 class Character(DefaultCharacter):
     """
@@ -39,29 +38,21 @@ class Character(DefaultCharacter):
 
     """
 
-    @property
-    def ath_char(self):
-        return True
+    @lazy_property
+    def bbs(self):
+        return CharacterBBS(self)
 
     @lazy_property
     def who(self):
         return ALL_MANAGERS.who
 
     @lazy_property
-    def web(self):
-        return CharacterWeb(self)
-
+    def system(self):
+        return CharacterSystem(self)
+    
     @lazy_property
-    def time(self):
-        return CharacterTime(self)
-
-    @lazy_property
-    def config(self):
-        return CharacterSettings(self)
-
-    @lazy_property
-    def accountsub(self):
-        return CharacterSub(self)
+    def styles(self):
+        return CharacterStyles(self, CHARACTER_STYLES)
 
     @lazy_property
     def channels(self):
@@ -82,9 +73,9 @@ class Character(DefaultCharacter):
 
     def at_true_logout(self, player, session=None):
         """
-        A sub-hook of at_post_unpuppet for events that process only when all connected sessions disconnect.
+        A sub-hook of at_post_unpuppet for scene that process only when all connected sessions disconnect.
         """
-        self.config.update_last_played()
+        self.system.update_last_played()
         self.who.rem(self)
 
     def at_true_login(self):
@@ -123,7 +114,7 @@ class Character(DefaultCharacter):
             raise ValueError("Character name field empty.")
 
         # First, collect all possible character candidates.
-        candidates = Character.objects.filter_family(character_settings__enabled=True)
+        candidates = Character.objects.filter_family()
 
         # First we'll run an Exact check.:
         search_results = self.search(search_name, exact=True, use_nicks=True, candidates=candidates, quiet=True)
@@ -152,7 +143,7 @@ class Character(DefaultCharacter):
 
         if error:
             message = '|rERROR:|n %s' % message
-        alert = '|%s-=<|n{%s%s|n|%s>=-|n ' % (self.account_config['msgborder_color'],
+        alert = '|%s-=<|n|%s%s|n|%s>=-|n ' % (self.account_config['msgborder_color'],
                                               self.account_config['msgtext_color'],
                                             sys_name.upper(), self.account_config['msgborder_color'])
         send_string = alert + message
@@ -164,29 +155,6 @@ class Character(DefaultCharacter):
         send_commands = '|'.join(['%s %s' % (command, self.key) for command in commands])
         return mxp(text=self.key, command=send_commands)
 
-    @lazy_property
-    def owner(self):
-        return self.config.model.account
-
     @property
     def render(self):
-        return self.account.render
-
-    @lazy_property
-    def account_config(self):
-        return self.owner.config
-
-    def oob(self, *args, **kwargs):
-        for sess in [sess for sess in self.sessions.get() if sess.ndb.gui]:
-            sess.msg(*args, **kwargs)
-
-    def rename(self, new_name):
-        exist_ids = CharacterSetting.objects.filter(deleted=False).values_list('character', flat=True)
-        exist = Character.objects.filter_family(id__in=exist_ids, db_key__iexact=new_name).exclude(id=self.id).count()
-        if exist:
-            raise ValueError("Character names must be unique!")
-        self.key = new_name
-
-    def at_rename(self, oldname, newname):
-        from athanor.utils.create import SPEECH_FACTORY
-        SPEECH_FACTORY.update(self)
+        return CharacterRender(self)

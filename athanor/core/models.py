@@ -65,44 +65,6 @@ class AccountSetting(models.Model):
         self.save(update_fields=['last_played'])
 
 
-class GameSetting(models.Model):
-    key = models.PositiveSmallIntegerField(default=1, unique=True, db_index=True)
-    bbs_enabled = models.BooleanField(default=True)
-    gbs_enabled = models.BooleanField(default=True)
-    guest_post = models.BooleanField(default=True)
-    approve_channels = models.ManyToManyField('comms.ChannelDB', related_name='+')
-    admin_channels = models.ManyToManyField('comms.ChannelDB', related_name='+')
-    default_channels = models.ManyToManyField('comms.ChannelDB', related_name='+')
-    guest_channels = models.ManyToManyField('comms.ChannelDB', related_name='+')
-    roleplay_channels = models.ManyToManyField('comms.ChannelDB', related_name='+')
-    alerts_channels = models.ManyToManyField('comms.ChannelDB', related_name='+')
-    staff_tag = models.CharField(max_length=25, default='r')
-    fclist_enabled = models.BooleanField(default=True)
-    fclist_types = models.ManyToManyField('fclist.CharacterType', related_name='+')
-    fclist_status = models.ManyToManyField('fclist.CharacterStatus', related_name='+')
-    character_close = models.BooleanField(default=False)
-    max_themes = models.PositiveSmallIntegerField(default=1)
-    guest_home = models.ForeignKey('objects.ObjectDB', related_name='+', null=True, on_delete=models.SET_NULL)
-    max_guests = models.PositiveIntegerField(default=100)
-    guest_rename = models.BooleanField(default=True)
-    character_home = models.ForeignKey('objects.ObjectDB', related_name='+', null=True, on_delete=models.SET_NULL)
-    pot_enabled = models.BooleanField(default=True)
-    pot_timeout = models.PositiveIntegerField(default=28800)
-    pot_number = models.PositiveIntegerField(default=300)
-    events_enabled = models.BooleanField(default=True)
-    groups_enabled = models.BooleanField(default=True)
-    group_ic = models.BooleanField(default=True)
-    group_ooc = models.BooleanField(default=True)
-    anon_notices = models.BooleanField(default=False)
-    public_email = models.EmailField(null=True)
-    require_approval = models.BooleanField(default=False)
-    event_board = models.ForeignKey('bbs.Board', related_name='+', null=True, on_delete=models.SET_NULL)
-    job_enabled = models.BooleanField(default=True)
-    job_default = models.ForeignKey('jobs.JobCategory', related_name='+', null=True, on_delete=models.SET_NULL)
-    open_players = models.BooleanField(default=True)
-    open_characters = models.BooleanField(default=True)
-
-
 class CharacterSetting(models.Model):
     character = models.OneToOneField('objects.ObjectDB', related_name='character_settings')
     account = models.ForeignKey('accounts.AccountDB', related_name='char_settings', null=True)
@@ -134,15 +96,6 @@ class Muzzle(models.Model):
 
     def expired(self):
         return (self.creation_date + self.expires) < utcnow()
-
-
-class ChannelSetting(models.Model):
-    channel = models.OneToOneField('comms.ChannelDB', related_name='channel_settings')
-    group = models.ForeignKey('groups.Group', related_name='channel_settings', null=True)
-    titles = models.BooleanField(default=True)
-    color = models.CharField(max_length=20, default='n', validators=[validate_color])
-    color_titles = models.BooleanField(default=True)
-    title_length = models.PositiveSmallIntegerField(default=40)
 
 
 class Message(models.Model):

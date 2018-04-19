@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 from evennia.utils.ansi import ANSIString
 
 from athanor.core.command import AthCommand
-from athanor.events.models import Event
+from athanor.scene.models import Event
 from athanor.utils.time import utcnow, duration_from_string, utc_from_string
 
 
@@ -34,7 +34,7 @@ class CmdEvents(AthCommand):
 
     |cGeneral Commands|n
         |w+schedule|n
-            Views a list of scheduled events.
+            Views a list of scheduled scene.
         |w+schedule <id>|n
             View details about a scheduled scene. The owner can see interested parties.
         |w+schedule/tag <id>|n
@@ -43,7 +43,7 @@ class CmdEvents(AthCommand):
             Remove a tag if you change your mind.
     """
     key = "+schedule"
-    aliases = ["+events", "+event", "+schedule"]
+    aliases = ["+scene", "+event", "+schedule"]
     locks = "cmd:all()"
     help_category = "Roleplaying"
     player_switches = ['add', 'delete', 'reschedule', 'desc', 'title', 'plot', 'tag', 'untag', 'mail', 'mine', 'invite']

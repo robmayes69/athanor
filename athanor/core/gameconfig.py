@@ -27,20 +27,11 @@ class CmdGameConfig(AthCommand):
     Duration - w for weeks, d for days, h for hours, m for minutes. Example: @gameconfig <setting>=3d 5m - this will
         result in 3 days and 5 minutes.
     """
-    key = '@gameconfig'
-    locks = 'cmd:perm(Wizards) or perm(Gameconfig)'
+    key = '+gameconfig'
+    locks = 'cmd:perm(Admin) or perm(Gameconfig)'
     help_category = 'System'
 
-    def func(self):
-        try:
-            if not self.final_switches:
-                return self.main()
-            else:
-                return getattr(self, 'switch_%s' % self.final_switches[0])()
-        except ValueError as err:
-            return self.error(str(err))
-
-    def main(self):
+    def switch_main(self):
         if not self.args:
             return self.msg_lines(self.settings.display(self.player))
         if not self.player.account.is_immortal():

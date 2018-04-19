@@ -52,7 +52,7 @@ class Migration(migrations.Migration):
                 ('number', models.PositiveSmallIntegerField(default=0)),
                 ('description', models.TextField(blank=True, default=None, null=True)),
                 ('characters', models.ManyToManyField(related_name='event_pairings', to='objects.ObjectDB')),
-                ('event', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='pairings', to='events.Event')),
+                ('event', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='pairings', to='scene.Event')),
             ],
         ),
         migrations.CreateModel(
@@ -61,8 +61,8 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('owner', models.BooleanField(default=False)),
                 ('tag', models.BooleanField(default=False)),
-                ('character', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='events', to='objects.ObjectDB')),
-                ('event', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='participants', to='events.Event')),
+                ('character', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='scene', to='objects.ObjectDB')),
+                ('event', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='participants', to='scene.Event')),
             ],
         ),
         migrations.CreateModel(
@@ -92,7 +92,7 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('owner', models.BooleanField(default=False)),
                 ('character', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='plots', to='objects.ObjectDB')),
-                ('plot', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='runners', to='events.Plot')),
+                ('plot', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='runners', to='scene.Plot')),
             ],
         ),
         migrations.CreateModel(
@@ -108,7 +108,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='event',
             name='plot',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, related_name='events', to='events.Plot'),
+            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.CASCADE, related_name='scene', to='scene.Plot'),
         ),
         migrations.AddField(
             model_name='event',
@@ -118,17 +118,17 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='action',
             name='event',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='actions', to='events.Event'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='actions', to='scene.Event'),
         ),
         migrations.AddField(
             model_name='action',
             name='owner',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='actions', to='events.Participant'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='actions', to='scene.Participant'),
         ),
         migrations.AddField(
             model_name='action',
             name='source',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='actions', to='events.Source'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='actions', to='scene.Source'),
         ),
         migrations.AlterUniqueTogether(
             name='source',

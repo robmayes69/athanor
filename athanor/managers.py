@@ -1,6 +1,7 @@
-from athanor.classes.scripts import WhoManager
+
+from athanor.core.scripts import WhoManager
 from athanor.groups.scripts import GroupManager
-from athanor.bbs.scripts import BBSManager
+from athanor.bbs.scripts import BoardManager
 from evennia import create_script
 
 class Manager(object):
@@ -25,9 +26,9 @@ class Manager(object):
         return create_script(GroupManager, persistent=False, obj=None)
 
     def get_board(self):
-        found = BBSManager.objects.filter_family(db_key='BBS Manager').first()
+        found = BoardManager.objects.filter_family(db_key='BBS Manager').first()
         if found:
             return found
-        return create_script(BBSManager, persistent=False, obj=None)
+        return create_script(BoardManager, persistent=False, obj=None)
 
 ALL_MANAGERS = Manager(1)

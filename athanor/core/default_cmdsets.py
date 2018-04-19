@@ -21,7 +21,7 @@ from athanor.core.help import CmdHelp, CmdAdminHelp
 from athanor.core.login import CmdMushConnect, CmdCharCreate
 
 from athanor.core.users import CmdUser
-from athanor.bbs.bbs import CmdBBAdmin, CmdBBList, CmdBBRead, CmdBBWrite, CmdGBAdmin, CmdGBList, CmdGBRead, CmdGBWrite
+from athanor.bbs.bbs import BB_COMMANDS
 from athanor.core.gameconfig import CmdGameConfig, CmdAdmin
 from athanor.core.channels import CmdChannels, CmdSend
 from athanor.core.community import CmdWho
@@ -32,7 +32,7 @@ from athanor.groups.groups import GROUP_COMMANDS
 from athanor.info.info_files import CmdInfo
 from athanor.mushimport.mush_import import CmdImport
 from athanor.radio.radio import CmdRadio
-from athanor.events.scene import CmdEvents
+from athanor.scene.scene import CmdEvents
 from athanor.jobs.jobs import CmdJob, CmdRequest, CmdMyJob
 
 class CharacterCmdSet(OldCharacter):
@@ -52,14 +52,8 @@ class CharacterCmdSet(OldCharacter):
         # any commands you add below will overload the default ones.
         #
         self.add(CmdInfo)
-        self.add(CmdBBAdmin)
-        self.add(CmdBBList)
-        self.add(CmdBBRead)
-        self.add(CmdBBWrite)
-        self.add(CmdGBAdmin)
-        self.add(CmdGBList)
-        self.add(CmdGBRead)
-        self.add(CmdGBWrite)
+        for bb_cmd in BB_COMMANDS:
+            self.add(bb_cmd)
         for group_cmd in GROUP_COMMANDS:
             self.add(group_cmd)
         for district_cmd in DISTRICT_COMMANDS:

@@ -35,6 +35,12 @@ class Board(WithLocks):
     def main_posts(self):
         return self.posts.filter(parent=None)
 
+    def character_join(self, character):
+        self.ignore_list.remove(character)
+        
+    def character_leave(self, character):
+        self.ignore_list.add(character)
+
     def init_locks(self):
         if self.category.group:
             group_id = self.category.group.id
@@ -67,7 +73,7 @@ class Board(WithLocks):
         if checker.account.is_admin():
             return True
         if self.group:
-            if self.group.check_permission(checker, 'gbadmin'):
+            if self.group.check_permission(checker, 'bbadmin'):
                 return True
             else:
                 return False
@@ -118,6 +124,17 @@ class Board(WithLocks):
         return post
 
     def announce_post(self, post):
+        
+        post_data = {
+            'board': self,
+            'number': post.order,
+            'source': post.owner,
+            'anonymous': self.anonymous,
+            'alias': self.alias,
+            'group': self.group,
+            'command': '+bbread'
+        }
+        
         postid = '%s/%s' % (self.alias, post.order)
         if self.group:
             board_name = '%s/%s' % (self.group.key, self.key)
@@ -167,6 +184,7 @@ class Post(WithTimestamp):
     text = models.TextField(blank=True)
     subject = models.CharField(max_length=30)
     order = models.PositiveIntegerField(null=True)
+    anonymous = models.BooleanField(default=False)
     parent = models.ForeignKey('bbs.Post', related_name='comments', null=True)
 
     class Meta:

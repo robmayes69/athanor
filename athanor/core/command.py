@@ -275,15 +275,25 @@ class AthCommand(MuxCommand):
 
     def valid_posint(self, entry=None, allow_zero=False):
         num = self.valid_int(entry)
-        beyond = 0
-        if not allow_zero:
-            beyond = 1
+        beyond = 1
+        if allow_zero:
+            beyond = 0
         if not num >= beyond:
             raise ValueError("Must enter a whole number greater than %s!" % beyond)
         return num
 
     def valid_group(self, entry=None):
         group = find_group(search_name=entry, exact=False)
+
+    def switch_style(self):
+        if not self.style:
+            raise ValueError("This command does not support Styles!")
+        if not self.lhs:
+            self.caller.styles[self.style].display(viewer=self.caller)
+        if self.rhs:
+            self.caller.styles[self.style].set(enactor=self.caller, viewer=self.caller, style=self.lhs, value=self.rhs)
+        else:
+            self.caller.styles[self.style].clear(enactor=self.caller, viewer=self.caller, style=self.lhs)
 
 
 class ModeCmdSet(CmdSet):
