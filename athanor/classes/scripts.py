@@ -15,8 +15,6 @@ from __future__ import unicode_literals
 from evennia import DefaultScript
 
 
-
-
 class AthanorScript(DefaultScript):
     """
     A script type is customized by redefining some or all of its hook

@@ -23,11 +23,14 @@ several more options for customizing the Guest account system.
 """
 
 from __future__ import unicode_literals
-from evennia import DefaultAccount, DefaultGuest
+from django.conf import settings
+from evennia import DefaultAccount
 from evennia.utils.utils import lazy_property, is_iter
-from evennia.utils.ansi import ANSIString
-from athanor.utils.handlers.account import AccountSystem, AccountRender, AccountCharacters, AccountStyles
-from athanor.core.config.game_styles import ACCOUNT_STYLES
+
+from athanor.handlers.base import AccountTypeHandler
+from athanor.styles.base import AccountTypeStyle
+
+from athanor.config.manager import GET_MANAGERS
 
 
 class Account(DefaultAccount):
@@ -98,40 +101,38 @@ class Account(DefaultAccount):
 
     """
     @lazy_property
-    def system(self):
-        return AccountSystem(self)
-
-    @lazy_property
-    def render(self):
-        return AccountRender(self)
-
-    @lazy_property
-    def characters(self):
-        return AccountCharacters(self)
+    def ath(self):
+        return AccountTypeHandler(self)
     
     @lazy_property
     def styles(self):
-        return AccountStyles(self, ACCOUNT_STYLES)
+        return AccountTypeStyle(self)
 
-    def _send_to_connect_channel(self, message):
-        return
+    @lazy_property
+    def managers(self):
+        return GET_MANAGERS()
 
     def at_account_creation(self):
         super(Account, self).at_account_creation()
+        self.ath.at_account_creation()
+
+    def at_init(self):
+        super(Account, self).at_init()
+        for cmdset in settings.ATHANOR_CMDSETS_ACCOUNT:
+            self.cmdset.add(cmdset)
 
     def at_post_login(self, session=None):
         super(Account, self).at_post_login(session)
-
+        self.ath.at_post_login(session)
         if len(self.sessions.all()) == 1:
             self.at_true_login(session)
 
     def at_true_login(self, session=None):
-        self.system.update_last_played()
+        self.ath.at_true_login(session)
 
     def at_failed_login(self, session=None):
         super(Account, self).at_failed_login(session)
-        self.sys_msg('WARNING: Detected a failed login.')
-
+        self.ath.at_failed_login(session)
 
     def get_all_puppets(self):
         """
@@ -139,14 +140,6 @@ class Account(DefaultAccount):
         """
         return sorted(super(Account, self).get_all_puppets(), key=lambda char: char.key)
 
-    def sys_msg(self, message, enactor=None, style='fallback', sys_name='SYSTEM', error=False):
-        if error:
-            message = '|rERROR:|n %s' % message
-        settings = self.config
-        alert = '|%s-=<|n|%s%s|n|%s>=-|n ' % (settings['msgborder_color'], settings['msgtext_color'],
-                                            sys_name.upper(), settings['msgborder_color'])
-        send_string = alert + '(Account) ' + message
-        self.msg(unicode(ANSIString(send_string)))
 
     def at_look(self, target=None, session=None):
         """
@@ -168,22 +161,7 @@ class Account(DefaultAccount):
             # single target - just show it
             return target.return_appearance()
         else:
-            self.render.render_login(session)
+            return self.ath['login'].render_login(session.account)
 
-    def authority(self, checker):
-        if checker.is_superuser:
-            return True
-        if self.is_superuser and not checker.is_superuser:
-            return False
-        if checker.account.is_admin() and not self.account.is_admin():
-            return True
-        if self.account.is_immortal() and self == checker:
-            return True
-        return False
 
-class Guest(DefaultGuest, Account):
-    """
-    This class is used for guest logins. Unlike Players, Guests and their
-    characters are deleted after disconnection.
-    """
-    pass
+

@@ -34,16 +34,18 @@ class Exit(DefaultExit):
                                         not be called if the attribute `err_traverse` is
                                         defined, in which case that will simply be echoed.
     """
+    style = 'rooms'
 
     def format_output(self, viewer):
-        namecolor = viewer.player.config['exitname_color']
-        aliascolor = viewer.player.config['exitalias_color']
+        colors = viewer.styles[self.style]
+        namecolor = colors['exit_name_color']
+        aliascolor = colors['exit_alias_color']
         alias = self.aliases.all()[0] or ''
         alias = alias.upper()
         if alias:
-            color_alias = ANSIString('{%s%s{n' % (aliascolor, alias))
+            color_alias = ANSIString('|%s%s|n' % (aliascolor, alias))
             border_alias = ANSIString('<%s>' % color_alias).ljust(6)
-        name = ANSIString('{%s%s{n' % (namecolor, self.key))
+        name = ANSIString('|%s%s|n' % (namecolor, self.key))
         length = 36
         if alias: length -= 6
         length -= len(self.key)

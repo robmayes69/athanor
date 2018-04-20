@@ -8,15 +8,14 @@ creation commands.
 
 """
 from __future__ import unicode_literals
+from django.conf import settings
 from evennia import DefaultCharacter
 from evennia.utils.utils import lazy_property
-from evennia.utils.ansi import ANSIString
-from athanor.utils.text import mxp
-from athanor.managers import ALL_MANAGERS
-from athanor.utils.handlers.character import CharacterSystem, CharacterMode, CharacterStyles
-from athanor.utils.handlers.character import CharacterChannel, CharacterPage, CharacterBBS
-from athanor.utils.handlers.character import CharacterRender
-from athanor.core.config.game_styles import CHARACTER_STYLES
+from athanor.handlers.base import CharacterTypeHandler
+from athanor.styles.base import CharacterTypeStyle
+
+from athanor.config.manager import GET_MANAGERS
+
 
 class Character(DefaultCharacter):
     """
@@ -39,59 +38,44 @@ class Character(DefaultCharacter):
     """
 
     @lazy_property
-    def bbs(self):
-        return CharacterBBS(self)
+    def ath(self):
+        return CharacterTypeHandler(self)
 
-    @lazy_property
-    def who(self):
-        return ALL_MANAGERS.who
-
-    @lazy_property
-    def system(self):
-        return CharacterSystem(self)
-    
     @lazy_property
     def styles(self):
-        return CharacterStyles(self, CHARACTER_STYLES)
+        return CharacterTypeStyle(self)
 
     @lazy_property
-    def channels(self):
-        return CharacterChannel(self)
+    def managers(self):
+        return GET_MANAGERS()
 
-    @lazy_property
-    def page(self):
-        return CharacterPage(self)
-
-    @lazy_property
-    def mode(self):
-        return CharacterMode(self)
+    def at_init(self):
+        super(Character, self).at_init()
+        for cmdset in settings.ATHANOR_CMDSETS_CHARACTER:
+            self.cmdset.add(cmdset)
 
     def at_post_unpuppet(self, account, session=None):
         super(Character, self).at_post_unpuppet(account, session)
+        self.ath.at_post_unpuppet(account, session)
+
         if not self.sessions.get():
             self.at_true_logout(account, session)
 
-    def at_true_logout(self, player, session=None):
+    def at_true_logout(self, account, session=None):
         """
         A sub-hook of at_post_unpuppet for scene that process only when all connected sessions disconnect.
         """
-        self.system.update_last_played()
-        self.who.rem(self)
+        self.ath.at_true_logout(account, session)
 
     def at_true_login(self):
         """
         This is called by at_post_puppet when a character with no previous sessions is puppeted.
         """
-        pass
+        self.ath.at_true_login()
 
     def at_post_puppet(self):
         super(Character, self).at_post_puppet()
-        self.config.update_last_played()
-        self.puppet_logs.create(account=self.account)
-
-        # Update webclient data...
-        self.who.add(self)
-        self.web.full_update()
+        self.ath.at_post_puppet()
 
         if len(self.sessions.get()) == 1:
             self.at_true_login()
@@ -135,26 +119,3 @@ class Character(DefaultCharacter):
         else:
             return search_results
 
-
-    def sys_msg(self, message, sys_name='SYSTEM', error=False):
-        # No use sending to a character that's not listening, is there?
-        if not hasattr(self, 'player'):
-            return
-
-        if error:
-            message = '|rERROR:|n %s' % message
-        alert = '|%s-=<|n|%s%s|n|%s>=-|n ' % (self.account_config['msgborder_color'],
-                                              self.account_config['msgtext_color'],
-                                            sys_name.upper(), self.account_config['msgborder_color'])
-        send_string = alert + message
-        self.msg(unicode(ANSIString(send_string)))
-
-    def mxp_name(self, commands=None):
-        if not commands:
-            commands = ['+finger']
-        send_commands = '|'.join(['%s %s' % (command, self.key) for command in commands])
-        return mxp(text=self.key, command=send_commands)
-
-    @property
-    def render(self):
-        return CharacterRender(self)

@@ -1,14 +1,14 @@
 from django.apps import AppConfig
 
 class BBS(AppConfig):
-    name = 'athanor.bbs'
+    name = 'athanor.athanor-bbs'
 
     def ready(self):
         import athanor.bbs.signals
 
 
 class Core(AppConfig):
-    name = 'athanor.core'
+    name = 'athanor'
 
 
 class FCList(AppConfig):
@@ -23,7 +23,7 @@ class Grid(AppConfig):
 
 
 class Group(AppConfig):
-    name = 'athanor.groups'
+    name = 'athanor.athanor-groups'
 
     def ready(self):
         import athanor.groups.signals

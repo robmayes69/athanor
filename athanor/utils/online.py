@@ -19,8 +19,8 @@ def accounts():
         list
     """
     from athanor.classes.accounts import Account
-    return sorted([player for player in evennia.SESSION_HANDLER.all_connected_players()
-            if player.is_typeclass(Account, exact=False)], key=lambda play: play.key)
+    return sorted([acc for acc in evennia.SESSION_HANDLER.all_connected_accounts()
+            if acc.is_typeclass(Account, exact=False)], key=lambda acc: acc.key)
 
 def characters():
     """
