@@ -7,46 +7,37 @@ Rooms are simple containers that has no location of their own.
 from __future__ import unicode_literals
 from evennia import DefaultRoom
 from athanor.utils.text import tabular_table
+from athanor.utils.online import characters
 
 class BaseRoom(DefaultRoom):
     """
     This class is a placeholder meant to represent deleted rooms. It implements the main room logic, but should
     not be used for new rooms.
     """
+    style = 'rooms'
 
-    def return_appearance(self, caller):
-        message = []
-        message.append(caller.player.render.header(self.key))
+    def return_appearance(self, session, viewer):
+        message = list()
+        message.append(session.render.header(self.key, style=self.style))
         message.append(self.db.desc)
-        chars = self.online_characters(viewer=caller)
+        chars = self.online_characters(viewer=session)
         if chars:
-            message.append(caller.player.render.subheader("Characters"))
-            message.append(self.format_character_list(chars, caller))
+            message.append(session.render.subheader("Characters", style=self.style))
+            message.append(self.format_character_list(chars, session))
         if self.exits:
-            message.append(caller.player.render.subheader("Exits"))
-            message.append(self.format_exit_list(self.exits, caller))
-        message.append(caller.player.render.footer())
-        message2 = []
-        for line in message:
-            message2.append(unicode(line))
-        return "\n".join(message2)
-
-    def list_characters(self):
-        return sorted([char for char in self.contents if hasattr(char, 'ath_char')],
-                      key=lambda char: char.key.lower())
+            message.append(session.render.subheader("Exits", style=self.style))
+            message.append(self.format_exit_list(self.exits, session))
+        message.append(session.render.footer(style=self.style))
+        return "\n".join([unicode(line) for line in message])
 
     def online_characters(self, viewer=None):
-        characters = [char for char in self.list_characters() if char.sessions]
         if viewer:
-            characters = [char for char in characters if viewer.time.can_see(char)]
-        return characters
+            return [char for char in viewer.ath['athanor_who'].online_characters() if char.location == self]
+        return [char for char in characters() if char.location == self]
 
-    def sys_msg(self, message, sys_name='SYSTEM', error=False, sender=None):
-        for char in self.online_characters():
-            char.sys_msg(message, sys_name, error=error)
-
-    def format_character_list(self, characters, caller):
-        char_table = caller.player.render.make_table(["Name", "Description"], border=None, width=[20, 40])
+    def format_character_list(self, characters, viewer):
+        columns = (('Name', 0, 'l'), ('Description', 0, 'l'))
+        char_table = viewer.render.table(columns, border=None, style=self.style)
         for char in characters:
             char_table.add_row(char.key, char.db.shortdesc)
         return char_table
@@ -58,7 +49,7 @@ class BaseRoom(DefaultRoom):
         return tabular_table(exit_table, field_width=36, line_length=78, truncate_elements=False)
 
     def format_roomlist(self):
-        return "{C%s{n {x%s{n" % (self.dbref.ljust(6), self.key)
+        return "|C%s|n |x%s|n" % (self.dbref.ljust(6), self.key)
 
 
 class Room(BaseRoom):

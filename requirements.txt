@@ -1,0 +1,2 @@
+evennia >= 0.7.0
+pluginbase >= 0.5

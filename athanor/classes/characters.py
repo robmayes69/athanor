@@ -8,16 +8,11 @@ creation commands.
 
 """
 from __future__ import unicode_literals
-
 from evennia import DefaultCharacter
 from evennia.utils.utils import lazy_property
-from evennia.utils.ansi import ANSIString
-from athanor.utils.text import mxp
-from athanor.managers import ALL_MANAGERS
-from athanor.utils.handlers.character import CharacterWeb, CharacterTime, CharacterAccount, CharacterMode
-from athanor.utils.handlers.character import CharacterChannel, CharacterPage
-from athanor.core.config import CharacterSettings
-from athanor.core.models import CharacterSetting
+from athanor.handlers.base import CharacterTypeHandler
+from athanor.styles.base import CharacterTypeStyle
+
 
 class Character(DefaultCharacter):
     """
@@ -39,71 +34,80 @@ class Character(DefaultCharacter):
 
     """
 
-    @property
-    def ath_char(self):
-        return True
+    @lazy_property
+    def ath(self):
+        return CharacterTypeHandler(self)
 
     @lazy_property
-    def who(self):
-        return ALL_MANAGERS.who
+    def styles(self):
+        return CharacterTypeStyle(self)
 
-    @lazy_property
-    def web(self):
-        return CharacterWeb(self)
+    def at_init(self):
+        super(Character, self).at_init()
+        self.ath.at_init()
 
-    @lazy_property
-    def time(self):
-        return CharacterTime(self)
+    def at_post_unpuppet(self, account, session=None, **kwargs):
+        self.ath.at_post_unpuppet(account, session)
 
-    @lazy_property
-    def config(self):
-        return CharacterSettings(self)
+        if not self.sessions.count():
+            self.at_true_logout(account, session)
 
-    @lazy_property
-    def account(self):
-        return CharacterAccount(self)
-
-    @lazy_property
-    def channels(self):
-        return CharacterChannel(self)
-
-    @lazy_property
-    def page(self):
-        return CharacterPage(self)
-
-    @lazy_property
-    def mode(self):
-        return CharacterMode(self)
-
-    def at_post_unpuppet(self, player, session=None):
-        super(Character, self).at_post_unpuppet(player, session)
-        if not self.sessions.get():
-            self.at_true_logout(player, session)
-
-    def at_true_logout(self, player, session=None):
+    def at_true_logout(self, account, session=None, **kwargs):
         """
-        A sub-hook of at_post_unpuppet for events that process only when all connected sessions disconnect.
+        A sub-hook of at_post_unpuppet for scene that process only when all connected sessions disconnect.
         """
-        self.config.update_last_played()
-        self.who.rem(self)
+        self.db.prelogout_location = self.location
+        self.location = None
+        self.ath.at_true_logout(account, session)
 
-    def at_true_login(self):
+    def at_true_login(self, **kwargs):
         """
         This is called by at_post_puppet when a character with no previous sessions is puppeted.
         """
-        pass
+        self.ath.at_true_login(**kwargs)
 
-    def at_post_puppet(self):
-        super(Character, self).at_post_puppet()
-        self.config.update_last_played()
-        self.puppet_logs.create(player=self.player)
+    def at_post_puppet(self, **kwargs):
+        session = self.sessions.get()[-1]
+        if self.location:
+            self.msg((self.at_look(session, self.location), {'type':'look'}), options = None)
+        self.ath.at_post_puppet(session=session)
 
-        # Update webclient data...
-        self.who.add(self)
-        self.web.full_update()
+        if self.sessions.count() == 1:
+            self.at_true_login(session=session)
 
-        if len(self.sessions.get()) == 1:
-            self.at_true_login()
+    def at_look(self, session, target, **kwargs):
+        """
+        Called when this object performs a look. It allows to
+        customize just what this means. It will not itself
+        send any data.
+
+        Args:
+            target (Object): The target being looked at. This is
+                commonly an object or the current location. It will
+                be checked for the "view" type access.
+            **kwargs (dict): Arbitrary, optional arguments for users
+                overriding the call (unused by default).
+
+        Returns:
+            lookstring (str): A ready-processed look string
+                potentially ready to return to the looker.
+
+
+        # Re-implemented for Athanor to pass Session data so FORMATTING RULES and stuff.
+        """
+        if not target.access(self, "view"):
+            try:
+                return "Could not view '%s'." % target.get_display_name(self)
+            except AttributeError:
+                return "Could not view '%s'." % target.key
+
+        description = target.return_appearance(session, self)
+
+        # the target's at_desc() method.
+        # this must be the last reference to target so it may delete itself when acted on.
+        target.at_desc(looker=self)
+
+        return description
 
     def search_character(self, search_name=None, deleted=False):
         """
@@ -123,7 +127,7 @@ class Character(DefaultCharacter):
             raise ValueError("Character name field empty.")
 
         # First, collect all possible character candidates.
-        candidates = Character.objects.filter_family(character_settings__enabled=True)
+        candidates = Character.objects.filter_family()
 
         # First we'll run an Exact check.:
         search_results = self.search(search_name, exact=True, use_nicks=True, candidates=candidates, quiet=True)
@@ -144,49 +148,3 @@ class Character(DefaultCharacter):
         else:
             return search_results
 
-
-    def sys_msg(self, message, sys_name='SYSTEM', error=False):
-        # No use sending to a character that's not listening, is there?
-        if not hasattr(self, 'player'):
-            return
-
-        if error:
-            message = '|rERROR:|n %s' % message
-        alert = '|%s-=<|n{%s%s|n|%s>=-|n ' % (self.player_config['msgborder_color'],
-                                              self.player_config['msgtext_color'],
-                                            sys_name.upper(), self.player_config['msgborder_color'])
-        send_string = alert + message
-        self.msg(unicode(ANSIString(send_string)))
-
-    def mxp_name(self, commands=None):
-        if not commands:
-            commands = ['+finger']
-        send_commands = '|'.join(['%s %s' % (command, self.key) for command in commands])
-        return mxp(text=self.key, command=send_commands)
-
-    @lazy_property
-    def owner(self):
-        return self.config.model.player
-
-    @property
-    def render(self):
-        return self.player.render
-
-    @lazy_property
-    def player_config(self):
-        return self.owner.config
-
-    def oob(self, *args, **kwargs):
-        for sess in [sess for sess in self.sessions.get() if sess.ndb.gui]:
-            sess.msg(*args, **kwargs)
-
-    def rename(self, new_name):
-        exist_ids = CharacterSetting.objects.filter(deleted=False).values_list('character', flat=True)
-        exist = Character.objects.filter_family(id__in=exist_ids, db_key__iexact=new_name).exclude(id=self.id).count()
-        if exist:
-            raise ValueError("Character names must be unique!")
-        self.key = new_name
-
-    def at_rename(self, oldname, newname):
-        from athanor.utils.create import SPEECH_FACTORY
-        SPEECH_FACTORY.update(self)

@@ -2,12 +2,12 @@ from __future__ import unicode_literals
 
 from evennia import ObjectDB
 from django.conf import settings
-from evennia.utils.create import create_channel, create_player, create_object
+from evennia.utils.create import create_channel, create_account, create_object
 from athanor.utils.text import Speech, sanitize_string
 
 
-def player(key, password, email=None):
-    return create_player(key, email, password)
+def account(key, password, email=None):
+    return create_account(key, email, password)
 
 class SpeechFactory(object):
 
@@ -60,7 +60,7 @@ SPEECH_FACTORY = SpeechFactory()
 def make_speech(speaker, speech_text, alternate_name=None, title=None, mode='ooc', targets=None):
     return SPEECH_FACTORY.create(speaker, speech_text, alternate_name, title, mode, targets)
 
-def character(key, player):
+def character(key, account):
     from athanor.core.config import GLOBAL_SETTINGS
     key = sanitize_string(key, strip_ansi=True)
     typeclass = settings.BASE_CHARACTER_TYPECLASS
@@ -68,6 +68,6 @@ def character(key, player):
     if key.upper() in SPEECH_FACTORY.upper():
         raise ValueError("That character name is already in use!")
     char = create_object(typeclass=typeclass, key=key, location=home, home=home)
-    player.account.bind_character(char)
+    account.accountsub.bind_character(char)
     SPEECH_FACTORY.update(char)
     return char
