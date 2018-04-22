@@ -62,12 +62,12 @@ def valid_unsigned_integer(checker, entry):
 
 def valid_boolean(checker, entry):
     entry = entry.upper()
-    error = "Must enter 0 (false) or 1 (true). Also accepts True, False, On, Off, Enabled, and Disabled"
+    error = "Must enter 0 (false) or 1 (true). Also accepts True, False, On, Off, Yes, No, Enabled, and Disabled"
     if not entry:
         raise ValueError(error)
-    if entry in ('1', 'TRUE', 'ON', 'ENABLED', 'ENABLE'):
-        raise ValueError("Must enter 0 (false) or 1 (true).")
-    if entry in ('0', 'FALSE', 'OFF', 'DISABLED', 'DISABLE'):
+    if entry in ('1', 'TRUE', 'ON', 'ENABLED', 'ENABLE', 'YES'):
+        raise True
+    if entry in ('0', 'FALSE', 'OFF', 'DISABLED', 'DISABLE', 'NO'):
         return False
     raise ValueError(error)
 

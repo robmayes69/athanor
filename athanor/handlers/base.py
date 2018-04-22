@@ -34,9 +34,9 @@ class AthanorResponse(object):
         self.messages.append((target, message))
 
 
-class __BaseTypeHandler(object):
+class __BaseTypeManager(object):
     """
-    The base used for the Athanor Handlers that are loaded onto all Athanor Accounts and Characters.
+    The base used for the Athanor Managers that are loaded onto all Athanor Accounts and Characters.
 
     Not meant to be used directly.
     """
@@ -52,17 +52,18 @@ class __BaseTypeHandler(object):
         """
         self.owner = owner
         self.attributes = owner.attributes
-        self.get_handlers()
+
+        # Make validators available to TypeManagers!
+        self.valid = athanor.validators
+
+        # Load all handlers.
+        handlers = athanor.handlers[self.mode]
+        self.ordered_handlers = list()
         self.handlers = dict()
-
-        self.hook_handlers = tuple(self.hook_list)
-
-        # Process the 'always load' handlers:
-        load_handlers = [item for item in self.handlers_dict.values()]
-        load_handlers.sort(key=lambda h: h.load_order)
-
-        for handler in load_handlers:
-            self.handlers[handler.key] = handler(self)
+        for handler in handlers:
+            loaded_handler = handler(self)
+            self.handlers[handler.key] = loaded_handler
+            self.ordered_handlers.append(loaded_handler)
 
         # Call an extensible Load function for simplicity if need be.
         self.load()
@@ -71,126 +72,83 @@ class __BaseTypeHandler(object):
         pass
 
     def __getitem__(self, item):
-        if item in self.handlers:
-            return self.handlers[item]
-        if item not in self.handlers_dict:
-            raise ImportError("Improper Athanor Managers Data. Cannot Find: %s" % item)
-
-        # If it doesn't exist, then we'll load it here.
-        new_item = self.handlers_dict[item](self)
-        self.handlers[item] = new_item
-        return new_item
+        return self.handlers[item]
 
 
-class SessionTypeHandler(__BaseTypeHandler):
+class SessionTypeManager(__BaseTypeManager):
     mode = 'session'
-    
-    def get_handlers(self):
-        handlers_classes = list()
-        for handler in settings.ATHANOR_HANDLERS_SESSION:
-            module = importlib.import_module(handler)
-            handlers_classes += module.ALL
-
-        self.handlers_dict = {handler.key: handler for handler in handlers_classes}
-        self.always_loads = [item for item in handlers_classes if item.always_load or item.cmdsets]
-        self.always_loads.sort(key=lambda i: i.load_order)
-        self.hook_list = [item for item in handlers_classes if item.use_hooks or item.cmdsets]
-        self.hook_list.sort(key=lambda i: i.hook_order)
 
     def at_sync(self):
-        for handler in self.hook_handlers:
-            self[handler.key].at_sync()
+        for handler in self.ordered_handlers:
+            handler.at_sync()
 
     def at_login(self, account, **kwargs):
-        for handler in self.hook_handlers:
-            self[handler.key].at_login(account, **kwargs)
+        for handler in self.ordered_handlers:
+            handler.at_login(account, **kwargs)
 
     def at_disconnect(self, reason, **kwargs):
-        for handler in self.hook_handlers:
-            self[handler.key].at_disconnect(reason, **kwargs)
+        for handler in self.ordered_handlers:
+            handler.at_disconnect(reason, **kwargs)
 
 
 
-class CharacterTypeHandler(__BaseTypeHandler):
+class CharacterTypeManager(__BaseTypeManager):
     mode = 'character'
 
-    def get_handlers(self):
-        handlers_classes = list()
-        for handler in settings.ATHANOR_HANDLERS_CHARACTER:
-            module = importlib.import_module(handler)
-            handlers_classes += module.ALL
-
-        self.handlers_dict = {handler.key: handler for handler in handlers_classes}
-        self.always_loads = [item for item in handlers_classes if item.always_load or item.cmdsets]
-        self.always_loads.sort(key=lambda i: i.load_order)
-        self.hook_list = [item for item in handlers_classes if item.use_hooks or item.cmdsets]
-        self.hook_list.sort(key=lambda i: i.hook_order)
-
     def at_init(self):
-        for handler in self.hook_list:
-            self[handler.key].at_init()
+        for handler in self.ordered_handlers:
+            handler.at_init()
 
     def at_post_unpuppet(self, account, session, **kwargs):
-        for handler in self.hook_list:
-            self[handler.key].at_post_unpuppet(account, session, **kwargs)
+        for handler in self.ordered_handlers:
+            handler.at_post_unpuppet(account, session, **kwargs)
             
     def at_true_logout(self, account, session, **kwargs):
-        for handler in self.hook_list:
-            self[handler.key].at_true_logout(account, session, **kwargs)
+        for handler in self.ordered_handlers:
+            handler.at_true_logout(account, session, **kwargs)
 
     def at_true_login(self, **kwargs):
-        for handler in self.hook_list:
-            self[handler.key].at_true_login(**kwargs)
+        for handler in self.ordered_handlers:
+            handler.at_true_login(**kwargs)
 
     def at_post_puppet(self, **kwargs):
-        for handler in self.hook_list:
-            self[handler.key].at_post_puppet(**kwargs)
+        for handler in self.ordered_handlers:
+            handler.at_post_puppet(**kwargs)
 
 
-class AccountTypeHandler(__BaseTypeHandler):
+class AccountTypeManager(__BaseTypeManager):
     mode = 'account'
 
-    def get_handlers(self):
-        handlers_classes = list()
-        for handler in settings.ATHANOR_HANDLERS_ACCOUNT:
-            module = importlib.import_module(handler)
-            handlers_classes += module.ALL
-
-        self.handlers_dict = {handler.key: handler for handler in handlers_classes}
-        self.always_loads = [item for item in handlers_classes if item.always_load]
-        self.always_loads.sort(key=lambda i: i.load_order)
-        self.hook_list = [item for item in handlers_classes if item.use_hooks]
-        self.hook_list.sort(key=lambda i: i.hook_order)
-
     def at_account_creation(self):
-        for handler in self.hook_list:
-            self[handler.key].at_account_creation()
+        for handler in self.ordered_handlers:
+            handler.at_account_creation()
 
     def at_post_login(self, session, **kwargs):
-        for handler in self.hook_list:
-            self[handler.key].at_post_login(session, **kwargs)
+        for handler in self.ordered_handlers:
+            handler.at_post_login(session, **kwargs)
 
     def at_true_login(self, **kwargs):
-        for handler in self.hook_list:
-            self[handler.key].at_true_login(**kwargs)
+        for handler in self.ordered_handlers:
+            handler.at_true_login(**kwargs)
 
     def at_failed_login(self, session, **kwargs):
-        for handler in self.hook_list:
-            self[handler.key].at_failed_login(session, **kwargs)
+        for handler in self.ordered_handlers:
+            handler.at_failed_login(session, **kwargs)
 
     def at_init(self):
-        for handler in self.hook_list:
-            self[handler.key].at_init()
+        for handler in self.ordered_handlers:
+            handler.at_init()
 
     def at_disconnect(self, **kwargs):
-        for handler in self.hook_list:
-            self[handler.key].at_disconnect(**kwargs)
+        for handler in self.ordered_handlers:
+            handler.at_disconnect(**kwargs)
 
     def at_true_logout(self, **kwargs):
-        for handler in self.hook_list:
-            self[handler.key].at_true_logout(**kwargs)
+        for handler in self.ordered_handlers:
+            handler.at_true_logout(**kwargs)
 
-class ScriptTypeHandler(__BaseTypeHandler):
+
+class ScriptTypeManager(__BaseTypeManager):
     mode = 'script'
 
 
@@ -225,9 +183,6 @@ class __BaseHandler(object):
     style = 'fallback'
     system_name = 'SYSTEM'
     settings_classes = ()
-    use_hooks = False
-    hook_order = 0
-    always_load = False
     load_order = 0
     account_mode = False
     resp_class = AthanorResponse
@@ -240,6 +195,7 @@ class __BaseHandler(object):
         self.settings = dict()
         self.load_settings()
         self.load_cmdsets()
+        self.valid = self.base.valid
         self.load()
 
     def accept_request(self, request):

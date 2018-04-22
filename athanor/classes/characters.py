@@ -14,7 +14,8 @@ from athanor.handlers.base import CharacterTypeHandler
 from athanor.styles.base import CharacterTypeStyle
 
 
-class Character(DefaultCharacter):
+# This implements the Athanor API, but the base Typeclass should be Character, below.
+class BaseCharacter(DefaultCharacter):
     """
     The Character defaults to implementing some of its hook methods with the
     following standard functionality:
@@ -43,7 +44,7 @@ class Character(DefaultCharacter):
         return CharacterTypeStyle(self)
 
     def at_init(self):
-        super(Character, self).at_init()
+        super(BaseCharacter, self).at_init()
         self.ath.at_init()
 
     def at_post_unpuppet(self, account, session=None, **kwargs):
@@ -82,6 +83,8 @@ class Character(DefaultCharacter):
         send any data.
 
         Args:
+            session (session): The session initiating the look.
+                This is required for formatting rules purposes.
             target (Object): The target being looked at. This is
                 commonly an object or the current location. It will
                 be checked for the "view" type access.
@@ -127,7 +130,7 @@ class Character(DefaultCharacter):
             raise ValueError("Character name field empty.")
 
         # First, collect all possible character candidates.
-        candidates = Character.objects.filter_family()
+        candidates = self.__class__.objects.filter_family()
 
         # First we'll run an Exact check.:
         search_results = self.search(search_name, exact=True, use_nicks=True, candidates=candidates, quiet=True)
@@ -148,3 +151,13 @@ class Character(DefaultCharacter):
         else:
             return search_results
 
+
+# This is a separate, special branch off of BaseCharacter. It implements the Athanor API, but exists only for
+# characters that are no longer in use.
+class ShelvedCharacter(BaseCharacter):
+    pass
+
+
+# This is the character class Athanor uses for all its hard work. If you're gonna subclass, subclass from this.
+class Character(BaseCharacter):
+    pass

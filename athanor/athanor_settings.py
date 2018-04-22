@@ -44,52 +44,35 @@ INLINEFUNC_ENABLED = True
 
 ROOT_URLCONF = 'athanor.urls'
 
+# Settings for ATHANOR in General!
+
+# This determines whether non-admin Accounts can freely create characters for their own Account.
+ATHANOR_OPEN_CHARACTER_CREATION = True
+
+# Determines how many characters each Account is allowed to have by default. This can be changed per-account too.
+ATHANOR_CHARACTER_SLOTS = 4
+
+# Character typeclass used for Shelved Characters.
+ATHANOR_SHELVED_CHARACTER_TYPECLASS = 'athanor.classes.characters.ShelvedCharacter'
+
+# Athanor takes over these things. Don't change these values! You can change those in your own server.conf though.
+AT_INITIAL_SETUP_HOOK_MODULE = "athanor.conf.at_initial_setup"
+AT_SERVER_STARTSTOP_MODULE = "athanor.conf.load_athanor"
+
 # This file has to be in your MyGame! so MyGame/athanor_modules.py
 from athanor_modules import ATHANOR_MODULES
 
+
 # Section for Athanor Module data.
-ATHANOR_APPS = {'athanor': importlib.import_module('athanor')}
+from athanor import athanor_setup
+athanor_setup.setup(ATHANOR_MODULES)
 
-ATHANOR_CONFIG = dict()
-
-ATHANOR_HANDLERS_CHARACTER = tuple()
-ATHANOR_HANDLERS_ACCOUNT = tuple()
-ATHANOR_HANDLERS_SCRIPT = tuple()
-ATHANOR_HANDLERS_SESSION = tuple()
-
-ATHANOR_STYLES_CHARACTER = tuple()
-ATHANOR_STYLES_ACCOUNT = tuple()
-ATHANOR_STYLES_SCRIPT = tuple()
-
-ATHANOR_VALIDATORS = tuple()
-
-# These classes are to be replaced with your game's Who List.
-ATHANOR_CLASSES = dict()
-
-# ATHANOR_MODULES must be declared in your settings.py
-for module in ATHANOR_MODULES:
-    load_module = importlib.import_module('%s' % module)
-    ATHANOR_APPS[module] = load_module
-
-for module in sorted(ATHANOR_APPS.values(), key=lambda m: m.LOAD_ORDER):
-    INSTALLED_APPS = INSTALLED_APPS + module.INSTALLED_APPS
-    
-    INLINEFUNC_MODULES += module.INLINE_FUNC_MODULES
-    LOCK_FUNC_MODULES += module.LOCK_FUNC_MODULES
-    INPUT_FUNC_MODULES += module.INPUT_FUNC_MODULES
-    
-    ATHANOR_HANDLERS_CHARACTER = ATHANOR_HANDLERS_CHARACTER + module.CHARACTER_HANDLERS
-    ATHANOR_HANDLERS_ACCOUNT = ATHANOR_HANDLERS_ACCOUNT + module.ACCOUNT_HANDLERS
-    ATHANOR_HANDLERS_SCRIPT = ATHANOR_HANDLERS_SCRIPT + module.SCRIPT_HANDLERS
-    ATHANOR_HANDLERS_SESSION = ATHANOR_HANDLERS_SESSION + module.SESSION_HANDLERS
-
-    ATHANOR_STYLES_CHARACTER = ATHANOR_STYLES_CHARACTER + module.CHARACTER_STYLES
-    ATHANOR_STYLES_ACCOUNT = ATHANOR_STYLES_ACCOUNT + module.ACCOUNT_STYLES
-    ATHANOR_STYLES_SCRIPT = ATHANOR_STYLES_SCRIPT + module.SCRIPT_STYLES
-
-    ATHANOR_CONFIG.update(module.CONFIGS)
-
-    ATHANOR_VALIDATORS = ATHANOR_VALIDATORS + module.VALIDATORS
-
-    ATHANOR_CLASSES.update(module.ATHANOR_CLASSES)
-    
+for module in athanor_setup.load_order:
+    if hasattr(module, 'INSTALLED_APPS'):
+        INSTALLED_APPS = INSTALLED_APPS + module.INSTALLED_APPS
+    if hasattr(module, 'INLINEFUNC_MODULES'):
+        INLINEFUNC_MODULES += module.INLINE_FUNC_MODULES
+    if hasattr(module, 'LOCK_FUNC_MODULES'):
+        LOCK_FUNC_MODULES += module.LOCK_FUNC_MODULES
+    if hasattr(module, 'INPUT_FUNC_MODULES'):
+        INPUT_FUNC_MODULES += module.INPUT_FUNC_MODULES

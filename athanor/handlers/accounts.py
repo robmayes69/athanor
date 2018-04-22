@@ -37,7 +37,7 @@ class AccountSystemHandler(AccountHandler):
 
     @property
     def base_character_slots(self):
-        return settings.MAX_NR_CHARACTERS
+        return settings.ATHANOR_CHARACTER_SLOTS
 
     @property
     def extra_character_slots(self):

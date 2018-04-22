@@ -11,25 +11,6 @@ def validate_color(value):
     if not len(ANSIString('|%s' % value)) == 0:
         raise ValidationError("'%s' is not a valid color." % value)
 
-
-class WhoAccount(models.Model):
-    """
-    Stores the current Who list. Mostly used for REST purposes.
-    """
-    account = models.OneToOneField('accounts.AccountDB', related_name='athanor_online')
-    is_dark = models.BooleanField(default=False)
-    is_hidden = models.BooleanField(default=False)
-
-
-class WhoCharacter(models.Model):
-    """
-    Stores the current Who list. Mostly used for REST purposes.
-    """
-    character = models.OneToOneField('objects.ObjectDB', related_name='athanor_online')
-    is_dark = models.BooleanField(default=False)
-    is_hidden = models.BooleanField(default=False)
-
-
 class WithKey(models.Model):
     """
     abstract model to implement a generic 'key' field that implements case-insensitive renaming.

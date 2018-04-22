@@ -61,13 +61,8 @@ def make_speech(speaker, speech_text, alternate_name=None, title=None, mode='ooc
     return SPEECH_FACTORY.create(speaker, speech_text, alternate_name, title, mode, targets)
 
 def character(key, account):
-    from athanor.core.config import GLOBAL_SETTINGS
-    key = sanitize_string(key, strip_ansi=True)
     typeclass = settings.BASE_CHARACTER_TYPECLASS
-    home = GLOBAL_SETTINGS['character_home']
-    if key.upper() in SPEECH_FACTORY.upper():
-        raise ValueError("That character name is already in use!")
-    char = create_object(typeclass=typeclass, key=key, location=home, home=home)
-    account.accountsub.bind_character(char)
+    char = create_object(typeclass=typeclass, key=key)
+    account.ath['athanor_characters'].add(char)
     SPEECH_FACTORY.update(char)
     return char

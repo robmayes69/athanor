@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 import datetime, time
+from django.conf import settings
 from evennia.utils import time_format
 from athanor.utils.text import mxp
 from athanor.utils.time import utcnow
@@ -40,12 +41,12 @@ class CharacterSystemHandler(CharacterHandler):
         return 'Mortal'
 
     def update_account(self, account):
-        self.owner.attributes.add(key='account', value=account, category='athanor_settings')
+        self.owner.attributes.add(key='account', value=account, category=self.category)
         self.reset_puppet_locks(account)
 
     @property
     def account(self):
-        return self.owner.attributes.get(key='account', category='athanor_settings')
+        return self.owner.attributes.get(key='account', category=self.category)
 
     def update_last_played(self):
         self.owner.attributes.add(key='lastplayed', value=int(utcnow().strftime('%s')), category=self.category)
@@ -99,14 +100,10 @@ class CharacterSystemHandler(CharacterHandler):
         return self.account.system.display_time(date, format)
 
     def load(self):
-        if self.owner.attributes.has(key='playtime', category=self.category):
-            self.playtime = self.owner.attributes.get(key='playtime', category=self.category)
-            return
-        self.owner.attributes.add(key='playtime', value=0, category=self.category)
         self.playtime = self.owner.attributes.get(key='playtime', category=self.category)
-
-
-        return
+        if not self.playtime:
+            self.owner.attributes.add(key='playtime', value=0, category=self.category)
+            self.playtime = self.owner.attributes.get(key='playtime', category=self.category)
 
     def update_playtime(self, seconds):
         self.playtime += seconds
@@ -141,6 +138,63 @@ class CharacterSystemHandler(CharacterHandler):
             commands = ['+finger']
         send_commands = '|'.join(['%s %s' % (command, self.owner.key) for command in commands])
         return mxp(text=self.owner.key, command=send_commands)
+
+    def set_banned(self, banned):
+        """
+        Controls whether this character is banned.
+        By this point all input validation should be done.
+
+        :param banned: Integer. Set 0 to disable ban. Set to a UTC TIMESTAMP in seconds to enable.
+        :return:
+        """
+        if not banned:
+            self.owner.attributes.remove(key='banned', category=self.category)
+            return
+        self.owner.attributes.add(key='banned', value=banned, category=self.category)
+        until = datetime.datetime.utcfromtimestamp(banned)
+        self.disconnect(reason="Character was banned until %s!" % self.display_time(until))
+
+    def set_disabled(self, disabled):
+        """
+        Controls whether this character is disabled.
+        By this point all input validation should be done.
+
+        :param disabled: Boolean. 1 = Disabled. 0 = Re-enable.
+        :return:
+        """
+        if not disabled:
+            self.owner.attributes.remove(key='disabled', category=self.category)
+            return
+        self.owner.attributes.add(key='disabled', value=disabled, category=self.category)
+        self.disconnect(reason="Character was disabled!")
+
+    def set_shelved(self, shelved):
+        """
+        Controls whether this character is shelved.
+        By this point all input validation should be done.
+
+        Use shelving and not deleting!
+
+        :param shelved: Boolean. 1 to shelve, 0 to un-shelve.
+        :return:
+        """
+        if not shelved:
+            self.owner.swap_typeclass(settings.BASE_CHARACTER_TYPECLASS)
+            return
+        self.owner.swap_typeclass(settings.ATHANOR_SHELVED_CHARACTER_TYPECLASS)
+        self.disconnect(reason="Character was Shelved!")
+
+    def disconnect(self, reason=None):
+        """
+        Disconnects all sessions from this character.
+
+        :param reason: A string explaining the reason. This will be displayed to the character.
+        :return:
+        """
+        if hasattr(self.owner, 'account'):
+            self.console_msg("%s is being disconnected because: %s" % (self.owner, reason))
+            for session in self.owner.sessions.get():
+                self.owner.account.unpuppet_object(session)
 
 
 class CharacterMode(object):
