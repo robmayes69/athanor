@@ -3,27 +3,35 @@ from django.conf import settings
 from evennia.utils.ansi import ANSIString
 from athanor.utils.text import partial_match
 
+class AthanorRequest(object):
+    """
+    Instances of TaskRequest store information about a Request. This could come from a Command or an OOB Function.
+    """
+
+    def __init__(self, session, operation, output=None, parameters=None):
+        if not parameters:
+            parameters = dict()
+        if not output:
+            output = ('text', 'gmcp',)
+        self.session = session
+        self.operation = operation
+        self.output = output
+        self.parameters = parameters
 
 
-class TaskResponse(object):
+class AthanorResponse(object):
     """
     Instances of TaskResponse represent the results of an Atomic Operation on the
     Athanor handler APIs.
 
     ::param: source is an instance of AthCommand or an object that implements .caller, .player, and .character
     """
-    def __init__(self, source):
-        self.error = list()
-        self.error_json = list()
-        self.success = list()
-        self.success_json = list()
-        self.alert = list()
-        self.alert_json = list()
+    def __init__(self, request):
+        self.request = request
+        self.messages = list()
 
-    def json(self, name, **kwargs):
-        my_list = getattr(self, '%s_json')
-        my_list.append(kwargs)
-
+    def add(self, target, message):
+        self.messages.append((target, message))
 
 
 class __BaseTypeHandler(object):
@@ -47,13 +55,10 @@ class __BaseTypeHandler(object):
         self.get_handlers()
         self.handlers = dict()
 
-        hook_list = [item.key for item in self.handlers_dict.values() if item.use_hooks]
-        hook_list.sort(key=lambda h: h.hook_order)
-
-        self.hook_handlers = tuple(hook_list)
+        self.hook_handlers = tuple(self.hook_list)
 
         # Process the 'always load' handlers:
-        load_handlers = [item for item in self.handlers_dict.values() if item.always_load]
+        load_handlers = [item for item in self.handlers_dict.values()]
         load_handlers.sort(key=lambda h: h.load_order)
 
         for handler in load_handlers:
@@ -77,6 +82,35 @@ class __BaseTypeHandler(object):
         return new_item
 
 
+class SessionTypeHandler(__BaseTypeHandler):
+    mode = 'session'
+    
+    def get_handlers(self):
+        handlers_classes = list()
+        for handler in settings.ATHANOR_HANDLERS_SESSION:
+            module = importlib.import_module(handler)
+            handlers_classes += module.ALL
+
+        self.handlers_dict = {handler.key: handler for handler in handlers_classes}
+        self.always_loads = [item for item in handlers_classes if item.always_load or item.cmdsets]
+        self.always_loads.sort(key=lambda i: i.load_order)
+        self.hook_list = [item for item in handlers_classes if item.use_hooks or item.cmdsets]
+        self.hook_list.sort(key=lambda i: i.hook_order)
+
+    def at_sync(self):
+        for handler in self.hook_handlers:
+            self[handler.key].at_sync()
+
+    def at_login(self, account, **kwargs):
+        for handler in self.hook_handlers:
+            self[handler.key].at_login(account, **kwargs)
+
+    def at_disconnect(self, reason, **kwargs):
+        for handler in self.hook_handlers:
+            self[handler.key].at_disconnect(reason, **kwargs)
+
+
+
 class CharacterTypeHandler(__BaseTypeHandler):
     mode = 'character'
 
@@ -87,22 +121,30 @@ class CharacterTypeHandler(__BaseTypeHandler):
             handlers_classes += module.ALL
 
         self.handlers_dict = {handler.key: handler for handler in handlers_classes}
-        self.always_loads = [item for item in handlers_classes if item.always_load]
+        self.always_loads = [item for item in handlers_classes if item.always_load or item.cmdsets]
         self.always_loads.sort(key=lambda i: i.load_order)
-        self.hook_list = [item for item in handlers_classes if item.use_hooks]
+        self.hook_list = [item for item in handlers_classes if item.use_hooks or item.cmdsets]
         self.hook_list.sort(key=lambda i: i.hook_order)
 
-    def at_post_unpuppet(self, account, session):
-        pass
+    def at_init(self):
+        for handler in self.hook_list:
+            self[handler.key].at_init()
 
-    def at_true_logout(self, account, session):
-        pass
+    def at_post_unpuppet(self, account, session, **kwargs):
+        for handler in self.hook_list:
+            self[handler.key].at_post_unpuppet(account, session, **kwargs)
+            
+    def at_true_logout(self, account, session, **kwargs):
+        for handler in self.hook_list:
+            self[handler.key].at_true_logout(account, session, **kwargs)
 
-    def at_true_login(self):
-        pass
+    def at_true_login(self, **kwargs):
+        for handler in self.hook_list:
+            self[handler.key].at_true_login(**kwargs)
 
-    def at_post_puppet(self):
-        pass
+    def at_post_puppet(self, **kwargs):
+        for handler in self.hook_list:
+            self[handler.key].at_post_puppet(**kwargs)
 
 
 class AccountTypeHandler(__BaseTypeHandler):
@@ -122,20 +164,31 @@ class AccountTypeHandler(__BaseTypeHandler):
 
     def at_account_creation(self):
         for handler in self.hook_list:
-            handler.at_account_creation()
+            self[handler.key].at_account_creation()
 
-    def at_post_login(self, session):
+    def at_post_login(self, session, **kwargs):
         for handler in self.hook_list:
-            handler.at_post_login(session)
+            self[handler.key].at_post_login(session, **kwargs)
 
-    def at_true_login(self, session):
+    def at_true_login(self, **kwargs):
         for handler in self.hook_list:
-            handler.at_true_login(session)
+            self[handler.key].at_true_login(**kwargs)
 
-    def at_failed_login(self, session):
+    def at_failed_login(self, session, **kwargs):
         for handler in self.hook_list:
-            handler.at_failed_login(session)
+            self[handler.key].at_failed_login(session, **kwargs)
 
+    def at_init(self):
+        for handler in self.hook_list:
+            self[handler.key].at_init()
+
+    def at_disconnect(self, **kwargs):
+        for handler in self.hook_list:
+            self[handler.key].at_disconnect(**kwargs)
+
+    def at_true_logout(self, **kwargs):
+        for handler in self.hook_list:
+            self[handler.key].at_true_logout(**kwargs)
 
 class ScriptTypeHandler(__BaseTypeHandler):
     mode = 'script'
@@ -177,23 +230,57 @@ class __BaseHandler(object):
     always_load = False
     load_order = 0
     account_mode = False
-    resp_class = TaskResponse
+    resp_class = AthanorResponse
+    cmdsets = ()
+    operations = dict()
 
     def __init__(self, base):
         self.base = base
         self.owner = base.owner
         self.settings = dict()
         self.load_settings()
+        self.load_cmdsets()
         self.load()
+
+    def accept_request(self, request):
+        response = self.respond(request)
+        self.process_request(response)
+        self.process_response(response)
+        return
+
+    def process_request(self, response):
+        if response.request.operation not in self.operations:
+            response.add(self.owner, "Operation '%s' is not valid for %s" % (response.request.operation, self.__class__.__name__))
+            return
+        return getattr(self, 'op_%s' % response.request.operation)(response)
+
+    def process_response(self, resp):
+        for message in resp.messages:
+            if hasattr(message[0], 'ath'): # For now, only gonna worry about messages to Characters and Accounts.
+                self.dispatch_message(message)
+
+    def dispatch_message(self, message):
+        target, contents = message
+        target.ath[self.key].process_message(self.owner, contents)
+
+    def process_message(self, source, contents):
+        if 'gmcp' in contents:
+            self.gmcp_msg(contents['gmcp'])
+        if 'text' in contents:
+            self.console_msg(contents['text'], prefix=contents['prefix'])
 
     def __getitem__(self, item):
         return self.settings[item].value
 
-    def respond(self, source):
-        return self.resp_class(source)
+    def respond(self, request):
+        return self.resp_class(request)
+
+    def load_cmdsets(self):
+        for cmdset in self.cmdsets:
+            self.owner.cmdset.add(cmdset)
 
     def load_file(self, file):
-        return self.base.attributes.get(key=file, default=dict(), category=self.category)
+        return self.base.attributes.get(key=file, category=self.category, default=dict())
 
     def load_settings(self):
         resp = self.respond(self)
@@ -212,7 +299,7 @@ class __BaseHandler(object):
         pass
 
     def save_attribute(self, file, data):
-        self.base.attributes.get(key=file, value=data, category=self.category)
+        self.base.attributes.add(key=file, value=data, category=self.category)
 
     def save_settings(self):
         save_data = dict()
@@ -221,13 +308,6 @@ class __BaseHandler(object):
             if len(data):
                 save_data[setting.key] = data
         self.save_attribute('settings', save_data)
-
-    def process_response(self, resp):
-        for error in resp.errors:
-            self.console_msg(error, error=True)
-        for success in resp.success:
-            self.console_msg(success)
-        # Put JSON stuff here later.
 
     def change_settings(self, source, key, value):
         resp = self.respond(source)
@@ -258,10 +338,13 @@ class __BaseHandler(object):
         lines = '\n'.join(unicode(line) for line in message)
         self.owner.msg(lines)
 
-    def console_msg(self, message, error=False):
-        style = self.owner.styles[self.style]
+    def console_msg(self, message, error=False, prefix=True):
+        if not prefix:
+            self.owner.msg(unicode(ANSIString(message)))
+            return
+        style = self.owner.render[self.style]
         if not style:
-            style = self.owner.styles.fallback
+            style = self.owner.render.fallback
         if error:
             message = '|rERROR:|n %s' % message
         alert = '|%s-=<|n|%s%s|n|%s>=-|n ' % (style['msg_edge_color'],
@@ -270,8 +353,10 @@ class __BaseHandler(object):
         send_string = alert + message
         self.owner.msg(unicode(ANSIString(send_string)))
 
-    def json_msg(self, message):
-        pass
+    def gmcp_msg(self, message):
+        args = message['args']
+        kwargs = message['kwargs']
+        self.owner.msg(cmdname=(args, kwargs))
 
     def alert_channel(self):
         pass
@@ -279,13 +364,67 @@ class __BaseHandler(object):
 
 class CharacterHandler(__BaseHandler):
 
-    def at_post_unpuppet(self, account, session):
+    def at_init(self):
+        pass
+
+    def at_post_unpuppet(self, account, session, **kwargs):
+        pass
+
+    def at_true_logout(self, account, session, **kwargs):
+        pass
+
+    def at_true_login(self, **kwargs):
+        pass
+
+    def at_post_puppet(self, **kwargs):
         pass
 
 
 class AccountHandler(__BaseHandler):
     account_mode = True
 
+    def at_account_creation(self):
+        pass
+
+    def at_post_login(self, session, **kwargs):
+        pass
+
+    def at_true_login(self, **kwargs):
+        pass
+
+    def at_failed_login(self, session, **kwargs):
+        pass
+
+    def at_init(self):
+        pass
+
+    def at_disconnect(self, **kwargs):
+        pass
+
+    def at_true_logout(self, **kwargs):
+        pass
+
 
 class ScriptHandler(__BaseHandler):
     pass
+
+
+class SessionHandler(__BaseHandler):
+
+    def at_sync(self):
+        pass
+
+    def at_login(self, account, **kwargs):
+        pass
+
+    def at_disconnect(self, reason, **kwargs):
+        pass
+
+    def load_file(self, file):
+        pass
+
+    def save_file(self, file):
+        pass
+
+    def save(self):
+        pass

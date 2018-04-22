@@ -1,7 +1,11 @@
 import pytz
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from evennia.utils.ansi import ANSIString
 from athanor.utils.text import partial_match
 from athanor.utils.time import utc_from_string, duration_from_string, utcnow
+
+BAD_CHARS = ('/', '@', '&', '^^^', '*', '+', '-', '|', '{', '[', ']', '}', ',', '.', '$', '#', '!')
 
 TZ_DICT = {str(tz): pytz.timezone(tz) for tz in pytz.common_timezones}
 
@@ -76,12 +80,54 @@ def valid_timezone(checker, entry):
     raise ValueError("Could not find timezone '%s'!" % entry)
 
 
-ALL = {'color': valid_color,
-               'duration': valid_duration,
-               'datetime': valid_datetime,
-               'signed_integer': valid_signed_integer,
-               'positive_integer': valid_positive_integer,
-               'unsigned_integer': valid_unsigned_integer,
-               'boolean': valid_boolean,
-               'timezone': valid_timezone,
-               }
+def valid_account_name(checker, entry, rename_from=None):
+    """
+    Rename_from must be an Account instance.
+
+    """
+    if not len(entry):
+        raise ValueError("Account Name field empty!")
+    if entry.strip().isdigit():
+        raise ValueError("Account name cannot be a number!")
+    for char in BAD_CHARS:
+        if char in entry:
+            raise ValueError("Account Names may not contain the characters: %s" % BAD_CHARS)
+    if len(entry) != len(entry.strip()):
+        raise ValueError("Account names may not have leading or trailing spaces.")
+    from athanor.classes.accounts import Account
+    exist = Account.objects.filter_family(db_key__iexact=entry).first()
+    if exist and (rename_from and exist != rename_from) or not rename_from:
+        raise ValueError("Account name is already in use!")
+    return entry
+
+def valid_account_password(checker, entry):
+    if not len(entry):
+        raise ValueError("Passwords may not be empty!")
+    if len(entry) <= 5:
+        raise ValueError("Passwords must be five characters or longer.")
+    if entry.strip() != entry:
+        raise ValueError("Passwords must not have trailing or leading spaces.")
+    return entry
+
+
+def valid_account_email(checker, entry):
+    try:
+        validate_email(entry) #offloading the hard work to Django!
+    except ValidationError:
+        raise ValueError("That isn't a valid email!")
+    return entry
+
+
+
+ALL = { 'color': valid_color,
+        'duration': valid_duration,
+        'datetime': valid_datetime,
+        'signed_integer': valid_signed_integer,
+        'positive_integer': valid_positive_integer,
+        'unsigned_integer': valid_unsigned_integer,
+        'boolean': valid_boolean,
+        'timezone': valid_timezone,
+        'account_email': valid_account_email,
+        'account_name': valid_account_name,
+        'account_password': valid_account_password,
+        }

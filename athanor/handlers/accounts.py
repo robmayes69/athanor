@@ -11,13 +11,30 @@ from athanor.handlers.base import AccountHandler
 from athanor.settings.account import ACCOUNT_SYSTEM_SETTINGS
 
 
+
 class AccountSystemHandler(AccountHandler):
-    key = 'system'
+    key = 'athanor_system'
     style = 'fallback'
     category = 'athanor_system'
     settings_classes = ACCOUNT_SYSTEM_SETTINGS
     system_name = 'SYSTEM'
-    
+    cmdsets = ('athanor.cmdsets.accounts.AthCoreAccountCmdSet', )
+
+    def at_post_login(self, session):
+        self.owner.attributes.add(key='athanor_system_conn', value=time.time(), category=self.category)
+
+    @property
+    def connection_time(self):
+        timestamp = self.owner.attributes.get(key='athanor_system_conn')
+        return time.time() - timestamp
+
+    @property
+    def idle_time(self):
+        sessions = self.owner.sessions.get()
+        if sessions:
+            return time.time() - min([ses.cmd_last for ses in sessions])
+        return 0
+
     @property
     def base_character_slots(self):
         return settings.MAX_NR_CHARACTERS
@@ -125,26 +142,26 @@ class AccountSystemHandler(AccountHandler):
         return datetime.datetime.utcfromtimestamp(save_data)
 
     def off_or_idle_time(self):
-        idle = self.owner.idle_time
+        idle = self.idle_time
         if idle is None:
             return '|XOff|n'
         return time_format(idle, style=1)
 
     def off_or_conn_time(self):
-        conn = self.owner.connection_time
+        conn = self.connection_time
         if conn is None:
             return '|XOff|n'
         return time_format(conn, style=1)
 
     def last_or_idle_time(self, viewer):
-        idle = self.owner.idle_time
+        idle = self.idle_time
         last = self.last_played
         if not idle:
             return viewer.ath['system'].display_time(date=last, format='%b %d')
         return time_format(idle, style=1)
 
     def last_or_conn_time(self, viewer):
-        conn = self.owner.connection_time
+        conn = self.connection_time
         last = self.last_played
         if not conn:
             return viewer.ath['system'].display_time(date=last, format='%b %d')
@@ -161,7 +178,7 @@ class AccountSystemHandler(AccountHandler):
 
 class AccountCharacterHandler(AccountHandler):
     style = 'account_appearance'
-    key = 'characters'
+    key = 'athanor_characters'
     category = 'athanor_characters'
     
     def __init__(self, owner):
@@ -198,7 +215,7 @@ class AccountCharacterHandler(AccountHandler):
         return 0
 
 class AccountLoginHandler(AccountHandler):
-    key = 'login'
+    key = 'athanor_login'
     category = 'athanor_login'
     style = 'login'
 

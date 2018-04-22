@@ -1,8 +1,33 @@
 from __future__ import unicode_literals
 from django.db import models
-from athanor.utils.text import sanitize_string
+from django.core.exceptions import ValidationError
 from evennia.locks.lockhandler import LockHandler
-from evennia.utils.utils import lazy_property
+from evennia.utils.ansi import ANSIString
+from evennia.utils import lazy_property
+from athanor.utils.text import sanitize_string
+
+
+def validate_color(value):
+    if not len(ANSIString('|%s' % value)) == 0:
+        raise ValidationError("'%s' is not a valid color." % value)
+
+
+class WhoAccount(models.Model):
+    """
+    Stores the current Who list. Mostly used for REST purposes.
+    """
+    account = models.OneToOneField('accounts.AccountDB', related_name='athanor_online')
+    is_dark = models.BooleanField(default=False)
+    is_hidden = models.BooleanField(default=False)
+
+
+class WhoCharacter(models.Model):
+    """
+    Stores the current Who list. Mostly used for REST purposes.
+    """
+    character = models.OneToOneField('objects.ObjectDB', related_name='athanor_online')
+    is_dark = models.BooleanField(default=False)
+    is_hidden = models.BooleanField(default=False)
 
 
 class WithKey(models.Model):

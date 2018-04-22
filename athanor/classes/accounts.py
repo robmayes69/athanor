@@ -23,14 +23,11 @@ several more options for customizing the Guest account system.
 """
 
 from __future__ import unicode_literals
-from django.conf import settings
 from evennia import DefaultAccount
 from evennia.utils.utils import lazy_property, is_iter
 
 from athanor.handlers.base import AccountTypeHandler
 from athanor.styles.base import AccountTypeStyle
-
-from athanor.config.manager import GET_MANAGERS
 
 
 class Account(DefaultAccount):
@@ -108,18 +105,13 @@ class Account(DefaultAccount):
     def styles(self):
         return AccountTypeStyle(self)
 
-    @lazy_property
-    def managers(self):
-        return GET_MANAGERS()
-
     def at_account_creation(self):
         super(Account, self).at_account_creation()
         self.ath.at_account_creation()
 
     def at_init(self):
         super(Account, self).at_init()
-        for cmdset in settings.ATHANOR_CMDSETS_ACCOUNT:
-            self.cmdset.add(cmdset)
+        self.ath.at_init()
 
     def at_post_login(self, session=None):
         super(Account, self).at_post_login(session)
@@ -133,6 +125,16 @@ class Account(DefaultAccount):
     def at_failed_login(self, session=None):
         super(Account, self).at_failed_login(session)
         self.ath.at_failed_login(session)
+        
+    def at_disconnect(self):
+        super(Account, self).at_disconnect()
+        self.ath.at_disconnect()
+        
+        if not self.sessions.get():
+            self.at_true_logout()
+            
+    def at_true_logout(self):
+        self.ath.at_true_logout()
 
     def get_all_puppets(self):
         """
@@ -159,9 +161,13 @@ class Account(DefaultAccount):
 
         if target and not is_iter(target):
             # single target - just show it
-            return target.return_appearance()
+            return target.return_appearance(session, self)
         else:
-            return self.ath['login'].render_login(session.account)
+            message = list()
+            for t in target:
+                message.append(t.return_appearance(session, self))
+            return '\n'.join([unicode(line) for line in message])
 
 
-
+    def return_appearance(self, session, viewer):
+        return self.ath.render_login(session, viewer)

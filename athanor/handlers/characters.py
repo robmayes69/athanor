@@ -1,5 +1,5 @@
 from __future__ import unicode_literals
-import datetime
+import datetime, time
 from evennia.utils import time_format
 from athanor.utils.text import mxp
 from athanor.utils.time import utcnow
@@ -7,11 +7,19 @@ from athanor.handlers.base import CharacterHandler
 
 from athanor.settings.character import CHARACTER_SYSTEM_SETTINGS
 
+
 class CharacterSystemHandler(CharacterHandler):
-    key = 'system'
+    key = 'athanor_system'
+    category = 'athanor_system'
     style = 'fallback'
     system_name = 'SYSTEM'
     settings_classes = CHARACTER_SYSTEM_SETTINGS
+    use_hooks = True
+    cmdsets = ('athanor.cmdsets.characters.AthCoreCharacterCmdSet', )
+
+    def at_post_puppet(self, **kwargs):
+        timestamp = time.time()
+        self.owner.attributes.add(key='athanor_system_conn', value=timestamp, category=self.category)
 
     def is_builder(self):
         return self.owner.locks.check_lockstring(self.owner, "dummy:perm(Builder)")
@@ -49,30 +57,42 @@ class CharacterSystemHandler(CharacterHandler):
         save_data = self.owner.attributes.get(key='lastplayed', category=self.category)
         return datetime.datetime.utcfromtimestamp(save_data)
 
+    @property
+    def connection_time(self):
+        timestamp = self.owner.attributes.get(key='athanor_system_conn', category=self.category)
+        return time.time() - timestamp
+
+    @property
+    def idle_time(self):
+        sessions = self.owner.sessions.get()
+        if sessions:
+            return time.time() - min([ses.cmd_last for ses in sessions])
+        return 0
+
     def off_or_idle_time(self, viewer):
-        idle = self.owner.idle_time
-        if idle is None or not viewer.ath['system'].can_see(self.owner):
+        idle = self.idle_time
+        if idle is None or not viewer.ath['athanor_system'].can_see(self.owner):
             return '|XOff|n'
         return time_format(idle, style=1)
 
     def off_or_conn_time(self, viewer):
-        conn = self.owner.connection_time
-        if conn is None or not viewer.ath['system'].can_see(self.owner):
+        conn = self.connection_time
+        if conn is None or not viewer.ath['athanor_system'].can_see(self.owner):
             return '|XOff|n'
         return time_format(conn, style=1)
 
     def last_or_idle_time(self, viewer):
-        idle = self.owner.idle_time
+        idle = self.idle_time
         last = self.last_played
-        if not idle or not viewer.ath['system'].can_see(self.owner):
-            return viewer.ath['system'].display_time(date=last, format='%b %d')
+        if not idle or not viewer.ath['athanor_system'].can_see(self.owner):
+            return viewer.ath['athanor_system'].display_time(date=last, format='%b %d')
         return time_format(idle, style=1)
 
     def last_or_conn_time(self, viewer):
-        conn = self.owner.connection_time
+        conn = self.connection_time
         last = self.last_played
-        if not conn or not viewer.ath['system'].can_see(self.owner):
-            return viewer.ath['system'].display_time(date=last, format='%b %d')
+        if not conn or not viewer.ath['athanor_system'].can_see(self.owner):
+            return viewer.ath['athanor_system'].display_time(date=last, format='%b %d')
         return time_format(conn, style=1)
 
     def display_time(self, date=None, format=None):
@@ -119,8 +139,8 @@ class CharacterSystemHandler(CharacterHandler):
     def mxp_name(self, commands=None):
         if not commands:
             commands = ['+finger']
-        send_commands = '|'.join(['%s %s' % (command, self.key) for command in commands])
-        return mxp(text=self.key, command=send_commands)
+        send_commands = '|'.join(['%s %s' % (command, self.owner.key) for command in commands])
+        return mxp(text=self.owner.key, command=send_commands)
 
 
 class CharacterMode(object):
@@ -156,4 +176,18 @@ class CharacterMode(object):
         self.owner.cmdset.add(cmdset)
 
 
-ALL = [CharacterSystemHandler, ]
+
+
+
+
+class CharacterWhoHandler(CharacterHandler):
+    key = 'athanor_who'
+    category = 'athanor_who'
+    use_hooks = True
+    cmdsets = ('athanor.cmdsets.characters.WhoCharacterCmdSet', )
+
+    
+
+
+
+ALL = [CharacterSystemHandler, CharacterWhoHandler, ]

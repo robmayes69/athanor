@@ -47,7 +47,7 @@ class AthCommand(default_cmds.MuxCommand):
             self.account = self.caller
             self.isic = False
             self.character = None
-        self.is_admin = self.caller.ath['system'].is_admin()
+        self.is_admin = self.caller.ath['athanor_system'].is_admin()
         self.parse_switches()
 
     def parse_switches(self):
@@ -74,12 +74,19 @@ class AthCommand(default_cmds.MuxCommand):
 
     # When in doubt, use this setup.
     def func(self):
-        try:
-            if not self.final_switches:
+        if not self.final_switches:
+            try:
                 return self._main()
-            return getattr(self, 'switch_%s' % self.final_switches[0])()
+            except Exception as err:
+                return self.caller.msg(unicode(err))
+        try:
+            switch = getattr(self, 'switch_%s' % self.final_switches[0])
         except:
             return self.caller.msg('Switch Not Implemented for this Command')
+        try:
+            switch()
+        except Exception as err:
+            return self.caller.msg(unicode(err))
 
     def switch_style(self):
         if not self.style:

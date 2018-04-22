@@ -1,27 +1,24 @@
 LOAD_ORDER = 0
 
-INSTALLED_APPS = ('athanor.apps', )
+INSTALLED_APPS = ('rest_framework', 'athanor.apps.Core', )
 
 LOCK_FUNC_MODULES = ("athanor.funcs.lock", )
-
 INPUT_FUNC_MODULES = ['athanor.funcs.input', ]
-
 INLINE_FUNC_MODULES = ['athanor.funcs.inline', ]
 
-CONFIGS = ('athanor.config.script', )
+CONFIGS = dict()
 
-ACCOUNT_HANDLERS = ('athanor.handlers.account', )
-CHARACTER_HANDLERS = ('athanor.handlers.character', )
+ACCOUNT_HANDLERS = ('athanor.handlers.accounts', )
+CHARACTER_HANDLERS = ('athanor.handlers.characters', )
 SCRIPT_HANDLERS = ()
+SESSION_HANDLERS = ('athanor.handlers.sessions', )
 
-ACCOUNT_STYLES = ('athanor.styles.account', )
-CHARACTER_STYLES = ('athanor.styles.character', )
+ACCOUNT_STYLES = ('athanor.styles.accounts', )
+CHARACTER_STYLES = ('athanor.styles.characters', )
 SCRIPT_STYLES = ()
 
 VALIDATORS = ()
 
-CMDSETS_ACCOUNT = ('athanor.cmdsets.account.AthCoreAccountCmdSet', )
-
-CMDSETS_CHARACTER = ('athanor.cmdsets.character.AthCoreCharacterCmdSet', )
-
 CMDSETS_UNLOGGED = ('athanor.cmdsets.unlogged.AthCoreUnloggedCmdSet', )
+
+ATHANOR_CLASSES = {'who': 'athanor.classes.who',}

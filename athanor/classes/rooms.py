@@ -7,6 +7,7 @@ Rooms are simple containers that has no location of their own.
 from __future__ import unicode_literals
 from evennia import DefaultRoom
 from athanor.utils.text import tabular_table
+from athanor.utils.online import characters
 
 class BaseRoom(DefaultRoom):
     """
@@ -15,32 +16,28 @@ class BaseRoom(DefaultRoom):
     """
     style = 'rooms'
 
-    def return_appearance(self, viewer):
+    def return_appearance(self, session, viewer):
         message = list()
-        message.append(viewer.styles.header(self.key, style=self.style))
+        message.append(session.render.header(self.key, style=self.style))
         message.append(self.db.desc)
-        chars = self.online_characters(viewer=viewer)
+        chars = self.online_characters(viewer=session)
         if chars:
-            message.append(viewer.styles.subheader("Characters", style=self.style))
-            message.append(self.format_character_list(chars, viewer))
+            message.append(session.render.subheader("Characters", style=self.style))
+            message.append(self.format_character_list(chars, session))
         if self.exits:
-            message.append(viewer.styles.subheader("Exits", style=self.style))
-            message.append(self.format_exit_list(self.exits, viewer))
-        message.append(viewer.styles.footer(style=self.style))
+            message.append(session.render.subheader("Exits", style=self.style))
+            message.append(self.format_exit_list(self.exits, session))
+        message.append(session.render.footer(style=self.style))
         return "\n".join([unicode(line) for line in message])
 
-    def list_characters(self):
-        return sorted([char for char in self.contents if hasattr(char, 'ath')],
-                      key=lambda char: char.key.lower())
-
     def online_characters(self, viewer=None):
-        characters = [char for char in self.list_characters() if char.sessions]
         if viewer:
-            characters = [char for char in characters if viewer.ath['system'].can_see(char)]
-        return characters
+            return [char for char in viewer.ath['athanor_who'].online_characters() if char.location == self]
+        return [char for char in characters() if char.location == self]
 
     def format_character_list(self, characters, viewer):
-        char_table = viewer.styles.make_table(["Name", "Description"], border=None, width=[20, 40], style=self.style)
+        columns = (('Name', 0, 'l'), ('Description', 0, 'l'))
+        char_table = viewer.render.table(columns, border=None, style=self.style)
         for char in characters:
             char_table.add_row(char.key, char.db.shortdesc)
         return char_table

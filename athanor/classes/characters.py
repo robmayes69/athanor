@@ -8,13 +8,10 @@ creation commands.
 
 """
 from __future__ import unicode_literals
-from django.conf import settings
 from evennia import DefaultCharacter
 from evennia.utils.utils import lazy_property
 from athanor.handlers.base import CharacterTypeHandler
 from athanor.styles.base import CharacterTypeStyle
-
-from athanor.config.manager import GET_MANAGERS
 
 
 class Character(DefaultCharacter):
@@ -45,40 +42,72 @@ class Character(DefaultCharacter):
     def styles(self):
         return CharacterTypeStyle(self)
 
-    @lazy_property
-    def managers(self):
-        return GET_MANAGERS()
-
     def at_init(self):
         super(Character, self).at_init()
-        for cmdset in settings.ATHANOR_CMDSETS_CHARACTER:
-            self.cmdset.add(cmdset)
+        self.ath.at_init()
 
-    def at_post_unpuppet(self, account, session=None):
-        super(Character, self).at_post_unpuppet(account, session)
+    def at_post_unpuppet(self, account, session=None, **kwargs):
         self.ath.at_post_unpuppet(account, session)
 
-        if not self.sessions.get():
+        if not self.sessions.count():
             self.at_true_logout(account, session)
 
-    def at_true_logout(self, account, session=None):
+    def at_true_logout(self, account, session=None, **kwargs):
         """
         A sub-hook of at_post_unpuppet for scene that process only when all connected sessions disconnect.
         """
+        self.db.prelogout_location = self.location
+        self.location = None
         self.ath.at_true_logout(account, session)
 
-    def at_true_login(self):
+    def at_true_login(self, **kwargs):
         """
         This is called by at_post_puppet when a character with no previous sessions is puppeted.
         """
-        self.ath.at_true_login()
+        self.ath.at_true_login(**kwargs)
 
-    def at_post_puppet(self):
-        super(Character, self).at_post_puppet()
-        self.ath.at_post_puppet()
+    def at_post_puppet(self, **kwargs):
+        session = self.sessions.get()[-1]
+        if self.location:
+            self.msg((self.at_look(session, self.location), {'type':'look'}), options = None)
+        self.ath.at_post_puppet(session=session)
 
-        if len(self.sessions.get()) == 1:
-            self.at_true_login()
+        if self.sessions.count() == 1:
+            self.at_true_login(session=session)
+
+    def at_look(self, session, target, **kwargs):
+        """
+        Called when this object performs a look. It allows to
+        customize just what this means. It will not itself
+        send any data.
+
+        Args:
+            target (Object): The target being looked at. This is
+                commonly an object or the current location. It will
+                be checked for the "view" type access.
+            **kwargs (dict): Arbitrary, optional arguments for users
+                overriding the call (unused by default).
+
+        Returns:
+            lookstring (str): A ready-processed look string
+                potentially ready to return to the looker.
+
+
+        # Re-implemented for Athanor to pass Session data so FORMATTING RULES and stuff.
+        """
+        if not target.access(self, "view"):
+            try:
+                return "Could not view '%s'." % target.get_display_name(self)
+            except AttributeError:
+                return "Could not view '%s'." % target.key
+
+        description = target.return_appearance(session, self)
+
+        # the target's at_desc() method.
+        # this must be the last reference to target so it may delete itself when acted on.
+        target.at_desc(looker=self)
+
+        return description
 
     def search_character(self, search_name=None, deleted=False):
         """
