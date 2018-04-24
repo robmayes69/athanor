@@ -1,15 +1,15 @@
-from django.conf import settings
 from evennia.server.serversession import ServerSession
 from evennia.utils import lazy_property
 
-from athanor.handlers.base import SessionTypeHandler
+from athanor.handlers.base import SessionTypeManager
 from athanor.styles.base import SessionRenderer
+
 
 class Session(ServerSession):
 
     @lazy_property
     def ath(self):
-        return SessionTypeHandler(self)
+        return SessionTypeManager(self)
 
     @lazy_property
     def render(self):

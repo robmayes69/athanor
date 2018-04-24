@@ -1,4 +1,4 @@
-import importlib, math
+import math, athanor
 from django.conf import settings
 
 from evennia.utils.ansi import ANSIString
@@ -28,7 +28,10 @@ class __BaseTypeStyle(object):
         self.owner = owner
         self.attributes = owner.attributes
         self.styles = dict()
-        self.get_styles()
+
+        self.styles_list = list()
+        for style in athanor.style_classes[self.mode]:
+            self.styles[style.key] = style(self)
 
         # Call an extensible Load function for simplicity if need be.
         self.load()
@@ -37,14 +40,8 @@ class __BaseTypeStyle(object):
         pass
 
     def __getitem__(self, item):
-        if item in self.styles:
-            return self.styles[item]
-
-        # If it doesn't exist, then we'll load it here.
         try:
-            new_item = self.styles_dict[item](self)
-            self.styles[item] = new_item
-            return new_item
+            return self.styles[item]
         except:
             return self.fallback
 
@@ -52,23 +49,9 @@ class __BaseTypeStyle(object):
 class CharacterTypeStyle(__BaseTypeStyle):
     mode = 'character'
 
-    def get_styles(self):
-        self.styles_list = list()
-        for style in settings.ATHANOR_STYLES_CHARACTER:
-            module = importlib.import_module(style)
-            self.styles_list += module.ALL
-        self.styles_dict = {style.key: style for style in self.styles_list}
-
 
 class AccountTypeStyle(__BaseTypeStyle):
     mode = 'account'
-
-    def get_styles(self):
-        self.styles_list = list()
-        for style in settings.ATHANOR_STYLES_ACCOUNT:
-            module = importlib.import_module(style)
-            self.styles_list += module.ALL
-        self.styles_dict = {style.key: style for style in self.styles_list}
 
 
 class ScriptTypeStyle(__BaseTypeStyle):

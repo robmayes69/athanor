@@ -22,11 +22,18 @@ def at_server_start():
     This is called every time the server starts up, regardless of
     how it was shut down.
     """
-    import importlib
-    from athanor import athanor_setup
+    import importlib, athanor, traceback, sys
     from evennia.utils.utils import class_from_module
     from evennia.utils.create import create_script
-    
+
+    handlers_account = dict()
+    handlers_character = dict()
+    handlers_session = dict()
+    handlers_script = dict()
+
+    styles_account = dict()
+    styles_character = dict()
+
     handlers = {
         'account': list(),
         'character': list(),
@@ -43,31 +50,40 @@ def at_server_start():
     
     system_classes = dict()
 
-    for plugin in athanor_setup.load_order:
+    for plugin in athanor.load_order:
+        try:
+            # Retrieve validators!
+            if hasattr(plugin, 'VALIDATORS'):
+                for path in plugin.VALIDATORS:
+                    val_mod = importlib.import_module(path)
+                    athanor.valid.update(val_mod.ALL)
 
-        # Retrieve validators!
-        if hasattr(plugin, 'VALIDATORS'):
-            for path in plugin.VALIDATORS:
-                val_mod = importlib.import_module(path)
-                athanor_setup.valid.update(val_mod.ALL)
-    
-        # Retrieve Handlers!
-        if hasattr(plugin, 'HANDLERS'):
-            for mode in ('account', 'character', 'script', 'session'):
-                handlers[mode] += plugin.HANDLERS.get(mode, [])
+            # Retrieve Handlers!
 
-        # Retrieve Styles!
-        if hasattr(plugin, 'STYLES'):
-            for mode in ('account', 'character'):
-                styles[mode] += plugin.STYLES.get(mode, [])
+            if hasattr(plugin, 'HANDLERS_ACCOUNT'):
+                handlers_account.update(plugin.HANDLERS_ACCOUNT)
 
-        # Retrieve System Classes!
-        if hasattr(plugin, 'SYSTEM_CLASSES'):
-            system_classes.update(plugin.SYSTEM_CLASSES)
+            if hasattr(plugin, 'HANDLERS_CHARACTER'):
+                handlers_character.update(plugin.HANDLERS_CHARACTER)
 
-        # Retrieve Systems!
-        if hasattr(plugin, 'SYSTEM_SCRIPTS'):
-            system_scripts.update(plugin.SYSTEM_SCRIPTS)
+            if hasattr(plugin, 'HANDLERS_SESSION'):
+                handlers_session.update(plugin.HANDLERS_SESSION)
+
+            if hasattr(plugin, 'HANDLERS_SCRIPT'):
+                handlers_script.update(plugin.HANDLERS_SCRIPT)
+
+            # Retrieve Styles!
+            if hasattr(plugin, 'STYLES_ACCOUNT'):
+                styles_account.update(plugin.STYLES_CHARACTER)
+
+            if hasattr(plugin, 'STYLES_CHARACTER'):
+                styles_character.update(plugin.STYLES_CHARACTER)
+
+            # Retrieve Systems!
+            if hasattr(plugin, 'SYSTEM_SCRIPTS'):
+                system_scripts.update(plugin.SYSTEM_SCRIPTS)
+        except:
+            traceback.print_exc(file=sys.stdout)
 
         # Begin loading process.
     handler_classes = {
@@ -81,45 +97,35 @@ def at_server_start():
         'account': list(),
         'character': list(),
     }
-        
-    system_class_classes = dict()
-    system_script_classes = dict()
-    print handlers
-    for mode in ('account', 'character', 'script', 'session'):
-        print "loading handlers %s" % mode
-        for module in handlers[mode]:
-            print "loading module %s" % module
-            try:
-                load_mod = importlib.import_module(module)
-                print load_mod
-            except Exception as err:
-                print err
-            print load_mod
-            print load_mod.ALL
-            handler_classes[mode] += load_mod.ALL
+
+    for mode, mode_dict in (('account',handlers_account), ('character', handlers_character), ('script', handlers_script), ('session', handlers_session)):
+        for module in mode_dict.values():
+            handler_classes[mode].append(class_from_module(module))
             handler_classes[mode].sort(key=lambda c: c.load_order)
-            athanor_setup.handler_classes[mode] = tuple(handler_classes[mode])
-    print athanor_setup.handler_classes
-    print styles
+            athanor.handler_classes[mode] = tuple(handler_classes[mode])
+
+
     for mode in ('account', 'character'):
         for module in styles[mode]:
             load_mod = importlib.import_module(module)
             style_classes[mode] += load_mod.ALL
-            style_classes[mode].sort(key=lambda c: c.load_order)
-            athanor_setup.style_classes[mode] = tuple(style_classes[mode])
-    print athanor_setup.style_classes
+            athanor.style_classes[mode] = tuple(style_classes[mode])
+
     for key in system_classes.keys():
-        athanor_setup.system_classes[key] = class_from_module(system_classes[key])
+        athanor.system_classes[key] = class_from_module(system_classes[key])
 
     for key in system_scripts:
         typeclass = class_from_module(system_scripts[key])
         found = typeclass.objects.filter_family(db_key=key).first()
         if found:
-            athanor_setup.system_scripts[key] = found
+            athanor.system_scripts[key] = found
         else:
-            athanor_setup.system_scripts[key] = create_script(typeclass, key=key, persistent=True)
+            athanor.system_scripts[key] = create_script(typeclass, key=key, persistent=True)
 
-    print handler_classes
+    for plugin in athanor.load_order:
+        if hasattr(plugin, 'setup_plugin'):
+            plugin.setup_plugin()
+
 
 def at_server_stop():
     """

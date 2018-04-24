@@ -1,12 +1,11 @@
 from __future__ import unicode_literals
-import datetime, time
+import datetime, time, pytz
 from django.conf import settings
 from evennia.utils import time_format
 from athanor.utils.text import mxp
 from athanor.utils.time import utcnow
 from athanor.handlers.base import CharacterHandler
-
-from athanor.settings.character import CHARACTER_SYSTEM_SETTINGS
+from athanor.models import CharacterSettings
 
 
 class CharacterSystemHandler(CharacterHandler):
@@ -14,13 +13,26 @@ class CharacterSystemHandler(CharacterHandler):
     category = 'athanor_system'
     style = 'fallback'
     system_name = 'SYSTEM'
-    settings_classes = CHARACTER_SYSTEM_SETTINGS
-    use_hooks = True
     cmdsets = ('athanor.cmdsets.characters.AthCoreCharacterCmdSet', )
 
+    def __init__(self, base):
+        super(CharacterSystemHandler, self).__init__(base)
+        self.model, created = CharacterSettings.objects.get_or_create(character=self.owner)
+
     def at_post_puppet(self, **kwargs):
-        timestamp = time.time()
-        self.owner.attributes.add(key='athanor_system_conn', value=timestamp, category=self.category)
+        self.model.last_login = utcnow()
+        self.model.save(update_fields=['last_login'])
+
+    def at_true_logout(self, account, session, **kwargs):
+        self.model.last_logout = utcnow()
+        self.model.save(update_fields=['last_logout'])
+
+    @property
+    def last_played(self):
+        return max(self.model.last_login, self.model.last_logout)
+
+    def display_time(self, date=None, format=None):
+        return self.account.ath['athanor_system'].display_time(date, format)
 
     def is_builder(self):
         return self.owner.locks.check_lockstring(self.owner, "dummy:perm(Builder)")
@@ -40,28 +52,93 @@ class CharacterSystemHandler(CharacterHandler):
             return 'Builder'
         return 'Mortal'
 
-    def update_account(self, account):
-        self.owner.attributes.add(key='account', value=account, category=self.category)
-        self.reset_puppet_locks(account)
-
     @property
     def account(self):
-        return self.owner.attributes.get(key='account', category=self.category)
+        return self.model.account
 
-    def update_last_played(self):
-        self.owner.attributes.add(key='lastplayed', value=int(utcnow().strftime('%s')), category=self.category)
+    @account.setter
+    def account(self, value):
+        self.model.account = value
+        self.model.save(update_fields=['account'])
+        self.reset_puppet_locks(value)
+
+    def reset_puppet_locks(self, account=None):
+        """
+        Called by the processes for binding a character to a player.
+        """
+        if account:
+            self.owner.locks.add("puppet:id(%i) or pid(%i) or pperm(Developer) or pperm(Admin)" % (self.owner.id, account.id))
+        else:
+            self.owner.locks.add("puppet:pperm(Developer) or pperm(Admin)")
+
+    def mxp_name(self, commands=None):
+        if not commands:
+            commands = ['+finger']
+        send_commands = '|'.join(['%s %s' % (command, self.owner.key) for command in commands])
+        return mxp(text=self.owner.key, command=send_commands)
 
     @property
-    def last_played(self):
-        if not self.owner.attributes.has(key='lastplayed', category=self.category):
-            self.owner.attributes.add(key='lastplayed', value=int(utcnow().strftime('%s')), category=self.category)
-        save_data = self.owner.attributes.get(key='lastplayed', category=self.category)
-        return datetime.datetime.utcfromtimestamp(save_data)
+    def shelved(self):
+        return self.model.shelved
+
+    @shelved.setter
+    def shelved(self, value):
+        self.model.shelved = value
+        self.model.save(update_fields=['shelved', ])
+        if value:
+            self.disconnect(reason="Character was shelved!")
+
+    @property
+    def disabled(self):
+        return self.model.disabled
+
+    @disabled.setter
+    def disabled(self, value):
+        self.model.disabled = value
+        self.model.save(update_fields=['disabled', ])
+        if value:
+            self.disconnect(reason="Character was disabled!")
+
+    @property
+    def banned(self):
+        data = self.model.banned
+        if data > utcnow():
+            return data
+        return False
+
+    @banned.setter
+    def banned(self, value):
+        if not value:
+            self.model.banned = None
+        else:
+            self.model.banned = value
+            self.disconnect(reason="Character was banned!")
+        self.model.save(update_fields=['banned', ])
+
+    def disconnect(self, reason=None):
+        """
+        Disconnects all sessions from this character.
+
+        :param reason: A string explaining the reason. This will be displayed to the character.
+        :return:
+        """
+        if hasattr(self.owner, 'account'):
+            self.console_msg("%s is being disconnected because: %s" % (self.owner, reason))
+            for session in self.owner.sessions.get():
+                self.owner.account.unpuppet_object(session)
+
+
+class CharacterWhoHandler(CharacterHandler):
+    key = 'who'
+    category = 'who'
+    system_name = 'WHO'
 
     @property
     def connection_time(self):
-        timestamp = self.owner.attributes.get(key='athanor_system_conn', category=self.category)
-        return time.time() - timestamp
+        if not self.owner.sessions.count():
+            return 0
+        count = min([sess.conn_time for sess in self.owner.sessions.get()])
+        return time.time() - count
 
     @property
     def idle_time(self):
@@ -72,41 +149,29 @@ class CharacterSystemHandler(CharacterHandler):
 
     def off_or_idle_time(self, viewer):
         idle = self.idle_time
-        if idle is None or not viewer.ath['athanor_system'].can_see(self.owner):
+        if idle is None or not viewer.ath['system'].can_see(self.owner):
             return '|XOff|n'
         return time_format(idle, style=1)
 
     def off_or_conn_time(self, viewer):
         conn = self.connection_time
-        if conn is None or not viewer.ath['athanor_system'].can_see(self.owner):
+        if conn is None or not viewer.ath['system'].can_see(self.owner):
             return '|XOff|n'
         return time_format(conn, style=1)
 
     def last_or_idle_time(self, viewer):
         idle = self.idle_time
         last = self.last_played
-        if not idle or not viewer.ath['athanor_system'].can_see(self.owner):
-            return viewer.ath['athanor_system'].display_time(date=last, format='%b %d')
+        if not idle or not viewer.ath['system'].can_see(self.owner):
+            return viewer.ath['system'].display_time(date=last, format='%b %d')
         return time_format(idle, style=1)
 
     def last_or_conn_time(self, viewer):
         conn = self.connection_time
         last = self.last_played
-        if not conn or not viewer.ath['athanor_system'].can_see(self.owner):
-            return viewer.ath['athanor_system'].display_time(date=last, format='%b %d')
+        if not conn or not viewer.ath['system'].can_see(self.owner):
+            return viewer.ath['system'].display_time(date=last, format='%b %d')
         return time_format(conn, style=1)
-
-    def display_time(self, date=None, format=None):
-        return self.account.system.display_time(date, format)
-
-    def load(self):
-        self.playtime = self.owner.attributes.get(key='playtime', category=self.category)
-        if not self.playtime:
-            self.owner.attributes.add(key='playtime', value=0, category=self.category)
-            self.playtime = self.owner.attributes.get(key='playtime', category=self.category)
-
-    def update_playtime(self, seconds):
-        self.playtime += seconds
 
     @property
     def dark(self):
@@ -126,75 +191,6 @@ class CharacterSystemHandler(CharacterHandler):
         if self.is_admin():
             return True
         return not (target.system.idark or target.system.hidden)
-
-    def reset_puppet_locks(self, account):
-        """
-        Called by the processes for binding a character to a player.
-        """
-        self.owner.locks.add("puppet:id(%i) or pid(%i) or perm(Developer) or pperm(Admin)" % (self.owner.id, account.id))
-
-    def mxp_name(self, commands=None):
-        if not commands:
-            commands = ['+finger']
-        send_commands = '|'.join(['%s %s' % (command, self.owner.key) for command in commands])
-        return mxp(text=self.owner.key, command=send_commands)
-
-    def set_banned(self, banned):
-        """
-        Controls whether this character is banned.
-        By this point all input validation should be done.
-
-        :param banned: Integer. Set 0 to disable ban. Set to a UTC TIMESTAMP in seconds to enable.
-        :return:
-        """
-        if not banned:
-            self.owner.attributes.remove(key='banned', category=self.category)
-            return
-        self.owner.attributes.add(key='banned', value=banned, category=self.category)
-        until = datetime.datetime.utcfromtimestamp(banned)
-        self.disconnect(reason="Character was banned until %s!" % self.display_time(until))
-
-    def set_disabled(self, disabled):
-        """
-        Controls whether this character is disabled.
-        By this point all input validation should be done.
-
-        :param disabled: Boolean. 1 = Disabled. 0 = Re-enable.
-        :return:
-        """
-        if not disabled:
-            self.owner.attributes.remove(key='disabled', category=self.category)
-            return
-        self.owner.attributes.add(key='disabled', value=disabled, category=self.category)
-        self.disconnect(reason="Character was disabled!")
-
-    def set_shelved(self, shelved):
-        """
-        Controls whether this character is shelved.
-        By this point all input validation should be done.
-
-        Use shelving and not deleting!
-
-        :param shelved: Boolean. 1 to shelve, 0 to un-shelve.
-        :return:
-        """
-        if not shelved:
-            self.owner.swap_typeclass(settings.BASE_CHARACTER_TYPECLASS)
-            return
-        self.owner.swap_typeclass(settings.ATHANOR_SHELVED_CHARACTER_TYPECLASS)
-        self.disconnect(reason="Character was Shelved!")
-
-    def disconnect(self, reason=None):
-        """
-        Disconnects all sessions from this character.
-
-        :param reason: A string explaining the reason. This will be displayed to the character.
-        :return:
-        """
-        if hasattr(self.owner, 'account'):
-            self.console_msg("%s is being disconnected because: %s" % (self.owner, reason))
-            for session in self.owner.sessions.get():
-                self.owner.account.unpuppet_object(session)
 
 
 class CharacterMode(object):
@@ -228,20 +224,3 @@ class CharacterMode(object):
         self.leave()
         self.cmdset = cmdset
         self.owner.cmdset.add(cmdset)
-
-
-
-
-
-
-class CharacterWhoHandler(CharacterHandler):
-    key = 'athanor_who'
-    category = 'athanor_who'
-    use_hooks = True
-    cmdsets = ('athanor.cmdsets.characters.WhoCharacterCmdSet', )
-
-    
-
-
-
-ALL = [CharacterSystemHandler, CharacterWhoHandler, ]

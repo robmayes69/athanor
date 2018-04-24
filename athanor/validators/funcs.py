@@ -5,7 +5,7 @@ from evennia.utils.ansi import ANSIString
 from athanor.utils.text import partial_match
 from athanor.utils.time import utc_from_string, duration_from_string, utcnow
 
-BAD_CHARS = ('/', '@', '&', '^^^', '*', '+', '-', '|', '{', '[', ']', '}', ',', '.', '$', '#', '!')
+BAD_CHARS = ('/', '@', '&', '^^^', '*', '+', '-', '|', '{', '[', ']', '}', ',', '.', '$', '#', '!', '"')
 
 TZ_DICT = {str(tz): pytz.timezone(tz) for tz in pytz.common_timezones}
 
@@ -117,7 +117,35 @@ def valid_account_email(checker, entry):
         raise ValueError("That isn't a valid email!")
     return entry
 
+def valid_character_name(checker, entry, rename_from=None):
+    if not len(entry):
+        raise ValueError("Character Name field empty!")
+    if entry.strip().isdigit():
+        raise ValueError("Character name cannot be a number!")
+    for char in BAD_CHARS:
+        if char in entry:
+            raise ValueError("Character Names may not contain the characters: %s" % BAD_CHARS)
+    if len(entry) != len(entry.strip()):
+        raise ValueError("Character names may not have leading or trailing spaces.")
+    from athanor.classes.characters import Character
+    exist = Character.objects.filter_family(db_key__iexact=entry).first()
+    if exist and ((exist != rename_from) or not rename_from):
+        raise ValueError("Character name is already in use!")
+    return entry
 
+def valid_character_id(checker, entry):
+    from athanor.classes.characters import Character
+    exist = Character.objects.filter_family(id=entry).first()
+    if not exist:
+        raise ValueError("Character Not found.")
+    return exist
+
+def valid_account_id(checker, entry):
+    from athanor.classes.accounts import Account
+    exist = Account.objects.filter_family(id=entry).first()
+    if not exist:
+        raise ValueError("Account Not found.")
+    return exist
 
 ALL = { 'color': valid_color,
         'duration': valid_duration,
@@ -130,4 +158,7 @@ ALL = { 'color': valid_color,
         'account_email': valid_account_email,
         'account_name': valid_account_name,
         'account_password': valid_account_password,
+        'character_name': valid_character_name,
+        'character_id': valid_character_id,
+        'account_id': valid_account_id,
         }

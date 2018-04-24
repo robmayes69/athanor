@@ -6,67 +6,29 @@ from evennia import utils
 from evennia.utils import time_format
 from evennia.utils.ansi import ANSIString
 from athanor.utils.time import utcnow
+from athanor.models import AccountSettings
 
 from athanor.handlers.base import AccountHandler
-from athanor.settings.account import ACCOUNT_SYSTEM_SETTINGS
-
 
 
 class AccountSystemHandler(AccountHandler):
-    key = 'athanor_system'
+    key = 'system'
     style = 'fallback'
-    category = 'athanor_system'
-    settings_classes = ACCOUNT_SYSTEM_SETTINGS
+    category = 'athanor'
     system_name = 'SYSTEM'
-    cmdsets = ('athanor.cmdsets.accounts.AthCoreAccountCmdSet', )
+    cmdsets = ('athanor.cmdsets.accounts.AccountSystemCmdSet', )
 
-    def at_post_login(self, session):
-        self.owner.attributes.add(key='athanor_system_conn', value=time.time(), category=self.category)
+    def __init__(self, base):
+        super(AccountSystemHandler, self).__init__(base)
+        self.model, created = AccountSettings.objects.get_or_create(account=self)
 
-    @property
-    def connection_time(self):
-        timestamp = self.owner.attributes.get(key='athanor_system_conn')
-        return time.time() - timestamp
+    def at_post_login(self, session, **kwargs):
+        self.model.last_login = utcnow()
+        self.model.save(update_fields=['last_login'])
 
-    @property
-    def idle_time(self):
-        sessions = self.owner.sessions.get()
-        if sessions:
-            return time.time() - min([ses.cmd_last for ses in sessions])
-        return 0
-
-    @property
-    def base_character_slots(self):
-        return settings.ATHANOR_CHARACTER_SLOTS
-
-    @property
-    def extra_character_slots(self):
-        return self.settings['extra_character_slots'].value
-
-    @property
-    def available_character_slots(self):
-        return self.max_character_slots - self.base['characters'].used_slots()
-
-    @property
-    def max_character_slots(self):
-        return self.base_character_slots + self.extra_character_slots
-
-    def display(self, viewer, footer=True):
-        message = list()
-        message.append(viewer.render.subheader('Account: %s' % self.owner.key, style=self.style))
-        message.append('Email: %s' % self.owner.email)
-        message.append('Slots: %s/%s(%s)' % (self.available_character_slots, self.max_character_slots,
-                                             self.extra_character_slots))
-        chars = self.owner.characters.all()
-        if chars:
-            message.append(viewer.render.separator('Characters', style=self.style))
-            char_table = viewer.render.make_table(['Name', 'Status', 'Cost'], width=[52, 20, 6], style=self.style)
-            for char in chars:
-                char_table.add_row(char.key, char.system.status(), char.system.cost())
-            message.append(char_table)
-        if footer:
-            message.append(viewer.render.footer(style=self.style))
-        return '\n'.join(unicode(line) for line in message)
+    def at_true_logout(self, account, session, **kwargs):
+        self.model.last_logout = utcnow()
+        self.model.save(update_fields=['last_logout'])
 
     def is_builder(self):
         return self.owner.locks.check_lockstring(self.owner, "dummy:perm(Builder)")
@@ -104,17 +66,6 @@ class AccountSystemHandler(AccountHandler):
         self.owner.save()
         self.console_msg("Your Account Email was changed to: %s" % fixed_email)
 
-    def load(self):
-        if self.owner.attributes.has(key='playtime', category=self.category):
-            self.playtime = self.owner.attributes.get(key='playtime', category=self.category)
-            return
-        self.owner.attributes.add(key='playtime', value=0, category=self.category)
-        self.playtime = self.owner.attributes.get(key='playtime', category=self.category)
-        return
-
-    def update_playtime(self, seconds):
-        self.playtime += seconds
-
     def display_time(self, date=None, format=None):
         """
         Displays a DateTime in a localized timezone to the account.
@@ -131,15 +82,70 @@ class AccountSystemHandler(AccountHandler):
         time = date.astimezone(tz)
         return time.strftime(format)
 
-    def update_last_played(self):
-        self.owner.attributes.add(key='lastplayed', value=int(utcnow().strftime('%s')), category=self.category)
+    @property
+    def timezone(self):
+        return self.model.timezone
+
+    @timezone.setter
+    def timezone(self, value):
+        self.model.timezone = value
+        self.model.save(update_fields=['timezone',])
+
+    @property
+    def shelved(self):
+        return self.model.shelved
+
+    @shelved.setter
+    def shelved(self, value):
+        self.model.shelved = value
+        self.model.save(update_fields=['shelved', ])
+
+    @property
+    def disabled(self):
+        return self.model.disabled
+
+    @disabled.setter
+    def disabled(self, value):
+        self.model.disabled = value
+        self.model.save(update_fields=['disabled', ])
+
+    @property
+    def banned(self):
+        data = self.model.banned
+        if data > utcnow():
+            return data
+        return False
+
+    @banned.setter
+    def banned(self, value):
+        if not value:
+            self.model.banned = None
+        else:
+            self.model.banned = value
+        self.model.save(update_fields=['banned', ])
+
+    @property
+    def playtime(self):
+        return self.model.playtime
+
+    def update_playtime(self, seconds):
+        self.model.playtime += datetime.timedelta(seconds)
+        self.model.save(update_fields=['playtime'])
 
     @property
     def last_played(self):
-        if not self.owner.attributes.has(key='lastplayed', category=self.category):
-            self.owner.attributes.add(key='lastplayed', value=int(utcnow().strftime('%s')), category=self.category)
-        save_data = self.owner.attributes.get(key='lastplayed', category=self.category)
-        return datetime.datetime.utcfromtimestamp(save_data)
+        return max(self.model.last_login, self.model.last_logout)
+
+
+class AccountWhoHandler(AccountHandler):
+    key = 'who'
+    style = 'who'
+    category = 'athanor'
+    system_name = 'WHO'
+
+    def __init__(self, base):
+        super(AccountWhoHandler, self).__init__(base)
+        self.model, created = AccountSettings.objects.get_or_create(account=self)
 
     def off_or_idle_time(self):
         idle = self.idle_time
@@ -155,14 +161,14 @@ class AccountSystemHandler(AccountHandler):
 
     def last_or_idle_time(self, viewer):
         idle = self.idle_time
-        last = self.last_played
+        last = self.base['system'].last_played
         if not idle:
             return viewer.ath['system'].display_time(date=last, format='%b %d')
         return time_format(idle, style=1)
 
     def last_or_conn_time(self, viewer):
         conn = self.connection_time
-        last = self.last_played
+        last = self.base['system'].last_played
         if not conn:
             return viewer.ath['system'].display_time(date=last, format='%b %d')
         return time_format(conn, style=1)
@@ -172,61 +178,96 @@ class AccountSystemHandler(AccountHandler):
             return True
         return not (target.system.dark() or target.system.hidden())
 
+    @property
+    def hidden(self):
+        return self.model.hidden
 
+    @hidden.setter
+    def hidden(self, value):
+        self.model.hidden = value
+        self.model.save(update_fields=['hidden', ])
 
+    @property
+    def dark(self):
+        return self.model.dark
+
+    @dark.setter
+    def dark(self, value):
+        self.model.dark = value
+        self.model.save(update_fields=['dark', ])
+
+    @property
+    def connection_time(self):
+        if not self.owner.sessions.count():
+            return 0
+        count = min([sess.conn_time for sess in self.owner.sessions.get()])
+        return time.time() - count
+
+    @property
+    def idle_time(self):
+        sessions = self.owner.sessions.get()
+        if sessions:
+            return time.time() - min([ses.cmd_last for ses in sessions])
+        return 0
 
 
 class AccountCharacterHandler(AccountHandler):
-    style = 'account_appearance'
-    key = 'athanor_characters'
-    category = 'athanor_characters'
+    key = 'character'
+    style = 'account'
+    category = 'athanor'
+    system_name = 'ACCOUNT'
     
-    def __init__(self, owner):
-        super(AccountCharacterHandler, self).__init__(owner)
-        self.character_list = list()
-        self.load()
-        
-    def load(self):
-        if not self.owner.attributes.has(key='character_list', category='athanor_settings'):
-            self.owner.attributes.add(key='character_list', value=list(), category='athanor_settings')
-        char_list = self.owner.attributes.get(key='character_list', category='athanor_settings')
-        cleaned = sorted([char for char in char_list if char], key=lambda char: char.key)
-        if len(char_list) != len(cleaned):
-            self.owner.attributes.add(key='character_list', value=char_list, category='athanor_settings')
-        self.character_list = cleaned
+    def __init__(self, base):
+        super(AccountCharacterHandler, self).__init__(base)
+        self.model, created = AccountSettings.objects.get_or_create(account=self)
     
     def all(self):
-        cleaned = sorted([char for char in self.character_list if char], key=lambda char: char.key)
-        if len(cleaned) != len(self.character_list):
-            self.owner.attributes.add(key='character_list', value=cleaned, category='athanor_settings')
-            self.character_list = cleaned
-        return cleaned
-    
+        return self.model.characters.all().order_by('db_key')
+
     def add(self, character):
-        pass
+        self.model.characters.add(character)
+        character.ath['character'].account = self.owner
     
     def remove(self, character):
-        pass
-        
-    def create(self, name):
-        pass
+        self.model.characters.remove(character)
+        character.ath['character'].account = None
 
-    def used_slots(self):
-        return 0
+    @property
+    def slot_cost(self):
+        return 1
 
-class AccountLoginHandler(AccountHandler):
-    key = 'athanor_login'
-    category = 'athanor_login'
-    style = 'login'
+    def login_data(self):
+        return tuple([(char.id, char.key) for char in self.all()])
 
-    def render_login(self, viewer):
-        characters = self.base['characters'].all()
+    @property
+    def base_character_slots(self):
+        return settings.ATHANOR_CHARACTER_SLOTS
+
+    @property
+    def extra_character_slots(self):
+        return self.model.extra_character_slots
+
+    @extra_character_slots.setter
+    def extra_character_slots(self, value):
+        self.model.extra_character_slots = value
+        self.model.save(update_fields=['extra_character_slots', ])
+
+    @property
+    def available_character_slots(self):
+        return self.max_character_slots - sum([char.ath['character'].slot_cost for char in self.all()])
+
+    @property
+    def max_character_slots(self):
+        return self.base_character_slots + self.extra_character_slots
+
+    def render_login(self, session, viewer):
+        characters = self.base['character'].all()
         message = list()
-        message.append(viewer.styles.header("%s: Account Management" % settings.SERVERNAME, style=self.style))
-        message += self.at_look_info_section(viewer)
-        message += self.at_look_session_menu(viewer)
-        message.append(viewer.styles.subheader('Commands', style=self.style))
-        command_column = viewer.styles.make_table([], header=False, style=self.style)
+        message.append(session.render.header("%s: Account Management" % settings.SERVERNAME, style=self.style))
+        message += self.at_look_info_section(session, viewer)
+        message += self.at_look_session_menu(session, viewer)
+        message.append(session.render.subheader('Commands', style=self.style))
+        command_column = session.render.table([], header=False, style=self.style)
         command_text = list()
         command_text.append(unicode(ANSIString(" |whelp|n - more commands")))
         if self.owner.db._reset_username:
@@ -240,28 +281,29 @@ class AccountLoginHandler(AccountHandler):
         command_column.add_row("\n".join(command_text), width=80)
         message.append(command_column)
         if characters:
-            message += self.at_look_character_menu(viewer)
-        message.append(viewer.styles.subheader('Open Char Slots: %s/%s' % (
-            self.base['system'].available_character_slots, self.base['system'].max_character_slots), style=self.style))
-        self.owner.msg('\n'.join(unicode(line) for line in message))
+            message += self.at_look_character_menu(session, viewer)
+        message.append(session.render.subheader('Open Char Slots: %s/%s' % (
+            self.available_character_slots, self.max_character_slots), style=self.style))
+        return '\n'.join(unicode(line) for line in message if line)
 
-    def at_look_info_section(self, viewer):
+    def at_look_info_section(self, session, viewer):
         message = list()
-        info_column = viewer.styles.make_table([], header=False, style=self.style)
+        info_column = session.render.table((), header=False, style=self.style)
         info_text = list()
         info_text.append(unicode(ANSIString("Account:".rjust(8) + " |g%s|n" % (self.owner.key))))
         email = self.owner.email if self.owner.email != 'dummy@dummy.com' else '<blank>'
         info_text.append(unicode(ANSIString("Email:".rjust(8) + ANSIString(" |g%s|n" % email))))
         info_text.append(unicode(ANSIString("Perms:".rjust(8) + " |g%s|n" % ", ".join(self.owner.permissions.all()))))
-        info_column.add_row("\n".join(info_text), width=80)
+        info_column.add_row("\n".join(info_text))
         message.append(info_column)
         return message
 
-    def at_look_session_menu(self, viewer):
+    def at_look_session_menu(self, session, viewer):
         sessions = self.owner.sessions.all()
         message = list()
-        message.append(viewer.styles.subheader('Sessions', style=self.style))
-        sesstable = viewer.styles.make_table(['ID', 'Protocol', 'Address', 'Connected'], width=[7, 23, 23, 27], style=self.style)
+        message.append(session.render.subheader('Sessions', style=self.style))
+        columns = (('ID', 7, 'l'), ('Protocol', 23, 'l'), ('Address', 23, 'l'), ('Connected', 27, 'l'))
+        sesstable = session.render.table(columns, style=self.style)
         for session in sessions:
             conn_duration = time.time() - session.conn_time
             sesstable.add_row(session.sessid, session.protocol_key,
@@ -272,22 +314,20 @@ class AccountLoginHandler(AccountHandler):
         # message.append(separator())
         return message
 
-    def at_look_character_menu(self, viewer):
+    def at_look_character_menu(self, session, viewer):
         message = list()
-        characters = self.owner.characters.all()
-        message.append(viewer.styles.subheader('Characters', style=self.style))
-        chartable = viewer.styles.make_table(['ID', 'Name', 'Type', 'Last Login'], width=[7, 37, 16, 20], style=self.style)
+        characters = self.owner.ath['character'].all()
+        message.append(session.render.subheader('Characters', style=self.style))
+        columns = (('ID', 7, 'l'), ('Name', 37, 'l'), ('Type', 16, 'l'), ('Last Login', 20, 'l'))
+        chartable = session.render.table(columns, style=self.style)
         for character in characters:
-            login = character.character_settings.last_played
+            login = character.ath['system'].last_played
             if login:
-                login = self.owner.time.display(date=login)
+                login = self.owner.ath['system'].display_time(date=login)
             else:
                 login = 'N/A'
-            type = character.config.model.character_type or 'N/A'
+            type = 'N/A'
             chartable.add_row(character.id, character.key, type, login)
         message.append(chartable)
         # message.append(separator())
         return message
-
-
-ALL = [AccountSystemHandler, AccountLoginHandler, AccountCharacterHandler]

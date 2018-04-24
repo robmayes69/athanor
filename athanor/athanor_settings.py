@@ -64,10 +64,10 @@ from athanor_modules import ATHANOR_MODULES
 
 
 # Section for Athanor Module data.
-from athanor import athanor_setup
-athanor_setup.setup(ATHANOR_MODULES)
+import athanor
+athanor.setup(ATHANOR_MODULES)
 
-for module in athanor_setup.load_order:
+for module in athanor.load_order:
     if hasattr(module, 'INSTALLED_APPS'):
         INSTALLED_APPS = INSTALLED_APPS + module.INSTALLED_APPS
     if hasattr(module, 'INLINEFUNC_MODULES'):

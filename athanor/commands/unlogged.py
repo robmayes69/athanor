@@ -8,11 +8,11 @@ from evennia.commands.default.unloggedin import _LATEST_FAILED_LOGINS, _throttle
 from evennia.utils.create import create_account
 
 from athanor.classes.characters import Character
-from athanor.core.command import MuxCommand, AthCommand
+from athanor.commands.base import AthCommand
 from athanor.utils.create import character as make_character
 
 
-class CmdMushConnect(MuxCommand):
+class CmdMushConnect(AthCommand):
     """
     Connect to the game using an old Mush Login.
     This only works if the account hasn't been fully converted yet.

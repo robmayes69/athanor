@@ -10,7 +10,7 @@ creation commands.
 from __future__ import unicode_literals
 from evennia import DefaultCharacter
 from evennia.utils.utils import lazy_property
-from athanor.handlers.base import CharacterTypeHandler
+from athanor.handlers.base import CharacterTypeManager
 from athanor.styles.base import CharacterTypeStyle
 
 
@@ -37,7 +37,7 @@ class BaseCharacter(DefaultCharacter):
 
     @lazy_property
     def ath(self):
-        return CharacterTypeHandler(self)
+        return CharacterTypeManager(self)
 
     @lazy_property
     def styles(self):
@@ -151,6 +151,8 @@ class BaseCharacter(DefaultCharacter):
         else:
             return search_results
 
+    def return_appearance(self, session, viewer):
+        return "TO BE IMPLEMENTED"
 
 # This is a separate, special branch off of BaseCharacter. It implements the Athanor API, but exists only for
 # characters that are no longer in use.

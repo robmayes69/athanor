@@ -1,5 +1,4 @@
-import importlib
-from django.conf import settings
+import athanor
 from evennia.utils.ansi import ANSIString
 from athanor.utils.text import partial_match
 
@@ -50,14 +49,15 @@ class __BaseTypeManager(object):
 
         :param owner: An instance of a TypeClass'd object.
         """
+
         self.owner = owner
         self.attributes = owner.attributes
 
         # Make validators available to TypeManagers!
-        self.valid = athanor.validators
+        self.valid = athanor.valid
 
         # Load all handlers.
-        handlers = athanor.handlers[self.mode]
+        handlers = athanor.handler_classes[self.mode]
         self.ordered_handlers = list()
         self.handlers = dict()
         for handler in handlers:
@@ -146,6 +146,12 @@ class AccountTypeManager(__BaseTypeManager):
     def at_true_logout(self, **kwargs):
         for handler in self.ordered_handlers:
             handler.at_true_logout(**kwargs)
+            
+    def render_login(self, session, viewer):
+        message = []
+        for handler in self.ordered_handlers:
+            message.append(handler.render_login(session, viewer))
+        return '\n'.join([unicode(line) for line in message if line])
 
 
 class ScriptTypeManager(__BaseTypeManager):
@@ -358,6 +364,9 @@ class AccountHandler(__BaseHandler):
         pass
 
     def at_true_logout(self, **kwargs):
+        pass
+
+    def render_login(self, session, viewer):
         pass
 
 

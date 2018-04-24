@@ -6,8 +6,9 @@ Commands describe the input the player can do to the game.
 """
 from __future__ import unicode_literals
 from evennia import default_cmds
+import athanor
 from athanor.utils.text import partial_match, sanitize_string
-from athanor.validators.base import VALIDATORS
+
 
 
 class AthCommand(default_cmds.MuxCommand):
@@ -24,7 +25,7 @@ class AthCommand(default_cmds.MuxCommand):
         caller = self.caller
         if self.character:
             caller = self.character
-        return VALIDATORS[test](caller, input)
+        return athanor.valid[test](caller, input)
 
     def partial(self, match_text, candidates):
         return partial_match(match_text, candidates)

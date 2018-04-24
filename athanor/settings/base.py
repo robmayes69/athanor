@@ -1,16 +1,14 @@
 from __future__ import unicode_literals
 
 import datetime
-from django.conf import settings
 from evennia.utils.ansi import ANSIString
-
+import athanor
 from athanor.classes.rooms import Room
 from athanor.classes.channels import AthanorChannel
 from athanor.utils.text import partial_match
-from athanor.validators.base import VALIDATORS
+
 from athanor.validators.funcs import TZ_DICT
 from athanor.styles.athanor_styles import FALLBACK
-
 
 
 class __Setting(object):
@@ -20,7 +18,7 @@ class __Setting(object):
     expect_type = ''
     value_storage = None
     default = None
-    valid_storage = VALIDATORS
+    valid = athanor.valid
 
     def __str__(self):
         return self.key
@@ -33,7 +31,7 @@ class __Setting(object):
         self.loaded = False
 
     def __getitem__(self, item):
-        return self.valid_storage[item]
+        return self.valid[item]
 
     def load(self):
         if self.save_data and self.key in self.save_data:

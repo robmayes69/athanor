@@ -26,6 +26,7 @@ def at_server_start():
     for path in athanor.start_stop:
         module = importlib.import_module(path)
         module.at_server_start()
+    print "finished running server start"
 
 
 def at_server_stop():

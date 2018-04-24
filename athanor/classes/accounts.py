@@ -26,7 +26,7 @@ from __future__ import unicode_literals
 from evennia import DefaultAccount
 from evennia.utils.utils import lazy_property, is_iter
 
-from athanor.handlers.base import AccountTypeHandler
+from athanor.handlers.base import AccountTypeManager
 from athanor.styles.base import AccountTypeStyle
 
 
@@ -99,7 +99,7 @@ class Account(DefaultAccount):
     """
     @lazy_property
     def ath(self):
-        return AccountTypeHandler(self)
+        return AccountTypeManager(self)
     
     @lazy_property
     def styles(self):
@@ -158,15 +158,10 @@ class Account(DefaultAccount):
                 off to any recipient (usually to ourselves)
 
         """
-
-        if target and not is_iter(target):
-            # single target - just show it
-            return target.return_appearance(session, self)
-        else:
-            message = list()
-            for t in target:
-                message.append(t.return_appearance(session, self))
-            return '\n'.join([unicode(line) for line in message])
+        self.msg(target)
+        if not target:
+            target = self
+        return target.return_appearance(session, self)
 
 
     def return_appearance(self, session, viewer):

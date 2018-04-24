@@ -27,6 +27,30 @@ class CmdWho(AthCommand):
         self.session.ath['athanor_who'].accept_request(req)
 
 
+class CharacterCmdOOC(AthCommand):
+    """
+    stop puppeting and go ooc
+
+    Usage:
+        @ooc
+
+    Go out-of-character (OOC).
+
+    This will leave your current character and put you in a incorporeal OOC state.
+    """
+
+    key = "@ooc"
+    locks = "cmd:pperm(Player)"
+    aliases = "@unpuppet"
+    help_category = "General"
+
+
+    def _main(self):
+        request = AthanorRequest(session=self.session, 
+                                 operation='puppet_character', parameters={'character_id': 0})
+        self.session.ath['athanor_system'].accept_request(request)
+
+
 class CmdLook(AthCommand):
     """
     look at location or object

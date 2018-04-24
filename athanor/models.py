@@ -4,41 +4,101 @@ from django.core.exceptions import ValidationError
 from evennia.locks.lockhandler import LockHandler
 from evennia.utils.ansi import ANSIString
 from evennia.utils import lazy_property
-from athanor.utils.text import sanitize_string
+from timezone_field import TimeZoneField
+from pytz import UTC
 
 
 def validate_color(value):
     if not len(ANSIString('|%s' % value)) == 0:
         raise ValidationError("'%s' is not a valid color." % value)
 
-class WithKey(models.Model):
-    """
-    abstract model to implement a generic 'key' field that implements case-insensitive renaming.
 
-    Not really that great.
-    """
-    key = models.CharField(max_length=255, unique=True, db_index=True)
+class __AbstractAccountSystem(models.Model):
+    account = models.OneToOneField('accounts.AccountDB', related_name='+')
+    banned = models.DateTimeField(null=True)
+    disabled = models.BooleanField(default=False)
+    playtime = models.DurationField()
+    last_login = models.DateTimeField(null=True)
+    last_logout = models.DateTimeField(null=True)
+    shelved = models.BooleanField(default=False)
+    timezone = TimeZoneField(default=UTC)
+    
+    class Meta:
+        abstract = True
+        
+
+class AccountSettings(__AbstractAccountSystem):
+    pass
+    
+    
+class __AbstractAccountWho(models.Model):
+    account = models.OneToOneField('accounts.AccountDB', related_name='+')
+    hidden = models.BooleanField(default=False)
+    dark = models.BooleanField(default=False)
 
     class Meta:
         abstract = True
 
-    def __unicode__(self):
-        return self.key
 
-    def __str__(self):
-        return self.key
+class AccountWho(__AbstractAccountWho):
+    pass
 
-    def rename(self, new_name):
-        if not new_name:
-            raise ValueError("No new name entered!")
-        clean_name = sanitize_string(new_name, strip_ansi=True)
-        if self.__class__.objects.filter(key__iexact=clean_name).exclude(id=self.id).count():
-            raise ValueError("Names must be unique, case insensitive.")
-        else:
-            if self.key == clean_name:
-                return
-            self.key = clean_name
-            self.save(update_fields=['key'])
+
+class __AbstractAccountCharacter(models.Model):
+    account = models.OneToOneField('accounts.AccountDB', related_name='+')
+    last_character = models.ForeignKey('objects.ObjectDB', on_delete=models.SET_NULL, null=True)
+    extra_character_slots = models.SmallIntegerField(default=0)
+    characters = models.ManyToManyField('objects.ObjectDB', related_name='+')
+
+    class Meta:
+        abstract = True
+
+
+class AccountCharacter(__AbstractAccountCharacter):
+    pass
+
+
+class __AbstractCharacterSystem(models.Model):
+    character = models.OneToOneField('objects.ObjectDB', related_name='+')
+    account = models.ForeignKey('accounts.AccountDB', related_name='+', null=True, on_delete=models.SET_NULL)
+    banned = models.DateTimeField(null=True)
+    disabled = models.BooleanField(default=False)
+    playtime = models.DurationField()
+    last_login = models.DateTimeField(null=True)
+    last_logout = models.DateTimeField(null=True)
+    shelved = models.BooleanField(default=False)
+    
+    class Meta:
+        abstract = True
+
+
+class CharacterSystem(__AbstractCharacterSystem):
+    pass
+
+
+class __AbstractCharacterWho(models.Model):
+    character = models.OneToOneField('objects.ObjectDB', related_name='+')
+    hidden = models.BooleanField(default=False)
+    dark = models.BooleanField(default=False)
+
+    class Meta:
+        abstract = True
+
+
+class CharacterWho(__AbstractAccountWho):
+    pass
+
+
+class __AbstractCharacterCharacter(models.Model):
+    character = models.OneToOneField('objects.ObjectDB', related_name='+')
+
+
+    class Meta:
+        abstract = True
+
+
+class CharacterCharacter(__AbstractCharacterCharacter):
+    pass
 
 
 class WithLocks(models.Model):

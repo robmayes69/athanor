@@ -1,5 +1,5 @@
-import importlib
 from django.conf import settings
+import athanor
 from athanor.handlers.base import SessionHandler
 from athanor.utils.online import characters, accounts
 from athanor.utils.create import account as create_account, character as create_character
@@ -10,7 +10,19 @@ class SessionSystemHandler(SessionHandler):
     style = 'fallback'
     system_name = 'SYSTEM'
     operations = ('create_account', 'create_character', 'set_account_disabled', 'set_character_disabled',
-                  'set_account_banned', 'set_character_banned', 'set_character_shelved')
+                  'set_account_banned', 'set_character_banned', 'set_character_shelved', 'login_account',
+                  'puppet_character')
+    cmdsets = ('athanor.cmdsets.unlogged.UnloggedCmdSet',)
+
+    def at_sync(self):
+        if not self.owner.logged_in:
+            for cmdset in self.cmdsets:
+                self.owner.cmdset.add(cmdset)
+
+    def at_login(self, account, **kwargs):
+        for cmdset in self.cmdsets:
+            self.owner.cmdset.remove(cmdset)
+
 
     def op_create_account(self, response):
         """
@@ -71,18 +83,19 @@ class SessionSystemHandler(SessionHandler):
             if not session.account:
                 raise ValueError("You are not logged in!")
             if not account_id:
-                account = self.account
+                account = self.owner.account
             else:
                 account = self.valid['account_id'](session, account_id)
             name = self.valid['character_name'](session, name)
-            if not session.account.ath['athanor_sys'].is_admin():
+            if not session.account.ath['athanor_system'].is_admin():
                 if session.account != account:
                     raise ValueError("Permission denied. Cannot create characters for other accounts!")
                 if not settings.ATHANOR_OPEN_CHARACTER_CREATION:
                     raise ValueError("Character Creation by non-admin is disabled.")
-                if not account.ath['athanor_sys'].available_character_slots:
+                if not account.ath['athanor_system'].available_character_slots:
                     raise ValueError("Account is out of Character Slots!")
             new_character = create_character(name, account)
+            session.account.ath['athanor_characters'].add(new_character)
         except Exception as err:
             if 'text' in output:
                 message['text'] = unicode(err)
@@ -118,11 +131,11 @@ class SessionSystemHandler(SessionHandler):
                 raise ValueError("You are not logged in!")
             account = self.valid['account_id'](session, account_id)
             disabled = self.valid['boolean'](session, disabled)
-            if not session.account.ath['athanor_sys'].is_admin():
+            if not session.account.ath['athanor_system'].is_admin():
                 raise ValueError("Permission denied. Only Admin can alter Account Disable Status.")
-            if account.ath['athanor_sys'].is_admin() and not session.account.is_superuser:
+            if account.ath['athanor_system'].is_admin() and not session.account.is_superuser:
                 raise ValueError("Permission denied. Only the SuperUser can alter Disables for Admin Accounts.")
-            account.ath['athanor_sys'].set_disabled(disabled)
+            account.ath['athanor_system'].set_disabled(disabled)
         except Exception as err:
             if 'text' in output:
                 message['text'] = unicode(err)
@@ -161,11 +174,11 @@ class SessionSystemHandler(SessionHandler):
                 raise ValueError("You are not logged in!")
             character = self.valid['character_id'](session, character_id)
             disabled = self.valid['boolean'](session, disabled)
-            if not session.account.ath['athanor_sys'].is_admin():
+            if not session.account.ath['athanor_system'].is_admin():
                 raise ValueError("Permission denied. Only Admin can alter Character Disable Status.")
-            if character.ath['athanor_sys'].account.is_admin() and not session.account.is_superuser:
+            if character.ath['athanor_system'].account.is_admin() and not session.account.is_superuser:
                 raise ValueError("Permission denied. Only the SuperUser can alter Disables for Admin Accounts.")
-            character.ath['athanor_sys'].set_disabled(disabled)
+            character.ath['athanor_system'].set_disabled(disabled)
         except Exception as err:
             if 'text' in output:
                 message['text'] = unicode(err)
@@ -202,11 +215,11 @@ class SessionSystemHandler(SessionHandler):
                 raise ValueError("You are not logged in!")
             account = self.valid['account_id'](session, account_id)
             banned = self.valid['unix_time_future'](session, banned)
-            if not session.account.ath['athanor_sys'].is_admin():
+            if not session.account.ath['athanor_system'].is_admin():
                 raise ValueError("Permission denied. Only Admin can alter Account Banned Status.")
-            if account.ath['athanor_sys'].is_admin() and not session.account.is_superuser:
+            if account.ath['athanor_system'].is_admin() and not session.account.is_superuser:
                 raise ValueError("Permission denied. Only the SuperUser can alter Bans for Admin Accounts.")
-            account.ath['athanor_sys'].set_banned(banned)
+            account.ath['athanor_system'].set_banned(banned)
         except Exception as err:
             if 'text' in output:
                 message['text'] = unicode(err)
@@ -245,11 +258,11 @@ class SessionSystemHandler(SessionHandler):
                 raise ValueError("You are not logged in!")
             character = self.valid['character_id'](session, character_id)
             banned = self.valid['unix_time_future'](session, banned)
-            if not session.account.ath['athanor_sys'].is_admin():
+            if not session.account.ath['athanor_system'].is_admin():
                 raise ValueError("Permission denied. Only Admin can alter Character Banned Status.")
-            if character.ath['athanor_sys'].account.ath['athanor_sys'].is_admin() and not session.account.is_superuser:
+            if character.ath['athanor_system'].account.ath['athanor_system'].is_admin() and not session.account.is_superuser:
                 raise ValueError("Permission denied. Only the SuperUser can alter Bans for Admin Accounts.")
-            character.ath['athanor_sys'].set_banned(banned)
+            character.ath['athanor_system'].set_banned(banned)
         except Exception as err:
             if 'text' in output:
                 message['text'] = unicode(err)
@@ -294,9 +307,9 @@ class SessionSystemHandler(SessionHandler):
                 raise ValueError("You are not logged in!")
             character = self.valid['character_id'](session, character_id)
             shelved = self.valid['boolean'](session, shelved)
-            if not session.account.ath['athanor_sys'].is_admin():
+            if not session.account.ath['athanor_system'].is_admin():
                 raise ValueError("Permission denied. Only Admin can alter Character Shelve Status.")
-            character.ath['athanor_sys'].set_shelved(shelved)
+            character.ath['athanor_system'].set_shelved(shelved)
         except Exception as err:
             if 'text' in output:
                 message['text'] = unicode(err)
@@ -316,6 +329,105 @@ class SessionSystemHandler(SessionHandler):
         response.add(session, message)
 
 
+    def op_login_account(self, response):
+        """
+        require parameters:
+            account_id (int): The account to login to!
+            OR
+            account_name (str): The account to login to!
+            (if both are provided, account_id takes priority)
+
+            password (str): The account password.
+        """
+        session = response.request.session
+        params = response.request.parameters
+        output = response.request.output
+        password = params.pop('password', None)
+        account_id = params.pop('account_id', None)
+        account_name = params.pop('account_name', None)
+        message = {'prefix': False}
+        try:
+            if session.account:
+                raise ValueError("You are already logged in!")
+            if not (account_id or account_name):
+                raise ValueError("Must provide an Account ID or Account Name!")
+            if account_id:
+                account = self.valid['account_id'](session, account_id)
+            else:
+                from athanor.classes.accounts import Account
+                account = Account.objects.filter_family(db_key__iexact=account_name).first()
+                if not account:
+                    raise ValueError("Account not found!")
+            banned = account.ath['athanor_system'].banned
+            if banned:
+                account.at_failed_login(session)
+                raise ValueError("That account is banned until %s." % account.ath['athanor_system'].display_time(banned))
+            if account.ath['athanor_system'].disabled:
+                account.at_failed_login(session)
+                raise ValueError("That account is disabled!")
+            if not account.check_password(password):
+                account.at_failed_login(session)
+                raise ValueError("Invalid password!")
+            session.sessionhandler.login(session, account)
+        except Exception as err:
+            if 'text' in output:
+                message['text'] = unicode(err)
+                message['prefix'] = True
+            if 'gmcp' in output:
+                message['gmcp'] = {'args': (self.key, 'receive_login_account'),
+                                   'kwargs': {'error': unicode(err)}}
+            message['prefix'] = True
+            response.add(session, message)
+            return
+
+        if 'text' in output:
+            message['text'] = account.return_appearance(session, account)
+            message['prefix'] = False
+        if 'gmcp' in output:
+            message['gmcp'] = {'args': (self.key, 'receive_login_account'),
+                               'kwargs': {'account_id': account_id, 'characters': account.ath['athanor_characters'].login_data()}}
+        response.add(session, message)
+
+
+    def op_puppet_character(self, response):
+        """
+        required parameters:
+            character_id (int): The character to puppet. Set this to 0 to unpuppet an existing character.
+        """
+        session = response.request.session
+        params = response.request.parameters
+        output = response.request.output
+        character_id = params.pop('character_id', None)
+        message = {'prefix': False}
+        try:
+            if not session.account:
+                raise ValueError("You are not logged in!")
+            if character_id == 0:
+                if not session.puppet:
+                    raise ValueError("You are already OOC on this session.")
+                session.account.unpuppet_object(session)
+            else:
+                print "character id %s" % character_id
+                character = self.valid['character_id'](session, character_id)
+                if not character.access(session.account, 'puppet'):
+                    raise ValueError("Permission denied. You cannot puppet that.")
+                session.account.puppet_object(session, character)
+        except Exception as err:
+            if 'text' in output:
+                message['text'] = unicode(err)
+                message['prefix'] = True
+            if 'gmcp' in output:
+                message['gmcp'] = {'args': (self.key, 'receive_puppet_character'),
+                                   'kwargs': {'error': unicode(err)}}
+            message['prefix'] = True
+            response.add(session, message)
+            return
+
+        if 'gmcp' in output:
+            message['gmcp'] = {'args': (self.key, 'receive_puppet_character'),
+                               'kwargs': {'character_id': character_id}}
+        response.add(session, message)
+
     def can_see(self, target):
         return True # Just a basic check for now
 
@@ -332,9 +444,8 @@ class SessionWhoHandler(SessionHandler):
         return [char for char in accounts() if self.can_see(char)]
 
     def load(self):
-        module = importlib.import_module(settings.ATHANOR_CLASSES['who'])
-        self.who_character_class = module.WhoCharacter
-        self.who_account_class = module.WhoAccount
+        self.who_character_class = athanor.system_classes['who_character']
+        self.who_account_class = athanor.system_classes['who_account']
 
     def op_get_who_character(self, response):
         online = self.online_characters()
@@ -367,3 +478,4 @@ class SessionWhoHandler(SessionHandler):
         return True # just passing true for now. will implement visibility later.
 
 ALL = [SessionSystemHandler, SessionWhoHandler]
+#ALL = []
