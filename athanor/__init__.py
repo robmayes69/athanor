@@ -1,7 +1,8 @@
 """
 The core module settings for Athanor.
 
-Besides storing core plugin settings this module is meant to be imported for accessing the
+Besides storing core plugin settings this module is meant to be imported for accessing the properties like
+HANDLERS.
 """
 
 # Every Athanor Module must have a load order in their __init__.py!
@@ -23,7 +24,6 @@ MODULES_ORDER = tuple()
 # Dictionary that contains the Types and Python Paths of the Athanor Managers that are to be used.
 # This can be overruled by modules that load later.
 # Once it has loaded, this will contain key->class instances.
-
 MANAGERS = {
     'character': 'athanor.managers.characters.CharacterManager',
     'account': 'athanor.managers.accounts.AccountManager',
@@ -55,6 +55,7 @@ HANDLERS_SESSION = {
 
 # Just as with MANAGERS, above. The difference is these are for rendering text output to the given Account/Character.
 RENDERERS = {
+    'sessions': 'athanor.renderers.sessions.SessionRenderer',
     'character': 'athanor.renderers.characters.CharacterRenderer',
     'account': 'athanor.renderers.accounts.AccountRenderer'
 }
@@ -127,9 +128,10 @@ VALIDATORS = {
     'account_id': 'athanor.validators.funcs.valid_account_id',
 }
 
-SYSTEM_SCRIPTS = {'core': 'athanor.systems.scripts.CoreSystem',
-                  'who': 'athanor.systems.scripts.WhoSystem',
-                  }
+SYSTEMS = {
+    'core': 'athanor.systems.scripts.CoreSystem',
+    'who': 'athanor.systems.scripts.WhoSystem',
+}
 
 # Athanor allows for multiple at_server_start, at_server_stop, etc, hooks to be fired off in sequence.
 # Simply add more modules to another module to add to the load process. The default load_athanor is mandatory.

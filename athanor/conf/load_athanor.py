@@ -1,19 +1,8 @@
 """
-Server startstop hooks
+Athanor Core module's Server loader. This is responsible for readying Athanor! It will load all
+classes, validators, handlers, managers, etc, retrieving their actual objects from Python Paths.
 
-This module contains functions called by Evennia at various
-points during its startup, reload and shutdown sequence. It
-allows for customizing the server operation as desired.
-
-This module must contain at least these global functions:
-
-at_server_start()
-at_server_stop()
-at_server_reload_start()
-at_server_reload_stop()
-at_server_cold_start()
-at_server_cold_stop()
-
+Afterwards, the 'athanor' module will have all needed data to run.
 """
 
 
@@ -22,94 +11,45 @@ def at_server_start():
     This is called every time the server starts up, regardless of
     how it was shut down.
     """
+    
     import importlib, athanor, traceback, sys
     from evennia.utils.utils import class_from_module
     from evennia.utils.create import create_script
+    from athanor.utils.utils import import_property
 
-    handlers_account = dict()
-    handlers_character = dict()
-    handlers_session = dict()
-    handlers_script = dict()
+    dicts = ('MANAGERS', 'HANDLERS_ACCOUNT', 'HANDLERS_CHARACTER', 'HANDLERS_SESSION', 'RENDERERS',
+             'STYLES_ACCOUNT', 'STYLES_CHARACTER', 'STYLES_SESSION', 'STYLES_FALLBACK', 'VALIDATORS',
+             'SYSTEMS')
 
-    styles_account = dict()
-    styles_character = dict()
+    for module in athanor.MODULES_ORDER:
+        # First, we have to update all of the dictionaries based on their load order.
+        for prop in dicts:
+            if hasattr(module, prop):
+                getattr(athanor, prop).update(getattr(module, prop))
 
-    handlers = {
-        'account': list(),
-        'character': list(),
-        'script': list(),
-        'session': list(),
-    }
-    
-    styles = {
-        'account': list(),
-        'character': list(),
-    }
-    
-    system_scripts = dict()
+    # Now that all of the modules dictionary key-values are present, load objects and classes!
+    for prop in dicts:
+        loading = getattr(athanor, prop)
+        for k, v in loading.iteritems():
+            loading[k] = import_property(v)
 
-    for plugin in athanor.load_order:
+    # Now, all validators, managers, handlers, styles, etc, should all be references to their
+    # actual Python data instead of just python path strings.
 
-        # Retrieve validators!
-        if hasattr(plugin, 'VALIDATORS'):
-            for path in plugin.VALIDATORS:
-                val_mod = importlib.import_module(path)
-                athanor.valid.update(val_mod.ALL)
+    # Next step: instantiate Systems from their Script Typeclasses.
 
-        # Retrieve Basically everything else!
+    for key, system in athanor.SYSTEMS.iteritems():
+        found = system.objects.filter_family(db_key=key).first()
+        if found:
+            athanor.SYSTEMS[key] = found
+        else:
+            athanor.SYSTEMS[key] = create_script(system, key=key, persistent=True, interval=60)
 
-        for pair in (('HANDLERS_ACCOUNT', handlers_account), ('HANDLERS_CHARACTER', handlers_character),
-                     ('HANDLERS_SESSION', handlers_session), ('HANDLERS_SCRIPT', handlers_script),
-                     ('STYLES_ACCOUNT', styles_account), ('STYLES_CHARACTER', styles_character),
-                     ('SYSTEM_SCRIPTS', system_scripts)):
-            if hasattr(plugin, pair[0]):
-                pair[1].update(getattr(plugin, pair[0]))
+    # Lastly, if any module implements its own custom install process, we'll call that.
+    for plugin in athanor.MODULES_ORDER:
+        if hasattr(plugin, 'setup_module'):
+            plugin.setup_module()
 
-
-
-        # Begin loading process.
-
-    handler_classes = {
-        'account': list(),
-        'character': list(),
-        'script': list(),
-        'session': list(),
-    }
-
-    style_classes = {
-        'account': list(),
-        'character': list(),
-    }
-
-
-    for mode, mode_dict in (('account', handlers_account), ('character', handlers_character),
-                            ('script', handlers_script), ('session', handlers_session)):
-        for module in mode_dict.values():
-            handler_classes[mode].append(class_from_module(module))
-        handler_classes[mode].sort(key=lambda c: c.load_order)
-        athanor.handler_classes[mode] = tuple(handler_classes[mode])
-
-    try:
-        for mode in ('account', 'character'):
-            for module in styles[mode]:
-                load_mod = importlib.import_module(module)
-                style_classes[mode] += load_mod.ALL
-                athanor.style_classes[mode] = tuple(style_classes[mode])
-
-        for key in system_scripts:
-            typeclass = class_from_module(system_scripts[key])
-            found = typeclass.objects.filter_family(db_key=key).first()
-            if found:
-                athanor.system_scripts[key] = found
-            else:
-                athanor.system_scripts[key] = create_script(typeclass, key=key, persistent=True, interval=60)
-
-        for plugin in athanor.load_order:
-            if hasattr(plugin, 'setup_plugin'):
-                plugin.setup_plugin()
-
-    except:
-        traceback.print_exc(file=sys.stdout)
 
 def at_server_stop():
     """
