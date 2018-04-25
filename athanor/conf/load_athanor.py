@@ -47,8 +47,6 @@ def at_server_start():
     }
     
     system_scripts = dict()
-    
-    system_classes = dict()
 
     for plugin in athanor.load_order:
         try:
@@ -58,30 +56,15 @@ def at_server_start():
                     val_mod = importlib.import_module(path)
                     athanor.valid.update(val_mod.ALL)
 
-            # Retrieve Handlers!
+            # Retrieve Basically everything else!
 
-            if hasattr(plugin, 'HANDLERS_ACCOUNT'):
-                handlers_account.update(plugin.HANDLERS_ACCOUNT)
-
-            if hasattr(plugin, 'HANDLERS_CHARACTER'):
-                handlers_character.update(plugin.HANDLERS_CHARACTER)
-
-            if hasattr(plugin, 'HANDLERS_SESSION'):
-                handlers_session.update(plugin.HANDLERS_SESSION)
-
-            if hasattr(plugin, 'HANDLERS_SCRIPT'):
-                handlers_script.update(plugin.HANDLERS_SCRIPT)
-
-            # Retrieve Styles!
-            if hasattr(plugin, 'STYLES_ACCOUNT'):
-                styles_account.update(plugin.STYLES_CHARACTER)
-
-            if hasattr(plugin, 'STYLES_CHARACTER'):
-                styles_character.update(plugin.STYLES_CHARACTER)
-
-            # Retrieve Systems!
-            if hasattr(plugin, 'SYSTEM_SCRIPTS'):
-                system_scripts.update(plugin.SYSTEM_SCRIPTS)
+            for pair in (('HANDLERS_ACCOUNT', handlers_account), ('HANDLERS_CHARACTER', handlers_character), 
+                         ('HANDLERS_SESSION', handlers_session), ('HANDLERS_SCRIPT', handlers_script),
+                         ('STYLES_ACCOUNT', styles_account), ('STYLES_CHARACTER', styles_character),
+                         ('SYSTEM_SCRIPTS', system_scripts)):
+                if hasattr(plugin, pair[0]):
+                    pair[1].update(getattr(plugin, pair[0]))
+                    
         except:
             traceback.print_exc(file=sys.stdout)
 
@@ -98,12 +81,12 @@ def at_server_start():
         'character': list(),
     }
 
-    for mode, mode_dict in (('account',handlers_account), ('character', handlers_character), ('script', handlers_script), ('session', handlers_session)):
+    for mode, mode_dict in (('account',handlers_account), ('character', handlers_character), 
+                            ('script', handlers_script), ('session', handlers_session)):
         for module in mode_dict.values():
             handler_classes[mode].append(class_from_module(module))
             handler_classes[mode].sort(key=lambda c: c.load_order)
             athanor.handler_classes[mode] = tuple(handler_classes[mode])
-
 
     for mode in ('account', 'character'):
         for module in styles[mode]:
