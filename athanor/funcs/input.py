@@ -54,3 +54,22 @@ as argument.
 #
 #     """
 #     pass
+
+from athanor.handlers.base import AthanorRequest
+
+def session(source, *args, **kwargs):
+    req = AthanorRequest(session=source, handler=args[0], operation=args[1], parameters=kwargs)
+    session.ath.accept_request(req)
+
+
+def account(source, *args, **kwargs):
+    req = AthanorRequest(session=source, handler=args[0], operation=args[1], parameters=kwargs)
+    session.account.ath.accept_request(req)
+
+
+def character(source, *args, **kwargs):
+    req = AthanorRequest(session=source, handler=args[0], operation=args[1], parameters=kwargs)
+    session.puppet.ath.accept_request(req)
+
+def system(source, *args, **kwargs):
+    pass

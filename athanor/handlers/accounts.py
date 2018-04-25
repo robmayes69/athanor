@@ -1,26 +1,28 @@
 from __future__ import unicode_literals
 
-import time, evennia, datetime
+import time, evennia, datetime, athanor
 from django.conf import settings
 from evennia import utils
 from evennia.utils import time_format
 from evennia.utils.ansi import ANSIString
 from athanor.utils.time import utcnow
-from athanor.models import AccountSettings
+from athanor.models import AccountCore, AccountWho, AccountCharacter
 
 from athanor.handlers.base import AccountHandler
 
 
-class AccountSystemHandler(AccountHandler):
-    key = 'system'
+class AccountCoreHandler(AccountHandler):
+    key = 'core'
     style = 'fallback'
     category = 'athanor'
     system_name = 'SYSTEM'
-    cmdsets = ('athanor.cmdsets.accounts.AccountSystemCmdSet', )
+    cmdsets = ('athanor.cmdsets.accounts.AccountCoreCmdSet', )
+    django_model = AccountCore
 
-    def __init__(self, base):
-        super(AccountSystemHandler, self).__init__(base)
-        self.model, created = AccountSettings.objects.get_or_create(account=self)
+    def at_account_creation(self):
+        self.model.last_login = utcnow()
+        self.model.last_logout = utcnow()
+        self.model.save(update_fields=['last_logout', 'last_login'])
 
     def at_post_login(self, session, **kwargs):
         self.model.last_login = utcnow()
@@ -78,7 +80,7 @@ class AccountSystemHandler(AccountHandler):
             format = '%b %d %I:%M%p %Z'
         if not date:
             date = utcnow()
-        tz = self['timezone']
+        tz = self.timezone
         time = date.astimezone(tz)
         return time.strftime(format)
 
@@ -136,16 +138,29 @@ class AccountSystemHandler(AccountHandler):
     def last_played(self):
         return max(self.model.last_login, self.model.last_logout)
 
+    @property
+    def last_login(self):
+        return self.model.last_login
+
+    @property
+    def last_logout(self):
+        return self.model.last_logout
 
 class AccountWhoHandler(AccountHandler):
     key = 'who'
     style = 'who'
     category = 'athanor'
     system_name = 'WHO'
+    django_model = AccountWho
 
-    def __init__(self, base):
-        super(AccountWhoHandler, self).__init__(base)
-        self.model, created = AccountSettings.objects.get_or_create(account=self)
+    def at_true_login(self, session, **kwargs):
+        athanor.system_scripts['who'].register_account(self.owner)
+
+    def at_true_logout(self, **kwargs):
+        athanor.system_scripts['who'].remove_account(self.owner)
+        self.model.banned = False
+        self.model.hidden = False
+        self.model.save(update_fields=['banned', 'hidden'])
 
     def off_or_idle_time(self):
         idle = self.idle_time
@@ -161,20 +176,20 @@ class AccountWhoHandler(AccountHandler):
 
     def last_or_idle_time(self, viewer):
         idle = self.idle_time
-        last = self.base['system'].last_played
+        last = self.base['core'].last_played
         if not idle:
-            return viewer.ath['system'].display_time(date=last, format='%b %d')
+            return viewer.ath['core'].display_time(date=last, format='%b %d')
         return time_format(idle, style=1)
 
     def last_or_conn_time(self, viewer):
         conn = self.connection_time
-        last = self.base['system'].last_played
+        last = self.base['core'].last_played
         if not conn:
-            return viewer.ath['system'].display_time(date=last, format='%b %d')
+            return viewer.ath['core'].display_time(date=last, format='%b %d')
         return time_format(conn, style=1)
 
     def can_see(self, target):
-        if self.owner.system.is_admin():
+        if self.base['core'].is_admin():
             return True
         return not (target.system.dark() or target.system.hidden())
 
@@ -186,6 +201,16 @@ class AccountWhoHandler(AccountHandler):
     def hidden(self, value):
         self.model.hidden = value
         self.model.save(update_fields=['hidden', ])
+        
+        # If the account is not connected yet (they are connecting hidden) then we don't want to alert the Who System
+        # just yet.
+        if not self.owner.sessions.count():
+            return
+
+        if value:
+            athanor.system_scripts['who'].hide_account(self.owner)
+        else:
+            athanor.system_scripts['who'].reveal_account(self.owner)
 
     @property
     def dark(self):
@@ -195,6 +220,16 @@ class AccountWhoHandler(AccountHandler):
     def dark(self, value):
         self.model.dark = value
         self.model.save(update_fields=['dark', ])
+
+        # If the account is not connected yet (they are connecting dark) then we don't want to alert the Who System
+        # just yet.
+        if not self.owner.sessions.count():
+            return
+
+        if value:
+            athanor.system_scripts['who'].hide_account(self.owner)
+        else:
+            athanor.system_scripts['who'].reveal_account(self.owner)
 
     @property
     def connection_time(self):
@@ -210,17 +245,26 @@ class AccountWhoHandler(AccountHandler):
             return time.time() - min([ses.cmd_last for ses in sessions])
         return 0
 
+    def gmcp_who(self, viewer):
+        """
+
+        :param viewer: An Account instance.
+        :return:
+        """
+        return {'account_id': self.owner.id, 'account_name': self.owner.key,
+                'connection_time': self.connection_time, 'idle_time': self.idle_time}
+
+    def gmcp_remove(self):
+        return self.owner.id
+
 
 class AccountCharacterHandler(AccountHandler):
     key = 'character'
     style = 'account'
-    category = 'athanor'
     system_name = 'ACCOUNT'
-    
-    def __init__(self, base):
-        super(AccountCharacterHandler, self).__init__(base)
-        self.model, created = AccountSettings.objects.get_or_create(account=self)
-    
+    django_model = AccountCharacter
+
+
     def all(self):
         return self.model.characters.all().order_by('db_key')
 
@@ -316,14 +360,14 @@ class AccountCharacterHandler(AccountHandler):
 
     def at_look_character_menu(self, session, viewer):
         message = list()
-        characters = self.owner.ath['character'].all()
+        characters = self.base['character'].all()
         message.append(session.render.subheader('Characters', style=self.style))
         columns = (('ID', 7, 'l'), ('Name', 37, 'l'), ('Type', 16, 'l'), ('Last Login', 20, 'l'))
         chartable = session.render.table(columns, style=self.style)
         for character in characters:
-            login = character.ath['system'].last_played
+            login = character.ath['core'].last_played
             if login:
-                login = self.owner.ath['system'].display_time(date=login)
+                login = self.owner.ath['core'].display_time(date=login)
             else:
                 login = 'N/A'
             type = 'N/A'

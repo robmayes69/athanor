@@ -10,7 +10,7 @@ creation commands.
 from __future__ import unicode_literals
 from evennia import DefaultCharacter
 from evennia.utils.utils import lazy_property
-from athanor.handlers.base import CharacterTypeManager
+from athanor.managers.characters import CharacterManager
 from athanor.styles.base import CharacterTypeStyle
 
 
@@ -37,7 +37,7 @@ class BaseCharacter(DefaultCharacter):
 
     @lazy_property
     def ath(self):
-        return CharacterTypeManager(self)
+        return CharacterManager(self)
 
     @lazy_property
     def styles(self):
@@ -46,6 +46,9 @@ class BaseCharacter(DefaultCharacter):
     def at_init(self):
         super(BaseCharacter, self).at_init()
         self.ath.at_init()
+
+    def at_object_creation(self):
+        self.ath.at_object_creation()
 
     def at_post_unpuppet(self, account, session=None, **kwargs):
         self.ath.at_post_unpuppet(account, session)

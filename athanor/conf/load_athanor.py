@@ -49,26 +49,26 @@ def at_server_start():
     system_scripts = dict()
 
     for plugin in athanor.load_order:
-        try:
-            # Retrieve validators!
-            if hasattr(plugin, 'VALIDATORS'):
-                for path in plugin.VALIDATORS:
-                    val_mod = importlib.import_module(path)
-                    athanor.valid.update(val_mod.ALL)
 
-            # Retrieve Basically everything else!
+        # Retrieve validators!
+        if hasattr(plugin, 'VALIDATORS'):
+            for path in plugin.VALIDATORS:
+                val_mod = importlib.import_module(path)
+                athanor.valid.update(val_mod.ALL)
 
-            for pair in (('HANDLERS_ACCOUNT', handlers_account), ('HANDLERS_CHARACTER', handlers_character), 
-                         ('HANDLERS_SESSION', handlers_session), ('HANDLERS_SCRIPT', handlers_script),
-                         ('STYLES_ACCOUNT', styles_account), ('STYLES_CHARACTER', styles_character),
-                         ('SYSTEM_SCRIPTS', system_scripts)):
-                if hasattr(plugin, pair[0]):
-                    pair[1].update(getattr(plugin, pair[0]))
-                    
-        except:
-            traceback.print_exc(file=sys.stdout)
+        # Retrieve Basically everything else!
+
+        for pair in (('HANDLERS_ACCOUNT', handlers_account), ('HANDLERS_CHARACTER', handlers_character),
+                     ('HANDLERS_SESSION', handlers_session), ('HANDLERS_SCRIPT', handlers_script),
+                     ('STYLES_ACCOUNT', styles_account), ('STYLES_CHARACTER', styles_character),
+                     ('SYSTEM_SCRIPTS', system_scripts)):
+            if hasattr(plugin, pair[0]):
+                pair[1].update(getattr(plugin, pair[0]))
+
+
 
         # Begin loading process.
+
     handler_classes = {
         'account': list(),
         'character': list(),
@@ -81,34 +81,35 @@ def at_server_start():
         'character': list(),
     }
 
-    for mode, mode_dict in (('account',handlers_account), ('character', handlers_character), 
+
+    for mode, mode_dict in (('account', handlers_account), ('character', handlers_character),
                             ('script', handlers_script), ('session', handlers_session)):
         for module in mode_dict.values():
             handler_classes[mode].append(class_from_module(module))
-            handler_classes[mode].sort(key=lambda c: c.load_order)
-            athanor.handler_classes[mode] = tuple(handler_classes[mode])
+        handler_classes[mode].sort(key=lambda c: c.load_order)
+        athanor.handler_classes[mode] = tuple(handler_classes[mode])
 
-    for mode in ('account', 'character'):
-        for module in styles[mode]:
-            load_mod = importlib.import_module(module)
-            style_classes[mode] += load_mod.ALL
-            athanor.style_classes[mode] = tuple(style_classes[mode])
+    try:
+        for mode in ('account', 'character'):
+            for module in styles[mode]:
+                load_mod = importlib.import_module(module)
+                style_classes[mode] += load_mod.ALL
+                athanor.style_classes[mode] = tuple(style_classes[mode])
 
-    for key in system_classes.keys():
-        athanor.system_classes[key] = class_from_module(system_classes[key])
+        for key in system_scripts:
+            typeclass = class_from_module(system_scripts[key])
+            found = typeclass.objects.filter_family(db_key=key).first()
+            if found:
+                athanor.system_scripts[key] = found
+            else:
+                athanor.system_scripts[key] = create_script(typeclass, key=key, persistent=True, interval=60)
 
-    for key in system_scripts:
-        typeclass = class_from_module(system_scripts[key])
-        found = typeclass.objects.filter_family(db_key=key).first()
-        if found:
-            athanor.system_scripts[key] = found
-        else:
-            athanor.system_scripts[key] = create_script(typeclass, key=key, persistent=True)
+        for plugin in athanor.load_order:
+            if hasattr(plugin, 'setup_plugin'):
+                plugin.setup_plugin()
 
-    for plugin in athanor.load_order:
-        if hasattr(plugin, 'setup_plugin'):
-            plugin.setup_plugin()
-
+    except:
+        traceback.print_exc(file=sys.stdout)
 
 def at_server_stop():
     """

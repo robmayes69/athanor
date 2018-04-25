@@ -20,7 +20,7 @@ class BaseRoom(DefaultRoom):
         message = list()
         message.append(session.render.header(self.key, style=self.style))
         message.append(self.db.desc)
-        chars = self.online_characters(viewer=session)
+        chars = self.online_characters(viewer=viewer)
         if chars:
             message.append(session.render.subheader("Characters", style=self.style))
             message.append(self.format_character_list(chars, session))
@@ -32,7 +32,7 @@ class BaseRoom(DefaultRoom):
 
     def online_characters(self, viewer=None):
         if viewer:
-            return [char for char in viewer.ath['athanor_who'].online_characters() if char.location == self]
+            return [char for char in characters() if char.location == self and viewer.ath['who'].can_see(char)]
         return [char for char in characters() if char.location == self]
 
     def format_character_list(self, characters, viewer):

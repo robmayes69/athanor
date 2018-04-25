@@ -16,7 +16,6 @@ at_server_cold_stop()
 
 """
 
-
 def at_server_start():
     """
     This is called every time the server starts up, regardless of
@@ -26,7 +25,6 @@ def at_server_start():
     for path in athanor.start_stop:
         module = importlib.import_module(path)
         module.at_server_start()
-    print "finished running server start"
 
 
 def at_server_stop():

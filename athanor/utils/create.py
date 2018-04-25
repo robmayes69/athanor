@@ -63,6 +63,6 @@ def make_speech(speaker, speech_text, alternate_name=None, title=None, mode='ooc
 def character(key, account):
     typeclass = settings.BASE_CHARACTER_TYPECLASS
     char = create_object(typeclass=typeclass, key=key)
-    account.ath['athanor_characters'].add(char)
+    account.ath['character'].add(char)
     #SPEECH_FACTORY.update(char)
     return char

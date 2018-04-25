@@ -1,5 +1,3 @@
-from django.conf import settings
-from evennia.utils import search
 from athanor.commands.base import AthCommand
 from athanor.handlers.base import AthanorRequest
 
@@ -40,13 +38,13 @@ class AccountCmdIC(AthCommand):
     def _main(self):
         if not self.lhs_san:
             raise ValueError("Nothing entered to puppet!")
-        character = self.partial(self.lhs_san, self.account.ath['athanor_characters'].all())
+        character = self.partial(self.lhs_san, self.account.ath['character'].all())
         if not character:
             raise ValueError("Character not found!")
 
-        request = AthanorRequest(session=self.session,
-                                 operation='puppet_character', parameters={'character_id': character.id})
-        self.session.ath['athanor_system'].accept_request(request)
+        request = AthanorRequest(session=self.session, handler='core',
+                                 operation='puppet_character', parameters={'character_id': character})
+        self.session.ath.accept_request(request)
 
 
 class AccountCmdCharCreate(AthCommand):
@@ -56,6 +54,6 @@ class AccountCmdCharCreate(AthCommand):
     help_category = 'General'
 
     def _main(self):
-        request = AthanorRequest(session=self.session,
+        request = AthanorRequest(session=self.session, handler='core',
                                  operation='create_character', parameters={'name': self.lhs})
-        self.session.ath['athanor_system'].accept_request(request)
+        self.session.ath['core'].accept_request(request)

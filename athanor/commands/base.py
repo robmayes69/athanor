@@ -48,7 +48,7 @@ class AthCommand(default_cmds.MuxCommand):
             self.account = self.caller
             self.isic = False
             self.character = None
-        self.is_admin = self.caller.ath['athanor_system'].is_admin()
+        self.is_admin = self.caller.ath['core'].is_admin()
         self.parse_switches()
 
     def parse_switches(self):

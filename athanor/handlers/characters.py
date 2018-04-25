@@ -1,23 +1,31 @@
 from __future__ import unicode_literals
-import datetime, time, pytz
-from django.conf import settings
+import time, athanor, datetime
 from evennia.utils import time_format
 from athanor.utils.text import mxp
 from athanor.utils.time import utcnow
 from athanor.handlers.base import CharacterHandler
-from athanor.models import CharacterSettings
+from athanor.models import CharacterCore, CharacterWho
 
 
-class CharacterSystemHandler(CharacterHandler):
-    key = 'athanor_system'
-    category = 'athanor_system'
+class CharacterCoreHandler(CharacterHandler):
+    key = 'core'
     style = 'fallback'
     system_name = 'SYSTEM'
-    cmdsets = ('athanor.cmdsets.characters.AthCoreCharacterCmdSet', )
+    cmdsets = ('athanor.cmdsets.characters.CoreCharacterCmdSet', )
+    django_model = CharacterCore
 
-    def __init__(self, base):
-        super(CharacterSystemHandler, self).__init__(base)
-        self.model, created = CharacterSettings.objects.get_or_create(character=self.owner)
+    @property
+    def last_login(self):
+        return self.model.last_login
+    
+    @property
+    def last_logout(self):
+        return self.model.last_logout
+
+    def at_object_creation(self):
+        self.model.last_login = utcnow()
+        self.model.last_logout = utcnow()
+        self.model.save(update_fields=['last_login', 'last_logout'])
 
     def at_post_puppet(self, **kwargs):
         self.model.last_login = utcnow()
@@ -32,7 +40,7 @@ class CharacterSystemHandler(CharacterHandler):
         return max(self.model.last_login, self.model.last_logout)
 
     def display_time(self, date=None, format=None):
-        return self.account.ath['athanor_system'].display_time(date, format)
+        return self.account.ath['core'].display_time(date, format)
 
     def is_builder(self):
         return self.owner.locks.check_lockstring(self.owner, "dummy:perm(Builder)")
@@ -125,13 +133,32 @@ class CharacterSystemHandler(CharacterHandler):
         if hasattr(self.owner, 'account'):
             self.console_msg("%s is being disconnected because: %s" % (self.owner, reason))
             for session in self.owner.sessions.get():
-                self.owner.account.unpuppet_object(session)
+                session.account.unpuppet_object(session)
+
+    @property
+    def playtime(self):
+        return self.model.playtime
+
+    def update_playtime(self, seconds):
+        self.model.playtime += datetime.timedelta(seconds)
+        self.model.save(update_fields=['playtime'])
 
 
 class CharacterWhoHandler(CharacterHandler):
     key = 'who'
     category = 'who'
     system_name = 'WHO'
+    django_model = CharacterWho
+    cmdsets = ('athanor.cmdsets.characters.WhoCharacterCmdSet',)
+
+    def at_true_login(self, **kwargs):
+        athanor.system_scripts['who'].register_character(self.owner)
+
+    def at_true_logout(self, account, session, **kwargs):
+        athanor.system_scripts['who'].remove_character(self.owner)
+        self.model.banned = False
+        self.model.hidden = False
+        self.model.save(update_fields=['banned', 'hidden'])
 
     @property
     def connection_time(self):
@@ -147,50 +174,97 @@ class CharacterWhoHandler(CharacterHandler):
             return time.time() - min([ses.cmd_last for ses in sessions])
         return 0
 
+    def gmcp_who(self, viewer):
+        """
+
+        :param viewer: A Character.
+        :return:
+        """
+        return {'character_id': self.owner.id, 'character_key': self.owner.key,
+                'connection_time': self.connection_time, 'idle_time': self.idle_time,
+                'location_key': self.owner.location.key, 'location_id': self.owner.location.id}
+
+    def gmcp_remove(self):
+        return self.owner.id
+
     def off_or_idle_time(self, viewer):
         idle = self.idle_time
-        if idle is None or not viewer.ath['system'].can_see(self.owner):
+        if idle is None or not viewer.ath['core'].can_see(self.owner):
             return '|XOff|n'
         return time_format(idle, style=1)
 
     def off_or_conn_time(self, viewer):
         conn = self.connection_time
-        if conn is None or not viewer.ath['system'].can_see(self.owner):
+        if conn is None or not viewer.ath['core'].can_see(self.owner):
             return '|XOff|n'
         return time_format(conn, style=1)
 
     def last_or_idle_time(self, viewer):
         idle = self.idle_time
-        last = self.last_played
-        if not idle or not viewer.ath['system'].can_see(self.owner):
-            return viewer.ath['system'].display_time(date=last, format='%b %d')
+        last = self.base['core'].last_played
+        if not idle or not viewer.ath['core'].can_see(self.owner):
+            return viewer.ath['core'].display_time(date=last, format='%b %d')
         return time_format(idle, style=1)
 
     def last_or_conn_time(self, viewer):
         conn = self.connection_time
-        last = self.last_played
-        if not conn or not viewer.ath['system'].can_see(self.owner):
-            return viewer.ath['system'].display_time(date=last, format='%b %d')
+        last = self.base['core'].last_played
+        if not conn or not viewer.ath['core'].can_see(self.owner):
+            return viewer.ath['core'].display_time(date=last, format='%b %d')
         return time_format(conn, style=1)
 
     @property
-    def dark(self):
-        """
-        Dark characters appear offline except to admin.
-        """
-        return self['dark']
+    def hidden(self):
+        return self.model.hidden
+
+    @hidden.setter
+    def hidden(self, value):
+        self.model.hidden = value
+        self.model.save(update_fields=['hidden', ])
+
+        # If the character is not connected yet (they are connecting hidden) then we don't want to alert the Who System
+        # just yet.
+        if not self.owner.sessions.count():
+            return
+
+        if value:
+            athanor.system_scripts['who'].hide_character(self.owner)
+        else:
+            athanor.system_scripts['who'].reveal_character(self.owner)
 
     @property
-    def hidden(self):
-        """
-        Hidden characters only appear on the who list to admin.
-        """
-        return self['hidden']
+    def dark(self):
+        return self.model.dark
+
+    @dark.setter
+    def dark(self, value):
+        self.model.dark = value
+        self.model.save(update_fields=['dark', ])
+
+        # If the character is not connected yet (they are connecting dark) then we don't want to alert the Who System
+        # just yet.
+        if not self.owner.sessions.count():
+            return
+
+        if value:
+            athanor.system_scripts['who'].hide_character(self.owner)
+        else:
+            athanor.system_scripts['who'].reveal_character(self.owner)
 
     def can_see(self, target):
-        if self.is_admin():
+        if self.base['core'].is_admin():
             return True
-        return not (target.system.idark or target.system.hidden)
+        return not (target.system.dark or target.system.hidden)
+
+
+class CharacterCharacterHandler(CharacterHandler):
+    key = 'character'
+    style = 'account'
+    system_name = 'ACCOUNT'
+
+    @property
+    def slot_cost(self):
+        return 1
 
 
 class CharacterMode(object):

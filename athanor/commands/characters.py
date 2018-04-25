@@ -19,12 +19,12 @@ class CmdWho(AthCommand):
     player_switches = ['idle', ]
 
     def _main(self):
-        req = AthanorRequest(self.session, 'get_who_character')
-        self.session.ath['athanor_who'].accept_request(req)
+        req = AthanorRequest(session=self.session, handler='who', operation='get_who_character')
+        self.session.ath['who'].accept_request(req)
 
     def switch_idle(self):
-        req = AthanorRequest(self.session, 'get_who_character', parameters={'sort': 'idle'})
-        self.session.ath['athanor_who'].accept_request(req)
+        req = AthanorRequest(session=self.session, handler='who', operation=get_who_character, parameters={'sort': 'idle'})
+        self.session.ath['who'].accept_request(req)
 
 
 class CharacterCmdOOC(AthCommand):
@@ -46,9 +46,9 @@ class CharacterCmdOOC(AthCommand):
 
 
     def _main(self):
-        request = AthanorRequest(session=self.session, 
+        request = AthanorRequest(session=self.session, handler='core',
                                  operation='puppet_character', parameters={'character_id': 0})
-        self.session.ath['athanor_system'].accept_request(request)
+        self.session.ath['core'].accept_request(request)
 
 
 class CmdLook(AthCommand):

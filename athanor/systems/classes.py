@@ -8,7 +8,7 @@ class WhoCharacterRow(object):
         self.object = object
 
     def render_text(self):
-        name = self.object.ath['athanor_system'].mxp_name()
+        name = self.object.ath['core'].mxp_name()
         alias = ''
         idle = self.object.ath['athanor_system'].last_or_idle_time(self.session)
         conn = self.object.ath['athanor_system'].last_or_conn_time(self.session)

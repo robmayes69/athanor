@@ -7,11 +7,12 @@ class AthanorRequest(object):
     Instances of TaskRequest store information about a Request. This could come from a Command or an OOB Function.
     """
 
-    def __init__(self, session, operation, output=None, parameters=None):
+    def __init__(self, session, handler, operation, output=None, parameters=None):
         if not parameters:
             parameters = dict()
         if not output:
             output = ('text', 'gmcp',)
+        self.handler = handler
         self.session = session
         self.operation = operation
         self.output = output
@@ -31,131 +32,6 @@ class AthanorResponse(object):
 
     def add(self, target, message):
         self.messages.append((target, message))
-
-
-class __BaseTypeManager(object):
-    """
-    The base used for the Athanor Managers that are loaded onto all Athanor Accounts and Characters.
-
-    Not meant to be used directly.
-    """
-    mode = None
-
-    def get_handlers(self):
-        pass
-
-    def __init__(self, owner):
-        """
-
-        :param owner: An instance of a TypeClass'd object.
-        """
-
-        self.owner = owner
-        self.attributes = owner.attributes
-
-        # Make validators available to TypeManagers!
-        self.valid = athanor.valid
-
-        # Load all handlers.
-        handlers = athanor.handler_classes[self.mode]
-        self.ordered_handlers = list()
-        self.handlers = dict()
-        for handler in handlers:
-            loaded_handler = handler(self)
-            self.handlers[handler.key] = loaded_handler
-            self.ordered_handlers.append(loaded_handler)
-
-        # Call an extensible Load function for simplicity if need be.
-        self.load()
-
-    def load(self):
-        pass
-
-    def __getitem__(self, item):
-        return self.handlers[item]
-
-
-class SessionTypeManager(__BaseTypeManager):
-    mode = 'session'
-
-    def at_sync(self):
-        for handler in self.ordered_handlers:
-            handler.at_sync()
-
-    def at_login(self, account, **kwargs):
-        for handler in self.ordered_handlers:
-            handler.at_login(account, **kwargs)
-
-    def at_disconnect(self, reason, **kwargs):
-        for handler in self.ordered_handlers:
-            handler.at_disconnect(reason, **kwargs)
-
-
-
-class CharacterTypeManager(__BaseTypeManager):
-    mode = 'character'
-
-    def at_init(self):
-        for handler in self.ordered_handlers:
-            handler.at_init()
-
-    def at_post_unpuppet(self, account, session, **kwargs):
-        for handler in self.ordered_handlers:
-            handler.at_post_unpuppet(account, session, **kwargs)
-            
-    def at_true_logout(self, account, session, **kwargs):
-        for handler in self.ordered_handlers:
-            handler.at_true_logout(account, session, **kwargs)
-
-    def at_true_login(self, **kwargs):
-        for handler in self.ordered_handlers:
-            handler.at_true_login(**kwargs)
-
-    def at_post_puppet(self, **kwargs):
-        for handler in self.ordered_handlers:
-            handler.at_post_puppet(**kwargs)
-
-
-class AccountTypeManager(__BaseTypeManager):
-    mode = 'account'
-
-    def at_account_creation(self):
-        for handler in self.ordered_handlers:
-            handler.at_account_creation()
-
-    def at_post_login(self, session, **kwargs):
-        for handler in self.ordered_handlers:
-            handler.at_post_login(session, **kwargs)
-
-    def at_true_login(self, **kwargs):
-        for handler in self.ordered_handlers:
-            handler.at_true_login(**kwargs)
-
-    def at_failed_login(self, session, **kwargs):
-        for handler in self.ordered_handlers:
-            handler.at_failed_login(session, **kwargs)
-
-    def at_init(self):
-        for handler in self.ordered_handlers:
-            handler.at_init()
-
-    def at_disconnect(self, **kwargs):
-        for handler in self.ordered_handlers:
-            handler.at_disconnect(**kwargs)
-
-    def at_true_logout(self, **kwargs):
-        for handler in self.ordered_handlers:
-            handler.at_true_logout(**kwargs)
-            
-    def render_login(self, session, viewer):
-        message = []
-        for handler in self.ordered_handlers:
-            message.append(handler.render_login(session, viewer))
-        return '\n'.join([unicode(line) for line in message if line])
-
-
-class ScriptTypeManager(__BaseTypeManager):
-    mode = 'script'
 
 
 class __BaseHandler(object):
@@ -185,7 +61,7 @@ class __BaseHandler(object):
     """
     key = 'base'
     file_names = ()
-    category = 'base'
+    category = 'athanor'
     style = 'fallback'
     system_name = 'SYSTEM'
     settings_classes = ()
@@ -194,15 +70,23 @@ class __BaseHandler(object):
     resp_class = AthanorResponse
     cmdsets = ()
     operations = dict()
+    mode = None
+    django_model = None
 
     def __init__(self, base):
         self.base = base
         self.owner = base.owner
+        self.load_model()
         self.settings = dict()
         self.load_settings()
         self.load_cmdsets()
         self.valid = self.base.valid
         self.load()
+
+    def load_model(self):
+        if self.mode and self.django_model:
+            kwargs = {self.mode: self.owner}
+            self.model, created = self.django_model.objects.get_or_create(**kwargs)
 
     def accept_request(self, request):
         response = self.respond(request)
@@ -325,8 +209,12 @@ class __BaseHandler(object):
 
 
 class CharacterHandler(__BaseHandler):
+    mode = 'character'
 
     def at_init(self):
+        pass
+
+    def at_object_creation(self):
         pass
 
     def at_post_unpuppet(self, account, session, **kwargs):
@@ -343,6 +231,7 @@ class CharacterHandler(__BaseHandler):
 
 
 class AccountHandler(__BaseHandler):
+    mode = 'account'
     account_mode = True
 
     def at_account_creation(self):
@@ -351,7 +240,7 @@ class AccountHandler(__BaseHandler):
     def at_post_login(self, session, **kwargs):
         pass
 
-    def at_true_login(self, **kwargs):
+    def at_true_login(self, session, **kwargs):
         pass
 
     def at_failed_login(self, session, **kwargs):
@@ -371,10 +260,11 @@ class AccountHandler(__BaseHandler):
 
 
 class ScriptHandler(__BaseHandler):
-    pass
+    mode = 'script'
 
 
 class SessionHandler(__BaseHandler):
+    mode = 'session'
 
     def at_sync(self):
         pass

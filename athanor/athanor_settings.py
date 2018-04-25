@@ -44,6 +44,8 @@ INLINEFUNC_ENABLED = True
 
 ROOT_URLCONF = 'athanor.urls'
 
+CMD_IGNORE_PREFIXES = ""
+
 # Settings for ATHANOR in General!
 
 # This determines whether non-admin Accounts can freely create characters for their own Account.

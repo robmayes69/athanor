@@ -1,9 +1,41 @@
 from athanor.systems.base import SystemScript
 
+
+
+class CoreSystem(SystemScript):
+    """
+    Global System Script that's responsible for updating play times. This has to run fairly regularly to insure against
+    crashes and stupidity. However if the interval is too big, someone could randomly log in and get a big update.
+    To K.I.S.S. I have set it at a humble interval of 1 minute.
+
+    This depends on the Who System to maintain the characters and accounts .ndb interface.
+    """
+
+    key = 'core'
+    system_name = 'SYSTEM'
+    interval = 60
+
+    def at_repeat(self):
+        for acc in self.systems['who'].ndb.accounts:
+            acc.ath['core'].update_playtime(self.interval)
+
+        for char in self.systems['who'].ndb.characters:
+            char.ath['core'].update_playtime(self.interval)
+
+
+
 class WhoSystem(SystemScript):
+    """
+    Global System Script that's responsible for managing an efficient list of all online accounts and characters
+    without querying the SessionHandler. This script also sends out updates about visibility and idle/conn times
+    of clients to GMCP recipients as needed.
+
+    It is designed to send data only as needed to clients. We'll see how well that works out won't we?
+    """
 
     key = 'who'
     system_name = 'WHO'
+    interval = 60
 
 
     def load(self):
@@ -60,14 +92,16 @@ class WhoSystem(SystemScript):
     def report_account(self, account):
         data = list()
         for acc in self.ndb.account_can_see[account]:
-            data.append(acc.ath['who'].gmcp_who())
+            data.append(acc.ath['who'].gmcp_who(acc))
         send_data = {'cmdname': (('account', 'who', 'update_accounts'), {'data': (data,)})}
         account.msg(**send_data)
 
     def announce_account(self, account):
-        data = account.ath['who'].gmcp_who()
-        send_data = {'cmdname': (('account', 'who', 'update_accounts'), {'data': (data,)})}
         for acc in self.ndb.account_visible_to[account]:
+            if acc == account:
+                continue
+            data = account.ath['who'].gmcp_who(acc)
+            send_data = {'cmdname': (('account', 'who', 'update_accounts'), {'data': (data,)})}
             acc.msg(**send_data)
 
     def remove_account(self, account):
@@ -77,7 +111,7 @@ class WhoSystem(SystemScript):
         :param account:
         :return:
         """
-        data = account.ath['who'].gmcp_who()
+        data = account.ath['who'].gmcp_remove()
         send_data = {'cmdname': (('account', 'who', 'remove_accounts'), {'data': (data,)})}
         for acc in self.ndb.account_visible_to[account]:
             acc.msg(**send_data)
@@ -93,13 +127,12 @@ class WhoSystem(SystemScript):
         """
         # First add them to the main set.
         self.ndb.characters.add(character)
-
         # Figure out what other accounts can see this account.
-        visible_to = set([char for char in self.ndb.accounts if char.ath['who'].can_see(character)])
+        visible_to = set([char for char in self.ndb.characters if char.ath['who'].can_see(character)])
         self.ndb.character_visible_to[character] = visible_to
 
         # Then vice versa.
-        can_see = set([char for char in self.ndb.accounts if character.ath['who'].can_see(char)])
+        can_see = set([char for char in self.ndb.characters if character.ath['who'].can_see(char)])
         self.ndb.character_can_see[character] = can_see
 
         # Now we need to announce this account to all other Accounts that can see it...
@@ -108,17 +141,21 @@ class WhoSystem(SystemScript):
         # And inform this account about all the Accounts that it can see!
         self.report_character(character)
 
+
+
     def report_character(self, character):
         data = list()
-        for char in self.ndb.account_can_see[character]:
-            data.append(char.ath['who'].gmcp_who())
-        send_data = {'cmdname': (('character', 'who', 'update_characters'), {'data': (data,)})}
+        for char in self.ndb.character_can_see[character]:
+            data.append(char.ath['who'].gmcp_who(character))
+        send_data = {'cmdname': (('character', 'who', 'update_characters'), {'data': data})}
         character.msg(**send_data)
 
     def announce_character(self, character):
-        data = character.ath['who'].gmcp_who()
-        send_data = {'cmdname': (('account', 'who', 'update_characters'), {'data': (data,)})}
-        for char in self.ndb.account_visible_to[character]:
+        for char in self.ndb.character_visible_to[character]:
+            if char == character:
+                continue
+            data = character.ath['who'].gmcp_who(char)
+            send_data = {'cmdname': (('account', 'who', 'update_characters'), {'data': (data,)})}
             char.msg(**send_data)
 
     def remove_character(self, character):
@@ -128,7 +165,7 @@ class WhoSystem(SystemScript):
         :param character:
         :return:
         """
-        data = character.ath['who'].gmcp_who()
+        data = character.ath['who'].gmcp_remove()
         send_data = {'cmdname': (('account', 'who', 'remove_characters'), {'data': (data,)})}
         for char in self.ndb.character_visible_to[character]:
             char.msg(**send_data)
@@ -138,19 +175,78 @@ class WhoSystem(SystemScript):
 
 
     def hide_character(self, character):
-        pass
+        """
+        Method for alerting connected GMCP clients when to remove a character who has gone hidden/dark.
+        From their perspective this should be no different from said character going offline.
+        :param character:
+        :return:
+        """
+        was_visible_to = self.ndb.character_visible_to[character]
+        now_visible_to = set([char for char in was_visible_to if char.ath['who'].can_see(character)])
 
+        # set arithmetic! This is a 'set difference'
+        remove_from = was_visible_to - now_visible_to
+
+        data = character.ath['who'].gmcp_remove()
+        send_data = {'cmdname': (('character', 'who', 'remove_characters'), {'data': (data,)})}
+        for char in remove_from:
+            char.msg(**send_data)
 
     def reveal_character(self, character):
-        pass
+        """
+        Method for alerting connected GMCP clients when someone has removed their invisibility and gone public.
+        From their perspective this should be no different from said character logging on.
+        :param character:
+        :return:
+        """
+        was_visible_to = self.ndb.character_visible_to[character]
+        now_visible_to = set([char for char in was_visible_to if char.ath['who'].can_see(character)])
+
+        # set arithmetic! This is a 'set difference'
+        add_to = now_visible_to - was_visible_to
+
+        for char in add_to:
+            data = character.ath['who'].gmcp_who(char)
+            send_data = {'cmdname': (('character', 'who', 'update_characters'), {'data': (data,)})}
+            char.msg(**send_data)
 
 
     def hide_account(self, account):
-        pass
+        """
+        Method for alerting connected GMCP clients when to remove an account who has gone hidden/dark.
+        From their perspective this should be no different from said account going offline.
+        :param account:
+        :return:
+        """
+        was_visible_to = self.ndb.account_visible_to[account]
+        now_visible_to = set([acc for acc in was_visible_to if acc.ath['who'].can_see(account)])
+
+        # set arithmetic! This is a 'set difference'
+        remove_from = was_visible_to - now_visible_to
+
+        data = account.ath['who'].gmcp_remove()
+        send_data = {'cmdname': (('account', 'who', 'remove_accounts'), {'data': (data,)})}
+        for acc in remove_from:
+            acc.msg(**send_data)
 
 
     def reveal_account(self, account):
-        pass
+        """
+        Method for alerting connected GMCP clients when someone has removed their invisibility and gone public.
+        From their perspective this should be no different from said account logging on.
+        :param account:
+        :return:
+        """
+        was_visible_to = self.ndb.character_visible_to[account]
+        now_visible_to = set([char for char in was_visible_to if char.ath['who'].can_see(account)])
+
+        # set arithmetic! This is a 'set difference'
+        add_to = now_visible_to - was_visible_to
+
+        for acc in add_to:
+            data = account.ath['who'].gmcp_who(acc)
+            send_data = {'cmdname': (('account', 'who', 'update_accounts'), {'data': (data,)})}
+            acc.msg(**send_data)
 
     def at_repeat(self):
         """
@@ -161,23 +257,21 @@ class WhoSystem(SystemScript):
         self.update_accounts()
 
     def update_characters(self):
-        characters_dict = {char: char.ath['who'].gmcp_who() for char in self.ndb.characters}
         for char in self.ndb.characters:
             # In the unlikely scenario that a character is in the set with no sessions, we'll remove 'em here.
             if not char.sessions.count():
                 self.remove_character(char)
                 continue # No reason to report to a character who isn't connected!
-            data = [characters_dict[cha] for cha in self.ndb.character_can_see[char]]
-            send_data = {'cmdname': (('account', 'who', 'update_characters'), {'data': (data,)})}
+            data = [cha.ath['who'].gmcp_who(char) for cha in self.ndb.character_can_see[char]]
+            send_data = {'cmdname': (('character', 'who', 'update_characters'), {'data': data})}
             char.msg(**send_data)
 
     def update_accounts(self):
-        accounts_dict = {acc: acc.ath['who'].gmcp_who() for acc in self.ndb.accounts}
         for acc in self.ndb.accounts:
             # In the unlikely scenario that an account is in the set with no sessions, we'll remove 'em here.
             if not acc.sessions.count():
                 self.remove_account(acc)
                 continue # No reason to report to a character who isn't connected!
-            data = [accounts_dict[ac] for acc in self.ndb.character_can_see[acc]]
-            send_data = {'cmdname': (('account', 'who', 'update_accounts'), {'data': (data,)})}
+            data = [ac.ath['who'].gmcp_who(acc) for ac in self.ndb.account_can_see[acc]]
+            send_data = {'cmdname': (('account', 'who', 'update_accounts'), {'data': data})}
             acc.msg(**send_data)

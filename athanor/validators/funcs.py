@@ -135,6 +135,8 @@ def valid_character_name(checker, entry, rename_from=None):
 
 def valid_character_id(checker, entry):
     from athanor.classes.characters import Character
+    if isinstance(entry, Character):
+        return entry
     exist = Character.objects.filter_family(id=entry).first()
     if not exist:
         raise ValueError("Character Not found.")
@@ -142,6 +144,8 @@ def valid_character_id(checker, entry):
 
 def valid_account_id(checker, entry):
     from athanor.classes.accounts import Account
+    if isinstance(entry, Account):
+        return entry
     exist = Account.objects.filter_family(id=entry).first()
     if not exist:
         raise ValueError("Account Not found.")

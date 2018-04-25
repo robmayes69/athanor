@@ -26,7 +26,7 @@ from __future__ import unicode_literals
 from evennia import DefaultAccount
 from evennia.utils.utils import lazy_property, is_iter
 
-from athanor.handlers.base import AccountTypeManager
+from athanor.managers.accounts import AccountManager
 from athanor.styles.base import AccountTypeStyle
 
 
@@ -99,7 +99,7 @@ class Account(DefaultAccount):
     """
     @lazy_property
     def ath(self):
-        return AccountTypeManager(self)
+        return AccountManager(self)
     
     @lazy_property
     def styles(self):
@@ -158,7 +158,6 @@ class Account(DefaultAccount):
                 off to any recipient (usually to ourselves)
 
         """
-        self.msg(target)
         if not target:
             target = self
         return target.return_appearance(session, self)
