@@ -202,7 +202,7 @@ class __BaseHandler(object):
     def gmcp_msg(self, message):
         args = message['args']
         kwargs = message['kwargs']
-        self.owner.msg(cmdname=(args, kwargs))
+        self.owner.msg(athanor=(args, kwargs))
 
     def alert_channel(self):
         pass
