@@ -48,19 +48,15 @@ If you fix any bugs with your own projects, I'd __really__ appreciate some fix c
 
 ## FAQ
   __Q:__ Why 'Athanor' for a name?
-
   __A:__ Well, I had to call it something. This is a transformative project that refines Evennia into something that more suits my style, but isn't itself a game. It's the intermediary through which the magic happens. So I named it after the classical Alchemist's furnace.
 
   __Q:__ Where can I get more Modules?
-
   __A:__ From my GitHub! See anything starting with athanor-* at https://github.com/volundmush
 
   __Q:__ How do I make my own Modules?
-
   __A:__ Hope you've got some Python skills. Each Module has an __init__.py file in its root which contains settings such as the Handlers and Helpfiles it adds, and the associated Python Paths that will be imported during the load process. Athanor handles loading via `athanor.conf.load_athanor`, study that file to see what it does and doesn't do. Remember that any dictionary keys redefined in Modules that load later replace any that load earlier, so you can re-implement any feature that you aren't happy with fairly easily.
 
   __Q:__ This is cool! How can I help?
-
   __A:__ Patreon support is always welcome. If you can code and have cool ideas or bug fixes, feel free to fork, edit, and pull request!
 
 ## Special Thanks
