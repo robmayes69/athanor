@@ -23,6 +23,9 @@ class CharacterCoreHandler(CharacterHandler):
     def last_logout(self):
         return self.model.last_logout
 
+    def at_post_unpuppet(self, account, session, **kwargs):
+        session.msg(account.at_look(target=account, session=session))
+
     def at_object_creation(self):
         self.model.last_login = utcnow()
         self.model.last_logout = utcnow()
