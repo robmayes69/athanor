@@ -27,7 +27,7 @@ from evennia import DefaultAccount
 from evennia.utils.utils import lazy_property, is_iter
 
 from athanor.managers.accounts import AccountManager
-from athanor.styles.base import AccountTypeStyle
+from athanor.renderers.accounts import AccountRenderer
 
 
 class Account(DefaultAccount):
@@ -102,8 +102,8 @@ class Account(DefaultAccount):
         return AccountManager(self)
     
     @lazy_property
-    def styles(self):
-        return AccountTypeStyle(self)
+    def render(self):
+        return AccountRenderer(self)
 
     def at_account_creation(self):
         super(Account, self).at_account_creation()

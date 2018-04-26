@@ -1,7 +1,16 @@
+"""
+Contains the simplest implementation of a Manager for Accounts.
+"""
+
 from athanor.managers.base import __BaseManager
 
 
 class AccountManager(__BaseManager):
+    """
+    Athanor basic Account Manager.
+    
+    Implements all of the Account hooks that Handlers need.
+    """
     mode = 'account'
 
     def at_account_creation(self):

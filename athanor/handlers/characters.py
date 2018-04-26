@@ -5,6 +5,7 @@ from athanor.utils.text import mxp
 from athanor.utils.time import utcnow
 from athanor.handlers.base import CharacterHandler
 from athanor.models import CharacterCore, CharacterWho
+from athanor.utils.utils import import_property
 
 
 class CharacterCoreHandler(CharacterHandler):
@@ -152,13 +153,13 @@ class CharacterWhoHandler(CharacterHandler):
     cmdsets = ('athanor.cmdsets.characters.WhoCharacterCmdSet',)
 
     def at_true_login(self, **kwargs):
-        athanor.system_scripts['who'].register_character(self.owner)
+        athanor.SYSTEMS['who'].register_character(self.owner)
 
     def at_true_logout(self, account, session, **kwargs):
-        athanor.system_scripts['who'].remove_character(self.owner)
-        self.model.banned = False
+        athanor.SYSTEMS['who'].remove_character(self.owner)
+        self.model.dark = False
         self.model.hidden = False
-        self.model.save(update_fields=['banned', 'hidden'])
+        self.model.save(update_fields=['dark', 'hidden'])
 
     @property
     def connection_time(self):
@@ -228,9 +229,9 @@ class CharacterWhoHandler(CharacterHandler):
             return
 
         if value:
-            athanor.system_scripts['who'].hide_character(self.owner)
+            athanor.SYSTEMS['who'].hide_character(self.owner)
         else:
-            athanor.system_scripts['who'].reveal_character(self.owner)
+            athanor.SYSTEMS['who'].reveal_character(self.owner)
 
     @property
     def dark(self):
@@ -247,9 +248,9 @@ class CharacterWhoHandler(CharacterHandler):
             return
 
         if value:
-            athanor.system_scripts['who'].hide_character(self.owner)
+            athanor.SYSTEMS['who'].hide_character(self.owner)
         else:
-            athanor.system_scripts['who'].reveal_character(self.owner)
+            athanor.SYSTEMS['who'].reveal_character(self.owner)
 
     def can_see(self, target):
         if self.base['core'].is_admin():
@@ -267,34 +268,60 @@ class CharacterCharacterHandler(CharacterHandler):
         return 1
 
 
-class CharacterMode(object):
+class CharacterMenuHandler(CharacterHandler):
+    key = 'menu'
+    style = 'account'
+    system_name = 'SYSTEM'
+    category = 'athanor'
 
-    def __init__(self, owner):
-        self.cmdset = None
-        self.owner = owner
-        self.mode_dict = dict()
-        self.target_dict = dict()
+    def load(self):
+        self.menu = None
+        if not self.owner.attributes.has(key='%s_current', category=self.category):
+            self.owner.attributes.add(key='%s_current', category=self.category, value=None)
+        self.menu_path = self.owner.attributes.get(key='%s_current', category=self.category)
+        if not self.owner.attributes.has(key=self.key, category=self.category):
+            self.owner.attributes.add(key=self.key, category=self.category, value={})
+        self.data = self.owner.attributes.get(key=self.key, category=self.category)
+        if self.menu_path:
+            self.menu = import_property(self.menu_path)
 
-    def get(self, key, default):
-        if key in self.mode_dict:
-            return self.mode_dict[key]
-        self.mode_dict[key] = dict(default)
-        return self.mode_dict[key]
+    def at_init(self):
+        if self.menu:
+            self.owner.cmdset.add(self.menu)
 
-    def target(self, key, value=None):
-        if key in self.target_dict and not value:
-            return self.target_dict[key]
-        if value:
-            self.target_dict[key] = value
-            return value
+    def __getitem__(self, item):
+        return self.data[item]
+
+    def launch(self, path):
+        """
+        Add a Menu Cmdset.
+
+        Args:
+            path: Python path to a menu.
+
+        Returns:
+            None.
+
+        """
+        menu = import_property(path)
+        self.menu_path = path
+        self.owner.cmdset.add(menu)
+        self.menu = menu
+        
 
     def leave(self):
-        if not self.cmdset:
-            return
-        self.owner.cmdset.delete(self.cmdset)
-        self.cmdset = None
+        if self.menu:
+            self.owner.cmdset.remove(self.menu)
 
-    def switch(self, cmdset):
+    def switch(self, path):
+        """
+        Shortcut for leaving one menu and starting up another!
+
+        Args:
+            path (str): Python path to a menu.
+
+        Returns: 
+            None
+        """
         self.leave()
-        self.cmdset = cmdset
-        self.owner.cmdset.add(cmdset)
+        self.launch(path)

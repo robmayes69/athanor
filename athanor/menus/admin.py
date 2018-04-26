@@ -72,7 +72,7 @@ _OPTIONS = {
     'fire': {
         'key': 'fire',
         'goto': 'start',
-        'desc': 'Remove character from staff! Usage: fire <character>',
+        'desc': 'Remove character from staff list! Usage: fire <character>',
         'exec': _fire
     },
     'order': {

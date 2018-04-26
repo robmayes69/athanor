@@ -1,3 +1,11 @@
+"""
+Contains all the validation functions.
+
+All validation functions must have a checker (probably a session) and entry arg.
+
+They can employ more paramters at your leisure.
+"""
+
 import pytz
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
@@ -8,6 +16,7 @@ from athanor.utils.time import utc_from_string, duration_from_string, utcnow
 BAD_CHARS = ('/', '@', '&', '^^^', '*', '+', '-', '|', '{', '[', ']', '}', ',', '.', '$', '#', '!', '"')
 
 TZ_DICT = {str(tz): pytz.timezone(tz) for tz in pytz.common_timezones}
+
 
 def valid_color(checker, entry):
     if not entry:
@@ -150,19 +159,3 @@ def valid_account_id(checker, entry):
     if not exist:
         raise ValueError("Account Not found.")
     return exist
-
-ALL = { 'color': valid_color,
-        'duration': valid_duration,
-        'datetime': valid_datetime,
-        'signed_integer': valid_signed_integer,
-        'positive_integer': valid_positive_integer,
-        'unsigned_integer': valid_unsigned_integer,
-        'boolean': valid_boolean,
-        'timezone': valid_timezone,
-        'account_email': valid_account_email,
-        'account_name': valid_account_name,
-        'account_password': valid_account_password,
-        'character_name': valid_character_name,
-        'character_id': valid_character_id,
-        'account_id': valid_account_id,
-        }

@@ -1,13 +1,12 @@
 from __future__ import unicode_literals
-from django.conf import settings
 from athanor.settings.base import ColorSetting, WordSetting
-from athanor.styles.athanor_styles import FALLBACK
+from athanor import STYLES_FALLBACK
 
 class __FillSetting(WordSetting):
     
     @property
     def default(self):
-        return FALLBACK[self.key]
+        return STYLES_FALLBACK[self.key]
 
 
 class ExitColor(ColorSetting):

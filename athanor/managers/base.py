@@ -1,3 +1,9 @@
+"""
+Contains the base framework for Athanor's Managers. When Managers load, they instantiate all of their
+respective Handlers for that Typeclass base.
+
+Managers are available on characters, accounts, and sessions via their .ath property.
+"""
 import athanor
 
 
@@ -22,10 +28,10 @@ class __BaseManager(object):
         self.attributes = owner.attributes
 
         # Make validators available to TypeManagers!
-        self.valid = athanor.valid
+        self.valid = athanor.VALIDATORS
 
         # Load all handlers.
-        handlers = athanor.handler_classes[self.mode]
+        handlers = athanor.HANDLERS_SORTED[self.mode]
         self.ordered_handlers = list()
         self.handlers = dict()
         for handler in handlers:
@@ -37,9 +43,23 @@ class __BaseManager(object):
         self.load()
 
     def load(self):
+        """
+        By default this does nothing. It's meant to be overloaded by a sub-class.
+        
+        Returns:
+            None
+        """
         pass
 
     def __getitem__(self, item):
+        """
+        Implements dictionary-like lookups for Handler keys on the manager.
+        Args:
+            item: 
+
+        Returns:
+
+        """
         return self.handlers[item]
 
     def accept_request(self, request):

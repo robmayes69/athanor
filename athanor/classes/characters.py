@@ -11,7 +11,7 @@ from __future__ import unicode_literals
 from evennia import DefaultCharacter
 from evennia.utils.utils import lazy_property
 from athanor.managers.characters import CharacterManager
-from athanor.styles.base import CharacterTypeStyle
+from athanor.renderers.characters import CharacterRenderer
 
 
 # This implements the Athanor API, but the base Typeclass should be Character, below.
@@ -40,8 +40,8 @@ class BaseCharacter(DefaultCharacter):
         return CharacterManager(self)
 
     @lazy_property
-    def styles(self):
-        return CharacterTypeStyle(self)
+    def render(self):
+        return CharacterRenderer(self)
 
     def at_init(self):
         super(BaseCharacter, self).at_init()

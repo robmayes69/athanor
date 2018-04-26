@@ -45,12 +45,27 @@ HANDLERS_ACCOUNT = {
 HANDLERS_CHARACTER = {
     'core': 'athanor.handlers.characters.CharacterCoreHandler',
     'who': 'athanor.handlers.characters.CharacterWhoHandler',
-    'character': 'athanor.handlers.characters.CharacterCharacterHandler'
+    'character': 'athanor.handlers.characters.CharacterCharacterHandler',
+    'menu': 'athanor.handlers.characters.CharacterMenuHandler',
 }
 
 # Same but for sessions.
 HANDLERS_SESSION = {
     'core': 'athanor.handlers.sessions.SessionCoreHandler',
+}
+
+# In case these are ever implemented...
+HANDLERS_SCRIPT = {
+
+}
+
+# This dictionary will contain type->tuple key-value pairs. The tuples are the complete
+# list of Handlers by type, sorted by load order. This optimizes the manager load process.
+HANDLERS_SORTED = {
+    'account': tuple(),
+    'character': tuple(),
+    'session': tuple(),
+    'script': tuple()
 }
 
 # Just as with MANAGERS, above. The difference is these are for rendering text output to the given Account/Character.
@@ -74,11 +89,23 @@ STYLES_SESSION = {
 
 }
 
+#seriousyl? Nah, probably not. But just in case.
+STYLES_SCRIPT = {
+
+}
+
+STYLES_DICT = {
+    'session': list(),
+    'character': list(),
+    'account': list(),
+    'script': list(),
+}
+
 # If a color or appearance query is not found in a Style, it will fallback/default to these values.
 # Update this dictionary in a further module to change them.
 STYLES_FALLBACK = {
     'header_fill_color': 'M',
-    'header_star_color': 'w',
+    'header_star_color': 'm',
     'subheader_fill_color': 'M',
     'subheader_star_color': 'w',
     'separator_fill_color': 'M',
@@ -105,7 +132,11 @@ STYLES_FALLBACK = {
     'header_fill': '=',
     'subheader_fill': '=',
     'separator_fill': '-',
-    'footer_fill': '='
+    'footer_fill': '=',
+    'help_file_bullet': 'g',
+    'help_file_header': 'c',
+    'help_file_emphasized': 'w',
+    'help_file_name': 'w',
 }
 
 # Validators are used for checking user input and returning something the system use, or raising an error if it can't.
@@ -128,30 +159,54 @@ VALIDATORS = {
     'account_id': 'athanor.validators.funcs.valid_account_id',
 }
 
+
 SYSTEMS = {
     'core': 'athanor.systems.scripts.CoreSystem',
     'who': 'athanor.systems.scripts.WhoSystem',
 }
 
+
+
+
+# Help files don't actually use the Keys here for anything. Only the Keys of the objects themselves matter!
+# However, these Keys will be replaced by further modules. If you want to replace these, be sure to account for their
+# subfiles.
+
+HELP_FILES = {
+    '+who': 'athanor.help.who.WhoHelpFile',
+}
+
+SHELP_FILES = {
+
+}
+
+HELP_TREES = {
+    '+help': ('athanor.help.base.HelpCore', HELP_FILES),
+    '+shelp': ('athanor.help.base.ShelpCore', SHELP_FILES)
+}
+
 # Athanor allows for multiple at_server_start, at_server_stop, etc, hooks to be fired off in sequence.
 # Simply add more modules to another module to add to the load process. The default load_athanor is mandatory.
-START_STOP = ['athanor.conf.load_athanor',]
+START_STOP = []
 
-INITIAL_SETUP = ['athanor.conf.install_athanor',]
+INITIAL_SETUP = []
 
 # Core setup stuff below. Don't touch this.
 
 def setup(module_list):
     import importlib
-    global plugins, load_order, initial_setup, start_stop
-    for plugin in module_list:
-        load_plugin = importlib.import_module(plugin)
-        plugins[plugin] = load_plugin
+    global MODULES, MODULES_ORDER, START_STOP, INITIAL_SETUP
+    for path in module_list:
+        module = importlib.import_module(path)
+        MODULES[path] = module
 
-    load_order = sorted(plugins.values(), key=lambda m: m.LOAD_ORDER)
+    MODULES_ORDER = tuple(sorted(MODULES.values(), key=lambda m: m.LOAD_ORDER))
 
-    for plugin in load_order:
+    START_STOP.append('athanor.conf.load_athanor')
+    INITIAL_SETUP.append('athanor.conf.install_athanor')
+
+    for plugin in MODULES_ORDER:
         if hasattr(plugin, 'INITIAL_SETUP'):
-            initial_setup += plugin.INITIAL_SETUP
+            INITIAL_SETUP += plugin.INITIAL_SETUP
         if hasattr(plugin, 'START_STOP'):
-            start_stop += plugin.START_STOP
+            START_STOP += plugin.START_STOP

@@ -69,7 +69,7 @@ from athanor_modules import ATHANOR_MODULES
 import athanor
 athanor.setup(ATHANOR_MODULES)
 
-for module in athanor.load_order:
+for module in athanor.MODULES_ORDER:
     if hasattr(module, 'INSTALLED_APPS'):
         INSTALLED_APPS = INSTALLED_APPS + module.INSTALLED_APPS
     if hasattr(module, 'INLINEFUNC_MODULES'):

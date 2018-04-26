@@ -1,7 +1,16 @@
+"""
+Contains the simplest implementation of a Manager for Characters.
+"""
+
 from athanor.managers.base import __BaseManager
 
 
 class CharacterManager(__BaseManager):
+    """
+    Athanor basic Character Manager.
+
+    Implements all of the Character hooks that Handlers need.
+    """
     mode = 'character'
 
     def at_object_creation(self):

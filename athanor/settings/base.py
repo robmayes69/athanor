@@ -8,7 +8,6 @@ from athanor.classes.channels import AthanorChannel
 from athanor.utils.text import partial_match
 
 from athanor.validators.funcs import TZ_DICT
-from athanor.styles.athanor_styles import FALLBACK
 
 
 class __Setting(object):
@@ -18,7 +17,7 @@ class __Setting(object):
     expect_type = ''
     value_storage = None
     default = None
-    valid = athanor.valid
+    valid = athanor.VALIDATORS
 
     def __str__(self):
         return self.key
@@ -207,7 +206,7 @@ class ColorSetting(__Setting):
 
     @property
     def default(self):
-        return FALLBACK[self.key]
+        return athanor.STYLES_FALLBACK[self.key]
 
     def do_validate(self, value, value_list, enactor):
         return self['color'](enactor, value)

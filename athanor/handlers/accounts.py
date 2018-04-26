@@ -6,6 +6,7 @@ from evennia import utils
 from evennia.utils import time_format
 from evennia.utils.ansi import ANSIString
 from athanor.utils.time import utcnow
+from athanor.utils.utils import import_property
 from athanor.models import AccountCore, AccountWho, AccountCharacter
 
 from athanor.handlers.base import AccountHandler
@@ -154,13 +155,13 @@ class AccountWhoHandler(AccountHandler):
     django_model = AccountWho
 
     def at_true_login(self, session, **kwargs):
-        athanor.system_scripts['who'].register_account(self.owner)
+        athanor.SYSTEMS['who'].register_account(self.owner)
 
     def at_true_logout(self, **kwargs):
-        athanor.system_scripts['who'].remove_account(self.owner)
-        self.model.banned = False
+        athanor.SYSTEMS['who'].remove_account(self.owner)
+        self.model.dark = False
         self.model.hidden = False
-        self.model.save(update_fields=['banned', 'hidden'])
+        self.model.save(update_fields=['dark', 'hidden'])
 
     def off_or_idle_time(self):
         idle = self.idle_time
@@ -208,9 +209,9 @@ class AccountWhoHandler(AccountHandler):
             return
 
         if value:
-            athanor.system_scripts['who'].hide_account(self.owner)
+            athanor.SYSTEMS['who'].hide_account(self.owner)
         else:
-            athanor.system_scripts['who'].reveal_account(self.owner)
+            athanor.SYSTEMS['who'].reveal_account(self.owner)
 
     @property
     def dark(self):
@@ -227,9 +228,9 @@ class AccountWhoHandler(AccountHandler):
             return
 
         if value:
-            athanor.system_scripts['who'].hide_account(self.owner)
+            athanor.SYSTEMS['who'].hide_account(self.owner)
         else:
-            athanor.system_scripts['who'].reveal_account(self.owner)
+            athanor.SYSTEMS['who'].reveal_account(self.owner)
 
     @property
     def connection_time(self):
@@ -375,3 +376,61 @@ class AccountCharacterHandler(AccountHandler):
         message.append(chartable)
         # message.append(separator())
         return message
+
+
+class AccountMenuHandler(AccountHandler):
+    key = 'menu'
+    style = 'account'
+    system_name = 'SYSTEM'
+    category = 'athanor'
+
+    def load(self):
+        self.menu = None
+        if not self.owner.attributes.has(key='%s_current', category=self.category):
+            self.owner.attributes.add(key='%s_current', category=self.category, value=None)
+        self.menu_path = self.owner.attributes.get(key='%s_current', category=self.category)
+        if not self.owner.attributes.has(key=self.key, category=self.category):
+            self.owner.attributes.add(key=self.key, category=self.category, value={})
+        self.data = self.owner.attributes.get(key=self.key, category=self.category)
+        if self.menu_path:
+            self.menu = import_property(self.menu_path)
+
+    def at_init(self):
+        if self.menu:
+            self.owner.cmdset.add(self.menu)
+
+    def __getitem__(self, item):
+        return self.data[item]
+
+    def launch(self, path):
+        """
+        Add a Menu Cmdset.
+
+        Args:
+            path: Python path to a menu.
+
+        Returns:
+            None.
+
+        """
+        menu = import_property(path)
+        self.menu_path = path
+        self.owner.cmdset.add(menu)
+        self.menu = menu
+
+    def leave(self):
+        if self.menu:
+            self.owner.cmdset.remove(self.menu)
+            
+    def switch(self, path):
+        """
+        Shortcut for leaving one menu and starting up another!
+        
+        Args:
+            path (str): Python path to a menu.
+
+        Returns: 
+            None
+        """
+        self.leave()
+        self.launch(path)

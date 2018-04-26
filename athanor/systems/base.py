@@ -25,7 +25,7 @@ class SystemScript(AthanorScript):
 
         # We'll probably be using this a lot.
         import athanor
-        self.systems = athanor.system_scripts
+        self.systems = athanor.SYSTEMS
 
         # Call easy-extensible loading process.
         self.load()

@@ -1,28 +1,28 @@
 from __future__ import unicode_literals
-from athanor.classes.accounts import Player
+from athanor.classes.accounts import Account
 
 
 
 def _email(caller, raw_input):
     menu = caller.ndb._menutree
     new_email = menu.args['args']
-    player = menu.player
+    account = menu.account
     if not new_email:
         menu.error("You must enter an email address!")
         return
     try:
-        player.account.change_email(new_email)
+        account.ath['core'].change_email(new_email)
     except ValueError as err:
         menu.error(str(err))
         return
-    if not caller.player == player:
+    if not caller.account == account:
         menu.error("Email changed!")
 
 
 def _password(caller, raw_input):
     menu = caller.ndb._menutree
-    player = menu.player
-    if caller.account.is_admin():
+    account = menu.account
+    if caller.ath['core'].is_admin():
         old_password = None
         new_password = caller.ndb._menutree.args['args']
         if not new_password:
@@ -33,11 +33,11 @@ def _password(caller, raw_input):
         if not (old_password and new_password):
             menu.error(caller, "You must enter <oldpassword>=<newpassword>")
     try:
-        player.account.change_password(caller, old_password, new_password)
+        account.ath['core'].change_password(caller, old_password, new_password)
     except ValueError as err:
         menu.error(caller, str(err))
         return
-    if not caller.player == player:
+    if not caller.account == account:
         _msg(caller, "Password changed!")
 
 

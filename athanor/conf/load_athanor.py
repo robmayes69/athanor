@@ -12,44 +12,69 @@ def at_server_start():
     how it was shut down.
     """
     
-    import importlib, athanor, traceback, sys
-    from evennia.utils.utils import class_from_module
+    import athanor, sys, traceback
     from evennia.utils.create import create_script
     from athanor.utils.utils import import_property
+    try:
 
-    dicts = ('MANAGERS', 'HANDLERS_ACCOUNT', 'HANDLERS_CHARACTER', 'HANDLERS_SESSION', 'RENDERERS',
-             'STYLES_ACCOUNT', 'STYLES_CHARACTER', 'STYLES_SESSION', 'STYLES_FALLBACK', 'VALIDATORS',
-             'SYSTEMS')
+        dicts = ('MANAGERS', 'HANDLERS_ACCOUNT', 'HANDLERS_CHARACTER', 'HANDLERS_SESSION', 'RENDERERS',
+                 'STYLES_ACCOUNT', 'STYLES_CHARACTER', 'STYLES_SESSION', 'STYLES_FALLBACK', 'VALIDATORS',
+                 'SYSTEMS', 'HELP_TREES', 'HELP_FILES', 'SHELP_FILES')
 
-    for module in athanor.MODULES_ORDER:
-        # First, we have to update all of the dictionaries based on their load order.
+        for module in athanor.MODULES_ORDER:
+            # First, we have to update all of the dictionaries based on their load order.
+            for prop in dicts:
+                if hasattr(module, prop):
+                    getattr(athanor, prop).update(getattr(module, prop))
+
+        # Now that all of the modules dictionary key-values are present, load objects and classes!
         for prop in dicts:
-            if hasattr(module, prop):
-                getattr(athanor, prop).update(getattr(module, prop))
+            if prop in ('STYLES_FALLBACK', 'HELP_TREES', 'HELP_FILES', 'SHELP_FILES'):
+                continue
+            loading = getattr(athanor, prop)
+            for k, v in loading.iteritems():
+                loading[k] = import_property(v)
 
-    # Now that all of the modules dictionary key-values are present, load objects and classes!
-    for prop in dicts:
-        loading = getattr(athanor, prop)
-        for k, v in loading.iteritems():
-            loading[k] = import_property(v)
+        # Now, all validators, managers, handlers, styles, etc, should all be references to their
+        # actual Python data instead of just python path strings.
 
-    # Now, all validators, managers, handlers, styles, etc, should all be references to their
-    # actual Python data instead of just python path strings.
+        # We're just gonna blindly dump all of the Styles into the STYLES_DICT. No need to sort these.
+        for k, d in (('account', 'STYLES_ACCOUNT'), ('character', 'STYLES_CHARACTER'),
+                     ('session', 'STYLES_SESSION'), ('script', 'STYLES_SCRIPT')):
+            styles = getattr(athanor, d).values()
+            athanor.STYLES_DICT[k] = styles
 
-    # Next step: instantiate Systems from their Script Typeclasses.
+        # Sort all of the Handlers into the appropriate dictionary so that managers load faster.
 
-    for key, system in athanor.SYSTEMS.iteritems():
-        found = system.objects.filter_family(db_key=key).first()
-        if found:
-            athanor.SYSTEMS[key] = found
-        else:
-            athanor.SYSTEMS[key] = create_script(system, key=key, persistent=True, interval=60)
+        for k, d in (('account', 'HANDLERS_ACCOUNT'), ('character', 'HANDLERS_CHARACTER'),
+                     ('session', 'HANDLERS_SESSION'), ('script', 'HANDLERS_SCRIPT')):
+            handlers = getattr(athanor, d).values()
+            handlers.sort(key=lambda h: h.load_order)
+            athanor.HANDLERS_SORTED[k] = tuple(handlers)
 
-    # Lastly, if any module implements its own custom install process, we'll call that.
-    for plugin in athanor.MODULES_ORDER:
-        if hasattr(plugin, 'setup_module'):
-            plugin.setup_module()
+        # Next step: instantiate Systems from their Script Typeclasses.
 
+        for key, system in athanor.SYSTEMS.iteritems():
+            found = system.objects.filter_family(db_key=key).first()
+            if found:
+                athanor.SYSTEMS[key] = found
+                if system.interval != found.interval:
+                    found.restart(interval=system.interval)
+            else:
+                athanor.SYSTEMS[key] = create_script(system, key=key, persistent=True, interval=system.interval)
+
+        for help, data in athanor.HELP_TREES.iteritems():
+            files = data[1].values()
+            root = import_property(data[0])(sub_files=files)
+            athanor.HELP_TREES[help] = root
+
+        # Lastly, if any module implements its own custom install process, we'll call that.
+        for plugin in athanor.MODULES_ORDER:
+            if hasattr(plugin, 'setup_module'):
+                plugin.setup_module()
+
+    except:
+        traceback.print_exc(file=sys.stdout)
 
 def at_server_stop():
     """

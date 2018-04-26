@@ -1,4 +1,4 @@
-from evennia.utils.utils import fuzzy_import_from_module
+import importlib
 
 
 def import_property(path):
@@ -12,4 +12,6 @@ def import_property(path):
         Hopefully, a function object or a variable or something of that sort.
     """
     module, thing = path.rsplit('.', 1)
-    return fuzzy_import_from_module(module, thing)
+    module = importlib.import_module(module)
+    thing = getattr(module, thing)
+    return thing
