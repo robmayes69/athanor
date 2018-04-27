@@ -153,7 +153,7 @@ class CharacterCoreHandler(CharacterHandler):
     @property
     def connection_time(self):
         if not self.owner.sessions.count():
-            return 0
+            return -1
         count = min([sess.conn_time for sess in self.owner.sessions.get()])
         return time.time() - count
 
@@ -162,8 +162,11 @@ class CharacterCoreHandler(CharacterHandler):
         sessions = self.owner.sessions.get()
         if sessions:
             return time.time() - min([ses.cmd_last for ses in sessions])
-        return 0
+        return -1
 
+    @property
+    def timezone(self):
+        return self.account.ath['core'].timezone
 
 class CharacterCharacterHandler(CharacterHandler):
     key = 'character'

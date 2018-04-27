@@ -18,7 +18,8 @@ def at_server_start():
 
         dicts = ('MANAGERS', 'HANDLERS_ACCOUNT', 'HANDLERS_CHARACTER', 'HANDLERS_SESSION', 'RENDERERS',
                  'STYLES_ACCOUNT', 'STYLES_CHARACTER', 'STYLES_SESSION', 'STYLES_FALLBACK', 'VALIDATORS',
-                 'SYSTEMS', 'HELP_TREES', 'HELP_FILES', 'SHELP_FILES')
+                 'SYSTEMS', 'HELP_TREES', 'HELP_FILES', 'SHELP_FILES', 'PROPERTIES_ACCOUNT', 'PROPERTIES_CHARACTER',
+                 'PROPERTIES_SESSION')
 
         for module in athanor.MODULES_ORDER:
             # First, we have to update all of the dictionaries based on their load order.
@@ -36,6 +37,12 @@ def at_server_start():
 
         # Now, all validators, managers, handlers, styles, etc, should all be references to their
         # actual Python data instead of just python path strings.
+
+        # Load all of the PROPERTY Getters into the Dictionary for them!
+        for k, d in (('account', 'PROPERTIES_ACCOUNT'), ('character', 'PROPERTIES_CHARACTER'),
+                     ('session', 'PROPERTIES_SESSION'), ('script', 'PROPERTIES_SCRIPT')):
+            props = getattr(athanor, d)
+            athanor.PROPERTIES_DICT[k] = props
 
         # We're just gonna blindly dump all of the Styles into the STYLES_DICT. No need to sort these.
         for k, d in (('account', 'STYLES_ACCOUNT'), ('character', 'STYLES_CHARACTER'),

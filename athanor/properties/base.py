@@ -1,5 +1,6 @@
 import athanor
 
+
 class PropertyCollection(object):
     mode = None
 
@@ -19,3 +20,12 @@ class PropertyCollection(object):
             Something that can be printed. This method is meant to be used for formatting tables and etc.
         """
         return self.properties[key](self.owner, viewer, *args, **kwargs)
+
+
+
+class AccountPropertyCollection(PropertyCollection):
+    mode = 'account'
+
+
+class CharacterPropertyCollection(PropertyCollection):
+    mode = 'character'

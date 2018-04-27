@@ -249,7 +249,7 @@ class AccountHandler(__BaseHandler):
     def at_init(self):
         pass
 
-    def at_disconnect(self, **kwargs):
+    def at_disconnect(self, reason, **kwargs):
         pass
 
     def at_true_logout(self, **kwargs):

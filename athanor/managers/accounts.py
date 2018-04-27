@@ -8,7 +8,7 @@ from athanor.managers.base import __BaseManager
 class AccountManager(__BaseManager):
     """
     Athanor basic Account Manager.
-    
+
     Implements all of the Account hooks that Handlers need.
     """
     mode = 'account'
@@ -33,9 +33,9 @@ class AccountManager(__BaseManager):
         for handler in self.ordered_handlers:
             handler.at_init()
 
-    def at_disconnect(self, **kwargs):
+    def at_disconnect(self, reason, **kwargs):
         for handler in self.ordered_handlers:
-            handler.at_disconnect(**kwargs)
+            handler.at_disconnect(reason, **kwargs)
 
     def at_true_logout(self, **kwargs):
         for handler in self.ordered_handlers:

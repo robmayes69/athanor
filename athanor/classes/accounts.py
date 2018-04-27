@@ -28,6 +28,7 @@ from evennia.utils.utils import lazy_property, is_iter
 
 from athanor.managers.accounts import AccountManager
 from athanor.renderers.accounts import AccountRenderer
+from athanor.properties.base import AccountPropertyCollection
 
 
 class Account(DefaultAccount):
@@ -105,6 +106,10 @@ class Account(DefaultAccount):
     def render(self):
         return AccountRenderer(self)
 
+    @lazy_property
+    def prop(self):
+        return AccountPropertyCollection(self)
+
     def at_account_creation(self):
         super(Account, self).at_account_creation()
         self.ath.at_account_creation()
@@ -143,9 +148,9 @@ class Account(DefaultAccount):
         super(Account, self).at_failed_login(session)
         self.ath.at_failed_login(session)
 
-    def at_disconnect(self):
+    def at_disconnect(self, reason=None):
         super(Account, self).at_disconnect()
-        self.ath.at_disconnect()
+        self.ath.at_disconnect(reason)
 
         if not self.sessions.get():
             self.at_true_logout()

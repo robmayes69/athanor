@@ -19,37 +19,6 @@ class AccountWhoHandler(AccountHandler):
         self.model.hidden = False
         self.model.save(update_fields=['dark', 'hidden'])
 
-    def off_or_idle_time(self):
-        idle = self.owner.ath['core'].idle_time
-        if idle is None:
-            return '|XOff|n'
-        return time_format(idle, style=1)
-
-    def off_or_conn_time(self):
-        conn = self.owner.ath['core'].connection_time
-        if conn is None:
-            return '|XOff|n'
-        return time_format(conn, style=1)
-
-    def last_or_idle_time(self, viewer):
-        idle = self.owner.ath['core'].idle_time
-        last = self.base['core'].last_played
-        if not idle:
-            return viewer.ath['core'].display_time(date=last, format='%b %d')
-        return time_format(idle, style=1)
-
-    def last_or_conn_time(self, viewer):
-        conn = self.owner.ath['core'].connection_time
-        last = self.base['core'].last_played
-        if not conn:
-            return viewer.ath['core'].display_time(date=last, format='%b %d')
-        return time_format(conn, style=1)
-
-    def can_see(self, target):
-        if self.base['core'].is_admin():
-            return True
-        return not (target.system.dark() or target.system.hidden())
-
     @property
     def hidden(self):
         return self.model.hidden

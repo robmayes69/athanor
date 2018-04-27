@@ -79,14 +79,27 @@ HANDLERS_SORTED = {
 # the viewer (a session) as their second. They then also support *args, **kwargs.
 
 PROPERTIES_ACCOUNT = {
-
+    'name': 'athanor.properties.accounts.name',
+    'conn_seconds': 'athanor.properties.accounts.conn_seconds',
+    'idle_seconds': 'athanor.properties.accounts.idle_seconds',
+    'timezone': 'athanor.properties.accounts.timezone',
 }
 
 PROPERTIES_CHARACTER = {
-
+    'name': 'athanor.properties.characters.name',
+    'alias': 'athanor.properties.characters.alias',
+    'fullalias': 'athanor.properties.characters.fullalias',
+    'conn_seconds': 'athanor.properties.characters.conn_seconds',
+    'idle_seconds': 'athanor.properties.characters.idle_seconds',
+    'location': 'athanor.properties.characters.alias',
+    'timezone': 'athanor.properties.characters.timezone',
 }
 
 PROPERTIES_SESSION = {
+
+}
+
+PROPERTIES_SCRIPT = {
 
 }
 
