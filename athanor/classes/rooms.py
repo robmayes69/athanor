@@ -4,7 +4,6 @@ Room
 Rooms are simple containers that has no location of their own.
 
 """
-from __future__ import unicode_literals
 from evennia import DefaultRoom
 from athanor.utils.text import tabular_table
 from athanor.utils.online import characters

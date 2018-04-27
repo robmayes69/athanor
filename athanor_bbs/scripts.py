@@ -1,4 +1,4 @@
-from __future__ import unicode_literals
+
 from evennia.locks.lockhandler import LockException
 from athanor.classes.scripts import AthanorScript
 from athanor.utils.text import sanitize_string, partial_match, mxp, sanitize_board_name
@@ -84,7 +84,7 @@ class BoardManager(AthanorScript):
         if not sanitize_string(verify).lower() == board.key.lower():
             raise ValueError("Verify field does not match Board name!")
         board.delete()
-        
+
     def rename_board(self, enactor, name=None, new_name=None):
         name = sanitize_board_name(name)
         board = self.find_board(name, enactor, visible_only=False)
@@ -123,7 +123,7 @@ class BoardManager(AthanorScript):
         old_order = board.order
         board.order = order
         board.save(update_fields=['order'])
-        
+
     def lock_board(self, enactor, name=None, lock=None):
         name = sanitize_board_name(name)
         board = self.find_board(name, enactor, visible_only=False)
@@ -132,7 +132,7 @@ class BoardManager(AthanorScript):
         else:
             if not enactor.accountsub.is_admin():
                 raise ValueError("Permission denied!")
-        
+
         if not lock:
             raise ValueError("Must enter a lockstring.")
 

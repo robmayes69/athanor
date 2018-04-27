@@ -4,7 +4,7 @@ Commands
 Commands describe the input the player can do to the game.
 
 """
-from __future__ import unicode_literals
+
 from evennia import default_cmds
 import athanor
 from athanor.utils.text import partial_match, sanitize_string

@@ -422,7 +422,7 @@ class SessionCoreHandler(SessionHandler):
             if character_id == 0:
                 if not session.puppet:
                     raise AthException("You are already OOC on this session.")
-                session.AthException.unpuppet_object(session)
+                session.account.unpuppet_object(session)
             else:
                 character = self.valid['character_id'](session, character_id)
                 if not character.access(session.account, 'puppet'):

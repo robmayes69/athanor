@@ -1,4 +1,3 @@
-from __future__ import unicode_literals
 import codecs, re
 
 def mxp(text="", command="", hints=""):

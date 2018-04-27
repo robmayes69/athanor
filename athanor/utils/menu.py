@@ -1,4 +1,4 @@
-from __future__ import unicode_literals
+
 
 from evennia.utils.evmenu import EvMenu, _HELP_NO_OPTION_MATCH
 

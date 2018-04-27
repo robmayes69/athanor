@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 from evennia.utils.ansi import ANSIString
 
 from athanor.classes.characters import Character

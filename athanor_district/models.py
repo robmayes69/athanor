@@ -1,4 +1,3 @@
-from __future__ import unicode_literals
 from django.db import models
 from athanor.core.models import WithKey, WithLocks
 from athanor.utils.text import tabular_table

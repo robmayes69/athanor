@@ -1,4 +1,3 @@
-from __future__ import unicode_literals
 import datetime, re
 from django.utils.timezone import utc
 from athanor import AthException

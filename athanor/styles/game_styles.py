@@ -1,9 +1,9 @@
-from __future__ import unicode_literals
+
 from athanor.settings.base import ColorSetting, WordSetting
 from athanor import STYLES_FALLBACK
 
 class __FillSetting(WordSetting):
-    
+
     @property
     def default(self):
         return STYLES_FALLBACK[self.key]
@@ -17,7 +17,7 @@ class ExitColor(ColorSetting):
 class ExitAlias(ColorSetting):
     key = 'exit_alias_color'
     description = 'Color to display Exit Aliases in.'
-    
+
 
 class HeaderFill(__FillSetting):
     key = 'header_fill'
@@ -57,8 +57,8 @@ class SeparatorFillColor(ColorSetting):
 class FooterFillColor(ColorSetting):
     key = 'footer_fill_color'
     description = 'Character used to fill Footer Lines.'
-    
-    
+
+
 class HeaderTextColor(ColorSetting):
     key = 'header_text_color'
     description = 'Color used for text inside Header lines.'
@@ -102,22 +102,22 @@ class FooterStarColor(ColorSetting):
 class BorderColor(ColorSetting):
     key = 'border_color'
     description = 'Color used for miscellaneous borders like tables.'
-    
+
 
 class MsgEdgeColor(ColorSetting):
     key = 'msg_edge_color'
     description = 'Color used for the -=< >=- wrapper around system messages.'
-    
+
 
 class MsgNameColor(ColorSetting):
     key = 'msg_name_color'
     description = 'Color used for the NAME within system message prefixes.'
-    
-    
+
+
 class OOCPrefixColor(ColorSetting):
     key = 'ooc_prefix_color'
     description = 'Color used for the OOC within OOC message prefixes.'
-    
+
 
 class OOCEdgeColor(ColorSetting):
     key = 'ooc_edge_color'

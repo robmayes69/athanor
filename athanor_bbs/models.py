@@ -1,4 +1,3 @@
-from __future__ import unicode_literals
 import re
 from django.db import models
 from django.conf import settings
@@ -37,7 +36,7 @@ class Board(WithLocks):
 
     def character_join(self, character):
         self.ignore_list.remove(character)
-        
+
     def character_leave(self, character):
         self.ignore_list.add(character)
 
@@ -124,7 +123,7 @@ class Board(WithLocks):
         return post
 
     def announce_post(self, post):
-        
+
         post_data = {
             'board': self,
             'number': post.order,
@@ -134,7 +133,7 @@ class Board(WithLocks):
             'group': self.group,
             'command': '+bbread'
         }
-        
+
         postid = '%s/%s' % (self.alias, post.order)
         if self.group:
             board_name = '%s/%s' % (self.group.key, self.key)

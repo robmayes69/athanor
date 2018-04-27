@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 import re
 from django.db import models
 from athanor.core.models import WithKey
@@ -39,13 +37,13 @@ class InfoFile(models.Model):
     date_approved = models.DateTimeField(null=True)
     approved = models.BooleanField(default=False)
     approved_by = models.ForeignKey('objects.ObjectDB', null=True, on_delete=models.SET_NULL)
-    
+
     def __unicode__(self):
         return self.title
-    
+
     def __len__(self):
         return len(self.text)
-    
+
     def set_approved(self, approver=None):
         if not approver:
             raise ValueError("Approver is not defined.")
@@ -76,7 +74,7 @@ class InfoFile(models.Model):
         self.save()
         self.character_obj.sys_msg("File '%s' renamed to '%s'!" % (oldname, self.title),
                                    sys_name=self.info_type.category.key)
-        
+
     def set_contents(self, newtext=None, setby=None):
         if not setby:
             raise ValueError("File setter data not found.")

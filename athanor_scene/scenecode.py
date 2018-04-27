@@ -1,4 +1,3 @@
-from __future__ import unicode_literals
 from athanor.core.command import AthCommand
 from evennia.utils.ansi import ANSIString
 from athanor.utils.time import utcnow, header, subheader, separator, make_table, sanitize_string, partial_match, \

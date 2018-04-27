@@ -2,7 +2,6 @@ from athanor.classes.scripts import AthanorScript
 from athanor.utils.text import partial_match
 from athanor.handlers.base import AthanorResponse
 
-
 class SystemScript(AthanorScript):
     settings_classes = tuple()
     category = 'athanor'

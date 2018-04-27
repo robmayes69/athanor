@@ -1,4 +1,4 @@
-from __future__ import unicode_literals
+
 import re, hashlib
 from django.db import models
 from django.db.models import Q

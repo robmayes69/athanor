@@ -1,27 +1,11 @@
 LOAD_ORDER = 0
 
-INSTALLED_APPS = ()
+INSTALLED_APPS = ('athanor_cwho.apps.CWho',)
 
-LOCK_FUNC_MODULES = ()
+SYSTEMS = {
+    'awho': 'athanor_cwho.systems.scripts.CWhoSystem',
+}
 
-INPUT_FUNC_MODULES = []
-
-INLINE_FUNC_MODULES = []
-
-CONFIGS = ()
-
-ACCOUNT_HANDLERS = ()
-CHARACTER_HANDLERS = ()
-SCRIPT_HANDLERS = ()
-
-ACCOUNT_STYLES = ()
-CHARACTER_STYLES = ()
-SCRIPT_STYLES = ()
-
-VALIDATORS = ()
-
-CMDSETS_ACCOUNT = ()
-
-CMDSETS_CHARACTER = ('athanor_who.cmdsets.character.WhoCharacterCmdSet', )
-
-CMDSETS_UNLOGGED = ()
+HANDLERS_ACCOUNT = {
+    'awho': 'athanor_cwho.handlers.characters.CharacterWhoHandler',
+}

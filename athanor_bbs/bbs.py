@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 from athanor.managers import ALL_MANAGERS
 
 from athanor.core.command import AthCommand
@@ -37,17 +35,17 @@ class CmdBBList(BBCommand):
 
 class CmdBBJoin(BBCommand):
     key = '+bbjoin'
-    
+
     def switch_main(self):
         self.character.bbs.join_board(enactor=self.character, name=self.lhs)
 
 
 class CmdBBLeave(BBCommand):
     key = '+bbleave'
-    
+
     def switch_main(self):
         self.character.bbs.leave_board(enactor=self.character, name=self.lhs)
-    
+
 
 class CmdBBAdmin(BBCommand):
     """
@@ -93,7 +91,7 @@ class CmdBBAdmin(BBCommand):
             group_name, board_name = self.lhs.split('/')
             group = ALL_MANAGERS.group.find_group(self.character, group_name)
         boards_manager.create_board(enactor=self.character, name=board_name, group=group, order=self.rhs)
-        
+
     def switch_delete(self):
         boards_manager = ALL_MANAGERS.board
         boards_manager.delete_board(enactor=self.character, name=self.lhs, verify=self.rhs)
@@ -145,8 +143,8 @@ class CmdBBPost(BBCommand):
     """
 
     key = "+bbpost"
-    
-    
+
+
     def board_post(self, lhs=None, rhs=None):
         if not lhs:
             self.board_post_finish()
@@ -231,7 +229,7 @@ class CmdBBPost(BBCommand):
 class CmdBBWrite(BBCommand):
     key = '+bbwrite'
     aliases = ['+bb',]
-    
+
     def switch_main(self):
         if not self.lhs:
             self.error("Nothing to enter!")
@@ -247,7 +245,7 @@ class CmdBBWrite(BBCommand):
 
 class CmdBBProof(BBCommand):
     key = '+bbproof'
-    
+
     def switch_main(self):
         if not self.character.db.curpost:
             self.error("You do not have a post in progress.")
@@ -263,7 +261,7 @@ class CmdBBProof(BBCommand):
 
 class CmdBBToss(BBCommand):
     key = '+bbtoss'
-    
+
     def switch_main(self):
         if not self.character.db.curpost:
             self.error("You do not have a post in progress.")
@@ -273,7 +271,7 @@ class CmdBBToss(BBCommand):
 
 class CmdBBEdit(BBCommand):
     key = '+bbedit'
-    
+
     def switch_main(self):
         lhs = self.lhs
         rhs = self.rhs
@@ -337,12 +335,12 @@ class CmdBBEdit(BBCommand):
                 self.sys_msg("Post %s: %s edited!" % (post.num, post.subject))
             else:
                 self.error("Permission denied for Post %s: %s" % (post.num, post.subject))
-    
+
 
 
 class CmdBBMove(BBCommand):
     key = '+bbmove'
-    
+
     def switch_main(self):
         rhs = self.rhs
         lhs = self.lhs

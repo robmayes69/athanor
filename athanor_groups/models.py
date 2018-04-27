@@ -1,4 +1,3 @@
-from __future__ import unicode_literals
 import re
 from django.db import models
 from evennia.utils.ansi import ANSIString

@@ -1,4 +1,4 @@
-from __future__ import unicode_literals
+
 import re
 from evennia.utils.ansi import ANSIString, ANSI_PARSER
 

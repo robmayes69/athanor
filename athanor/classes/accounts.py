@@ -22,7 +22,7 @@ several more options for customizing the Guest account system.
 
 """
 
-from __future__ import unicode_literals
+
 from evennia import DefaultAccount
 from evennia.utils.utils import lazy_property, is_iter
 
@@ -100,7 +100,7 @@ class Account(DefaultAccount):
     @lazy_property
     def ath(self):
         return AccountManager(self)
-    
+
     @lazy_property
     def render(self):
         return AccountRenderer(self)
@@ -125,14 +125,14 @@ class Account(DefaultAccount):
     def at_failed_login(self, session=None):
         super(Account, self).at_failed_login(session)
         self.ath.at_failed_login(session)
-        
+
     def at_disconnect(self):
         super(Account, self).at_disconnect()
         self.ath.at_disconnect()
-        
+
         if not self.sessions.get():
             self.at_true_logout()
-            
+
     def at_true_logout(self):
         self.ath.at_true_logout()
 

@@ -1,4 +1,3 @@
-from __future__ import unicode_literals
 import math
 from django.db.models import Q
 from evennia.utils.utils import time_format

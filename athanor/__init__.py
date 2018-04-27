@@ -74,6 +74,31 @@ HANDLERS_SORTED = {
     'script': tuple()
 }
 
+# The properties system provides a unified, overrideable interface of unique key->functions used for retrieving information
+# about a Type. For instance, you might want the location name of a character, or a prettified version of their idle time
+# to display in various places.
+# Property functions must accept, at the very least, the thing to check the properties of as their first argument, and
+# the viewer (a session) as their second. They then also support *args, **kwargs.
+
+PROPERTIES_ACCOUNT = {
+
+}
+
+PROPERTIES_CHARACTER = {
+
+}
+
+PROPERTIES_SESSION = {
+
+}
+
+PROPERTIES_DICT = {
+    'character': {},
+    'account': {},
+    'session': {},
+    'script': {},
+}
+
 # Just as with MANAGERS, above. The difference is these are for rendering text output to the given Account/Character.
 RENDERERS = {
     'sessions': 'athanor.renderers.sessions.SessionRenderer',
@@ -168,7 +193,6 @@ VALIDATORS = {
 
 SYSTEMS = {
     'core': 'athanor.systems.scripts.CoreSystem',
-    'who': 'athanor.systems.scripts.WhoSystem',
 }
 
 # A dictionary of command families. CmdSets can be pointed at one of these keys to retrieve the prefix all of their
@@ -178,7 +202,7 @@ COMMAND_PREFIXES = {
     # For commands dealing with basic system functionality or very important admin things. Due to legacy MUSH/MUX
     # conventions, this is a pretty fuzzy space to work with.
     'system': '@',
-    
+
     # Provided for the MUSH-like default Athanor modules. +bbread, +groups, etc. If you change this, changing the
     # help-files is also on you. Beyond administration purposes like 'adding someone to a group' or posting to boards
     # declared global by game policy, actions stemming from commands that use the + prefix should not be considered
@@ -187,7 +211,7 @@ COMMAND_PREFIXES = {
 
     # For commands that use the in-game menu.
     'menu': '#',
-    
+
     # Commands that are designed for MUD-like play. These traditionally have no prefix. They are generally considered
     # in-character actions.
     'mud': '',

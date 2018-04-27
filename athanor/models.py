@@ -1,4 +1,4 @@
-from __future__ import unicode_literals
+
 from datetime import timedelta
 from django.db import models
 from django.core.exceptions import ValidationError
@@ -23,13 +23,6 @@ class AccountCore(models.Model):
     last_logout = models.DateTimeField(null=True)
     shelved = models.BooleanField(default=False)
     timezone = TimeZoneField(default='UTC')
-    
-
-class AccountWho(models.Model):
-    account = models.OneToOneField('accounts.AccountDB', related_name='+')
-    hidden = models.BooleanField(default=False)
-    dark = models.BooleanField(default=False)
-
 
 
 class AccountCharacter(models.Model):
@@ -48,13 +41,6 @@ class CharacterCore(models.Model):
     last_login = models.DateTimeField(null=True)
     last_logout = models.DateTimeField(null=True)
     shelved = models.BooleanField(default=False)
-
-
-class CharacterWho(models.Model):
-    character = models.OneToOneField('objects.ObjectDB', related_name='+')
-    hidden = models.BooleanField(default=False)
-    dark = models.BooleanField(default=False)
-
 
 class CharacterCharacter(models.Model):
     character = models.OneToOneField('objects.ObjectDB', related_name='+')

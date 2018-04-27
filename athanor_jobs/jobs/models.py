@@ -1,4 +1,4 @@
-from __future__ import unicode_literals
+
 from django.db import models
 from athanor.core.models import WithKey, WithLocks
 from athanor.utils.time import utcnow, duration_from_string

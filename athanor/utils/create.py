@@ -1,4 +1,3 @@
-from __future__ import unicode_literals
 
 from evennia import ObjectDB
 from django.conf import settings

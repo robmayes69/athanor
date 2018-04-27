@@ -1,4 +1,4 @@
-from __future__ import unicode_literals
+
 from athanor.core.models import StaffEntry as _Staff
 
 

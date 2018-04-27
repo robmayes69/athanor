@@ -7,7 +7,6 @@ is setup to be the "default" character type created by the default
 creation commands.
 
 """
-from __future__ import unicode_literals
 from evennia import DefaultCharacter
 from evennia.utils.utils import lazy_property
 from athanor.managers.characters import CharacterManager

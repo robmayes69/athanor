@@ -1,4 +1,4 @@
-from __future__ import unicode_literals
+
 import athanor
 from athanor.commands.base import AthCommand
 from athanor.handlers.base import AthanorRequest
@@ -87,7 +87,7 @@ class CmdLook(AthCommand):
 class CmdHelp(AthCommand):
     """
     Display the Athanor +help menu tree.
-    
+
     Usage:
        +help
        +help <filename>
@@ -96,7 +96,7 @@ class CmdHelp(AthCommand):
     key = '+help'
     locks = "cmd:all()"
     tree = athanor.HELP_TREES['+help']
-    
+
     def _main(self):
         if not self.lhs:
             self.msg(text=self.tree.display(self.session))

@@ -1,4 +1,3 @@
-from __future__ import unicode_literals
 from athanor.classes.scripts import AthanorScript
 from athanor.utils.text import sanitize_string, partial_match, sanitize_group_name
 from athanor.groups.models import GroupTier, Group
