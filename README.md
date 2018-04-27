@@ -41,10 +41,13 @@ If you fix any bugs with your own projects, I'd __really__ appreciate some fix c
 
 ## INSTALLATION GUIDE
   1. This readme assumes you at least know the basics of what you're doing by installing Evennia first. If you don't, I'd suggest checking out https://github.com/evennia/evennia/wiki/Getting-Started
-  2. Download-and-extract or clone this repository. install using `pip install -e athanor` just like with Evennia.
+  2. Download-and-extract or clone this repository. (I recommend using git so you can update!) install using `pip install -e athanor` just like with Evennia.
   3. Create your GameDir using the `evennia --init mygame` command where you want it.
   4. in your `<gamedir/server/conf/settings.py` file... replace `from evennia.settings_default import *` with `from athanor.athanor_settings import *`
   5. Create a `<gamedir>/athanor_modules.py` file. in it, put the following line: `ATHANOR_MODULES = ('athanor',)` - And if you have any more modules installed, you can include them like so: `ATHANOR_MODULES = ('athanor','athanor_bbs', 'athanor_groups')` and so on.
+  * Do you want to install everything but the PennMUSH converter? Here. `ATHANOR_MODULES = ('athanor', 'athanor_ainfo', 'athanor_amail', 'athanor_awho', 'athanor_bbs', 'athanor_channels', 'athanor_cmail', 'athanor_cwho', 'athanor_district', 'athanor_fclist', 'athanor_friends', 'athanor_groups', 'athanor_guest', 'athanor_jobs', 'athanor_logintrack', 'athanor_meetme', 'athanor_navigation', 'athanor_page', 'athanor_pennmush', 'athanor_radio', 'athanor_scene', 'athanor_staff')`
+
+
 
 ## STRUCTURE
   * **MODULE:** By using `import athanor` one can access the loaded Athanor modules, though most of this is done automatically by the Managers, Renderers, and other components listed below.
