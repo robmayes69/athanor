@@ -3,11 +3,11 @@ from __future__ import unicode_literals
 import pytz
 from django.db.models import Q
 from athanor.classes.accounts import Account
-from athanor.core.command import AthCommand
+from athanor.commands.base import AthCommand
 from athanor.utils.create import account as make_account
-from athanor.utils.menu import make_menu
 from athanor.utils.time import utcnow, duration_from_string
 from athanor.utils.text import normal_string
+from athanor import AthException
 
 
 class CmdAccountConfig(AthCommand):
@@ -72,10 +72,10 @@ class CmdAccountConfig(AthCommand):
         if not self.args:
             return self.display_channel()
         if not self.lhs:
-            raise ValueError("Must enter a channel name.")
+            raise AthException("Must enter a channel name.")
         found = self.partial(self.lhs, self.character.channels.visible())
         if not found:
-            raise ValueError("Channel not found.")
+            raise AthException("Channel not found.")
         msg = self.player.colors.set(target=found, value=self.rhs, mode='channels')
         self.sys_msg(msg)
 
@@ -139,7 +139,7 @@ class CmdTz(AthCommand):
         if self.args: # Run a search, since the user entered something.
             tz_list = [tz for tz in tz_list if self.args.lower() in tz.lower()]
         if not tz_list:
-            raise ValueError("'%s' returned no matches.")
+            raise AthException("'%s' returned no matches.")
 
         # All information gained. Render a table and send it off!
         tz_table = self.player.render.make_table(['Name', 'Current Time'], width=[35, 43])
@@ -213,7 +213,7 @@ class CmdFriend(AthCommand):
         """
         found = self.character.search_character(self.args)
         if found not in self.player.player_settings.watch_list.all():
-            raise ValueError("They are not a friend!")
+            raise AthException("They are not a friend!")
         self.player.config.model.friends.remove(found)
         self.sys_msg("Removed '%s' from your Friend list." % found)
 
@@ -309,17 +309,17 @@ class CmdUser(AthCommand):
 
         """
         if must_enter and not self.lhs:
-            raise ValueError("Must enter a User!")
+            raise AthException("Must enter a User!")
         target = None
         if not self.args or not self.is_admin:
             target = self.player
         elif self.lhs and self.is_admin:
             target = Account.objects.filter_family(username__iexact=self.lhs, player_settings__enabled=enabled).first()
         if not target:
-            raise ValueError("User not found.")
+            raise AthException("User not found.")
         if authority:
             if not target.authority(self.player):
-                raise ValueError("Permission denied. %s is a %s!" % (target, target.account.status_name()))
+                raise AthException("Permission denied. %s is a %s!" % (target, target.account.status_name()))
         return target
 
     def func(self):
@@ -331,7 +331,7 @@ class CmdUser(AthCommand):
             if not self.final_switches:
                 return self.main()
             return getattr(self, 'switch_%s' % self.final_switches[0])()
-        except ValueError as err:
+        except AthException as err:
             return self.error(str(err))
 
     def main(self):
@@ -349,9 +349,9 @@ class CmdUser(AthCommand):
         """
         name, password = self.lhs, self.rhs
         if not name:
-            raise ValueError("No name entered.")
+            raise AthException("No name entered.")
         if not password:
-            raise ValueError("No password entered.")
+            raise AthException("No password entered.")
         target = make_account(name, password)
         self.sys_msg("User created! Don't forget to set its email with @user/email.")
         self.sys_report("Created New User: %s" % target)
@@ -419,7 +419,7 @@ class CmdUser(AthCommand):
         """
         target = self._target(must_enter=True, authority=True)
         if not self.rhs:
-            raise ValueError("No password entered!")
+            raise AthException("No password entered!")
         target.set_password(self.rhs)
         if not self.verify('%s %s' % (target.id, self.rhs)):
             return self.sys_msg("WARNING: This will change their password. Enter this again to verify!")
@@ -433,12 +433,12 @@ class CmdUser(AthCommand):
 
         """
         if not self.player.is_superuser:
-            raise ValueError("Permission denied.")
+            raise AthException("Permission denied.")
         target = self._target(must_enter=True)
         if not target:
-            raise ValueError("Must target a User!")
+            raise AthException("Must target a User!")
         if target == self.player:
-            raise ValueError("Cannot alter yourself.")
+            raise AthException("Cannot alter yourself.")
         target.is_superuser = not target.is_superuser
         target.save()
         msg = "Superuser privileges for %s: %s." % (target, 'Granted' if target.is_superuser else 'Revoked')
@@ -453,9 +453,9 @@ class CmdUser(AthCommand):
         target = self._target(must_enter=True, authority=True)
         name = normal_string(self.rhs)
         if not name:
-            raise ValueError("Must enter a new name!")
+            raise AthException("Must enter a new name!")
         if Account.objects.filter_family(username__iexact=name).exclude(id=target.id).count():
-            raise ValueError("Usernames must be unique.")
+            raise AthException("Usernames must be unique.")
         oldname = target.username
         target.username = name
         target.save()

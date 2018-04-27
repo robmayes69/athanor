@@ -5,6 +5,12 @@ Besides storing core plugin settings this module is meant to be imported for acc
 HANDLERS.
 """
 
+class AthException(Exception):
+    """
+    This exception exists for code logic purposes, not actual code errors. Use AthException if you want your commands to abort and display an error message without a complicated return chain.
+    """
+    pass
+
 # Every Athanor Module must have a load order in their __init__.py!
 # As this is the core, it must precede ALL other modules. Don't set a load order below -1000!
 LOAD_ORDER = -1000
@@ -165,7 +171,27 @@ SYSTEMS = {
     'who': 'athanor.systems.scripts.WhoSystem',
 }
 
+# A dictionary of command families. CmdSets can be pointed at one of these keys to retrieve the prefix all of their
+# commands should use. Individual commands might implement no_prefix however, and aliases are not affected. Be mindful
+# of conflicts.
+COMMAND_PREFIXES = {
+    # For commands dealing with basic system functionality or very important admin things. Due to legacy MUSH/MUX
+    # conventions, this is a pretty fuzzy space to work with.
+    'system': '@',
+    
+    # Provided for the MUSH-like default Athanor modules. +bbread, +groups, etc. If you change this, changing the
+    # help-files is also on you. Beyond administration purposes like 'adding someone to a group' or posting to boards
+    # declared global by game policy, actions stemming from commands that use the + prefix should not be considered
+    # in-character.
+    'mush_soft': '+',
 
+    # For commands that use the in-game menu.
+    'menu': '#',
+    
+    # Commands that are designed for MUD-like play. These traditionally have no prefix. They are generally considered
+    # in-character actions.
+    'mud': '',
+}
 
 
 # Help files don't actually use the Keys here for anything. Only the Keys of the objects themselves matter!

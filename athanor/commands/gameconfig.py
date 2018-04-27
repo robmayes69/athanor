@@ -35,7 +35,7 @@ class CmdGameConfig(AthCommand):
         if not self.args:
             return self.msg_lines(self.settings.display(self.player))
         if not self.player.account.is_immortal():
-            raise ValueError("Permission denied.")
+            raise AthException("Permission denied.")
         op = self.lhs
         val = self.rhs
         msg = self.settings.set(op, val, self.rhslist)

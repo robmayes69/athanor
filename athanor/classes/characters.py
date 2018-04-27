@@ -12,6 +12,7 @@ from evennia import DefaultCharacter
 from evennia.utils.utils import lazy_property
 from athanor.managers.characters import CharacterManager
 from athanor.renderers.characters import CharacterRenderer
+from athanor import AthException
 
 
 # This implements the Athanor API, but the base Typeclass should be Character, below.
@@ -126,11 +127,11 @@ class BaseCharacter(DefaultCharacter):
             ObjectDB instance.
 
         Raises:
-            ValueError: If character cannot be found.
+            AthException: If character cannot be found.
 
         """
         if not search_name:
-            raise ValueError("Character name field empty.")
+            raise AthException("Character name field empty.")
 
         # First, collect all possible character candidates.
         candidates = self.__class__.objects.filter_family()
@@ -146,7 +147,7 @@ class BaseCharacter(DefaultCharacter):
 
         # We found NOBODY? Then error!
         if not search_results:
-            raise ValueError("Character '%s' not found." % search_name)
+            raise AthException("Character '%s' not found." % search_name)
 
         # We only want to return one result, even if multiple matches were found.
         if isinstance(search_results, list):

@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 import datetime, re
 from django.utils.timezone import utc
+from athanor import AthException
 
 def utcnow():
     """
@@ -23,7 +24,7 @@ def utc_from_string(input=None, tz=None):
         datetime in utc.
     """
     if not input:
-        raise ValueError("No time string entered!")
+        raise AthException("No time string entered!")
     now = utcnow()
     cur_year = now.strftime('%Y')
     split_time = input.split(' ')
@@ -32,11 +33,11 @@ def utc_from_string(input=None, tz=None):
     elif len(split_time) == 4:
         pass
     else:
-        raise ValueError("Time must be entered in a 24-hour format such as: %s" % now.strftime('%b %d %H:%H'))
+        raise AthException("Time must be entered in a 24-hour format such as: %s" % now.strftime('%b %d %H:%H'))
     try:
         local = datetime.datetime.strptime(input, '%b %d %H:%M %Y')
-    except ValueError:
-        raise ValueError("Time must be entered in a 24-hour format such as: %s" % now.strftime('%b %d %H:%H'))
+    except AthException:
+        raise AthException("Time must be entered in a 24-hour format such as: %s" % now.strftime('%b %d %H:%H'))
     local_tz = tz.localize(local)
     return local_tz.astimezone(utc)
 
@@ -74,6 +75,6 @@ def duration_from_string(time_string):
         elif re.match(r'^[\d]+y$', interval):
             days =+ int(interval.lower().rstrip("y")) * 365
         else:
-            raise ValueError("Could not convert section '%s' to a time duration." % interval)
+            raise AthException("Could not convert section '%s' to a time duration." % interval)
 
     return datetime.timedelta(days, seconds, 0, 0, minutes, hours, weeks)

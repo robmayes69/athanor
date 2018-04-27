@@ -8,7 +8,7 @@ from __future__ import unicode_literals
 from evennia import default_cmds
 import athanor
 from athanor.utils.text import partial_match, sanitize_string
-
+from athanor import AthException
 
 
 class AthCommand(default_cmds.MuxCommand):
@@ -78,7 +78,7 @@ class AthCommand(default_cmds.MuxCommand):
         if not self.final_switches:
             try:
                 return self._main()
-            except Exception as err:
+            except AthException as err:
                 return self.caller.msg(unicode(err))
         try:
             switch = getattr(self, 'switch_%s' % self.final_switches[0])
@@ -86,7 +86,7 @@ class AthCommand(default_cmds.MuxCommand):
             return self.caller.msg('Switch Not Implemented for this Command')
         try:
             switch()
-        except Exception as err:
+        except AthException as err:
             return self.caller.msg(unicode(err))
 
     def switch_style(self):

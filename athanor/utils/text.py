@@ -76,10 +76,10 @@ SYSTEM_CHARACTERS = ('/','|','=',',')
 def sanitize_name(name, system_name):
     name = sanitize_string(name)
     if not name:
-        raise ValueError("%s names must not be empty!" % system_name)
+        raise AthException("%s names must not be empty!" % system_name)
     for char in SYSTEM_CHARACTERS:
         if char in name:
-            raise ValueError("%s is not allowed in %s names!" % (char, system_name))
+            raise AthException("%s is not allowed in %s names!" % (char, system_name))
     return name
 
 def sanitize_board_name(name):

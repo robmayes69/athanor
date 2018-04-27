@@ -10,6 +10,7 @@ from athanor.utils.utils import import_property
 from athanor.models import AccountCore, AccountWho, AccountCharacter
 
 from athanor.handlers.base import AccountHandler
+from athanor import AthException
 
 
 class AccountCoreHandler(AccountHandler):
@@ -56,9 +57,9 @@ class AccountCoreHandler(AccountHandler):
     def change_password(self, enactor, old=None, new=None):
         if enactor.player == self.owner:
             if not self.owner.check_password(old):
-                raise ValueError("The entered old-password was incorrect.")
+                raise AthException("The entered old-password was incorrect.")
         if not new:
-            raise ValueError("No new password entered!")
+            raise AthException("No new password entered!")
         self.owner.set_password(new)
         self.owner.save()
         self.console_msg("Your password has been changed.")

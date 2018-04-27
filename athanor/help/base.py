@@ -4,7 +4,7 @@ This implements the help objects structure.
 """
 import re
 from athanor.utils.utils import import_property
-from athanor.utils.text import partial_match, ANSIString, tabular_table
+from athanor.utils.text import partial_match, ANSIString, tabular_table, sanitize_string
 
 
 # Some basic regex for the 'markdown' formatter.
@@ -59,6 +59,17 @@ class HelpNode(object):
             self.categories[loaded.category].append(loaded)
         for contents in self.categories.values():
             contents.sort(key=lambda h: h.key)
+
+    def traverse_tree(self, viewer, path):
+        if '/' in path:
+            file, onwards = path.split('/', 1)
+        else:
+            file = path
+            onwards = None
+        find = self.find_sub(file)
+        if not onwards:
+            return find.display(viewer)
+        return find.traverse_tree(viewer, onwards)
 
     def display(self, viewer):
         message = list()
@@ -127,7 +138,7 @@ class HelpNode(object):
     def find_sub(self, entry):
         found = partial_match(entry, self.files)
         if not found:
-            raise ValueError("%s has no file named: %s" % (self.node_path(), entry))
+            raise AthException("%s has no file named: %s" % (self.node_path(), entry))
         return found
 
     def node_path(self):

@@ -58,13 +58,14 @@ def package_data():
     Make sure we get everything.
     """
     file_set = []
-    for root, dirs, files in os.walk('athanor'):
-        for f in files:
-            if '.git' in f.split(os.path.normpath(os.path.join(root, f))):
-                # Prevent the repo from being added.
-                continue
-            file_name = os.path.relpath(os.path.join(root, f), 'athanor')
-            file_set.append(file_name)
+    for modpath in ('athanor', 'athanor_cwho', 'athanor_awho', 'athanor_channels', 'athanor_groups', 'athanor_staff'):
+        for root, dirs, files in os.walk(modpath):
+            for f in files:
+                if '.git' in f.split(os.path.normpath(os.path.join(root, f))):
+                    # Prevent the repo from being added.
+                    continue
+                file_name = os.path.relpath(os.path.join(root, f), modpath)
+                file_set.append(file_name)
     return file_set
 
 
@@ -75,7 +76,7 @@ setup(
     author="Volund",
     maintainer="Volund",
     maintainer_email="volundmush@gmail.com",
-    url="https://github.com/volundmush",
+    url="https://github.com/volundmush/athanor",
     description='Code for running an Evennia-based Themed Freeform Roleplay game.',
     packages=find_packages(),
     scripts=get_scripts(),

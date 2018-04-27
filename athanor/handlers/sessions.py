@@ -1,7 +1,7 @@
 from django.conf import settings
 from athanor.handlers.base import SessionHandler
 from athanor.utils.create import account as create_account, character as create_character
-
+from athanor import AthException
 
 class SessionCoreHandler(SessionHandler):
     key = 'core'
@@ -79,7 +79,7 @@ class SessionCoreHandler(SessionHandler):
         message = {'prefix': False}
         try:
             if not session.account:
-                raise ValueError("You are not logged in!")
+                raise AthException("You are not logged in!")
             if not account_id:
                 account = self.owner.account
             else:
@@ -87,11 +87,11 @@ class SessionCoreHandler(SessionHandler):
             name = self.valid['character_name'](session, name)
             if not session.account.ath['core'].is_admin():
                 if session.account != account:
-                    raise ValueError("Permission denied. Cannot create characters for other accounts!")
+                    raise AthException("Permission denied. Cannot create characters for other accounts!")
                 if not settings.ATHANOR_OPEN_CHARACTER_CREATION:
-                    raise ValueError("Character Creation by non-admin is disabled.")
+                    raise AthException("Character Creation by non-admin is disabled.")
                 if not account.ath['core'].available_character_slots:
-                    raise ValueError("Account is out of Character Slots!")
+                    raise AthException("Account is out of Character Slots!")
             new_character = create_character(name, account)
             session.account.ath['character'].add(new_character)
         except Exception as err:
@@ -126,13 +126,13 @@ class SessionCoreHandler(SessionHandler):
         message = {'prefix': False}
         try:
             if not session.account:
-                raise ValueError("You are not logged in!")
+                raise AthException("You are not logged in!")
             account = self.valid['account_id'](session, account_id)
             disabled = self.valid['boolean'](session, disabled)
             if not session.account.ath['core'].is_admin():
-                raise ValueError("Permission denied. Only Admin can alter Account Disable Status.")
+                raise AthException("Permission denied. Only Admin can alter Account Disable Status.")
             if account.ath['core'].is_admin() and not session.account.is_superuser:
-                raise ValueError("Permission denied. Only the SuperUser can alter Disables for Admin Accounts.")
+                raise AthException("Permission denied. Only the SuperUser can alter Disables for Admin Accounts.")
             account.ath['core'].set_disabled(disabled)
         except Exception as err:
             if 'text' in output:
@@ -166,13 +166,13 @@ class SessionCoreHandler(SessionHandler):
         message = {'prefix': False}
         try:
             if not session.account:
-                raise ValueError("You are not logged in!")
+                raise AthException("You are not logged in!")
             character = self.valid['character_id'](session, character_id)
             disabled = self.valid['boolean'](session, disabled)
             if not session.account.ath['core'].is_admin():
-                raise ValueError("Permission denied. Only Admin can alter Character Disable Status.")
+                raise AthException("Permission denied. Only Admin can alter Character Disable Status.")
             if character.ath['core'].account.is_admin() and not session.account.is_superuser:
-                raise ValueError("Permission denied. Only the SuperUser can alter Disables for Admin Accounts.")
+                raise AthException("Permission denied. Only the SuperUser can alter Disables for Admin Accounts.")
             character.ath['core'].set_disabled(disabled)
         except Exception as err:
             if 'text' in output:
@@ -207,13 +207,13 @@ class SessionCoreHandler(SessionHandler):
         message = {'prefix': False}
         try:
             if not session.account:
-                raise ValueError("You are not logged in!")
+                raise AthException("You are not logged in!")
             account = self.valid['account_id'](session, account_id)
             banned = self.valid['unix_time_future'](session, banned)
             if not session.account.ath['core'].is_admin():
-                raise ValueError("Permission denied. Only Admin can alter Account Banned Status.")
+                raise AthException("Permission denied. Only Admin can alter Account Banned Status.")
             if account.ath['core'].is_admin() and not session.account.is_superuser:
-                raise ValueError("Permission denied. Only the SuperUser can alter Bans for Admin Accounts.")
+                raise AthException("Permission denied. Only the SuperUser can alter Bans for Admin Accounts.")
             account.ath['core'].set_banned(banned)
         except Exception as err:
             if 'text' in output:
@@ -250,13 +250,13 @@ class SessionCoreHandler(SessionHandler):
         message = {'prefix': False}
         try:
             if not session.account:
-                raise ValueError("You are not logged in!")
+                raise AthException("You are not logged in!")
             character = self.valid['character_id'](session, character_id)
             banned = self.valid['unix_time_future'](session, banned)
             if not session.account.ath['core'].is_admin():
-                raise ValueError("Permission denied. Only Admin can alter Character Banned Status.")
+                raise AthException("Permission denied. Only Admin can alter Character Banned Status.")
             if character.ath['core'].account.ath['core'].is_admin() and not session.account.is_superuser:
-                raise ValueError("Permission denied. Only the SuperUser can alter Bans for Admin Accounts.")
+                raise AthException("Permission denied. Only the SuperUser can alter Bans for Admin Accounts.")
             character.ath['core'].set_banned(banned)
         except Exception as err:
             if 'text' in output:
@@ -299,11 +299,11 @@ class SessionCoreHandler(SessionHandler):
         message = {'prefix': False}
         try:
             if not session.account:
-                raise ValueError("You are not logged in!")
+                raise AthException("You are not logged in!")
             character = self.valid['character_id'](session, character_id)
             shelved = self.valid['boolean'](session, shelved)
             if not session.account.ath['core'].is_admin():
-                raise ValueError("Permission denied. Only Admin can alter Character Shelve Status.")
+                raise AthException("Permission denied. Only Admin can alter Character Shelve Status.")
             character.ath['core'].set_shelved(shelved)
         except Exception as err:
             if 'text' in output:
@@ -351,28 +351,28 @@ class SessionCoreHandler(SessionHandler):
         message = {'prefix': False}
         try:
             if session.account:
-                raise ValueError("You are already logged in!")
+                raise AthException("You are already logged in!")
             if not (account_id or account_name):
-                raise ValueError("Must provide an Account ID or Account Name!")
+                raise AthException("Must provide an Account ID or Account Name!")
             if account_id:
                 account = self.valid['account_id'](session, account_id)
             else:
                 if not account_name:
-                    raise ValueError("Must at least provide an account name!")
+                    raise AthException("Must at least provide an account name!")
                 from athanor.classes.accounts import Account
                 account = Account.objects.filter_family(db_key__iexact=account_name).first()
                 if not account:
-                    raise ValueError("Account not found!")
+                    raise AthException("Account not found!")
             banned = account.ath['core'].banned
             if banned:
                 account.at_failed_login(session)
-                raise ValueError("That account is banned until %s." % account.ath['core'].display_time(banned))
+                raise AthException("That account is banned until %s." % account.ath['core'].display_time(banned))
             if account.ath['core'].disabled:
                 account.at_failed_login(session)
-                raise ValueError("That account is disabled!")
+                raise AthException("That account is disabled!")
             if not account.check_password(password):
                 account.at_failed_login(session)
-                raise ValueError("Invalid password!")
+                raise AthException("Invalid password!")
             if account.ath['core'].is_admin() and dark:
                 account.ath['who'].dark = dark
             if hidden:
@@ -418,15 +418,15 @@ class SessionCoreHandler(SessionHandler):
         hidden = params.pop('hidden', False)
         try:
             if not session.account:
-                raise ValueError("You are not logged in!")
+                raise AthException("You are not logged in!")
             if character_id == 0:
                 if not session.puppet:
-                    raise ValueError("You are already OOC on this session.")
-                session.account.unpuppet_object(session)
+                    raise AthException("You are already OOC on this session.")
+                session.AthException.unpuppet_object(session)
             else:
                 character = self.valid['character_id'](session, character_id)
                 if not character.access(session.account, 'puppet'):
-                    raise ValueError("Permission denied. You cannot puppet that.")
+                    raise AthException("Permission denied. You cannot puppet that.")
                 if character.ath['core'].is_admin() and dark:
                     character.ath['who'].dark = dark
                 if hidden:

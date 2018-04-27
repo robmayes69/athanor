@@ -1,15 +1,10 @@
 from athanor.cmdsets.base import CharacterCmdSet as oldSet
-from athanor.commands.characters import CmdWho, CmdLook, CharacterCmdOOC
+from athanor.commands.characters import CmdWho, CmdLook, CharacterCmdOOC, CmdHelp, CmdShelp
+
 
 class CoreCharacterCmdSet(oldSet):
-
-    def at_cmdset_creation(self):
-        self.add(CharacterCmdOOC)
-        self.add(CmdLook)
+    command_classes = (CmdLook, CharacterCmdOOC, CmdHelp, CmdShelp)
 
 
 class WhoCharacterCmdSet(oldSet):
-
-
-    def at_cmdset_creation(self):
-        self.add(CmdWho)
+    command_classes = (CmdWho,)

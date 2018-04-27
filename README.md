@@ -1,6 +1,6 @@
 # NOT READY FOR USE!
 
-# Volund's Athanor Core for Evennia
+# Volund's Athanor Framework for Evennia
 
 ## CONTACT INFO
 **Name:** Volund
@@ -95,15 +95,63 @@ If you fix any bugs with your own projects, I'd __really__ appreciate some fix c
   
   Any GMCP call initiated by the Client will only be responded to with GMCP (if a response is expected), and rarely if ever anything printed to the console.
 
+## MODULES
+
+__Note__: Athanor's base modules below are designed with the assumption that Accounts are private, and only Admin will know what character belongs to what Account.
+
+* **CORE:** (The base Athanor module.) Very barebones. Implements Athanor's API and features described above. The Core System tracks playtime and who's online (for internal use, not displayed.) __Status:__ Beta
+
+* **AINFO:** A system for keeping track of notes on Accounts. Very easy to expand with different namespaces and public/private viewable using custom Modules. Default implementation: Only admin can see or edit notes set on Accounts. Perhaps useful for disciplinary records, vacation notices, etc. __Status:__ Not Implemented.
+
+* **AMAIL:** A Mail system for messages between Accounts. Mostly just useful for Admin sending alerts out to Accounts in a way users can't miss. __Status:__ Not Implemented.
+
+* **AWHO:** Account Who. A simple package that lets Admin see all of the Accounts currently logged on, and what Characters they are controlling. __Status:__ Not Implemented.
+
+* **BBS:** A simulacra of Myrddin's BBS ( http://mushcode.com/File/Myrddins-BBS-v4-0-6 ) with expanded features. Groups System required as a dependency due to Group BBS feature. __Status:__ Not Implemented.
+
+* **CHANNELS:** A package that makes the channels look, feel, behave, etc, like PennMUSH's Channels do. __Status:__ Not Implemented.
+
+* **CINFO:** A system for keeping track of notes on Characters. Same as with AINFO, it can be easily expanded with additional public/private namespaces using custom modules. Often useful for game-specific purposes or letting users keep notes about whatever on-game. __Status:__ Not Implemented. __Status:__ Not Implemented.
+
+* **CMAIL:** A Mail system for messages between Characters. Not really meant to be in-character mail, but COULD be used that way. __Status:__ Not Implemented.
+
+* **CWHO:** Character Who. A simple package that provides a Who command for characters so they can see who else is logged into the game. __Status:__ Not Implemented.
+
+* **DISTRICT:** A Grid Layout/management system. Organize rooms and exits into a tree layout of districts/sub-districts for logical management. __Status:__ Not Implemented.
+
+* **FCLIST:** A system for keeping track of themes, characters, application status, and other factors for multi-theme games like super hero roleplay places. __Status:__ Not Implemented.
+
+* **FRIENDS:** A Friends/Watch system. Stay alert of when a friend (Character) comes online. You can store friend characters to your account or character's list. You can prevent others from hearing you come online or disable messages to you. __Status:__ Not Implemented.
+
+* **GROUPS:** A Guilds/Groups/organizations system that allows admin to create public or private (visible only to staff and members) groups organized into different tiers. Each group can have members set to configurable ranks and permissions. This comes with its own communication system, Group Channels. __Status:__ Not Implemented.
+
+* **JOBS:** A Jobs/Issue Tracker inspired by Anomaly Jobs... but far streamlined. __Status:__ Not Implemented.
+
+* **LOGINTRACK:** A Login Tracker. Tracks sites/IPs of everyone who connects including failure records. Tracks all uses of puppeting characters and by who and when. (Note: Athanor Core already includes playtime trackers per-account and per-character.) __Status:__ Not Implemented.
+
+* **MEETME:** An Invite/Summon/Join system that allows one character to quickly teleport to another. __Status:__ Not Implemented.
+
+* **NAVIGATION:** A Room listing/Teleport system that allows people to teleport directly to publically available rooms. Requires District as a dependency! __Status:__ Not Implemented.
+
+* **PAGE:** A MUSH-inspired Page/Tell system. Appearance is highly configurable. __Status:__ Not Implemented.
+
+* **PENNMUSH:** A Module that can import an entire PennMUSH database and game data from its outdb. Standalone, it can import rooms/exits/descriptions and Characters (including their old passwords for a one-time login.) Can also import from a game running Volund's Core Code Suite v3.x ( https://github.com/volundmush/mushcode ) or greater. Migrate old roleplay logs, the FCList, info files, radio channels, whatever! __Status:__ Not Implemented.
+
+* **RADIO:** A system for character-created (though restrictable) channels meant to be used mostly for in-character communications, or perhaps topics that should be private. __Status:__ Not Implemented.
+
+* **SCENE:** A complete roleplaying logging and prettification system. Track ongoing roleplay plots, schedule and automatically log scenes pose-by-pose. __Status:__ Not Implemented.
+
+* **STAFF:** A Wizlist/Immortals/Admin management system. Organize staff characters into different spheres/departments/divisions, assign roles, track current duty status. New hires are kept private until revealed. __Status:__ Not Implemented.
+
 ## FAQ
   __Q:__ Why 'Athanor' for a name?  
   __A:__ Well, I had to call it something. This is a transformative project that refines Evennia into something that more suits my style, but isn't itself a game. It's the intermediary through which the magic happens. So I named it after the classical Alchemist's furnace.
 
-  __Q:__ Where can I get more Modules?  
-  __A:__ From my GitHub! See anything starting with athanor-* at https://github.com/volundmush
+  __Q:__ Where can I get more Modules?  The default ones aren't enough!
+  __A:__ From my GitHub! See anything starting with athanor-* at https://github.com/volundmush - and, failing that...
 
   __Q:__ How do I make my own Modules?  
-  __A:__ Hope you've got some Python skills. Each Module has an __init__.py file in its root which contains settings such as the Handlers and Helpfiles it adds, and the associated Python Paths that will be imported during the load process. Athanor handles loading via `athanor.conf.load_athanor`, study that file to see what it does and doesn't do. Remember that any dictionary keys redefined in Modules that load later replace any that load earlier, so you can re-implement any feature that you aren't happy with fairly easily.
+  __A:__ Hope you've got some Python skills. Each Module has an `__init__.py` file in its root which contains settings such as the Handlers and Helpfiles it adds, and the associated Python Paths that will be imported during the load process. Athanor handles loading via `athanor.conf.load_athanor`, study that file to see what it does and doesn't do. Remember that any dictionary keys redefined in Modules that load later replace any that load earlier, so you can re-implement any feature that you aren't happy with fairly easily.
 
   __Q:__ This is cool! How can I help?  
   __A:__ Patreon support is always welcome. If you can code and have cool ideas or bug fixes, feel free to fork, edit, and pull request!

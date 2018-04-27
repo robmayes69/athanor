@@ -9,19 +9,66 @@ class CoreSystem(SystemScript):
     To K.I.S.S. I have set it at a humble interval of 1 minute.
 
     This depends on the Who System to maintain the characters and accounts .ndb interface.
+
+    The Core is also responsible for keeping track of when people login and logout so other commands can reference
+    the list of those currently online. Remember that this list is NOT visibility-filtered. Make sure to filter it if
+    your game employs things like hiding from the who list.
     """
 
     key = 'core'
     system_name = 'SYSTEM'
     interval = 60
 
+    def load(self):
+        from athanor.utils.online import characters, accounts
+
+        self.ndb.characters = set(characters())
+        self.ndb.accounts = set(accounts())
+
     def at_repeat(self):
-        for acc in self.systems['who'].ndb.accounts:
+        for acc in self.ndb.accounts:
             acc.ath['core'].update_playtime(self.interval)
 
-        for char in self.systems['who'].ndb.characters:
+        for char in self.ndb.characters:
             char.ath['core'].update_playtime(self.interval)
 
+    def register_account(self, account):
+        """
+        Method for adding an Account to the Account list.
+        """
+        # add them to the main set.
+        self.ndb.accounts.add(account)
+
+    def register_character(self, character):
+        """
+        Method for adding a Character to the Character list.
+        """
+        # add them to the main set.
+        self.ndb.characters.add(character)
+
+    def remove_account(self, account):
+        """
+        Method for removing an account from the active Account list.
+
+        Args:
+            account: an Account instance.
+
+        Returns:
+            None
+        """
+        self.ndb.accounts.remove(account)
+
+    def remove_character(self, character):
+        """
+        Method for removing a character from the active Character list.
+
+        Args:
+            character:
+
+        Returns:
+
+        """
+        self.ndb.characters.remove(character)
 
 
 class WhoSystem(SystemScript):
@@ -39,10 +86,6 @@ class WhoSystem(SystemScript):
 
 
     def load(self):
-        from athanor.utils.online import characters, accounts
-
-        self.ndb.characters = set()
-        self.ndb.accounts = set()
 
         # This Dictionary is a map of Character -> Who Can See Them
         self.ndb.character_visible_to = dict()
@@ -59,10 +102,10 @@ class WhoSystem(SystemScript):
         # Subscribe all characters and Accounts online at load! ... which should be none.
         # But just in case.
 
-        for character in characters():
+        for character in self.systems['core'].ndb.characters:
             self.register_character(character)
 
-        for account in accounts():
+        for account in self.systems['core'].ndb.accounts:
             self.register_account(account)
 
     def register_account(self, account):
@@ -71,8 +114,6 @@ class WhoSystem(SystemScript):
         :param account:
         :return:
         """
-        # First add them to the main set.
-        self.ndb.accounts.add(account)
 
         # Figure out what other accounts can see this account.
         visible_to = set([acc for acc in self.ndb.accounts if acc.ath['who'].can_see(account)])
@@ -125,8 +166,7 @@ class WhoSystem(SystemScript):
         :param account:
         :return:
         """
-        # First add them to the main set.
-        self.ndb.characters.add(character)
+
         # Figure out what other accounts can see this account.
         visible_to = set([char for char in self.ndb.characters if char.ath['who'].can_see(character)])
         self.ndb.character_visible_to[character] = visible_to
@@ -253,8 +293,9 @@ class WhoSystem(SystemScript):
         Every time the script runs we want to send out information like people's idle and connection times.
         :return:
         """
-        self.update_characters()
-        self.update_accounts()
+        pass
+        #self.update_characters()
+        #self.update_accounts()
 
     def update_characters(self):
         for char in self.ndb.characters:

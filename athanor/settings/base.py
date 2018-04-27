@@ -6,6 +6,7 @@ import athanor
 from athanor.classes.rooms import Room
 from athanor.classes.channels import AthanorChannel
 from athanor.utils.text import partial_match
+from athanor import AthException
 
 from athanor.validators.funcs import TZ_DICT
 
@@ -73,7 +74,7 @@ class __Setting(object):
     def set(self, value, value_list, source):
         try:
             final_value = self.validate(value, value_list, source)
-        except ValueError as err:
+        except AthException as err:
             source.error.append(unicode(err))
             source.json('error', message=unicode(err))
             return
@@ -107,13 +108,13 @@ class WordSetting(__Setting):
 
     def do_validate(self, value, value_list, enactor):
         if not str(value):
-            raise ValueError("Must enter some text!")
+            raise AthException("Must enter some text!")
         return str(value)
 
     def valid_save(self, save_data):
         got_data = str(save_data)
         if not got_data:
-            raise ValueError("%s expected Word/Text data, got '%s'" % (self.key, save_data))
+            raise AthException("%s expected Word/Text data, got '%s'" % (self.key, save_data))
         return got_data
 
 
@@ -133,7 +134,7 @@ class BoolSetting(__Setting):
 
     def valid_save(self, save_data):
         if save_data not in (True, False):
-            raise ValueError("%s expected True or False, got '%s'" % (self.key, save_data))
+            raise AthException("%s expected True or False, got '%s'" % (self.key, save_data))
         return save_data
 
 
@@ -148,7 +149,7 @@ class ChannelListSetting(__Setting):
         for name in value_list:
             found = partial_match(name, channels)
             if not found:
-                raise ValueError("'%s' did not match a channel." % name)
+                raise AthException("'%s' did not match a channel." % name)
             found_list.append(found)
         return list(set(found_list))
 
@@ -181,7 +182,7 @@ class WordListSetting(__Setting):
     def do_validate(self, value, value_list, enactor):
         for val in value_list:
             if not len(val):
-                raise ValueError("One or more Values was empty!")
+                raise AthException("One or more Values was empty!")
         return value_list
 
     def valid_save(self, save_data):
@@ -216,7 +217,7 @@ class ColorSetting(__Setting):
 
     def valid_save(self, save_data):
         if not save_data or len(ANSIString('|%s|n' % save_data)) > 0:
-            raise ValueError("%s expected Color Code, got '%s'" % (self.key, save_data))
+            raise AthException("%s expected Color Code, got '%s'" % (self.key, save_data))
         return save_data
 
 
@@ -234,7 +235,7 @@ class TimeZoneSetting(__Setting):
 
     def valid_save(self, save_data):
         if save_data not in TZ_DICT:
-            raise ValueError("%s expected Timezone Data, got '%s'" % (self.key, save_data))
+            raise AthException("%s expected Timezone Data, got '%s'" % (self.key, save_data))
         return TZ_DICT[save_data]
 
     def save(self):
@@ -276,10 +277,10 @@ class RoomSetting(__Setting):
 
     def do_validate(self, value, value_list, enactor):
         if not value:
-            raise ValueError("%s requires a value!" % self)
+            raise AthException("%s requires a value!" % self)
         found = Room.objects.filter_family(id=value).first()
         if not found:
-            raise ValueError("Room '%s' not found!" % value)
+            raise AthException("Room '%s' not found!" % value)
         return found
 
     def valid_save(self, save_data):

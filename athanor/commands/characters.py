@@ -1,5 +1,5 @@
 from __future__ import unicode_literals
-
+import athanor
 from athanor.commands.base import AthCommand
 from athanor.handlers.base import AthanorRequest
 
@@ -12,7 +12,7 @@ class CmdWho(AthCommand):
         +who
         +who/idle to sort by idle times.
     """
-    key = '+who2'
+    key = '+who'
     system_name = 'WHO'
     help_category = 'Community'
     style = 'who'
@@ -20,11 +20,11 @@ class CmdWho(AthCommand):
 
     def _main(self):
         req = AthanorRequest(session=self.session, handler='who', operation='get_who_character')
-        self.session.ath['who'].accept_request(req)
+        self.character.ath['who'].accept_request(req)
 
     def switch_idle(self):
-        req = AthanorRequest(session=self.session, handler='who', operation=get_who_character, parameters={'sort': 'idle'})
-        self.session.ath['who'].accept_request(req)
+        req = AthanorRequest(session=self.session, handler='who', operation='get_who_character', parameters={'sort': 'idle'})
+        self.character.ath['who'].accept_request(req)
 
 
 class CharacterCmdOOC(AthCommand):
@@ -62,8 +62,8 @@ class CmdLook(AthCommand):
 
     Observes your location or objects in your vicinity.
     """
-    key = "look2"
-    aliases = ["l", "ls"]
+    key = "look"
+    aliases = ["l", "ls", 'dir']
     locks = "cmd:all()"
     arg_regex = r"\s|$"
 
@@ -82,3 +82,29 @@ class CmdLook(AthCommand):
             if not target:
                 return
         self.msg(caller.at_look(self.session, target))
+
+
+class CmdHelp(AthCommand):
+    """
+    Display the Athanor +help menu tree.
+    
+    Usage:
+       +help
+       +help <filename>
+       +help <filename>/<subfile>...
+    """
+    key = '+help'
+    locks = "cmd:all()"
+    tree = athanor.HELP_TREES['+help']
+    
+    def _main(self):
+        if not self.lhs:
+            self.msg(text=self.tree.display(self.session))
+            return
+        self.msg(text=self.tree.traverse_tree(self.session, self.lhs_san))
+
+
+class CmdShelp(CmdHelp):
+    key = '+shelp'
+    locks = 'cmd:perm(Admin)'
+    tree = athanor.HELP_TREES['+shelp']

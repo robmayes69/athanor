@@ -1,6 +1,6 @@
 from athanor.commands.base import AthCommand
 from athanor.handlers.base import AthanorRequest
-
+from athanor import AthException
 
 class AccountCmdLook(AthCommand):
     key = 'look'
@@ -37,10 +37,10 @@ class AccountCmdIC(AthCommand):
 
     def _main(self):
         if not self.lhs_san:
-            raise ValueError("Nothing entered to puppet!")
+            raise AthException("Nothing entered to puppet!")
         character = self.partial(self.lhs_san, self.account.ath['character'].all())
         if not character:
-            raise ValueError("Character not found!")
+            raise AthException("Character not found!")
 
         request = AthanorRequest(session=self.session, handler='core',
                                  operation='puppet_character', parameters={'character_id': character})
