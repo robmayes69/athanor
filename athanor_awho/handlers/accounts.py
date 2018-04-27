@@ -4,42 +4,42 @@ from athanor.handlers.base import AccountHandler
 from athanor_awho.models import AccountWho
 
 class AccountWhoHandler(AccountHandler):
-    key = 'who'
-    style = 'who'
+    key = 'awho'
+    style = 'awho'
     category = 'athanor'
     system_name = 'WHO'
     django_model = AccountWho
 
     def at_true_login(self, session, **kwargs):
-        athanor.SYSTEMS['who'].register_account(self.owner)
+        athanor.SYSTEMS['awho'].register_account(self.owner)
 
     def at_true_logout(self, **kwargs):
-        athanor.SYSTEMS['who'].remove_account(self.owner)
+        athanor.SYSTEMS['awho'].remove_account(self.owner)
         self.model.dark = False
         self.model.hidden = False
         self.model.save(update_fields=['dark', 'hidden'])
 
     def off_or_idle_time(self):
-        idle = self.idle_time
+        idle = self.owner.ath['core'].idle_time
         if idle is None:
             return '|XOff|n'
         return time_format(idle, style=1)
 
     def off_or_conn_time(self):
-        conn = self.connection_time
+        conn = self.owner.ath['core'].connection_time
         if conn is None:
             return '|XOff|n'
         return time_format(conn, style=1)
 
     def last_or_idle_time(self, viewer):
-        idle = self.idle_time
+        idle = self.owner.ath['core'].idle_time
         last = self.base['core'].last_played
         if not idle:
             return viewer.ath['core'].display_time(date=last, format='%b %d')
         return time_format(idle, style=1)
 
     def last_or_conn_time(self, viewer):
-        conn = self.connection_time
+        conn = self.owner.ath['core'].connection_time
         last = self.base['core'].last_played
         if not conn:
             return viewer.ath['core'].display_time(date=last, format='%b %d')
@@ -65,9 +65,9 @@ class AccountWhoHandler(AccountHandler):
             return
 
         if value:
-            athanor.SYSTEMS['who'].hide_account(self.owner)
+            athanor.SYSTEMS['awho'].hide_account(self.owner)
         else:
-            athanor.SYSTEMS['who'].reveal_account(self.owner)
+            athanor.SYSTEMS['awho'].reveal_account(self.owner)
 
     @property
     def dark(self):
@@ -84,10 +84,9 @@ class AccountWhoHandler(AccountHandler):
             return
 
         if value:
-            athanor.SYSTEMS['who'].hide_account(self.owner)
+            athanor.SYSTEMS['awho'].hide_account(self.owner)
         else:
-            athanor.SYSTEMS['who'].reveal_account(self.owner)
-
+            athanor.SYSTEMS['awho'].reveal_account(self.owner)
 
     def gmcp_who(self, viewer):
         """
@@ -96,7 +95,7 @@ class AccountWhoHandler(AccountHandler):
         :return:
         """
         return {'account_id': self.owner.id, 'account_name': self.owner.key,
-                'connection_time': self.connection_time, 'idle_time': self.idle_time}
+                'connection_time': self.owner.ath['core'].connection_time, 'idle_time': self.owner.ath['core'].idle_time}
 
     def gmcp_remove(self):
         return self.owner.id

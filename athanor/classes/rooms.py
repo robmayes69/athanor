@@ -31,7 +31,7 @@ class BaseRoom(DefaultRoom):
 
     def online_characters(self, viewer=None):
         if viewer:
-            return [char for char in characters() if char.location == self and viewer.ath['who'].can_see(char)]
+            return [char for char in characters() if char.location]
         return [char for char in characters() if char.location == self]
 
     def format_character_list(self, characters, viewer):

@@ -67,6 +67,9 @@ def at_server_cold_start():
     for path in athanor.start_stop:
         module = importlib.import_module(path)
         module.at_server_cold_start()
+    from athanor.models import CharacterOnline, AccountOnline
+    for model in (CharacterOnline, AccountOnline):
+        model.objects.delete()
 
 
 def at_server_cold_stop():

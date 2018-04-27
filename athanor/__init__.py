@@ -43,14 +43,12 @@ MANAGERS = {
 
 HANDLERS_ACCOUNT = {
     'core': 'athanor.handlers.accounts.AccountCoreHandler',
-    'who': 'athanor.handlers.accounts.AccountWhoHandler',
     'character': 'athanor.handlers.accounts.AccountCharacterHandler',
 }
 
 # Just  like Account but for characters.
 HANDLERS_CHARACTER = {
     'core': 'athanor.handlers.characters.CharacterCoreHandler',
-    'who': 'athanor.handlers.characters.CharacterWhoHandler',
     'character': 'athanor.handlers.characters.CharacterCharacterHandler',
     'menu': 'athanor.handlers.characters.CharacterMenuHandler',
 }

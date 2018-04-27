@@ -16,6 +16,6 @@ does what you expect it to.
 
 def at_initial_setup():
     import athanor, importlib
-    for path in athanor.initial_setup:
+    for path in athanor.INITIAL_SETUP:
         module = importlib.import_module(path)
         module.at_initial_setup()

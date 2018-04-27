@@ -11,9 +11,8 @@ def at_server_start():
     This is called every time the server starts up, regardless of
     how it was shut down.
     """
-    
+
     import athanor, sys, traceback
-    from evennia.utils.create import create_script
     from athanor.utils.utils import import_property
     try:
 
@@ -52,16 +51,11 @@ def at_server_start():
             handlers.sort(key=lambda h: h.load_order)
             athanor.HANDLERS_SORTED[k] = tuple(handlers)
 
-        # Next step: instantiate Systems from their Script Typeclasses.
+        # Next step: instantiate Systems from their Classes.
 
-        for key, system in athanor.SYSTEMS.iteritems():
-            found = system.objects.filter_family(db_key=key).first()
-            if found:
-                athanor.SYSTEMS[key] = found
-                if system.interval != found.interval:
-                    found.restart(interval=system.interval)
-            else:
-                athanor.SYSTEMS[key] = create_script(system, key=key, persistent=True, interval=system.interval)
+        for system in sorted(athanor.SYSTEMS.values(), key=lambda s: s.load_order):
+            key = system.key
+            athanor.SYSTEMS[key] = system()
 
         for help, data in athanor.HELP_TREES.iteritems():
             files = data[1].values()

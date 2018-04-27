@@ -13,6 +13,11 @@ class CharacterCoreHandler(CharacterHandler):
     cmdsets = ('athanor.cmdsets.characters.CoreCharacterCmdSet', )
     django_model = CharacterCore
 
+    def at_init(self):
+        super(CharacterCoreHandler).at_init()
+        if self.owner.sessions.count():
+            self.base.systems['core'].register_character(self.owner)
+
     @property
     def last_login(self):
         return self.model.last_login
@@ -178,14 +183,7 @@ class CharacterMenuHandler(CharacterHandler):
 
     def load(self):
         self.menu = None
-        if not self.owner.attributes.has(key='%s_current', category=self.category):
-            self.owner.attributes.add(key='%s_current', category=self.category, value=None)
-        self.menu_path = self.owner.attributes.get(key='%s_current', category=self.category)
-        if not self.owner.attributes.has(key=self.key, category=self.category):
-            self.owner.attributes.add(key=self.key, category=self.category, value={})
-        self.data = self.owner.attributes.get(key=self.key, category=self.category)
-        if self.menu_path:
-            self.menu = import_property(self.menu_path)
+        self.menu_path = None
 
     def at_init(self):
         if self.menu:

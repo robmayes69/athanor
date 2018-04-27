@@ -22,7 +22,7 @@ several more options for customizing the Guest account system.
 
 """
 
-
+from django.conf import settings
 from evennia import DefaultAccount
 from evennia.utils.utils import lazy_property, is_iter
 
@@ -114,7 +114,24 @@ class Account(DefaultAccount):
         self.ath.at_init()
 
     def at_post_login(self, session=None):
-        super(Account, self).at_post_login(session)
+        """
+        Had to re-implement Evennia's, because of some stupid bugs.
+
+        Args:
+            session:
+
+        Returns:
+
+        """
+        # if we have saved protocol flags on ourselves, load them here.
+        protocol_flags = self.attributes.get("_saved_protocol_flags", None)
+        if session and protocol_flags:
+            session.update_flags(**protocol_flags)
+
+        # inform the client that we logged in through an OOB message
+        if session:
+            session.msg(logged_in={})
+
         self.ath.at_post_login(session)
         if len(self.sessions.all()) == 1:
             self.at_true_login(session)

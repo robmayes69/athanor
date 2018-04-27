@@ -1,13 +1,12 @@
 
 
-import time, evennia, datetime, athanor
+import time, evennia, datetime
 from django.conf import settings
 from evennia import utils
-from evennia.utils import time_format
 from evennia.utils.ansi import ANSIString
 from athanor.utils.time import utcnow
 from athanor.utils.utils import import_property
-from athanor.models import AccountCore, AccountWho, AccountCharacter
+from athanor.models import AccountCore, AccountCharacter
 
 from athanor.handlers.base import AccountHandler
 from athanor import AthException
@@ -21,6 +20,11 @@ class AccountCoreHandler(AccountHandler):
     cmdsets = ('athanor.cmdsets.accounts.AccountCoreCmdSet', )
     django_model = AccountCore
 
+    def at_init(self):
+        super(AccountCoreHandler, self).at_init()
+        if self.owner.sessions.count():
+            self.base.systems['core'].register_account(self.owner)
+
     def at_account_creation(self):
         self.model.last_login = utcnow()
         self.model.last_logout = utcnow()
@@ -29,10 +33,12 @@ class AccountCoreHandler(AccountHandler):
     def at_post_login(self, session, **kwargs):
         self.model.last_login = utcnow()
         self.model.save(update_fields=['last_login'])
+        self.base.systems['core'].register_account(self.owner)
 
     def at_true_logout(self, account, session, **kwargs):
         self.model.last_logout = utcnow()
         self.model.save(update_fields=['last_logout'])
+        self.base.systems['core'].remove_account(self.owner)
 
     def is_builder(self):
         return self.owner.locks.check_lockstring(self.owner, "dummy:perm(Builder)")
@@ -169,6 +175,8 @@ class AccountCharacterHandler(AccountHandler):
     system_name = 'ACCOUNT'
     django_model = AccountCharacter
 
+    def at_post_login(self, session, **kwargs):
+        session.msg(self.owner.at_look(session=session, target=self.owner))
 
     def all(self):
         return self.model.characters.all().order_by('db_key')

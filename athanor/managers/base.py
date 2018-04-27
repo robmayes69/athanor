@@ -30,6 +30,8 @@ class __BaseManager(object):
         # Make validators available to TypeManagers!
         self.valid = athanor.VALIDATORS
 
+        self.systems = athanor.SYSTEMS
+
         # Load all handlers.
         handlers = athanor.HANDLERS_SORTED[self.mode]
         self.ordered_handlers = list()
@@ -45,7 +47,7 @@ class __BaseManager(object):
     def load(self):
         """
         By default this does nothing. It's meant to be overloaded by a sub-class.
-        
+
         Returns:
             None
         """
@@ -55,7 +57,7 @@ class __BaseManager(object):
         """
         Implements dictionary-like lookups for Handler keys on the manager.
         Args:
-            item: 
+            item:
 
         Returns:
 

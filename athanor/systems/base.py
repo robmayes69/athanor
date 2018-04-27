@@ -1,8 +1,8 @@
-from athanor.classes.scripts import AthanorScript
 from athanor.utils.text import partial_match
 from athanor.handlers.base import AthanorResponse
 
-class SystemScript(AthanorScript):
+
+class AthanorSystem(object):
     settings_classes = tuple()
     category = 'athanor'
     key = 'base'
@@ -12,15 +12,15 @@ class SystemScript(AthanorScript):
     resp_class = AthanorResponse
     interval = 60
     repeats = 0
+    load_order = 0
 
-    def at_start(self):
+    def __init__(self):
         # Most systems will implement their own Settings.
         self.settings = dict()
-        self.load_settings()
+        #self.load_settings()
 
         # And some will need Django Save files!
-        if self.django_model:
-            self.model, created = self.django_model.objects.get_or_create(script=self)
+        self.load_model()
 
         # We'll probably be using this a lot.
         import athanor
@@ -31,6 +31,10 @@ class SystemScript(AthanorScript):
 
     def load(self):
         pass
+
+    def load_model(self):
+        if self.django_model:
+            self.model, created = self.django_model.objects.get_or_create(script=self)
 
     def __getitem__(self, item):
         return self.settings[item].value

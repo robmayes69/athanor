@@ -6,7 +6,6 @@ from evennia.locks.lockhandler import LockHandler
 from evennia.utils.ansi import ANSIString
 from evennia.utils import lazy_property
 from timezone_field import TimeZoneField
-from pytz import UTC
 
 
 def validate_color(value):
@@ -42,7 +41,16 @@ class CharacterCore(models.Model):
     last_logout = models.DateTimeField(null=True)
     shelved = models.BooleanField(default=False)
 
+
 class CharacterCharacter(models.Model):
+    character = models.OneToOneField('objects.ObjectDB', related_name='+')
+
+
+class AccountOnline(models.Model):
+    account = models.OneToOneField('accounts.AccountDB', related_name='+')
+
+
+class CharacterOnline(models.Model):
     character = models.OneToOneField('objects.ObjectDB', related_name='+')
 
 
