@@ -9,9 +9,9 @@ creation commands.
 """
 from evennia import DefaultCharacter
 from evennia.utils.utils import lazy_property
-from athanor.managers.characters import CharacterManager
-from athanor.renderers.characters import CharacterRenderer
-from athanor.properties.base import CharacterPropertyCollection
+from athanor.characters.managers import CharacterManager
+from athanor.characters.renderers import CharacterRenderer
+from athanor.base.properties import CharacterPropertyCollection
 from athanor import AthException
 
 

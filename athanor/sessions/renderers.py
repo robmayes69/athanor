@@ -1,7 +1,7 @@
 import math
 from evennia.utils.ansi import ANSIString
 from evennia.utils import evtable
-from athanor.renderers.base import __BaseRenderer
+from athanor.base.renderers import __BaseRenderer
 
 
 class SessionRenderer(__BaseRenderer):

@@ -1,7 +1,7 @@
 
 import athanor
-from athanor.commands.base import AthCommand
-from athanor.handlers.base import AthanorRequest
+from athanor.base.commands import AthCommand
+from athanor.base.handlers import AthanorRequest
 
 
 

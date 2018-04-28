@@ -1,4 +1,4 @@
-from athanor.help.base import HelpFile
+from athanor.base.help import HelpFile
 
 
 class WhoHelpFile(HelpFile):

@@ -105,7 +105,7 @@ def valid_account_name(checker, entry, rename_from=None):
             raise AthException("Account Names may not contain the characters: %s" % BAD_CHARS)
     if len(entry) != len(entry.strip()):
         raise AthException("Account names may not have leading or trailing spaces.")
-    from athanor.classes.accounts import Account
+    from athanor.accounts.classes import Account
     exist = Account.objects.filter_family(db_key__iexact=entry).first()
     if exist and (rename_from and exist != rename_from) or not rename_from:
         raise AthException("Account name is already in use!")
@@ -135,17 +135,17 @@ def valid_character_name(checker, entry, rename_from=None):
         raise AthException("Character name cannot be a number!")
     for char in BAD_CHARS:
         if char in entry:
-            raise AthException("Character Names may not contain the characters: %s" % BAD_CHARS)
+            raise AthException("Character Names may not contain the character: %s" % char)
     if len(entry) != len(entry.strip()):
         raise AthException("Character names may not have leading or trailing spaces.")
-    from athanor.classes.characters import Character
+    from athanor.characters.classes import Character
     exist = Character.objects.filter_family(db_key__iexact=entry).first()
     if exist and ((exist != rename_from) or not rename_from):
         raise AthException("Character name is already in use!")
     return entry
 
 def valid_character_id(checker, entry):
-    from athanor.classes.characters import Character
+    from athanor.characters.classes import Character
     if isinstance(entry, Character):
         return entry
     exist = Character.objects.filter_family(id=entry).first()
@@ -154,7 +154,7 @@ def valid_character_id(checker, entry):
     return exist
 
 def valid_account_id(checker, entry):
-    from athanor.classes.accounts import Account
+    from athanor.accounts.classes import Account
     if isinstance(entry, Account):
         return entry
     exist = Account.objects.filter_family(id=entry).first()

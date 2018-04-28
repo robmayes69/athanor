@@ -1,4 +1,4 @@
-from athanor.styles.base import AccountStyle
+from athanor.base.styles import AccountStyle
 
 class AccountLoginStyle(AccountStyle):
     key = 'login'

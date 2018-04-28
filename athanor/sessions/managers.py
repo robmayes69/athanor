@@ -1,4 +1,4 @@
-from athanor.managers.base import __BaseManager
+from athanor.base.managers import __BaseManager
 
 class SessionManager(__BaseManager):
     mode = 'session'

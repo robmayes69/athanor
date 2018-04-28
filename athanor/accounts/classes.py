@@ -22,13 +22,13 @@ several more options for customizing the Guest account system.
 
 """
 
-from django.conf import settings
-from evennia import DefaultAccount
-from evennia.utils.utils import lazy_property, is_iter
 
-from athanor.managers.accounts import AccountManager
-from athanor.renderers.accounts import AccountRenderer
-from athanor.properties.base import AccountPropertyCollection
+from evennia import DefaultAccount
+from evennia.utils.utils import lazy_property
+
+from athanor.accounts.managers import AccountManager
+from athanor.accounts.renderers import AccountRenderer
+from athanor.base.properties import AccountPropertyCollection
 
 
 class Account(DefaultAccount):

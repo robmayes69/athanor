@@ -1,5 +1,5 @@
 from django.conf import settings
-from athanor.handlers.base import SessionHandler
+from athanor.base.handlers import SessionHandler
 from athanor.utils.create import account as create_account, character as create_character
 from athanor import AthException
 
@@ -10,7 +10,7 @@ class SessionCoreHandler(SessionHandler):
     operations = ('create_account', 'create_character', 'set_account_disabled', 'set_character_disabled',
                   'set_account_banned', 'set_character_banned', 'set_character_shelved', 'login_account',
                   'puppet_character')
-    cmdsets = ('athanor.cmdsets.unlogged.UnloggedCmdSet',)
+    cmdsets = ('athanor.sessions.unlogged.UnloggedCmdSet',)
 
     def at_sync(self):
         if not self.owner.logged_in:

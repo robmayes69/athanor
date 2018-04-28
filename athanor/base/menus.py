@@ -5,9 +5,8 @@ Athanor Menus have nothing to do with EvMenus. They are actually just special cm
 THIS WAY I can use cmd locks!
 """
 
-from athanor.cmdsets.base import AthCmdSet
+from athanor.base.cmdsets import AthCmdSet
 from athanor.commands.base import AthCommand
-from athanor import AthException
 
 class MenuCommand(AthCommand):
     """

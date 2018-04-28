@@ -8,7 +8,7 @@ from athanor.utils.time import utcnow
 from athanor.utils.utils import import_property
 from athanor.models import AccountCore, AccountCharacter
 
-from athanor.handlers.base import AccountHandler
+from athanor.base.handlers import AccountHandler
 from athanor import AthException
 
 
@@ -17,7 +17,7 @@ class AccountCoreHandler(AccountHandler):
     style = 'fallback'
     category = 'athanor'
     system_name = 'SYSTEM'
-    cmdsets = ('athanor.cmdsets.accounts.AccountCoreCmdSet', )
+    cmdsets = ('athanor.accounts.cmdsets.AccountCoreCmdSet', )
     django_model = AccountCore
 
     def at_init(self):

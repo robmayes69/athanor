@@ -55,7 +55,7 @@ as argument.
 #     """
 #     pass
 
-from athanor.handlers.base import AthanorRequest
+from athanor.base.handlers import AthanorRequest
 
 def session(source, *args, **kwargs):
     req = AthanorRequest(session=source, handler=args[0], operation=args[1], parameters=kwargs)
