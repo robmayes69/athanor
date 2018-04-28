@@ -1,5 +1,5 @@
 from athanor.utils.text import partial_match
-from athanor.handlers.base import AthanorResponse
+from athanor.base.handlers import AthanorResponse
 
 
 class AthanorSystem(object):

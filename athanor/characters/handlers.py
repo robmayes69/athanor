@@ -1,7 +1,7 @@
 import time, datetime
 from athanor.utils.text import mxp
 from athanor.utils.time import utcnow
-from athanor.handlers.base import CharacterHandler
+from athanor.base.handlers import CharacterHandler
 from athanor.models import CharacterCore
 from athanor.utils.utils import import_property
 
@@ -10,7 +10,7 @@ class CharacterCoreHandler(CharacterHandler):
     key = 'core'
     style = 'fallback'
     system_name = 'SYSTEM'
-    cmdsets = ('athanor.cmdsets.characters.CoreCharacterCmdSet', )
+    cmdsets = ('athanor.characters.cmdsets.CoreCharacterCmdSet', )
     django_model = CharacterCore
 
     def at_init(self):

@@ -17,6 +17,7 @@ LOAD_ORDER = -1000
 
 # Athanor Modules may add to these settings.py fields.
 INSTALLED_APPS = ('athanor.apps.Core', )
+
 LOCK_FUNC_MODULES = ("athanor.funcs.lock", )
 INPUT_FUNC_MODULES = ['athanor.funcs.input', ]
 INLINE_FUNC_MODULES = ['athanor.funcs.inline', ]
@@ -31,9 +32,9 @@ MODULES_ORDER = tuple()
 # This can be overruled by modules that load later.
 # Once it has loaded, this will contain key->class instances.
 MANAGERS = {
-    'character': 'athanor.managers.characters.CharacterManager',
-    'account': 'athanor.managers.accounts.AccountManager',
-    'session': 'athanor.managers.sessions.SessionManager',
+    'character': 'athanor.characters.managers.CharacterManager',
+    'account': 'athanor.accounts.managers.AccountManager',
+    'session': 'athanor.sessions.managers.SessionManager',
 }
 
 # Dictionary that contains the Keys/Names and Python Paths to the Account Handlers for this module.
@@ -42,20 +43,20 @@ MANAGERS = {
 # Hence, you can 'import athanor' and then access HANDLERS_ACCOUNT[key] to retrieve a class.
 
 HANDLERS_ACCOUNT = {
-    'core': 'athanor.handlers.accounts.AccountCoreHandler',
-    'character': 'athanor.handlers.accounts.AccountCharacterHandler',
+    'core': 'athanor.accounts.handlers.AccountCoreHandler',
+    'character': 'athanor.accounts.handlers.AccountCharacterHandler',
 }
 
 # Just  like Account but for characters.
 HANDLERS_CHARACTER = {
-    'core': 'athanor.handlers.characters.CharacterCoreHandler',
-    'character': 'athanor.handlers.characters.CharacterCharacterHandler',
-    'menu': 'athanor.handlers.characters.CharacterMenuHandler',
+    'core': 'athanor.characters.handlers.CharacterCoreHandler',
+    'character': 'athanor.characters.handlers.CharacterCharacterHandler',
+    'menu': 'athanor.characters.handlers.CharacterMenuHandler',
 }
 
 # Same but for sessions.
 HANDLERS_SESSION = {
-    'core': 'athanor.handlers.sessions.SessionCoreHandler',
+    'core': 'athanor.sessions.handlers.SessionCoreHandler',
 }
 
 # In case these are ever implemented...
@@ -79,20 +80,20 @@ HANDLERS_SORTED = {
 # the viewer (a session) as their second. They then also support *args, **kwargs.
 
 PROPERTIES_ACCOUNT = {
-    'name': 'athanor.properties.accounts.name',
-    'conn_seconds': 'athanor.properties.accounts.conn_seconds',
-    'idle_seconds': 'athanor.properties.accounts.idle_seconds',
-    'timezone': 'athanor.properties.accounts.timezone',
+    'name': 'athanor.accounts.properties.name',
+    'conn_seconds': 'athanor.accounts.properties.conn_seconds',
+    'idle_seconds': 'athanor.accounts.properties.idle_seconds',
+    'timezone': 'athanor.accounts.properties.timezone',
 }
 
 PROPERTIES_CHARACTER = {
-    'name': 'athanor.properties.characters.name',
-    'alias': 'athanor.properties.characters.alias',
-    'fullalias': 'athanor.properties.characters.fullalias',
-    'conn_seconds': 'athanor.properties.characters.conn_seconds',
-    'idle_seconds': 'athanor.properties.characters.idle_seconds',
-    'location': 'athanor.properties.characters.alias',
-    'timezone': 'athanor.properties.characters.timezone',
+    'name': 'athanor.characters.properties.name',
+    'alias': 'athanor.characters.properties.alias',
+    'fullalias': 'athanor.characters.properties.fullalias',
+    'conn_seconds': 'athanor.characters.properties.conn_seconds',
+    'idle_seconds': 'athanor.characters.properties.idle_seconds',
+    'location': 'athanor.characters.properties.alias',
+    'timezone': 'athanor.characters.properties.timezone',
 }
 
 PROPERTIES_SESSION = {
@@ -112,15 +113,15 @@ PROPERTIES_DICT = {
 
 # Just as with MANAGERS, above. The difference is these are for rendering text output to the given Account/Character.
 RENDERERS = {
-    'sessions': 'athanor.renderers.sessions.SessionRenderer',
-    'character': 'athanor.renderers.characters.CharacterRenderer',
-    'account': 'athanor.renderers.accounts.AccountRenderer'
+    'sessions': 'athanor.sessions.renderers.SessionRenderer',
+    'character': 'athanor.characters.renderers.CharacterRenderer',
+    'account': 'athanor.accounts.renderers.AccountRenderer'
 }
 
 # Styles are as to Renderers what Handlers are to the Manager. They are setting collections for handling appearances.
 # scripts do not have styles.
 STYLES_ACCOUNT = {
-    'login': 'athanor.styles.accounts.AccountLoginStyle',
+    'login': 'athanor.accounts.styles.AccountLoginStyle',
 }
 
 STYLES_CHARACTER = {
@@ -185,25 +186,25 @@ STYLES_FALLBACK = {
 # Like everything else in athanor, these can be replaced/overloaded by later modules.
 # After load, this will contain the keys pointing to the callable function objects.
 VALIDATORS = {
-    'color': 'athanor.validators.funcs.valid_color',
-    'duration': 'athanor.validators.funcs.valid_duration',
-    'datetime': 'athanor.validators.funcs.valid_datetime',
-    'signed_integer': 'athanor.validators.funcs.valid_signed_integer',
-    'positive_integer': 'athanor.validators.funcs.valid_positive_integer',
-    'unsigned_integer': 'athanor.validators.funcs.valid_unsigned_integer',
-    'boolean': 'athanor.validators.funcs.valid_boolean',
-    'timezone': 'athanor.validators.funcs.valid_timezone',
-    'account_email': 'athanor.validators.funcs.valid_account_email',
-    'account_name': 'athanor.validators.funcs.valid_account_name',
-    'account_password': 'athanor.validators.funcs.valid_account_password',
-    'character_name': 'athanor.validators.funcs.valid_character_name',
-    'character_id': 'athanor.validators.funcs.valid_character_id',
-    'account_id': 'athanor.validators.funcs.valid_account_id',
+    'color': 'athanor.funcs.valid.valid_color',
+    'duration': 'athanor.funcs.valid.valid_duration',
+    'datetime': 'athanor.funcs.valid.valid_datetime',
+    'signed_integer': 'athanor.funcs.valid.valid_signed_integer',
+    'positive_integer': 'athanor.funcs.valid.valid_positive_integer',
+    'unsigned_integer': 'athanor.funcs.valid.valid_unsigned_integer',
+    'boolean': 'athanor.funcs.valid.valid_boolean',
+    'timezone': 'athanor.funcs.valid.valid_timezone',
+    'account_email': 'athanor.funcs.valid.valid_account_email',
+    'account_name': 'athanor.funcs.valid.valid_account_name',
+    'account_password': 'athanor.funcs.valid.valid_account_password',
+    'character_name': 'athanor.funcs.valid.valid_character_name',
+    'character_id': 'athanor.funcs.valid.valid_character_id',
+    'account_id': 'athanor.funcs.valid.valid_account_id',
 }
 
 
 SYSTEMS = {
-    'core': 'athanor.systems.scripts.CoreSystem',
+    'core': 'athanor.systems.core.CoreSystem',
 }
 
 # A dictionary of command families. CmdSets can be pointed at one of these keys to retrieve the prefix all of their
@@ -242,8 +243,8 @@ SHELP_FILES = {
 }
 
 HELP_TREES = {
-    '+help': ('athanor.help.base.HelpCore', HELP_FILES),
-    '+shelp': ('athanor.help.base.ShelpCore', SHELP_FILES)
+    '+help': ('athanor.base.help.HelpCore', HELP_FILES),
+    '+shelp': ('athanor.base.help.ShelpCore', SHELP_FILES)
 }
 
 # Athanor allows for multiple at_server_start, at_server_stop, etc, hooks to be fired off in sequence.

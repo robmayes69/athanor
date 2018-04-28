@@ -8,7 +8,7 @@ from athanor.classes.channels import AthanorChannel
 from athanor.utils.text import partial_match
 from athanor import AthException
 
-from athanor.validators.funcs import TZ_DICT
+from athanor.funcs.valid import TZ_DICT
 
 
 class __Setting(object):

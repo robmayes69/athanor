@@ -1,10 +1,4 @@
-import math
-
-from evennia.utils.ansi import ANSIString
-from evennia.utils import evtable
 from athanor.styles.game_styles import ATHANOR_STYLES
-
-
 
 
 class __BaseStyle(object):
@@ -58,4 +52,3 @@ class SessionRenderer(object):
         self.owner = owner
         self.fallback = FALLBACK
 
-    

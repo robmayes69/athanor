@@ -1,4 +1,4 @@
-from athanor.systems.base import AthanorSystem
+from athanor.base.systems import AthanorSystem
 
 from athanor.models import AccountOnline, CharacterOnline
 

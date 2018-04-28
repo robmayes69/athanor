@@ -20,14 +20,14 @@ TEMPLATES[0]['DIRS'] += (os.path.join(GAME_DIR, 'athanor', 'site', 'templates'),
 
 # TYPECLASS STUFF
 
-SERVER_SESSION_CLASS = "athanor.classes.sessions.Session"
+SERVER_SESSION_CLASS = "athanor.sessions.classes.Session"
 
 # Typeclass for player objects (linked to a character) (fallback)
-BASE_ACCOUNT_TYPECLASS = "athanor.classes.accounts.Account"
+BASE_ACCOUNT_TYPECLASS = "athanor.accounts.classes.Account"
 # Typeclass and base for all objects (fallback)
 #BASE_OBJECT_TYPECLASS = "classes.objects.Object"
 # Typeclass for character objects linked to a player (fallback)
-BASE_CHARACTER_TYPECLASS = "athanor.classes.characters.Character"
+BASE_CHARACTER_TYPECLASS = "athanor.characters.classes.Character"
 # Typeclass for rooms (fallback)
 BASE_ROOM_TYPECLASS = "athanor.classes.rooms.Room"
 # Typeclass for Exit objects (fallback).
@@ -55,7 +55,7 @@ ATHANOR_OPEN_CHARACTER_CREATION = True
 ATHANOR_CHARACTER_SLOTS = 4
 
 # Character typeclass used for Shelved Characters.
-ATHANOR_SHELVED_CHARACTER_TYPECLASS = 'athanor.classes.characters.ShelvedCharacter'
+ATHANOR_SHELVED_CHARACTER_TYPECLASS = 'athanor.characters.classes.ShelvedCharacter'
 
 # Athanor takes over these things. Don't change these values! You can change those in your own server.conf though.
 AT_INITIAL_SETUP_HOOK_MODULE = "athanor.conf.at_initial_setup"

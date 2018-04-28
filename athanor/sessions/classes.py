@@ -1,8 +1,8 @@
 from evennia.server.serversession import ServerSession
 from evennia.utils import lazy_property
 
-from athanor.managers.sessions import SessionManager
-from athanor.renderers.sessions import SessionRenderer
+from athanor.sessions.managers import SessionManager
+from athanor.sessions.renderers import SessionRenderer
 
 
 class Session(ServerSession):

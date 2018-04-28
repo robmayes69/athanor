@@ -2,7 +2,7 @@
 Contains the simplest implementation of a Manager for Accounts.
 """
 
-from athanor.managers.base import __BaseManager
+from athanor.base.managers import __BaseManager
 
 
 class AccountManager(__BaseManager):
