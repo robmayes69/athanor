@@ -235,7 +235,7 @@ class AccountCharacterHandler(AccountHandler):
             command_text.append(" |w@penn <character>=<password>|n - Link an imported PennMUSH character.")
         command_text.append(" |w@charcreate <name> [=description]|n - create new character")
         command_text.append(" |w@ic <character>|n - enter the game (|w@ooc|n to get back here)")
-        command_column.add_row("\n".join(command_text), width=80)
+        command_column.add_row("\n".join(command_text))
         message.append(command_column)
         if characters:
             message += self.at_look_character_menu(session, viewer)
@@ -259,7 +259,7 @@ class AccountCharacterHandler(AccountHandler):
         sessions = self.owner.sessions.all()
         message = list()
         message.append(session.render.subheader('Sessions', style=self.style))
-        columns = (('ID', 7, 'l'), ('Protocol', 23, 'l'), ('Address', 23, 'l'), ('Connected', 27, 'l'))
+        columns = (('ID', 7, 'l'), ('Protocol', 0, 'l'), ('Address', 0, 'l'), ('Connected', 0, 'l'))
         sesstable = session.render.table(columns, style=self.style)
         for session in sessions:
             conn_duration = time.time() - session.conn_time
@@ -268,14 +268,13 @@ class AccountCharacterHandler(AccountHandler):
                                     session.address),
                                  utils.time_format(conn_duration, 0))
         message.append(sesstable)
-        # message.append(separator())
         return message
 
     def at_look_character_menu(self, session, viewer):
         message = list()
         characters = self.base['character'].all()
         message.append(session.render.subheader('Characters', style=self.style))
-        columns = (('ID', 7, 'l'), ('Name', 37, 'l'), ('Type', 16, 'l'), ('Last Login', 20, 'l'))
+        columns = (('ID', 7, 'l'), ('Name', 0, 'l'), ('Type', 0, 'l'), ('Last Login', 0, 'l'))
         chartable = session.render.table(columns, style=self.style)
         for character in characters:
             login = character.ath['core'].last_played
@@ -286,7 +285,6 @@ class AccountCharacterHandler(AccountHandler):
             type = 'N/A'
             chartable.add_row(character.id, character.key, type, login)
         message.append(chartable)
-        # message.append(separator())
         return message
 
 

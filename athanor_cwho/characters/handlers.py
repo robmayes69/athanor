@@ -69,36 +69,10 @@ class CharacterWhoHandler(CharacterHandler):
         self.model.hidden = value
         self.model.save(update_fields=['hidden', ])
 
-        # If the character is not connected yet (they are connecting hidden) then we don't want to alert the Who System
-        # just yet.
-        if not self.owner.sessions.count():
-            return
 
-        if value:
-            athanor.SYSTEMS['cwho'].hide_character(self.owner)
-        else:
-            athanor.SYSTEMS['cwho'].reveal_character(self.owner)
-
-    @property
-    def dark(self):
-        return self.model.dark
-
-    @dark.setter
-    def dark(self, value):
-        self.model.dark = value
-        self.model.save(update_fields=['dark', ])
-
-        # If the character is not connected yet (they are connecting dark) then we don't want to alert the Who System
-        # just yet.
-        if not self.owner.sessions.count():
-            return
-
-        if value:
-            athanor.SYSTEMS['cwho'].hide_character(self.owner)
-        else:
-            athanor.SYSTEMS['cwho'].reveal_character(self.owner)
-
-    def can_see(self, target):
-        if self.base['core'].is_admin():
-            return True
-        return not (target.system.dark or target.system.hidden)
+    def visible_to(self, character, context):
+        if context == 'who':
+            if character.ath['core'].is_admin():
+                return True
+            return not self.hidden
+        return True

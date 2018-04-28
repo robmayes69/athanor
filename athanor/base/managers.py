@@ -27,10 +27,12 @@ class __BaseManager(object):
         self.owner = owner
         self.attributes = owner.attributes
 
-        # Make validators available to TypeManagers!
+        # Make validators, systems, and properties available to TypeManagers!
         self.valid = athanor.VALIDATORS
 
         self.systems = athanor.SYSTEMS
+
+        self.properties = athanor.PROPERTIES_DICT[self.mode]
 
         # Load all handlers.
         handlers = athanor.HANDLERS_SORTED[self.mode]
@@ -66,3 +68,17 @@ class __BaseManager(object):
 
     def accept_request(self, request):
         self.handlers[request.handler].accept_request(request)
+
+
+    def prop(self, key, viewer, *args, **kwargs):
+        """
+        Retrieve and format a property of the owner for viewer's pleasure.
+
+        Args:
+            key (str): The key of the Property function to run.
+            viewer (session): A session instance that's doing the checking.
+
+        Returns:
+            Something that can be printed. This method is meant to be used for formatting tables and etc.
+        """
+        return self.properties[key](self.owner, viewer, *args, **kwargs)

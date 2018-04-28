@@ -24,4 +24,3 @@ def conn_seconds(owner, viewer, *args, **kwargs):
 
 def timezone(owner, viewer, *args, **kwargs):
     return owner.ath['core'].timezone
-

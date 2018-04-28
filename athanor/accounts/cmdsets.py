@@ -1,7 +1,7 @@
 from athanor.base.cmdsets import AccountCmdSet as oldSet
 
-from athanor.accounts.commands import AccountCmdIC, AccountCmdLook, AccountCmdCharCreate
+from athanor.accounts.commands import CmdIC, CmdLook, CmdCharCreate, CmdQuit
 
 
-class AccountCoreCmdSet(oldSet):
-    command_classes = (AccountCmdIC, AccountCmdLook, AccountCmdCharCreate)
+class OOCCmdSet(oldSet):
+    command_classes = (CmdIC, CmdLook, CmdCharCreate)

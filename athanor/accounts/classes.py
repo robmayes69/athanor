@@ -28,7 +28,6 @@ from evennia.utils.utils import lazy_property
 
 from athanor.accounts.managers import AccountManager
 from athanor.accounts.renderers import AccountRenderer
-from athanor.base.properties import AccountPropertyCollection
 
 
 class Account(DefaultAccount):
@@ -105,10 +104,6 @@ class Account(DefaultAccount):
     @lazy_property
     def render(self):
         return AccountRenderer(self)
-
-    @lazy_property
-    def prop(self):
-        return AccountPropertyCollection(self)
 
     def at_account_creation(self):
         super(Account, self).at_account_creation()

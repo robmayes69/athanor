@@ -48,7 +48,13 @@ def last_conn(owner, viewer, *args, **kwargs):
     return time_format(conn, style=1)
 
 
-def visible_to(owner, viewer, *args, **kwargs):
+def visible_who(owner, viewer, *args, **kwargs):
+    if viewer.base['core'].is_admin():
+        return True
+    return not (owner.ath['awho'].dark or owner.ath['awho'].hidden)
+
+
+def visible_who(owner, viewer, *args, **kwargs):
     if viewer.base['core'].is_admin():
         return True
     return not (owner.ath['awho'].dark or owner.ath['awho'].hidden)

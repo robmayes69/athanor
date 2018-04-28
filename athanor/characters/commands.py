@@ -1,7 +1,34 @@
-
 import athanor
 from athanor.base.commands import AthCommand
 from athanor.base.handlers import AthanorRequest
+
+# Admin and building commands go here.
+class CmdDark(AthCommand):
+    """
+    When you are Dark, other characters won't be able to see you in the room unless you speak up.
+
+    Usage:
+        [PREFIX]dark
+        reports your current status. To change...
+
+        [PREFIX]dark/on
+        [PREFIX]dark/off
+    """
+
+    key = 'dark'
+    locks = 'cmd:perm(Admin)'
+    help_category = 'Admin'
+    admin_switches = ['on', 'off']
+
+    def _main(self):
+        self.character.ath['core'].console_msg("Current Dark Status: " % self.character.ath['core'].dark)
+
+    def switch_on(self):
+        self.character.ath['core'].dark = True
+
+    def switch_off(self):
+        self.character.ath['core'].dark = False
+
 
 
 
@@ -25,6 +52,7 @@ class CharacterCmdOOC(AthCommand):
 
 
     def _main(self):
+
         request = AthanorRequest(session=self.session, handler='core',
                                  operation='puppet_character', parameters={'character_id': 0})
         self.session.ath['core'].accept_request(request)

@@ -1,14 +1,16 @@
+from athanor.base.handlers import CharacterHandler
 
 
-class CharacterPage(__CharacterManager):
+class CharacterPage(CharacterHandler):
+    key = 'page'
     style = 'page'
     system_name = 'PAGE'
-    key = 'page'
+    cmdsets = ('athanor_page.characters.cmdsets.PageCmdSet',)
 
-    def __init__(self, owner):
-        super(CharacterPage, self).__init__(owner)
+    def load(self):
         self.last_to = list()
         self.reply_to = list()
+        self.colors = self.owner.render['page']
 
     def send(self, targets, msg):
         targetnames = ', '.join([str(tar) for tar in targets])
@@ -16,12 +18,12 @@ class CharacterPage(__CharacterManager):
         self.last_to = targets
         for target in targets:
             target.page.receive(targets, msg, source=self.owner)
-        outpage = self.owner.player_config['outpage_color']
+        outpage = self.colors['outpage_color']
         self.owner.msg('|%sPAGE|n (%s)|%s:|n %s' % (outpage, targetnames, outpage, msg.render(viewer=self.owner)))
 
 
     def receive(self, recipients, msg, source=None):
-        color = self.owner.player_config['page_color']
+        color = self.colors['page_color']
         others = set(recipients)
         others.discard(self.owner)
         othernames = ', '.join([str(oth) for oth in others])

@@ -57,19 +57,13 @@ as argument.
 
 from athanor.base.handlers import AthanorRequest
 
-def session(source, *args, **kwargs):
-    req = AthanorRequest(session=source, handler=args[0], operation=args[1], parameters=kwargs)
-    session.ath.accept_request(req)
 
-
-def account(source, *args, **kwargs):
-    req = AthanorRequest(session=source, handler=args[0], operation=args[1], parameters=kwargs)
-    session.account.ath.accept_request(req)
-
-
-def character(source, *args, **kwargs):
-    req = AthanorRequest(session=source, handler=args[0], operation=args[1], parameters=kwargs)
-    session.puppet.ath.accept_request(req)
-
-def system(source, *args, **kwargs):
-    pass
+def athanor(source, *args, **kwargs):
+    req = AthanorRequest(session=source, handler=args[1], operation=args[2], parameters=kwargs)
+    manager = args[0]
+    if manager == 'session':
+        source.ath.accept_request(req)
+    if manager == 'account' and source.logged_in and source.account:
+        source.account.ath.accept_request(req)
+    if manager == 'character' and hasattr(source, 'puppet'):
+        source.puppet.ath.accept_request(req)

@@ -8,6 +8,7 @@ from evennia import DefaultRoom
 from athanor.utils.text import tabular_table
 from athanor.utils.online import characters
 
+
 class BaseRoom(DefaultRoom):
     """
     This class is a placeholder meant to represent deleted rooms. It implements the main room logic, but should
@@ -31,8 +32,13 @@ class BaseRoom(DefaultRoom):
 
     def online_characters(self, viewer=None):
         if viewer:
-            return [char for char in characters() if char.location]
+            return [char for char in characters() if char.location and self.can_see(viewer, char)]
         return [char for char in characters() if char.location == self]
+
+    def can_see(self, viewer, character):
+        if viewer.ath['core'].is_admin():
+            return True
+        return not character.ath['core'].dark
 
     def format_character_list(self, characters, viewer):
         columns = (('Name', 0, 'l'), ('Description', 0, 'l'))
@@ -41,11 +47,11 @@ class BaseRoom(DefaultRoom):
             char_table.add_row(char.key, char.db.shortdesc)
         return char_table
 
-    def format_exit_list(self, exits, caller):
+    def format_exit_list(self, exits, session):
         exit_table = []
         for exit in exits:
-            exit_table.append(exit.format_output(caller))
-        return tabular_table(exit_table, field_width=36, line_length=78, truncate_elements=False)
+            exit_table.append(exit.format_output(session))
+        return tabular_table(exit_table, field_width=36, line_length=session.render.width(), truncate_elements=False)
 
     def format_roomlist(self):
         return "|C%s|n |x%s|n" % (self.dbref.ljust(6), self.key)

@@ -168,6 +168,19 @@ class CharacterCoreHandler(CharacterHandler):
     def timezone(self):
         return self.account.ath['core'].timezone
 
+    @property
+    def dark(self):
+        return self.model.dark
+
+    @dark.setter
+    def dark(self, value):
+        self.model.dark = value
+        self.model.save(update_fields=['dark', ])
+        if value:
+            self.console_msg("You are now Dark!")
+        else:
+            self.console_msg("You are no longer Dark!")
+
 class CharacterCharacterHandler(CharacterHandler):
     key = 'character'
     style = 'account'

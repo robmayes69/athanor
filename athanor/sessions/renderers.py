@@ -8,7 +8,7 @@ class SessionRenderer(__BaseRenderer):
     mode = 'session'
 
     def width(self):
-        return 80
+        return self.owner.protocol_flags['SCREENWIDTH'][0]
 
     def __getitem__(self, item):
         if self.owner.puppet:

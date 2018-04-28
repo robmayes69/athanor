@@ -40,6 +40,7 @@ class CharacterCore(models.Model):
     last_login = models.DateTimeField(null=True)
     last_logout = models.DateTimeField(null=True)
     shelved = models.BooleanField(default=False)
+    dark = models.BooleanField(default=False)
 
 
 class CharacterCharacter(models.Model):

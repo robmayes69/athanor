@@ -33,7 +33,6 @@ class SessionCoreHandler(SessionHandler):
         """
         session = response.request.session
         params = response.request.parameters
-        output = response.request.output
         name = params.pop('name', '')
         password = params.pop('password', '')
         email = params.pop('email', None)
@@ -45,21 +44,16 @@ class SessionCoreHandler(SessionHandler):
                 email = self.valid['account_email'](session, email)
             new_account = create_account(name, password, email)
         except Exception as err:
-            if 'text' in output:
-                message['text'] = unicode(err)
-                message['prefix'] = True
-            if 'gmcp' in output:
-                message['gmcp'] = {'args': (self.mode, self.key, 'receive_create_account'), 'kwargs': {'error': unicode(err)}}
+            message['text'] = unicode(err)
+            message['prefix'] = True
+            message['gmcp'] = {'args': (self.mode, self.key, 'receive_create_account'), 'kwargs': {'error': unicode(err)}}
             message['prefix'] = True
             response.add(session, message)
             return
 
-        if 'text' in output:
-            message['text'] = 'Account Created! Remember that password.'
-            message['prefix'] = True
-        if 'gmcp' in output:
-            message['gmcp'] = {'args': (self.mode, self.key, 'receive_create_account'),
-                               'kwargs': {'id': new_account.id, 'key': new_account.key, 'email': new_account.email}}
+        message['text'] = 'Account Created! Remember that password.'
+        message['prefix'] = True
+        message['gmcp'] = {'args': (self.mode, self.key, 'receive_create_account'), 'kwargs': {'id': new_account.id, 'key': new_account.key, 'email': new_account.email}}
         response.add(session, message)
 
     def op_create_character(self, response):
@@ -73,7 +67,6 @@ class SessionCoreHandler(SessionHandler):
         """
         session = response.request.session
         params = response.request.parameters
-        output = response.request.output
         name = params.pop('name', '')
         account_id = params.pop('account_id', None)
         message = {'prefix': False}
@@ -95,20 +88,16 @@ class SessionCoreHandler(SessionHandler):
             new_character = create_character(name, account)
             session.account.ath['character'].add(new_character)
         except Exception as err:
-            if 'text' in output:
-                message['text'] = unicode(err)
-                message['prefix'] = True
-            if 'gmcp' in output:
-                message['gmcp'] = {'args': (self.mode, self.key, 'receive_create_character'), 'kwargs': {'error': unicode(err)}}
+            message['text'] = unicode(err)
+            message['prefix'] = True
+            message['gmcp'] = {'args': (self.mode, self.key, 'receive_create_character'), 'kwargs': {'error': unicode(err)}}
             message['prefix'] = True
             response.add(session, message)
             return
 
-        if 'text' in output:
-            message['text'] = 'Character Created!'
-            message['prefix'] = True
-        if 'gmcp' in output:
-            message['gmcp'] = {'args': (self.mode, self.key, 'receive_create_character'),
+        message['text'] = 'Character Created!'
+        message['prefix'] = True
+        message['gmcp'] = {'args': (self.mode, self.key, 'receive_create_character'),
                                'kwargs': {'id': new_character.id, 'key': new_character.key, 'account_id': account_id}}
         response.add(session, message)
 
@@ -120,7 +109,6 @@ class SessionCoreHandler(SessionHandler):
         """
         session = response.request.session
         params = response.request.parameters
-        output = response.request.output
         disabled = params.pop('disabled', '')
         account_id = params.pop('account_id', None)
         message = {'prefix': False}
@@ -135,20 +123,16 @@ class SessionCoreHandler(SessionHandler):
                 raise AthException("Permission denied. Only the SuperUser can alter Disables for Admin Accounts.")
             account.ath['core'].set_disabled(disabled)
         except Exception as err:
-            if 'text' in output:
-                message['text'] = unicode(err)
-                message['prefix'] = True
-            if 'gmcp' in output:
-                message['gmcp'] = {'args': (self.mode, self.key, 'receive_set_account_disabled'), 'kwargs': {'error': unicode(err)}}
+            message['text'] = unicode(err)
+            message['prefix'] = True
+            message['gmcp'] = {'args': (self.mode, self.key, 'receive_set_account_disabled'), 'kwargs': {'error': unicode(err)}}
             message['prefix'] = True
             response.add(session, message)
             return
 
-        if 'text' in output:
-            message['text'] = 'Account %s!' % 'disabled' if disabled else 'enabled'
-            message['prefix'] = True
-        if 'gmcp' in output:
-            message['gmcp'] = {'args': (self.mode, self.key, 'receive_set_account_disabled'),
+        message['text'] = 'Account %s!' % 'disabled' if disabled else 'enabled'
+        message['prefix'] = True
+        message['gmcp'] = {'args': (self.mode, self.key, 'receive_set_account_disabled'),
                                'kwargs': {'account_id': account_id, 'disabled': disabled}}
         response.add(session, message)
 
@@ -160,7 +144,6 @@ class SessionCoreHandler(SessionHandler):
         """
         session = response.request.session
         params = response.request.parameters
-        output = response.request.output
         disabled = params.pop('disabled', '')
         character_id = params.pop('character_id', None)
         message = {'prefix': False}
@@ -175,20 +158,16 @@ class SessionCoreHandler(SessionHandler):
                 raise AthException("Permission denied. Only the SuperUser can alter Disables for Admin Accounts.")
             character.ath['core'].set_disabled(disabled)
         except Exception as err:
-            if 'text' in output:
-                message['text'] = unicode(err)
-                message['prefix'] = True
-            if 'gmcp' in output:
-                message['gmcp'] = {'args': (self.mode, self.key, 'receive_set_character_disabled'), 'kwargs': {'error': unicode(err)}}
+            message['text'] = unicode(err)
+            message['prefix'] = True
+            message['gmcp'] = {'args': (self.mode, self.key, 'receive_set_character_disabled'), 'kwargs': {'error': unicode(err)}}
             message['prefix'] = True
             response.add(session, message)
             return
 
-        if 'text' in output:
-            message['text'] = 'Character %s!' % 'disabled' if disabled else 'enabled'
-            message['prefix'] = True
-        if 'gmcp' in output:
-            message['gmcp'] = {'args': (self.mode, self.key, 'receive_set_character_disabled'),
+        message['text'] = 'Character %s!' % 'disabled' if disabled else 'enabled'
+        message['prefix'] = True
+        message['gmcp'] = {'args': (self.mode, self.key, 'receive_set_character_disabled'),
                                'kwargs': {'character_id': character_id, 'disabled': disabled}}
         response.add(session, message)
 

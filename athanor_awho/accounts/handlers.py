@@ -1,9 +1,9 @@
 from evennia.utils import time_format
 import athanor
-from athanor.handlers.base import AccountHandler
+from athanor.base.handlers import AccountHandler
 from athanor_awho.models import AccountWho
 
-class AccountWhoHandler(AccountHandler):
+class WhoHandler(AccountHandler):
     key = 'awho'
     style = 'awho'
     category = 'athanor'

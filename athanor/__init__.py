@@ -5,6 +5,7 @@ Besides storing core plugin settings this module is meant to be imported for acc
 HANDLERS.
 """
 
+
 class AthException(Exception):
     """
     This exception exists for code logic purposes, not actual code errors. Use AthException if you want your commands to abort and display an error message without a complicated return chain.
@@ -89,11 +90,12 @@ PROPERTIES_ACCOUNT = {
 PROPERTIES_CHARACTER = {
     'name': 'athanor.characters.properties.name',
     'alias': 'athanor.characters.properties.alias',
-    'fullalias': 'athanor.characters.properties.fullalias',
+    'alias_all': 'athanor.characters.properties.alias_all',
     'conn_seconds': 'athanor.characters.properties.conn_seconds',
     'idle_seconds': 'athanor.characters.properties.idle_seconds',
     'location': 'athanor.characters.properties.alias',
     'timezone': 'athanor.characters.properties.timezone',
+    'visible_room': 'athanor.characters.properties.visible_room',
 }
 
 PROPERTIES_SESSION = {

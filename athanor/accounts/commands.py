@@ -1,17 +1,18 @@
 from athanor.base.commands import AthCommand
 from athanor.base.handlers import AthanorRequest
 from athanor import AthException
+from athanor.funcs.input import athanor as req_athanor
 
 
-class AccountCmdLook(AthCommand):
+class CmdLook(AthCommand):
     key = 'look'
-    aliases = ('dir', 'ls', 'l', 'view',)
+    aliases = ('dir', 'ls', 'l', 'view','login')
 
     def _main(self):
         self.msg(self.account.at_look(target=self.account, session=self.session))
 
 
-class AccountCmdIC(AthCommand):
+class CmdIC(AthCommand):
     """
     control an object you have permission to puppet
 
@@ -43,18 +44,38 @@ class AccountCmdIC(AthCommand):
         if not character:
             raise AthException("Character not found!")
 
-        request = AthanorRequest(session=self.session, handler='core',
-                                 operation='puppet_character', parameters={'character_id': character})
-        self.session.ath.accept_request(request)
+        req_athanor(self.session, 'session', 'core', 'puppet_character', {'character_id': character})
 
 
-class AccountCmdCharCreate(AthCommand):
+class CmdCharCreate(AthCommand):
 
     key = '@charcreate'
     locks = 'cmd:pperm(Player)'
     help_category = 'General'
 
     def _main(self):
-        request = AthanorRequest(session=self.session, handler='core',
-                                 operation='create_character', parameters={'name': self.lhs})
-        self.session.ath['core'].accept_request(request)
+        req_athanor(self.session, 'account', 'core', 'create_character', {'name': self.lhs})
+
+
+class CmdQuit(AthCommand):
+    """
+    quit the game
+
+    Usage:
+      @quit
+
+    Switch:
+      all - disconnect all connected sessions
+
+    Gracefully disconnect your current session from the
+    game. Use the /all switch to disconnect from all sessions.
+    """
+    key = "@quit"
+    locks = "cmd:all()"
+
+    def _main(self):
+        req_athanor(self.session, 'account', 'core', 'disconnect', params={'all': False})
+
+    def switch_all(self):
+        req_athanor(source=self.session, manager='account', handler='core', operation='disconnect',
+                    output=('text','gmcp'), params={'all': True})

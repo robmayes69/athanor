@@ -11,7 +11,6 @@ from evennia import DefaultCharacter
 from evennia.utils.utils import lazy_property
 from athanor.characters.managers import CharacterManager
 from athanor.characters.renderers import CharacterRenderer
-from athanor.base.properties import CharacterPropertyCollection
 from athanor import AthException
 
 
@@ -43,10 +42,6 @@ class BaseCharacter(DefaultCharacter):
     @lazy_property
     def render(self):
         return CharacterRenderer(self)
-
-    @lazy_property
-    def prop(self):
-        return CharacterPropertyCollection(self)
 
     def at_init(self):
         super(BaseCharacter, self).at_init()

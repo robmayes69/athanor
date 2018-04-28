@@ -21,7 +21,7 @@ def alias(owner, viewer, *args, **kwargs):
     return aliases[0]
 
 
-def fullalias(owner, viewer, *args, **kwargs):
+def alias_all(owner, viewer, *args, **kwargs):
     ';'.join(owner.aliases.all())
 
 
@@ -42,3 +42,6 @@ def location(owner, viewer, *args, **kwargs):
 def timezone(owner, viewer, *args, **kwargs):
     return owner.ath['core'].timezone
 
+
+def visible_room(owner, viewer, *args, **kwargs):
+    return True

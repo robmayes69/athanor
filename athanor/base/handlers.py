@@ -1,21 +1,18 @@
-import athanor
 from evennia.utils.ansi import ANSIString
 from athanor.utils.text import partial_match
+
 
 class AthanorRequest(object):
     """
     Instances of TaskRequest store information about a Request. This could come from a Command or an OOB Function.
     """
 
-    def __init__(self, session, handler, operation, output=None, parameters=None):
+    def __init__(self, session, handler, operation, parameters=None):
         if not parameters:
             parameters = dict()
-        if not output:
-            output = ('text', 'gmcp',)
         self.handler = handler
         self.session = session
         self.operation = operation
-        self.output = output
         self.parameters = parameters
 
 
