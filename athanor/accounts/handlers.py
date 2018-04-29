@@ -17,7 +17,7 @@ class AccountCoreHandler(AccountHandler):
     style = 'fallback'
     category = 'athanor'
     system_name = 'SYSTEM'
-    cmdsets = ('athanor.accounts.cmdsets.AccountCoreCmdSet', )
+    cmdsets = ('athanor.accounts.cmdsets.OOCCmdSet', )
     django_model = AccountCore
 
     def at_init(self):

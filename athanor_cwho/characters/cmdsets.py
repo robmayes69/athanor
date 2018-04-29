@@ -1,6 +1,7 @@
-from athanor.cmdsets.base import CharacterCmdSet
+from athanor.base.cmdsets import CharacterCmdSet
 
-from athanor_cwho.commands.characters import CmdWho
+from athanor_cwho.characters.commands import CmdWho
 
-class WhoCharacterCmdSet(CharacterCmdSet):
+class WhoCmdSet(CharacterCmdSet):
+    key = 'cwho'
     command_classes = (CmdWho,)

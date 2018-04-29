@@ -1,6 +1,7 @@
 
 import re
 from evennia.utils.ansi import ANSIString, ANSI_PARSER
+from athanor import AthException
 
 def tabular_table(word_list=None, field_width=26, line_length=78, output_separator=" ", truncate_elements=True):
     """
@@ -81,12 +82,6 @@ def sanitize_name(name, system_name):
         if char in name:
             raise AthException("%s is not allowed in %s names!" % (char, system_name))
     return name
-
-def sanitize_board_name(name):
-    return sanitize_name(name, 'Board')
-
-def sanitize_group_name(name):
-    return sanitize_name(name, 'Group')
 
 def partial_match(match_text, candidates):
     candidate_list = sorted(candidates, key=lambda item: len(str(item)))

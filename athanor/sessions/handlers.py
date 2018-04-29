@@ -21,6 +21,21 @@ class SessionCoreHandler(SessionHandler):
         for cmdset in self.cmdsets:
             self.owner.cmdset.remove(cmdset)
 
+    def is_builder(self):
+        if not hasattr(self.owner, 'account'):
+            return False
+        return self.owner.account.ath['core'].is_builder()
+
+    def is_admin(self):
+        if not hasattr(self.owner, 'account'):
+            return False
+        return self.owner.account.ath['core'].is_admin()
+
+    def is_developer(self):
+        if not hasattr(self.owner, 'account'):
+            return False
+        return self.owner.account.ath['core'].is_developer()
+
 
     def op_create_account(self, response):
         """

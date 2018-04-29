@@ -1,6 +1,6 @@
 from athanor.base.cmdsets import CharacterCmdSet
-from athanor.characters.commands import CmdLook, CharacterCmdOOC, CmdHelp, CmdShelp
+from athanor.characters.commands import CmdLook, CmdHelp, CmdShelp
 
 
 class CoreCharacterCmdSet(CharacterCmdSet):
-    command_classes = (CmdLook, CharacterCmdOOC, CmdHelp, CmdShelp)
+    command_classes = (CmdLook, CmdHelp, CmdShelp)
