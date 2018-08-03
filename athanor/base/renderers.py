@@ -1,41 +1,19 @@
 import athanor
+from athanor.base.systems import AthanorSystem
 
-class __BaseRenderer(object):
-    """
-    The base used for the Athanor Handlers that are loaded onto all Athanor Accounts and Characters.
+class BaseRenderer(AthanorSystem):
 
-    Not meant to be used directly.
-    """
-    mode = None
-    fallback = athanor.STYLES_FALLBACK
-
-    def get_styles(self):
-        pass
-
-
-    def __init__(self, owner):
-        """
-
-        :param owner: An instance of a TypeClass'd object.
-        """
-        self.owner = owner
-        self.attributes = owner.attributes
-        self.styles = dict()
-
-        self.styles_list = list()
-        for style in athanor.STYLES_DICT[self.mode]:
-            self.styles[style.key] = style(self)
-
-        # Call an extensible Load function for simplicity if need be.
+    def __init__(self, base):
+        self.base = base
+        self.owner = base
+        super(BaseRenderer, self).__init__()
         self.load()
 
-    def load(self):
-        pass
-
-    def __getitem__(self, item):
-        try:
-            return self.styles[item]
-        except:
-            return self.fallback
-
-    
+    def load_settings(self):
+        saved_data = self.model.value
+        for k, v in athanor.STYLES_DATA.iteritems():
+            try:
+                new_setting = athanor.SETTINGS[v[0]](self, k, v[1], v[2], saved_data.get(k, None))
+                self.settings[new_setting.key] = new_setting
+            except Exception:
+                pass

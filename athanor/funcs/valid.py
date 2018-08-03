@@ -90,6 +90,21 @@ def valid_timezone(checker, entry):
         return TZ_DICT[found]
     raise AthException("Could not find timezone '%s'!" % entry)
 
+def valid_account(checker, entry):
+    from athanor.accounts.classes import Account
+    if isinstance(entry, Account):
+        return entry
+    exist = None
+    if isinstance(entry, str) and entry.isdigit():
+        entry = int(entry)
+    if isinstance(entry, int):
+        exist = Account.objects.filter_family(id=int(entry)).first()
+    else:
+        exist = Account.objects.filter_family(db_key__iexact=entry).first()
+    if not exist:
+        raise AthException("Account not found.")
+    return exist
+
 
 def valid_account_name(checker, entry, rename_from=None):
     """
@@ -111,6 +126,7 @@ def valid_account_name(checker, entry, rename_from=None):
         raise AthException("Account name is already in use!")
     return entry
 
+
 def valid_account_password(checker, entry):
     if not len(entry):
         raise AthException("Passwords may not be empty!")
@@ -128,6 +144,7 @@ def valid_account_email(checker, entry):
         raise AthException("That isn't a valid email!")
     return entry
 
+
 def valid_character_name(checker, entry, rename_from=None):
     if not len(entry):
         raise AthException("Character Name field empty!")
@@ -144,6 +161,7 @@ def valid_character_name(checker, entry, rename_from=None):
         raise AthException("Character name is already in use!")
     return entry
 
+
 def valid_character_id(checker, entry):
     from athanor.characters.classes import Character
     if isinstance(entry, Character):
@@ -153,6 +171,7 @@ def valid_character_id(checker, entry):
         raise AthException("Character Not found.")
     return exist
 
+
 def valid_account_id(checker, entry):
     from athanor.accounts.classes import Account
     if isinstance(entry, Account):
@@ -161,3 +180,44 @@ def valid_account_id(checker, entry):
     if not exist:
         raise AthException("Account Not found.")
     return exist
+
+
+def valid_channel_name(checker, entry, rename_from=None):
+    if not len(entry):
+        raise AthException("Channel Name field empty!")
+    if entry.strip().isdigit():
+        raise AthException("Channel name cannot be a number!")
+    for char in BAD_CHARS:
+        if char in entry:
+            raise AthException("Channel Names may not contain the character: %s" % char)
+    if len(entry) != len(entry.strip()):
+        raise AthException("Channel names may not have leading or trailing spaces.")
+    from athanor.channels.classes import PublicChannel
+    exist = PublicChannel.objects.filter_family(db_key__iexact=entry).first()
+    if exist and ((exist != rename_from) or not rename_from):
+        raise AthException("Channel name is already in use!")
+    return entry
+
+
+def valid_channel(checker, entry):
+    from athanor.channels.classes import PublicChannel
+    if isinstance(entry, PublicChannel):
+        return entry
+    if isinstance(entry, int) or (isinstance(entry, basestring) and entry.isdigit()):
+        find = PublicChannel.objects.filter_family(id=int(entry)).first()
+        if find:
+            return find
+    if isinstance(entry, basestring):
+        find = partial_match(entry, PublicChannel.objects.filter_family())
+        if find:
+            return find
+    raise AthException("Channel not found.")
+
+
+def valid_channel_id(checker, entry):
+    from athanor.channels.classes import PublicChannel
+    if isinstance(entry, int) or (isinstance(entry, basestring) and entry.isdigit()):
+        find = PublicChannel.objects.filter_family(id=int(entry)).first()
+        if find:
+            return find
+    raise AthException("Channel not found.")

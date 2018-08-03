@@ -13,7 +13,7 @@ class CWhoSystem(AthanorSystem):
         message.append(viewer.render.header('Characters Online', style=self.style))
         columns = (('Name', 0, 'l'), )
         table = viewer.render.table(columns, style=self.style)
-        for acc in self.retrieve_accounts(viewer, params):
+        for acc in self.retrieve_characters(viewer, params):
             table.add_row(*self.render_row_console(viewer, acc))
         message.append(table)
         message.append(viewer.render.footer(style=self.style))
@@ -23,11 +23,11 @@ class CWhoSystem(AthanorSystem):
         if not params:
             params = {}
         message = list()
-        for acc in self.retrieve_accounts(viewer, params):
+        for acc in self.retrieve_characters(viewer, params):
             message.append(self.render_row_gmcp(viewer, acc))
         return message
 
-    def retrieve_accounts(self, viewer, params):
+    def retrieve_characters(self, viewer, params):
         online = self.visible_characters(viewer)
         if params.get('sort','') == 'idle':
             online.sort(key=lambda c: c.ath.prop('idle_seconds', viewer))

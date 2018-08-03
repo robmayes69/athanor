@@ -1,5 +1,3 @@
-
-
 import datetime
 from evennia.utils.ansi import ANSIString
 import athanor
@@ -7,43 +5,36 @@ from athanor.classes.rooms import Room
 from athanor.channels.classes import AthanorChannel
 from athanor.utils.text import partial_match
 from athanor import AthException
-
 from athanor.funcs.valid import TZ_DICT
 
 
-class __SystemSetting(object):
-    key = None
-    formal_name = ''
-    description = ''
+class BaseSetting(object):
     expect_type = ''
     value_storage = None
-    default = None
     valid = athanor.VALIDATORS
 
     def __str__(self):
         return self.key
 
-    def __init__(self, handler, save_data):
-        self.handler = handler
-        self.base = handler.base
-        self.owner = handler.owner
+    def __init__(self, base, key, description, default, save_data=None):
+        self.base = base
+        self.key = key
+        self.default = default
+        self.description = description
         self.save_data = save_data
         self.loaded = False
 
-    def __getitem__(self, item):
-        return self.valid[item]
-
     def load(self):
-        if self.save_data and self.key in self.save_data:
+        if self.save_data is not None:
             try:
-                self.value_storage = self.valid_save(self.save_data[self.key])
+                self.value_storage = self.valid_save(self.save_data)
                 self.loaded = True
                 return True
             except:
                 pass # need some kind of error message here!
         return False
 
-    def save(self):
+    def export(self):
         return self.value_storage
 
     def valid_save(self, save_data):
@@ -52,8 +43,6 @@ class __SystemSetting(object):
     def clear(self, source):
         self.value_storage = None
         self.loaded = False
-        self.report_clear(source)
-        self.post_clear()
         return self
 
     @property
@@ -65,48 +54,24 @@ class __SystemSetting(object):
         else:
             return self.default
 
-    def validate(self, value, value_list, enactor):
-        return self.do_validate(value, value_list, enactor)
+    def validate(self, value, value_list, session):
+        return self.do_validate(value, value_list, session)
 
-    def do_validate(self, value, value_list, enactor):
+    def do_validate(self, value, value_list, session):
         return value
 
-    def set(self, value, value_list, source):
-        try:
-            final_value = self.validate(value, value_list, source)
-        except AthException as err:
-            source.error.append(unicode(err))
-            source.json('error', message=unicode(err))
-            return
+    def set(self, value, value_list, session):
+        final_value = self.validate(value, value_list, session)
         self.value_storage = final_value
-        self.report_change(source)
-        self.post_set()
-        return self
-
-    def report_change(self, source):
-        msg = "Your '%s' Setting was changed to: %s" % (self.key, self.display())
-        source.success.append(msg)
-        source.json('success', message='Setting Changed!', key=self.key, value=self.value, display=self.display())
-
-    def report_clear(self, source):
-        msg = "Your '%s' Setting was cleared! The default is: %s" % (self.key, self.display())
-        source.success.append(msg)
-        source.json('success', message='Setting Cleared to Default!', key=self.key, value=self.value, display=self.display())
 
     def display(self):
         return self.value
 
-    def post_set(self):
-        pass
 
-    def post_clear(self):
-        pass
-
-
-class WordSetting(__Setting):
+class WordSetting(BaseSetting):
     expect_type = 'Word'
 
-    def do_validate(self, value, value_list, enactor):
+    def do_validate(self, value, value_list, session):
         if not str(value):
             raise AthException("Must enter some text!")
         return str(value)
@@ -118,18 +83,33 @@ class WordSetting(__Setting):
         return got_data
 
 
-class BoolSetting(__Setting):
+class EmailSetting(BaseSetting):
+    expect_type = 'Email'
+
+    def do_validate(self, value, value_list, session):
+        if not str(value):
+            raise AthException("Must enter some text!")
+        value = self.valid['email'](session, value)
+        return str(value)
+
+    def valid_save(self, save_data):
+        got_data = str(save_data)
+        if not got_data:
+            raise AthException("%s expected Word/Text data, got '%s'" % (self.key, save_data))
+        return got_data
+
+class BooleanSetting(BaseSetting):
     expect_type = 'Boolean'
 
-    def do_validate(self, value, value_list, enactor):
-        return self['boolean'](enactor, value)
+    def do_validate(self, value, value_list, session):
+        return self.valid['boolean'](session, value)
 
     def display(self):
         if self.value:
             return '1 - On/True'
         return '0 - Off/False'
 
-    def save(self):
+    def export(self):
         return self.value
 
     def valid_save(self, save_data):
@@ -138,10 +118,10 @@ class BoolSetting(__Setting):
         return save_data
 
 
-class ChannelListSetting(__Setting):
+class ChannelListSetting(BaseSetting):
     expect_type = 'Channels'
 
-    def do_validate(self, value, value_list, enactor):
+    def do_validate(self, value, value_list, session):
         if not len(value_list):
             return value_list
         found_list = list()
@@ -163,23 +143,27 @@ class ChannelListSetting(__Setting):
             pass # error message here
         chan_list = list()
         error_list = list()
-        for channel in save_data:
-            if isinstance(channel, AthanorChannel):
-                chan_list.append(channel)
+        for id in save_data:
+            found = AthanorChannel.objects.filter_family(id=id).first()
+            if found:
+                chan_list.append(id)
             else:
-                error_list.append(channel)
+                error_list.append(id)
         if error_list:
             pass # Error about how many channels didn't validate here!
         return chan_list
 
+    def export(self):
+        return [chan.id for chan in self.value_storage]
 
-class WordListSetting(__Setting):
+
+class WordListSetting(BaseSetting):
     expect_type = 'List'
 
     def display(self):
         return ', '.join(str(item) for item in self.value)
 
-    def do_validate(self, value, value_list, enactor):
+    def do_validate(self, value, value_list, session):
         for val in value_list:
             if not len(val):
                 raise AthException("One or more Values was empty!")
@@ -202,15 +186,15 @@ class WordListSetting(__Setting):
         return word_list
 
 
-class ColorSetting(__Setting):
+class ColorSetting(BaseSetting):
     expect_type = 'Color'
 
     @property
     def default(self):
         return athanor.STYLES_FALLBACK[self.key]
 
-    def do_validate(self, value, value_list, enactor):
-        return self['color'](enactor, value)
+    def do_validate(self, value, value_list, session):
+        return self.valid['color'](session, value)
 
     def display(self):
         return '%s - |%sthis|n' % (self.value, self.value)
@@ -221,13 +205,13 @@ class ColorSetting(__Setting):
         return save_data
 
 
-class TimeZoneSetting(__Setting):
+class TimeZoneSetting(BaseSetting):
     key = 'timezone'
     expect_type = 'TZ'
     description = 'Stores a Timezone'
 
-    def do_validate(self, value, value_list, enactor):
-        return self['timezone'](enactor, value)
+    def do_validate(self, value, value_list, session):
+        return self.valid['timezone'](session, value)
 
     @property
     def default(self):
@@ -238,15 +222,15 @@ class TimeZoneSetting(__Setting):
             raise AthException("%s expected Timezone Data, got '%s'" % (self.key, save_data))
         return TZ_DICT[save_data]
 
-    def save(self):
+    def export(self):
         return str(self.value_storage)
 
 
-class UnsignedIntegerSetting(__Setting):
+class UnsignedIntegerSetting(BaseSetting):
     expect_type = 'Number'
 
-    def do_validate(self, value, value_list, enactor):
-        return self['unsigned_integer'](enactor, value)
+    def do_validate(self, value, value_list, session):
+        return self.valid['unsigned_integer'](session, value)
 
     def valid_save(self, save_data):
         if isinstance(save_data, int) and save_data >= 0:
@@ -254,11 +238,11 @@ class UnsignedIntegerSetting(__Setting):
         # else, error here.
 
 
-class SignedIntegerSetting(__Setting):
+class SignedIntegerSetting(BaseSetting):
     expect_type = 'Number'
 
-    def do_validate(self, value, value_list, enactor):
-        return self['signed_integer'](enactor, value)
+    def do_validate(self, value, value_list, session):
+        return self.valid['signed_integer'](session, value)
 
     def valid_save(self, save_data):
         if isinstance(save_data, int):
@@ -266,17 +250,17 @@ class SignedIntegerSetting(__Setting):
         # else, error here.
 
 
-class PositiveIntegerSetting(__Setting):
+class PositiveIntegerSetting(BaseSetting):
     expect_type = 'Number'
 
-    def do_validate(self, value, value_list, enactor):
-        return self['positive_integer'](enactor, value)
+    def do_validate(self, value, value_list, session):
+        return self.valid['positive_integer'](session, value)
 
 
-class RoomSetting(__Setting):
+class RoomSetting(BaseSetting):
     expect_type = 'Room'
 
-    def do_validate(self, value, value_list, enactor):
+    def do_validate(self, value, value_list, session):
         if not value:
             raise AthException("%s requires a value!" % self)
         found = Room.objects.filter_family(id=value).first()
@@ -290,37 +274,37 @@ class RoomSetting(__Setting):
         # else, error here
 
 
-class DurationSetting(__Setting):
+class DurationSetting(BaseSetting):
     expect_type = 'Duration'
 
-    def do_validate(self, value, value_list, enactor):
-        return self['duration'](enactor, value)
+    def do_validate(self, value, value_list, session):
+        return self.valid['duration'](session, value)
 
     def valid_save(self, save_data):
         if isinstance(save_data, int):
             return datetime.timedelta(0, save_data, 0, 0, 0, 0, 0)
         # else, error here
 
-    def save(self):
+    def export(self):
         return self.value_storage.seconds
 
 
-class DateTimeSetting(__Setting):
+class DateTimeSetting(BaseSetting):
     expect_type = 'DateTime'
 
-    def do_validate(self, value, value_list, enactor):
-        return self['datetime'](enactor.account, value)
+    def do_validate(self, value, value_list, session):
+        return self.valid['datetime'](session.account, value)
 
     def valid_save(self, save_data):
         if isinstance(save_data, int):
             return datetime.datetime.utcfromtimestamp(save_data)
         # else, error here
 
-    def save(self):
+    def export(self):
         return int(self.value_storage.strftime('%s'))
 
 
 class FutureSetting(DateTimeSetting):
 
-    def do_validate(self, value, value_list, enactor):
-        return self['future'](enactor.account, value)
+    def do_validate(self, value, value_list, session):
+        return self.valid['future'](session.account, value)

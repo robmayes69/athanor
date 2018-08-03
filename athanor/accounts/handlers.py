@@ -8,13 +8,12 @@ from athanor.utils.time import utcnow
 from athanor.utils.utils import import_property
 from athanor.models import AccountCore, AccountCharacter
 
-from athanor.base.handlers import AccountHandler
+from athanor.base.handlers import AccountBaseHandler
 from athanor import AthException
 
 
-class AccountCoreHandler(AccountHandler):
+class AccountCoreHandler(AccountBaseHandler):
     key = 'core'
-    style = 'fallback'
     category = 'athanor'
     system_name = 'SYSTEM'
     cmdsets = ('athanor.accounts.cmdsets.OOCCmdSet', )
@@ -22,8 +21,6 @@ class AccountCoreHandler(AccountHandler):
 
     def at_init(self):
         super(AccountCoreHandler, self).at_init()
-        if self.owner.sessions.count():
-            self.base.systems['core'].register_account(self.owner)
 
     def at_account_creation(self):
         self.model.last_login = utcnow()
@@ -169,7 +166,7 @@ class AccountCoreHandler(AccountHandler):
         return -1
 
 
-class AccountCharacterHandler(AccountHandler):
+class AccountCharacterHandler(AccountBaseHandler):
     key = 'character'
     style = 'account'
     system_name = 'ACCOUNT'
@@ -288,7 +285,7 @@ class AccountCharacterHandler(AccountHandler):
         return message
 
 
-class AccountMenuHandler(AccountHandler):
+class AccountMenuHandler(AccountBaseHandler):
     key = 'menu'
     style = 'account'
     system_name = 'SYSTEM'

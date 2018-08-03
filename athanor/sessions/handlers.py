@@ -3,6 +3,7 @@ from athanor.base.handlers import SessionHandler
 from athanor.utils.create import account as create_account, character as create_character
 from athanor import AthException
 
+
 class SessionCoreHandler(SessionHandler):
     key = 'core'
     style = 'fallback'
@@ -35,7 +36,6 @@ class SessionCoreHandler(SessionHandler):
         if not hasattr(self.owner, 'account'):
             return False
         return self.owner.account.ath['core'].is_developer()
-
 
     def op_create_account(self, response):
         """

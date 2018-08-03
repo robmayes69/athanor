@@ -1,26 +1,38 @@
 import math
 from evennia.utils.ansi import ANSIString
 from evennia.utils import evtable
-from athanor.base.renderers import __BaseRenderer
+import athanor
+from athanor.base.renderers import BaseRenderer
 
 
-class SessionRenderer(__BaseRenderer):
+class SessionRenderer(BaseRenderer):
     mode = 'session'
 
     def width(self):
         return self.owner.protocol_flags['SCREENWIDTH'][0]
 
-    def __getitem__(self, item):
-        if self.owner.puppet:
-            return self.owner.puppet.render[item]
-        if self.owner.account:
-            return self.owner.account.render[item]
-        return self.fallback
+    def load_model(self):
+        pass
 
-    def table(self, columns, border='cols', header=True, style='fallback', width=None, **kwargs):
-        colors = self[style]
-        border_color = colors['border_color']
-        column_color = colors['table_column_header_text_color']
+    def load_settings(self):
+        for k, v in athanor.STYLES_DATA.iteritems():
+            try:
+                new_setting = athanor.SETTINGS[v[0]](self, k, v[1], v[2], None)
+                self.settings[new_setting.key] = new_setting
+            except Exception:
+                pass
+
+    def get_settings(self):
+        if hasattr(self.owner, 'puppet') and hasattr(self.owner.puppet, 'render'):
+            return self.owner.puppet.render.settings
+        if hasattr(self.owner, 'account') and hasattr(self.owner.account, 'render'):
+            return self.owner.account.render.settings
+        return self.settings
+
+    def table(self, columns, border='cols', header=True, width=None, **kwargs):
+        colors = self.get_settings()
+        border_color = colors['border_color'].value
+        column_color = colors['table_column_header_text_color'].value
 
         colornames = ['|%s%s|n' % (column_color, col[0]) for col in columns]
         header_line_char = ANSIString('|%s-|n' % border_color)
@@ -46,13 +58,12 @@ class SessionRenderer(__BaseRenderer):
                 table.reformat_column(count, align=column[2])
         return table
 
-    def header(self, header_text=None, fill_character=None, edge_character=None, mode='header', color_header=True,
-               style='fallback'):
-        styles = self[style]
+    def header(self, header_text=None, fill_character=None, edge_character=None, mode='header', color_header=True):
+        styles = self.get_settings()
         colors = {}
-        colors['border'] = styles['%s_fill_color' % mode]
-        colors['headertext'] = styles['%s_text_color' % mode]
-        colors['headerstar'] = styles['%s_star_color' % mode]
+        colors['border'] = styles['%s_fill_color' % mode].value
+        colors['headertext'] = styles['%s_text_color' % mode].value
+        colors['headerstar'] = styles['%s_star_color' % mode].value
 
         width = self.width()
         if edge_character:

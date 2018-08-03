@@ -1,7 +1,7 @@
 
 import re
 from evennia.utils.ansi import ANSIString, ANSI_PARSER
-from athanor import AthException
+from athanor import AthException, SYSTEMS
 
 def tabular_table(word_list=None, field_width=26, line_length=78, output_separator=" ", truncate_elements=True):
     """
@@ -98,6 +98,7 @@ def mxp(text="", command="", hints=""):
     else:
         return ANSIString("|lc%s|lt%s|le" % (command, command))
 
+
 class Speech(object):
     """
     This class is similar to the Evennia Msg in that it represents an entity speaking.
@@ -110,43 +111,28 @@ class Speech(object):
     If input = 'blah.', output = 'Character says, "Blah,"'
 
     """
+    speech_dict = {':': 1, ';': 2, '|': 3, '"': 0, "'": 0}
 
-    def __init__(self, speaker, speech_text, alternate_name=None, title=None, mode='ooc', char_dict=None,
-                 name_dict=None, targets=None):
-        self.char_dict = char_dict
-        self.name_dict = name_dict
-        self.upper_dict = dict()
-        self.targets = ['^^^%s:%s^^^' % (char.id, char.key) for char in targets]
-        for key in name_dict.keys():
-            self.upper_dict[name_dict[key].upper()] = key
-
-        def markup_names(match):
-            found = match.group('found')
-            return '^^^%s:%s^^^' % (self.upper_dict[found.upper()], found)
-
+    def __init__(self, speaker=None, speech_text=None, alternate_name=None, title=None, mode='ooc', system_name=None, targets=None, rendered_text=None):
+        self.name_dict = SYSTEMS['character'].name_map
+        self.targets = ['$charactername(%s,%s)' % (char.id, char.key) for char in targets]
+        self.mode = mode
+        self.title = title
         self.speaker = speaker
+
         if alternate_name:
+            self.alternate_name = alternate_name
             self.display_name = alternate_name
             self.markup_name = alternate_name
         else:
             self.display_name = str(speaker)
-            self.markup_name = '^^^%s:%s^^^' % (speaker.id, speaker.key)
-        self.title = title
-        self.mode = mode
+            self.alternate_name = False
+            self.markup_name = '$charactername(%s,%s)' % (speaker.id, speaker.key)
 
         speech_text = ANSIString(speech_text)
-
-        if speech_text[:1] == ':':
-            special_format = 1
-            speech_string = speech_text[1:]
-        elif speech_text[:1] == ';':
-            special_format = 2
-            speech_string = speech_text[1:]
-        elif speech_text[:1] == '|':
-            special_format = 3
-            speech_string = speech_text[1:]
-        elif speech_text[:1] in ['"', "'"]:
-            special_format = 0
+        speech_first = speech_text[:1]
+        if speech_first in self.speech_dict:
+            special_format = self.speech_dict[speech_first]
             speech_string = speech_text[1:]
         else:
             special_format = 0
@@ -155,9 +141,16 @@ class Speech(object):
         self.special_format = special_format
         self.speech_string = ANSIString(speech_string)
 
-        escape_names = [re.escape(name) for name in name_dict.values()]
-        all_names = '|'.join(escape_names)
-        self.markup_string = re.sub(r"(?i)\b(?P<found>%s)\b" % all_names, markup_names, self.speech_string)
+        if rendered_text:
+            self.markup_string = rendered_text
+        else:
+            escape_names = [re.escape(name) for name in self.name_dict.keys()]
+            all_names = '|'.join(escape_names)
+            self.markup_string = re.sub(r"(?i)\b(?P<found>%s)\b" % all_names, self.markup_names, self.speech_string)
+
+    def markup_names(self, match):
+        found = match.group('found')
+        return '$charactername(%s,%s)' % (self.name_dict[found.upper()], found)
 
     def __str__(self):
         str(unicode(self))
@@ -168,15 +161,15 @@ class Speech(object):
     def monitor_display(self, viewer=None):
         if not viewer:
             return self.demarkup()
-        if not self.codename:
+        if not self.alternate_name:
             return self.render(viewer)
         return_string = None
         if self.special_format == 0:
-            return_string = '(%s)%s says, "%s"' % (self.markup_name, self.codename, self.markup_string)
+            return_string = '(%s)%s says, "%s"' % (self.markup_name, self.alternate_name, self.markup_string)
         elif self.special_format == 1:
-            return_string = '(%s)%s %s' % (self.markup_name, self.codename, self.markup_string)
+            return_string = '(%s)%s %s' % (self.markup_name, self.alternate_name, self.markup_string)
         elif self.special_format == 2:
-            return_string = '(%s)%s%s' % (self.markup_name, self.codename, self.markup_string)
+            return_string = '(%s)%s%s' % (self.markup_name, self.alternate_name, self.markup_string)
         elif self.special_format == 3:
             return_string = '(%s)%s' % (self.markup_name, self.markup_string)
         if self.title:
@@ -223,21 +216,9 @@ class Speech(object):
         speech = 'speech_%s' % self.mode
         quote_color = viewer.player_config[quotes]
         speech_color = viewer.player_config[speech]
+
         def color_speech(found, viewer=viewer):
             return '|%s"|n|%s%s|n|%s"|n' % (quote_color, speech_color, found.group('found'), quote_color)
 
-        def color_names(found, viewer=viewer):
-            try:
-                id = int(found.group('id'))
-            except:
-                return found.group('name')
-            if id in self.name_dict:
-                color = viewer.player.colors.characters.get(self.char_dict[id], None)
-                if not color:
-                    return found.group('name')
-                return '|n|%s%s|n' % (color, found.group('name'))
-            return found.group('name')
-
         colorized_string = re.sub(r'(?s)"(?P<found>.*?)"', color_speech, message)
-        names_string = re.sub(r'\^\^\^(?P<id>\d+)\:(?P<name>[^^]+)\^\^\^', color_names, colorized_string)
-        return names_string
+        return colorized_string

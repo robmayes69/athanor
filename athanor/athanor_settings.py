@@ -46,6 +46,19 @@ ROOT_URLCONF = 'athanor.urls'
 
 CMD_IGNORE_PREFIXES = ""
 
+DEFAULT_CHANNELS = [
+    # public channel
+    {"key": "Public",
+     "aliases": "",
+     "desc": "Public discussion",
+     "locks": "control:perm(Admin);listen:all();send:all()"},
+    # connection/mud info
+    {"key": "**CODE ALERTS**",
+     "aliases": "",
+     "desc": "Log of system events and alerts.",
+     "locks": "control:perm(Developer);listen:perm(Admin);send:false()"}
+]
+
 # Settings for ATHANOR in General!
 
 # This determines whether non-admin Accounts can freely create characters for their own Account.

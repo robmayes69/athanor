@@ -55,15 +55,3 @@ as argument.
 #     """
 #     pass
 
-from athanor.base.handlers import AthanorRequest
-
-
-def athanor(source, *args, **kwargs):
-    req = AthanorRequest(session=source, handler=args[1], operation=args[2], parameters=kwargs)
-    manager = args[0]
-    if manager == 'session':
-        source.ath.accept_request(req)
-    if manager == 'account' and source.logged_in and source.account:
-        source.account.ath.accept_request(req)
-    if manager == 'character' and hasattr(source, 'puppet'):
-        source.puppet.ath.accept_request(req)

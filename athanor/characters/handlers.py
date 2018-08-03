@@ -1,12 +1,12 @@
 import time, datetime
 from athanor.utils.text import mxp
 from athanor.utils.time import utcnow
-from athanor.base.handlers import CharacterHandler
+from athanor.base.handlers import CharacterBaseHandler
 from athanor.models import CharacterCore
 from athanor.utils.utils import import_property
 
 
-class CharacterCoreHandler(CharacterHandler):
+class CharacterCoreHandler(CharacterBaseHandler):
     key = 'core'
     style = 'fallback'
     system_name = 'SYSTEM'
@@ -181,7 +181,7 @@ class CharacterCoreHandler(CharacterHandler):
         else:
             self.console_msg("You are no longer Dark!")
 
-class CharacterCharacterHandler(CharacterHandler):
+class CharacterCharacterHandler(CharacterBaseHandler):
     key = 'character'
     style = 'account'
     system_name = 'ACCOUNT'
@@ -191,11 +191,9 @@ class CharacterCharacterHandler(CharacterHandler):
         return 1
 
 
-class CharacterMenuHandler(CharacterHandler):
+class CharacterMenuHandler(CharacterBaseHandler):
     key = 'menu'
-    style = 'account'
     system_name = 'SYSTEM'
-    category = 'athanor'
 
     def load(self):
         self.menu = None
@@ -241,3 +239,26 @@ class CharacterMenuHandler(CharacterHandler):
         """
         self.leave()
         self.launch(path)
+
+
+class CharacterChannelHandler(CharacterBaseHandler):
+    key = 'channel'
+    system_name = 'CHANNEL'
+
+    def send(self, channel, input):
+        pass
+
+    def receive(self, channel, message):
+        pass
+
+    def join(self, channel):
+        pass
+
+    def leave(self, channel):
+        pass
+
+    def gag(self, channel):
+        pass
+
+    def ungag(self, channel):
+        pass

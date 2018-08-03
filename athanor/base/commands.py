@@ -6,6 +6,7 @@ Commands describe the input the player can do to the game.
 """
 
 from evennia import default_cmds
+from evennia.utils.ansi import ANSIString
 import athanor
 from athanor.utils.text import partial_match, sanitize_string
 from athanor import AthException
@@ -103,3 +104,16 @@ class AthCommand(default_cmds.MuxCommand):
 
     def msg_lines(self, lines):
         self.msg('\n'.join([unicode(line) for line in lines]))
+
+    def alert_msg(self, message, error=False, prefix=True, target=None):
+        if not prefix:
+            self.owner.msg(unicode(ANSIString(message)))
+            return
+        style = self.owner.render.settings
+        if error:
+            message = '|rERROR:|n %s' % message
+        alert = '|%s-=<|n|%s%s|n|%s>=-|n ' % (style['msg_edge_color'],
+                                              style['msg_name_color'],
+                                              self.system_name, style['msg_edge_color'])
+        send_string = alert + message
+        self.msg(unicode(ANSIString(send_string)), to_obj=target)

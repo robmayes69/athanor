@@ -120,68 +120,38 @@ RENDERERS = {
     'account': 'athanor.accounts.renderers.AccountRenderer'
 }
 
-# Styles are as to Renderers what Handlers are to the Manager. They are setting collections for handling appearances.
-# scripts do not have styles.
-STYLES_ACCOUNT = {
-    'login': 'athanor.accounts.styles.AccountLoginStyle',
-}
-
-STYLES_CHARACTER = {
-
-}
-
-STYLES_SESSION = {
-
-}
-
-#seriousyl? Nah, probably not. But just in case.
-STYLES_SCRIPT = {
-
-}
-
-STYLES_DICT = {
-    'session': list(),
-    'character': list(),
-    'account': list(),
-    'script': list(),
-}
 
 # If a color or appearance query is not found in a Style, it will fallback/default to these values.
 # Update this dictionary in a further module to change them.
-STYLES_FALLBACK = {
-    'header_fill_color': 'M',
-    'header_star_color': 'm',
-    'subheader_fill_color': 'M',
-    'subheader_star_color': 'w',
-    'separator_fill_color': 'M',
-    'separator_star_color': 'w',
-    'footer_fill_color': 'M',
-    'footer_star_color': 'w',
-    'header_text_color': 'w',
-    'subheader_text_color': 'w',
-    'separator_text_color': 'w',
-    'footer_text_color': 'w',
-    'border_color': 'M',
-    'msg_edge_color': 'M',
-    'msg_name_color': 'w',
-    'ooc_edge_color': 'R',
-    'ooc_prefix_color': 'w',
-    'exit_name_color': 'n',
-    'exit_alias_color': 'n',
-    'table_column_header_text_color': 'G',
-    'dialogue_text_color': '',
-    'dialogue_quotes_color': '',
-    'my_name_color': '',
-    'speaker_name_color': '',
-    'other_name_color': '',
-    'header_fill': '=',
-    'subheader_fill': '=',
-    'separator_fill': '-',
-    'footer_fill': '=',
-    'help_file_bullet': 'g',
-    'help_file_header': 'c',
-    'help_file_emphasized': 'w',
-    'help_file_name': 'w',
+STYLES_DATA = {
+    'header_fill_color': ('color', 'Color used for Header fill.', 'M'),
+    'header_star_color': ('color', 'Color used for * inside Header lines.', 'm'),
+    'subheader_fill_color': ('color', 'Color used for Sub-Header fill.', 'M'),
+    'subheader_star_color': ('color', 'Color used for * inside Sub-Header Lines.', 'w'),
+    'separator_fill_color': ('color', 'Color used Separator fill.', 'M'),
+    'separator_star_color': ('color', 'Color used for * inside Separator Lines.', 'w'),
+    'footer_fill_color': ('color', 'Color used for Footer Lines.', 'M'),
+    'footer_star_color': ('color', 'Color used for * inside Footer Lines.', 'w'),
+    'header_text_color': ('color', 'Color used for text inside Header lines.', 'w'),
+    'subheader_text_color': ('color', 'Color used for text inside Sub-Header Lines.', 'w'),
+    'separator_text_color': ('color', 'Color used for text inside Separator Lines.', 'w'),
+    'footer_text_color': ('color', 'Color used for text inside Footer Lines.', 'w'),
+    'border_color': ('color', 'Color used for miscellaneous borders like tables.', 'M'),
+    'msg_edge_color': ('color', 'Color used for the -=< >=- wrapper around system messages.', 'M'),
+    'msg_name_color': ('color', 'Color used for the NAME within system message prefixes.', 'w'),
+    'ooc_edge_color': ('color', 'Color used for the edge of OOC message prefixes.', 'R'),
+    'ooc_prefix_color': ('color', 'Color used for the OOC within OOC message prefixes.', 'w'),
+    'exit_name_color': ('color', 'Color to display Exit names in.', 'n'),
+    'exit_alias_color': ('color', 'Color to display Exit Aliases in.', 'n'),
+    'table_column_header_text_color': ('color', 'Color used for table column header text.', 'G'),
+    'header_fill': ('word', 'Character used to fill Header lines.', '='),
+    'subheader_fill': ('word', 'Character used to fill Sub-Header Lines.', '='),
+    'separator_fill': ('word', 'Character used to fill Separator Lines.', '-'),
+    'footer_fill': ('word', 'Character used to fill Footer Lines.', '='),
+    'help_file_bullet': ('color', '', 'g'),
+    'help_file_header': ('color', '', 'c'),
+    'help_file_emphasized': ('color', '', 'w'),
+    'help_file_name': ('color', '', 'w'),
 }
 
 # Validators are used for checking user input and returning something the system use, or raising an error if it can't.
@@ -202,11 +172,31 @@ VALIDATORS = {
     'character_name': 'athanor.funcs.valid.valid_character_name',
     'character_id': 'athanor.funcs.valid.valid_character_id',
     'account_id': 'athanor.funcs.valid.valid_account_id',
+    'account': 'athanor.funcs.valid.valid_account',
 }
 
 
 SYSTEMS = {
     'core': 'athanor.systems.core.CoreSystem',
+    'account': 'athanor.accounts.systems.AccountSystem',
+}
+
+
+SETTINGS = {
+    'word': 'athanor.base.settings.WordSetting',
+    'boolean': 'athanor.base.settings.BooleanSetting',
+    'channels': 'athanor.base.settings.ChannelListSetting',
+    'wordlist': 'athanor.base.settings.WordListSetting',
+    'color': 'athanor.base.settings.ColorSetting',
+    'timezone': 'athanor.base.settings.TimeZoneSetting',
+    'unsigned_integer': 'athanor.base.settings.UnsignedIntegerSetting',
+    'signed_integer': 'athanor.base.settings.SignedIntegerSetting',
+    'positive_integer': 'athanor.base.settings.PositiveInteger',
+    'room': 'athanor.base.settings.RoomSetting',
+    'duration': 'athanor.base.settings.DurationSetting',
+    'datetime': 'athanor.base.settings.DateTimeSetting',
+    'future': 'athanor.base.settings.FutureSetting',
+    'email': 'athanor.base.settings.EmailSetting',
 }
 
 # A dictionary of command families. CmdSets can be pointed at one of these keys to retrieve the prefix all of their
@@ -256,7 +246,6 @@ START_STOP = []
 INITIAL_SETUP = []
 
 # Core setup stuff below. Don't touch this.
-
 def setup(module_list):
     import importlib
     global MODULES, MODULES_ORDER, START_STOP, INITIAL_SETUP
