@@ -1,4 +1,3 @@
-import json
 from datetime import timedelta
 from django.db import models
 from django.core.exceptions import ValidationError
@@ -6,38 +5,12 @@ from evennia.locks.lockhandler import LockHandler
 from evennia.utils.ansi import ANSIString
 from evennia.utils import lazy_property
 from timezone_field import TimeZoneField
-from athanor.utils.text import Speech
+
 
 def validate_color(value):
     if not len(ANSIString('|%s' % value)) == 0:
         raise ValidationError("'%s' is not a valid color." % value)
 
-
-class AbstractSettingModel(models.Model):
-    settings = models.TextField(null=True, blank=True)
-
-    class Meta:
-        abstract = True
-
-    @property
-    def value(self):
-        try:
-            return json.loads(self.settings)
-        except:
-            return dict()
-
-    @value.setter
-    def value(self, entry):
-        if not entry:
-            self.settings = None
-            self.save(update_fields=['settings', ])
-            return
-        try:
-            entry = json.dumps(entry)
-            self.settings = entry
-            self.save(update_fields=['settings', ])
-        except:
-            pass
 
 class AccountCore(models.Model):
     account = models.OneToOneField('accounts.AccountDB', related_name='+')
@@ -98,34 +71,6 @@ class WithLocks(models.Model):
 
     def save_locks(self):
         self.save(update_fields=['lock_storage'])
-
-
-class SystemSettingModel(AbstractSettingModel):
-    key = models.CharField(blank=False, null=False, db_index=True, unique=True)
-
-
-class CharacterSettingModel(AbstractSettingModel):
-    character = models.ForeignKey('objects.ObjectDB', related_name='+')
-    key = models.CharField(blank=False, null=False, db_index=True)
-
-    class Meta:
-        unique_together = (('character', 'key',),)
-
-
-class CharacterRenderModel(AbstractSettingModel):
-    character = models.OneToOneField('objects.ObjectDB', related_name='+')
-
-
-class AccountSettingModel(AbstractSettingModel):
-    account = models.ForeignKey('accounts.AccountDB', related_name='+')
-    key = models.CharField(blank=False, null=False, db_index=True)
-
-    class Meta:
-        unique_together = (('account', 'key',),)
-
-
-class AccountRenderModel(AbstractSettingModel):
-    account = models.OneToOneField('accounts.AccountDB', related_name='+')
 
 
 class MessageMode(models.Model):

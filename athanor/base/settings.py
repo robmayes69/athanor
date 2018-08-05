@@ -19,7 +19,7 @@ class BaseSetting(object):
     def __init__(self, base, key, description, default, save_data=None):
         self.base = base
         self.key = key
-        self.default = default
+        self.default_value = default
         self.description = description
         self.save_data = save_data
         self.loaded = False
@@ -44,6 +44,10 @@ class BaseSetting(object):
         self.value_storage = None
         self.loaded = False
         return self
+
+    @property
+    def default(self):
+        return self.default_value
 
     @property
     def value(self):
@@ -98,6 +102,7 @@ class EmailSetting(BaseSetting):
             raise AthException("%s expected Word/Text data, got '%s'" % (self.key, save_data))
         return got_data
 
+
 class BooleanSetting(BaseSetting):
     expect_type = 'Boolean'
 
@@ -143,18 +148,10 @@ class ChannelListSetting(BaseSetting):
             pass # error message here
         chan_list = list()
         error_list = list()
-        for id in save_data:
-            found = AthanorChannel.objects.filter_family(id=id).first()
-            if found:
-                chan_list.append(id)
-            else:
-                error_list.append(id)
-        if error_list:
-            pass # Error about how many channels didn't validate here!
-        return chan_list
+        return [chan for chan in self.value_storage if chan]
 
     def export(self):
-        return [chan.id for chan in self.value_storage]
+        return [chan for chan in self.value_storage if chan]
 
 
 class WordListSetting(BaseSetting):
@@ -215,7 +212,7 @@ class TimeZoneSetting(BaseSetting):
 
     @property
     def default(self):
-        return TZ_DICT['UTC']
+        return TZ_DICT[self.default_value]
 
     def valid_save(self, save_data):
         if save_data not in TZ_DICT:

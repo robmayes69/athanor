@@ -1,13 +1,9 @@
-
-
-import time, evennia, datetime
+import time, evennia
 from django.conf import settings
 from evennia import utils
 from evennia.utils.ansi import ANSIString
 from athanor.utils.time import utcnow
 from athanor.utils.utils import import_property
-from athanor.models import AccountCore, AccountCharacter
-
 from athanor.base.handlers import AccountBaseHandler
 from athanor import AthException
 
@@ -15,26 +11,26 @@ from athanor import AthException
 class AccountCoreHandler(AccountBaseHandler):
     key = 'core'
     category = 'athanor'
+    load_order = -1000
     system_name = 'SYSTEM'
     cmdsets = ('athanor.accounts.cmdsets.OOCCmdSet', )
-    django_model = AccountCore
+    settings_data = (
+        ('timezone', "Your choice of Timezone", 'timezone', 'UTC'),
+    )
 
     def at_init(self):
         super(AccountCoreHandler, self).at_init()
 
     def at_account_creation(self):
-        self.model.last_login = utcnow()
-        self.model.last_logout = utcnow()
-        self.model.save(update_fields=['last_logout', 'last_login'])
+        self.set_db('last_login', utcnow())
+        self.set_db('last_logout', utcnow())
 
     def at_post_login(self, session, **kwargs):
-        self.model.last_login = utcnow()
-        self.model.save(update_fields=['last_login'])
+        self.set_db('last_login', utcnow())
         self.base.systems['core'].register_account(self.owner)
 
     def at_true_logout(self, account, session, **kwargs):
-        self.model.last_logout = utcnow()
-        self.model.save(update_fields=['last_logout'])
+        self.set_db('last_logout', utcnow())
         self.base.systems['core'].remove_account(self.owner)
 
     def is_builder(self):
@@ -58,20 +54,19 @@ class AccountCoreHandler(AccountBaseHandler):
         return 'Mortal'
 
     def change_password(self, enactor, old=None, new=None):
-        if enactor.player == self.owner:
-            if not self.owner.check_password(old):
-                raise AthException("The entered old-password was incorrect.")
+        if (enactor.account == self.owner) and not self.owner.check_password(old):
+            raise AthException("The entered old-password was incorrect.")
         if not new:
-            raise AthException("No new password entered!")
+            raise AthException("No new password entered! Passwords cannot be blank.")
         self.owner.set_password(new)
         self.owner.save()
-        self.console_msg("Your password has been changed.")
+        #self.console_msg("Your password has been changed.")
 
     def change_email(self, enactor, new_email):
         fixed_email = evennia.AccountDB.objects.normalize_email(new_email)
         self.owner.email = fixed_email
         self.owner.save()
-        self.console_msg("Your Account Email was changed to: %s" % fixed_email)
+        #self.console_msg("Your Account Email was changed to: %s" % fixed_email)
 
     def display_time(self, date=None, format=None):
         """
@@ -91,65 +86,69 @@ class AccountCoreHandler(AccountBaseHandler):
 
     @property
     def timezone(self):
-        return self.model.timezone
-
-    @timezone.setter
-    def timezone(self, value):
-        self.model.timezone = value
-        self.model.save(update_fields=['timezone',])
+        return self['timezone']
 
     @property
     def shelved(self):
-        return self.model.shelved
+        return bool(self.get_db('shelved'))
 
     @shelved.setter
     def shelved(self, value):
-        self.model.shelved = value
-        self.model.save(update_fields=['shelved', ])
+        self.set_db('shelved', value)
 
     @property
     def disabled(self):
-        return self.model.disabled
+        return bool(self.get_db('disabled'))
 
     @disabled.setter
     def disabled(self, value):
-        self.model.disabled = value
-        self.model.save(update_fields=['disabled', ])
+        self.set_db('disabled', value)
 
     @property
     def banned(self):
-        data = self.model.banned
-        if data > utcnow():
+        data = self.get_db('banned')
+        if data and data > utcnow():
             return data
         return False
 
     @banned.setter
     def banned(self, value):
         if not value:
-            self.model.banned = None
+            self.set_db('banned', False)
         else:
-            self.model.banned = value
-        self.model.save(update_fields=['banned', ])
+            self.set_db('banned', value)
 
     @property
     def playtime(self):
-        return self.model.playtime
+        return self.get_db('playtime', 0)
 
     def update_playtime(self, seconds):
-        self.model.playtime += datetime.timedelta(seconds)
-        self.model.save(update_fields=['playtime'])
+        self.set_db('playtime', self.playtime + seconds)
+        all_chars = self.base['character'].all()
+        for char in [sess.puppet for sess in self.owner.sessions.all() if sess.puppet]:
+            char.ath['core'].update_playtime(seconds)
+            self.update_playtime_character(char, seconds)
+
+    @property
+    def playtime_characters(self):
+        return self.get_db('playtime_characters', dict())
+
+    def update_playtime_character(self, character, seconds):
+        data = self.playtime_characters
+        data[character] = data.get(character, 0) + seconds
+        self.set_db('playtime_characters', data)
 
     @property
     def last_played(self):
-        return max(self.model.last_login, self.model.last_logout)
+        return max(self.last_login, self.last_logout)
 
     @property
     def last_login(self):
-        return self.model.last_login
+        return self.get_db('last_login')
 
     @property
     def last_logout(self):
-        return self.model.last_logout
+        return self.get_db('last_logout')
 
     @property
     def connection_time(self):
@@ -169,22 +168,25 @@ class AccountCoreHandler(AccountBaseHandler):
 class AccountCharacterHandler(AccountBaseHandler):
     key = 'character'
     style = 'account'
+    load_order = -999
     system_name = 'ACCOUNT'
-    django_model = AccountCharacter
 
     def at_post_login(self, session, **kwargs):
         session.msg(self.owner.at_look(session=session, target=self.owner))
 
     def all(self):
-        return self.model.characters.all().order_by('db_key')
+        return self.get_db('characters', [])
 
     def add(self, character):
-        self.model.characters.add(character)
-        character.ath['character'].account = self.owner
+        characters = self.all()
+        characters.append(character)
+        character.ath['core'].account = self.owner
+        self.set_db('characters', [char for char in characters if char])
 
     def remove(self, character):
-        self.model.characters.remove(character)
-        character.ath['character'].account = None
+        characters = self.all()
+        characters.remove(character)
+        self.set_db('characters', [char for char in characters if char])
 
     @property
     def slot_cost(self):
@@ -199,12 +201,11 @@ class AccountCharacterHandler(AccountBaseHandler):
 
     @property
     def extra_character_slots(self):
-        return self.model.extra_character_slots
+        return self.get_db('extra_slots', 0)
 
     @extra_character_slots.setter
     def extra_character_slots(self, value):
-        self.model.extra_character_slots = value
-        self.model.save(update_fields=['extra_character_slots', ])
+        self.set_db('extra_slots', value)
 
     @property
     def available_character_slots(self):

@@ -14,12 +14,11 @@ class AccountSystem(AthanorSystem):
     ('email_self', "Can users change their own email addresses?", 'boolean', True)
     )
 
-    def __init__(self):
-        super(AccountSystem, self).__init__()
-        results = Account.objects.filter_family().values_list('id', 'db_key', 'db_email')
-        self.name_map = {q[1].upper(): q[0] for q in results}
-        self.email_map = {q[2].upper(): q[0] for q in results}
-        self.id_map = {q[0]: q[1] for q in results}
+    def load(self):
+        results = Account.objects.filter_family().values_list('id', 'username', 'email')
+        self.ndb.name_map = {q[1].upper(): q[0] for q in results}
+        self.ndb.email_map = {q[2].upper(): q[0] for q in results}
+        self.ndb.id_map = {q[0]: q[1] for q in results}
 
     def create(self, session, name, password, email=None, method=None):
         name = self.valid['account_name'](session, name)

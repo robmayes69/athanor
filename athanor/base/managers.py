@@ -27,13 +27,6 @@ class __BaseManager(object):
         self.owner = owner
         self.attributes = owner.attributes
 
-        # Make validators, systems, and properties available to TypeManagers!
-        self.valid = athanor.VALIDATORS
-
-        self.systems = athanor.SYSTEMS
-
-        self.properties = athanor.PROPERTIES_DICT[self.mode]
-
         # Load all handlers.
         handlers = athanor.HANDLERS_SORTED[self.mode]
         self.ordered_handlers = list()
@@ -45,6 +38,22 @@ class __BaseManager(object):
 
         # Call an extensible Load function for simplicity if need be.
         self.load()
+
+    @property
+    def valid(self):
+        return athanor.VALIDATORS
+
+    @property
+    def systems(self):
+        return athanor.SYSTEMS
+
+    @property
+    def properties(self):
+        return athanor.PROPERTIES_DICT[self.mode]
+
+    @property
+    def settings(self):
+        return athanor.SETTINGS
 
     def load(self):
         """
@@ -68,7 +77,6 @@ class __BaseManager(object):
 
     def accept_request(self, request):
         self.handlers[request.handler].accept_request(request)
-
 
     def prop(self, key, viewer, *args, **kwargs):
         """

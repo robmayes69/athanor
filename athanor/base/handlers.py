@@ -1,24 +1,35 @@
-from evennia.utils.ansi import ANSIString
-from athanor.base.systems import AthanorSystem
-from athanor.models import AccountSettingModel, CharacterSettingModel
+from athanor import AthException
+from athanor.utils.text import partial_match
 
-class BaseHandler(AthanorSystem):
+
+class BaseHandler(object):
+    key = 'base'
     cmdsets = ()
-    handler_model = None
+    load_order = 0
+    settings_data = tuple()
 
     def __init__(self, base):
         self.base = base
         self.owner = base.owner
-        super(BaseHandler, self).__init__()
-        self.load_model()
+        self.loaded_settings = False
+        self.settings = dict()
         self.load_cmdsets()
 
     def load_model(self):
         pass
 
-    def __getitem__(self, item):
-        return self.settings[item].value
+    def load_settings(self):
+        saved_data = dict(self.get_db('settings', dict()))
+        for setting_def in self.settings_data:
+            new_setting = self.base.settings[setting_def[2]](self, setting_def[0], setting_def[1], setting_def[3],
+                                                             saved_data.get(setting_def[0], None))
+            self.settings[new_setting.key] = new_setting
+        self.loaded_settings = True
 
+    def __getitem__(self, item):
+        if not self.loaded_settings:
+            self.load_settings()
+        return self.settings[item].value
 
     def load_cmdsets(self):
         for cmdset in self.cmdsets:
@@ -27,13 +38,32 @@ class BaseHandler(AthanorSystem):
     def load(self):
         pass
 
+    def set_db(self, name, value):
+        return self.owner.attributes.add(name, value, category=self.key)
+
+    def get_db(self, name, default=None):
+        return self.owner.attributes.get(name, category=self.key) or default
+
+    def save_settings(self):
+        save_data = dict()
+        for setting in self.settings.values():
+            data = setting.export()
+            if len(data):
+                save_data[setting.key] = data
+        self.set_db('settings', save_data)
+
+    def change_settings(self, session, key, value):
+        setting = partial_match(key, self.settings.values())
+        if not setting:
+            raise AthException("Setting '%s' not found!" % key)
+        old_value = setting.display()
+        setting.set(value, str(value).split(','), session)
+        self.save_settings()
+        return setting, old_value
+
 
 class CharacterBaseHandler(BaseHandler):
     mode = 'character'
-
-    def load_model(self):
-        if self.handler_model:
-            self.model, created = self.handler_model.objects.get_or_create(character=self.owner)
 
     def at_init(self):
         pass
@@ -55,10 +85,6 @@ class CharacterBaseHandler(BaseHandler):
 
 
 class AccountBaseHandler(BaseHandler):
-
-    def load_model(self):
-        if self.handler_model:
-            self.model, created = self.handler_model.objects.get_or_create(account=self.owner)
 
     def at_account_creation(self):
         pass

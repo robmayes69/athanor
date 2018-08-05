@@ -17,7 +17,7 @@ def at_server_start():
     try:
 
         dicts = ('MANAGERS', 'HANDLERS_ACCOUNT', 'HANDLERS_CHARACTER', 'HANDLERS_SESSION', 'RENDERERS',
-                 'STYLES_ACCOUNT', 'STYLES_CHARACTER', 'STYLES_SESSION', 'STYLES_FALLBACK', 'VALIDATORS', 'SETTINGS',
+                'VALIDATORS', 'SETTINGS',
                  'SYSTEMS', 'HELP_TREES', 'HELP_FILES', 'SHELP_FILES', 'PROPERTIES_ACCOUNT', 'PROPERTIES_CHARACTER',
                  'PROPERTIES_SESSION')
 
@@ -29,7 +29,7 @@ def at_server_start():
 
         # Now that all of the modules dictionary key-values are present, load objects and classes!
         for prop in dicts:
-            if prop in ('STYLES_FALLBACK', 'HELP_TREES', 'HELP_FILES', 'SHELP_FILES'):
+            if prop in ('HELP_TREES', 'HELP_FILES', 'SHELP_FILES'):
                 continue
             loading = getattr(athanor, prop)
             for k, v in loading.iteritems():
@@ -44,12 +44,6 @@ def at_server_start():
             props = getattr(athanor, d)
             athanor.PROPERTIES_DICT[k] = props
 
-        # We're just gonna blindly dump all of the Styles into the STYLES_DICT. No need to sort these.
-        for k, d in (('account', 'STYLES_ACCOUNT'), ('character', 'STYLES_CHARACTER'),
-                     ('session', 'STYLES_SESSION'), ('script', 'STYLES_SCRIPT')):
-            styles = getattr(athanor, d).values()
-            athanor.STYLES_DICT[k] = styles
-
         # Sort all of the Handlers into the appropriate dictionary so that managers load faster.
 
         for k, d in (('account', 'HANDLERS_ACCOUNT'), ('character', 'HANDLERS_CHARACTER'),
@@ -60,9 +54,14 @@ def at_server_start():
 
         # Next step: instantiate Systems from their Classes.
 
+        from evennia import create_script
         for system in sorted(athanor.SYSTEMS.values(), key=lambda s: s.load_order):
             key = system.key
-            athanor.SYSTEMS[key] = system()
+            found = system.objects.filter_family(db_key=key).first()
+            if found:
+                athanor.SYSTEMS[key] = found
+            else:
+                athanor.SYSTEMS[key] = create_script(key=key, interval=system.interval, persistent=True, typeclass=system)
 
         for help, data in athanor.HELP_TREES.iteritems():
             files = data[1].values()

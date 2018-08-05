@@ -1,6 +1,5 @@
 from django.conf import settings
 from evennia import create_object
-from athanor import AthException
 from athanor.base.systems import AthanorSystem
 
 
@@ -15,7 +14,7 @@ class CharacterSystem(AthanorSystem):
     def load(self):
         from athanor.characters.classes import Character
         results = Character.objects.filter_family().values_list('id', 'db_key')
-        self.name_map = {q[1].upper(): q[0] for q in results}
+        self.ndb.name_map = {q[1].upper(): q[0] for q in results}
 
     def create(self, session, account, name):
         account = self.valid['account'](session, account)
@@ -23,17 +22,17 @@ class CharacterSystem(AthanorSystem):
         typeclass = settings.BASE_CHARACTER_TYPECLASS
         new_char = create_object(typeclass=typeclass, key=name)
         account.ath['character'].add(new_char)
-        self.name_map[new_char.key.upper()] = new_char.id
+        self.ndb.name_map[new_char.key.upper()] = new_char.id
         return new_char
 
     def rename(self, session, character, new_name):
         character = self.valid['character'](session, character)
         new_name = self.valid['character_name'](session, character, new_name)
         old_name = character.key
-        if character.key.upper() in self.name_map:
-            del self.name_map[old_name.upper()]
+        if character.key.upper() in self.ndb.name_map:
+            del self.ndb.name_map[old_name.upper()]
         character.key = new_name
-        self.name_map[character.key.upper()] = character.id
+        self.ndb.name_map[character.key.upper()] = character.id
 
     def reassign(self, session, character, account):
         pass

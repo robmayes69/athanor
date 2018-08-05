@@ -1,10 +1,10 @@
 from django.conf import settings
-from athanor.base.handlers import SessionHandler
+from athanor.base.handlers import SessionBaseHandler
 from athanor.utils.create import account as create_account, character as create_character
 from athanor import AthException
 
 
-class SessionCoreHandler(SessionHandler):
+class SessionCoreHandler(SessionBaseHandler):
     key = 'core'
     style = 'fallback'
     system_name = 'SYSTEM'

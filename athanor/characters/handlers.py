@@ -1,8 +1,7 @@
-import time, datetime
+import time
 from athanor.utils.text import mxp
 from athanor.utils.time import utcnow
 from athanor.base.handlers import CharacterBaseHandler
-from athanor.models import CharacterCore
 from athanor.utils.utils import import_property
 
 
@@ -10,8 +9,8 @@ class CharacterCoreHandler(CharacterBaseHandler):
     key = 'core'
     style = 'fallback'
     system_name = 'SYSTEM'
+    load_order = -1000
     cmdsets = ('athanor.characters.cmdsets.CoreCharacterCmdSet', )
-    django_model = CharacterCore
 
     def at_init(self):
         super(CharacterCoreHandler).at_init()
@@ -20,31 +19,28 @@ class CharacterCoreHandler(CharacterBaseHandler):
 
     @property
     def last_login(self):
-        return self.model.last_login
+        return self.get_db('last_login')
 
     @property
     def last_logout(self):
-        return self.model.last_logout
+        return self.get_db('last_logout')
 
     def at_post_unpuppet(self, account, session, **kwargs):
         session.msg(account.at_look(target=account, session=session))
 
     def at_object_creation(self):
-        self.model.last_login = utcnow()
-        self.model.last_logout = utcnow()
-        self.model.save(update_fields=['last_login', 'last_logout'])
+        self.set_db('last_login', utcnow())
+        self.set_db('last_logout', utcnow())
 
     def at_post_puppet(self, **kwargs):
-        self.model.last_login = utcnow()
-        self.model.save(update_fields=['last_login'])
+        self.set_db('last_login', utcnow())
 
     def at_true_logout(self, account, session, **kwargs):
-        self.model.last_logout = utcnow()
-        self.model.save(update_fields=['last_logout'])
+        self.set_db('last_logout', utcnow())
 
     @property
     def last_played(self):
-        return max(self.model.last_login, self.model.last_logout)
+        return max(self.last_login, self.last_logout)
 
     def display_time(self, date=None, format=None):
         return self.account.ath['core'].display_time(date, format)
@@ -69,12 +65,14 @@ class CharacterCoreHandler(CharacterBaseHandler):
 
     @property
     def account(self):
-        return self.model.account
+        return self.get_db('account')
 
     @account.setter
     def account(self, value):
-        self.model.account = value
-        self.model.save(update_fields=['account'])
+        old_account = self.account
+        if old_account:
+            old_account.ath['character'].remove(self.owner)
+        self.set_db('account', value)
         self.reset_puppet_locks(value)
 
     def reset_puppet_locks(self, account=None):
@@ -94,41 +92,33 @@ class CharacterCoreHandler(CharacterBaseHandler):
 
     @property
     def shelved(self):
-        return self.model.shelved
+        return bool(self.get_db('shelved'))
 
     @shelved.setter
     def shelved(self, value):
-        self.model.shelved = value
-        self.model.save(update_fields=['shelved', ])
-        if value:
-            self.disconnect(reason="Character was shelved!")
+        self.set_db('shelved', value)
 
     @property
     def disabled(self):
-        return self.model.disabled
+        return bool(self.get_db('disabled'))
 
     @disabled.setter
     def disabled(self, value):
-        self.model.disabled = value
-        self.model.save(update_fields=['disabled', ])
-        if value:
-            self.disconnect(reason="Character was disabled!")
+        self.set_db('disabled', value)
 
     @property
     def banned(self):
-        data = self.model.banned
-        if data > utcnow():
+        data = self.get_db('banned')
+        if data and data > utcnow():
             return data
         return False
 
     @banned.setter
     def banned(self, value):
         if not value:
-            self.model.banned = None
+            self.set_db('banned', False)
         else:
-            self.model.banned = value
-            self.disconnect(reason="Character was banned!")
-        self.model.save(update_fields=['banned', ])
+            self.set_db('banned', value)
 
     def disconnect(self, reason=None):
         """
@@ -144,11 +134,10 @@ class CharacterCoreHandler(CharacterBaseHandler):
 
     @property
     def playtime(self):
-        return self.model.playtime
+        return self.get_db('playtime', 0)
 
     def update_playtime(self, seconds):
-        self.model.playtime += datetime.timedelta(seconds)
-        self.model.save(update_fields=['playtime'])
+        self.set_db('playtime', self.playtime + seconds)
 
     @property
     def connection_time(self):
@@ -170,20 +159,21 @@ class CharacterCoreHandler(CharacterBaseHandler):
 
     @property
     def dark(self):
-        return self.model.dark
+        return self.get_db('dark')
 
     @dark.setter
     def dark(self, value):
-        self.model.dark = value
-        self.model.save(update_fields=['dark', ])
+        self.set_db('dark', value)
         if value:
             self.console_msg("You are now Dark!")
         else:
             self.console_msg("You are no longer Dark!")
 
+
 class CharacterCharacterHandler(CharacterBaseHandler):
     key = 'character'
     style = 'account'
+    load_order = -999
     system_name = 'ACCOUNT'
 
     @property

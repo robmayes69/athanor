@@ -191,7 +191,7 @@ SETTINGS = {
     'timezone': 'athanor.base.settings.TimeZoneSetting',
     'unsigned_integer': 'athanor.base.settings.UnsignedIntegerSetting',
     'signed_integer': 'athanor.base.settings.SignedIntegerSetting',
-    'positive_integer': 'athanor.base.settings.PositiveInteger',
+    'positive_integer': 'athanor.base.settings.PositiveIntegerSetting',
     'room': 'athanor.base.settings.RoomSetting',
     'duration': 'athanor.base.settings.DurationSetting',
     'datetime': 'athanor.base.settings.DateTimeSetting',
