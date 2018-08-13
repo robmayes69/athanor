@@ -1,6 +1,7 @@
 from evennia import DefaultScript
 from athanor.utils.text import partial_match
 from athanor import VALIDATORS, SETTINGS, AthException, SYSTEMS
+from athanor.utils.online import admin
 
 
 class AthanorSystem(DefaultScript):
@@ -11,18 +12,16 @@ class AthanorSystem(DefaultScript):
     load_order = 0
     interval = 0
     valid = VALIDATORS
+    systems = SYSTEMS
 
     def at_start(self):
         # Most systems will implement their own Settings.
         self.ndb.loaded_settings = False
+        self.ndb.gagged = list()
         # We'll probably be using this a lot.
 
         # Call easy-extensible loading process.
         self.load()
-
-    @property
-    def systems(self):
-        return SYSTEMS
 
     def load(self):
         pass
@@ -40,6 +39,7 @@ class AthanorSystem(DefaultScript):
                 self.ndb.settings[new_setting.key] = new_setting
             except Exception:
                 pass
+        self.ndb.loaded_settings = True
 
     def save_settings(self):
         save_data = dict()
@@ -58,5 +58,15 @@ class AthanorSystem(DefaultScript):
         self.save_settings()
         return setting, old_value
 
+    def listeners(self):
+        online = set(admin())
+        return online - set(self.ndb.gagged)
+
     def alert(self, text, source=None):
-        self.systems['channel'].send_alert(text, source)
+        if source:
+            msg = '|r>>>|n |w[|n%s|w]|n |w%s:|n %s' % (source, self.system_name, text)
+        else:
+            msg = '|r>>>|n |w%s:|n %s' % (self.system_name, text)
+        msg = self.systems['character'].render(msg)
+        for char in self.listeners():
+            char.msg(text=msg)

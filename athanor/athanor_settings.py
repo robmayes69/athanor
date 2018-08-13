@@ -33,7 +33,7 @@ BASE_ROOM_TYPECLASS = "athanor.classes.rooms.Room"
 # Typeclass for Exit objects (fallback).
 BASE_EXIT_TYPECLASS = "athanor.classes.exits.Exit"
 # Typeclass for Channel (fallback).
-BASE_CHANNEL_TYPECLASS = "athanor.classes.channels.Channel"
+BASE_CHANNEL_TYPECLASS = "athanor.channels.classes.PublicChannel"
 # Typeclass for Scripts (fallback). You usually don't need to change this
 # but create custom variations of scripts on a per-case basis instead.
 #BASE_SCRIPT_TYPECLASS = "classes.scripts.Script"

@@ -38,11 +38,5 @@ class ChannelSystem(AthanorSystem):
         channel = self.valid['channel'](session, channel)
 
     def send_alert(self, text, source=None, system=None):
-        if not system:
-            system = self.system_name
-        if source:
-            msg = '%s: [%s] %s' % (system, source, text)
-        else:
-            msg = '%s: %s' % (system, text)
         for chan in self['alert_channels']:
-            chan.msg(msg, emit=True)
+            chan.receive(text, source=source, system=system, mode='alert')

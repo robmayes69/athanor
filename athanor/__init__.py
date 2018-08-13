@@ -46,6 +46,7 @@ MANAGERS = {
 HANDLERS_ACCOUNT = {
     'core': 'athanor.accounts.handlers.AccountCoreHandler',
     'character': 'athanor.accounts.handlers.AccountCharacterHandler',
+    'color': 'athanor.accounts.handlers.AccountColorHandler',
 }
 
 # Just  like Account but for characters.
@@ -58,6 +59,7 @@ HANDLERS_CHARACTER = {
 # Same but for sessions.
 HANDLERS_SESSION = {
     'core': 'athanor.sessions.handlers.SessionCoreHandler',
+    'render': 'athanor.sessions.handlers.SessionRendererHandler',
 }
 
 # In case these are ever implemented...
@@ -111,13 +113,6 @@ PROPERTIES_DICT = {
     'account': {},
     'session': {},
     'script': {},
-}
-
-# Just as with MANAGERS, above. The difference is these are for rendering text output to the given Account/Character.
-RENDERERS = {
-    'sessions': 'athanor.sessions.renderers.SessionRenderer',
-    'character': 'athanor.characters.renderers.CharacterRenderer',
-    'account': 'athanor.accounts.renderers.AccountRenderer'
 }
 
 
@@ -179,6 +174,8 @@ VALIDATORS = {
 SYSTEMS = {
     'core': 'athanor.systems.core.CoreSystem',
     'account': 'athanor.accounts.systems.AccountSystem',
+    'character': 'athanor.characters.systems.CharacterSystem',
+    'channel': 'athanor.channels.systems.ChannelSystem',
 }
 
 

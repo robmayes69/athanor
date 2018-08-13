@@ -2,6 +2,7 @@ from athanor.accounts.classes import Account
 from evennia.utils.create import create_account
 from athanor import AthException
 from athanor.base.systems import AthanorSystem
+from athanor.utils.online import accounts as on_accounts
 
 
 class AccountSystem(AthanorSystem):
@@ -13,6 +14,8 @@ class AccountSystem(AthanorSystem):
     ('unique_email', 'Email addresses cannot be duplicated across accounts.', 'boolean', True),
     ('email_self', "Can users change their own email addresses?", 'boolean', True)
     )
+    start_delay = True
+    interval = 60
 
     def load(self):
         results = Account.objects.filter_family().values_list('id', 'username', 'email')
@@ -72,3 +75,16 @@ class AccountSystem(AthanorSystem):
 
     def unban(self, session, account):
         pass
+
+    def at_start(self):
+        self.ndb.online_accounts = set(on_accounts())
+
+    def at_repeat(self):
+        for acc in self.ndb.online_accounts:
+            acc.ath['core'].update_playtime(self.interval)
+
+    def add_online(self, account):
+        self.ndb.online_accounts.add(account)
+
+    def remove_online(self, account):
+        self.ndb.online_accounts.remove(account)

@@ -235,11 +235,22 @@ class CharacterChannelHandler(CharacterBaseHandler):
     key = 'channel'
     system_name = 'CHANNEL'
 
+    def load(self):
+        self.owner.ndb.channel_gags = set()
+        if not self.owner.db.channel_colors:
+            self.owner.db.channel_colors = dict()
+
     def send(self, channel, input):
-        pass
+        channel.speech(source=self.owner, text=input)
 
     def receive(self, channel, message):
-        pass
+        if channel in self.owner.ndb.channel_gags:
+            return
+        if not isinstance(message, basestring):
+            message = message.render(viewer=self.owner)
+        color = self.owner.db.channel_colors.get(channel, None) or channel['color'] or 'n'
+        format_message = '<|%s%s|n> %s' % (color, channel.key, message)
+        self.owner.msg(format_message)
 
     def join(self, channel):
         pass
@@ -248,7 +259,7 @@ class CharacterChannelHandler(CharacterBaseHandler):
         pass
 
     def gag(self, channel):
-        pass
+        self.owner.ndb.channel_gags.add(channel)
 
     def ungag(self, channel):
-        pass
+        self.owner.ndb.channel_gags.remove(channel)

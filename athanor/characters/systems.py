@@ -1,6 +1,7 @@
 from django.conf import settings
 from evennia import create_object
 from athanor.base.systems import AthanorSystem
+from athanor.utils.online import characters as on_characters
 
 
 class CharacterSystem(AthanorSystem):
@@ -52,3 +53,19 @@ class CharacterSystem(AthanorSystem):
 
     def unban(self, session, character):
         pass
+
+    def render(self, input):
+        return input
+
+    def at_start(self):
+        self.ndb.online_characters = set(on_characters())
+
+    def at_repeat(self):
+        for acc in self.ndb.online_characters:
+            acc.ath['core'].update_playtime(self.interval)
+
+    def add_online(self, character):
+        self.ndb.online_characters.add(character)
+
+    def remove_online(self, character):
+        self.ndb.online_characters.remove(character)

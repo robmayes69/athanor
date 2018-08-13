@@ -10,7 +10,6 @@ creation commands.
 from evennia import DefaultCharacter
 from evennia.utils.utils import lazy_property
 from athanor.characters.managers import CharacterManager
-from athanor.characters.renderers import CharacterRenderer
 from athanor import AthException
 
 
@@ -38,10 +37,6 @@ class BaseCharacter(DefaultCharacter):
     @lazy_property
     def ath(self):
         return CharacterManager(self)
-
-    @lazy_property
-    def render(self):
-        return CharacterRenderer(self)
 
     def at_init(self):
         super(BaseCharacter, self).at_init()

@@ -16,4 +16,4 @@ class CmdCharCreate(AthCommand):
     help_category = 'General'
 
     def _main(self):
-        self.account.ath['core'].create_character(name=self.lhs)
+        self.account.ath['character'].create(name=self.lhs)

@@ -15,9 +15,6 @@ class BaseHandler(object):
         self.settings = dict()
         self.load_cmdsets()
 
-    def load_model(self):
-        pass
-
     def load_settings(self):
         saved_data = dict(self.get_db('settings', dict()))
         for setting_def in self.settings_data:
@@ -134,3 +131,9 @@ class SessionBaseHandler(BaseHandler):
 
     def save(self):
         pass
+
+    def set_db(self, name, value):
+        return self.owner.nattributes.add(name, value, category=self.key)
+
+    def get_db(self, name, default=None):
+        return self.owner.nattributes.get(name, category=self.key) or default

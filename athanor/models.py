@@ -73,41 +73,22 @@ class WithLocks(models.Model):
         self.save(update_fields=['lock_storage'])
 
 
-class MessageMode(models.Model):
-    key = models.CharField(max_length=12, unique=True)
-
-
-class MessageSystem(models.Model):
-    key = models.CharField(max_length=12, unique=True)
-
-
-class MessageTitle(models.Model):
-    key = models.CharField(max_length=255, null=True, blank=True, unique=True)
-
-
-class MessageName(models.Model):
-    key = models.CharField(max_length=255, null=True, blank=True, unique=True)
-
-
-class Message(models.Model):
-    source = models.ForeignKey('objects.ObjectDB', related_name='+', null=True, on_delete=models.SET_NULL)
-    hidden = models.BooleanField(default=False)
-    display_name = models.ForeignKey('athanor.MessageName', null=True, default=None)
-    alternate_name = models.ForeignKey('athanor.MessageName', null=True, default=None)
-    title = models.ForeignKey('athanor.MessageTitle', null=True, default=None)
-    mode = models.PositiveSmallIntegerField(default=0)
-    system = models.ForeignKey('athanor.MessageSystem')
-    input_text = models.TextField(null=True, blank=True)
+class PublicChannelMessage(models.Model):
+    channel = models.ForeignKey('comms.ChannelDB', related_name='messages')
+    speaker = models.ForeignKey('objects.ObjectDB', related_name='+', null=True, on_delete=models.SET_NULL)
     markup_text = models.TextField(null=True, blank=True)
-    date_created = models.DateTimeField(null=True)
+    date_created = models.DateTimeField(auto_now=True)
 
     class Meta:
-        abstract = True
+        indexes = [
+            models.Index(fields=['channel', 'date_created']),
+        ]
 
 
-class ChannelMessage(Message):
-    channel = models.ForeignKey('comms.ChannelDB', related_name='messages')
+class PublicChannelAccountMuzzle(models.Model):
+    channel = models.ForeignKey('comms.ChannelDB', related_name='account_muzzles')
+    account = models.ForeignKey('accounts.AccountDB', related_name='muzzles')
+    until_date = models.DateTimeField()
 
-
-class RoomMessage(Message):
-    room = models.ForeignKey('objects.ObjectDB', related_name='messages')
+    class Meta:
+        unique_together = (('channel', 'account'),)

@@ -5,7 +5,7 @@ from evennia.utils.ansi import ANSIString
 from athanor.utils.time import utcnow
 from athanor.utils.utils import import_property
 from athanor.base.handlers import AccountBaseHandler
-from athanor import AthException
+from athanor import AthException, STYLES_DATA
 
 
 class AccountCoreHandler(AccountBaseHandler):
@@ -18,20 +18,17 @@ class AccountCoreHandler(AccountBaseHandler):
         ('timezone', "Your choice of Timezone", 'timezone', 'UTC'),
     )
 
-    def at_init(self):
-        super(AccountCoreHandler, self).at_init()
-
     def at_account_creation(self):
         self.set_db('last_login', utcnow())
         self.set_db('last_logout', utcnow())
 
     def at_post_login(self, session, **kwargs):
         self.set_db('last_login', utcnow())
-        self.base.systems['core'].register_account(self.owner)
+        self.base.systems['account'].add_online(self.owner)
 
     def at_true_logout(self, account, session, **kwargs):
         self.set_db('last_logout', utcnow())
-        self.base.systems['core'].remove_account(self.owner)
+        self.base.systems['account'].remove_online(self.owner)
 
     def is_builder(self):
         return self.owner.locks.check_lockstring(self.owner, "dummy:perm(Builder)")
@@ -218,11 +215,11 @@ class AccountCharacterHandler(AccountBaseHandler):
     def render_login(self, session, viewer):
         characters = self.base['character'].all()
         message = list()
-        message.append(session.render.header("%s: Account Management" % settings.SERVERNAME, style=self.style))
+        message.append(session.ath['render'].header("%s: Account Management" % settings.SERVERNAME))
         message += self.at_look_info_section(session, viewer)
         message += self.at_look_session_menu(session, viewer)
-        message.append(session.render.subheader('Commands', style=self.style))
-        command_column = session.render.table([], header=False, style=self.style)
+        message.append(session.ath['render'].subheader('Commands'))
+        command_column = session.ath['render'].table([], header=False)
         command_text = list()
         command_text.append(unicode(ANSIString(" |whelp|n - more commands")))
         if self.owner.db._reset_username:
@@ -237,13 +234,13 @@ class AccountCharacterHandler(AccountBaseHandler):
         message.append(command_column)
         if characters:
             message += self.at_look_character_menu(session, viewer)
-        message.append(session.render.subheader('Open Char Slots: %s/%s' % (
-            self.available_character_slots, self.max_character_slots), style=self.style))
+        message.append(session.ath['render'].subheader('Open Char Slots: %s/%s' % (
+            self.available_character_slots, self.max_character_slots)))
         return '\n'.join(unicode(line) for line in message if line)
 
     def at_look_info_section(self, session, viewer):
         message = list()
-        info_column = session.render.table((), header=False, style=self.style)
+        info_column = session.ath['render'].table((), header=False)
         info_text = list()
         info_text.append(unicode(ANSIString("Account:".rjust(8) + " |g%s|n" % (self.owner.key))))
         email = self.owner.email if self.owner.email != 'dummy@dummy.com' else '<blank>'
@@ -256,9 +253,9 @@ class AccountCharacterHandler(AccountBaseHandler):
     def at_look_session_menu(self, session, viewer):
         sessions = self.owner.sessions.all()
         message = list()
-        message.append(session.render.subheader('Sessions', style=self.style))
+        message.append(session.ath['render'].subheader('Sessions'))
         columns = (('ID', 7, 'l'), ('Protocol', 0, 'l'), ('Address', 0, 'l'), ('Connected', 0, 'l'))
-        sesstable = session.render.table(columns, style=self.style)
+        sesstable = session.ath['render'].table(columns)
         for session in sessions:
             conn_duration = time.time() - session.conn_time
             sesstable.add_row(session.sessid, session.protocol_key,
@@ -271,9 +268,9 @@ class AccountCharacterHandler(AccountBaseHandler):
     def at_look_character_menu(self, session, viewer):
         message = list()
         characters = self.base['character'].all()
-        message.append(session.render.subheader('Characters', style=self.style))
+        message.append(session.ath['render'].subheader('Characters'))
         columns = (('ID', 7, 'l'), ('Name', 0, 'l'), ('Type', 0, 'l'), ('Last Login', 0, 'l'))
-        chartable = session.render.table(columns, style=self.style)
+        chartable = session.ath['render'].table(columns)
         for character in characters:
             login = character.ath['core'].last_played
             if login:
@@ -342,3 +339,20 @@ class AccountMenuHandler(AccountBaseHandler):
         """
         self.leave()
         self.launch(path)
+
+
+class AccountColorHandler(AccountBaseHandler):
+    key = 'color'
+    system_name = 'COLOR'
+
+    @property
+    def settings_data(self):
+        data = list()
+        for k, v in STYLES_DATA.iteritems():
+            data.append((k, v[1], v[0], v[2]))
+        return tuple(data)
+
+    def get_settings(self):
+        if not self.loaded_settings:
+            self.load_settings()
+        return self.settings

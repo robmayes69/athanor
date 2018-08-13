@@ -33,3 +33,12 @@ def characters():
     characters = [session.get_puppet() for session in sessions() if session.get_puppet()]
     characters = [char for char in characters if char.is_typeclass(chr, exact=False)]
     return sorted(list(set(characters)), key=lambda char: char.key)
+
+def admin():
+    """
+    Filters characters() by who counts as an admin!
+    Also returns online accounts who are admin and have no characters logged in.
+
+    :return: list
+    """
+    return [char for char in characters() if char.ath['core'].is_admin()]

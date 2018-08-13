@@ -18,16 +18,16 @@ class BaseRoom(DefaultRoom):
 
     def return_appearance(self, session, viewer):
         message = list()
-        message.append(session.render.header(self.key, style=self.style))
+        message.append(session.ath['render'].header(self.key))
         message.append(self.db.desc)
         chars = self.online_characters(viewer=viewer)
         if chars:
-            message.append(session.render.subheader("Characters", style=self.style))
+            message.append(session.ath['render'].subheader("Characters"))
             message.append(self.format_character_list(chars, session))
         if self.exits:
-            message.append(session.render.subheader("Exits", style=self.style))
+            message.append(session.ath['render'].subheader("Exits"))
             message.append(self.format_exit_list(self.exits, session))
-        message.append(session.render.footer(style=self.style))
+        message.append(session.ath['render'].footer())
         return "\n".join([unicode(line) for line in message])
 
     def online_characters(self, viewer=None):
@@ -40,9 +40,9 @@ class BaseRoom(DefaultRoom):
             return True
         return not character.ath['core'].dark
 
-    def format_character_list(self, characters, viewer):
+    def format_character_list(self, characters, session):
         columns = (('Name', 0, 'l'), ('Description', 0, 'l'))
-        char_table = viewer.render.table(columns, border=None, style=self.style)
+        char_table = session.ath['render'].table(columns, border=None)
         for char in characters:
             char_table.add_row(char.key, char.db.shortdesc)
         return char_table
@@ -51,7 +51,7 @@ class BaseRoom(DefaultRoom):
         exit_table = []
         for exit in exits:
             exit_table.append(exit.format_output(session))
-        return tabular_table(exit_table, field_width=36, line_length=session.render.width(), truncate_elements=False)
+        return tabular_table(exit_table, field_width=36, line_length=session.ath['render'].width(), truncate_elements=False)
 
     def format_roomlist(self):
         return "|C%s|n |x%s|n" % (self.dbref.ljust(6), self.key)

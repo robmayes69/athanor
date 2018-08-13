@@ -13,9 +13,13 @@ to be modified.
 """
 
 from evennia import DefaultChannel
+from athanor import SETTINGS, AthException
+from athanor.models import PublicChannelMessage
+from athanor.utils.text import partial_match, Speech
+from athanor.utils.time import utcnow
 
 
-class Channel(DefaultChannel):
+class AthanorChannel(DefaultChannel):
     """
     Working methods:
         at_channel_creation() - called once, when the channel is created
@@ -58,32 +62,68 @@ class Channel(DefaultChannel):
         post_send_message(msg) - called just after message was sent to channel
 
     """
-    def channel_prefix(self, msg=None, emit=False, **kwargs):
-        """
-        Hook method. How the channel should prefix itself for users.
+    settings_data = (
 
-        Args:
-            msg (str, optional): Prefix text
-            emit (bool, optional): Switches to emit mode, which usually
-                means to not prefix the channel's info.
-            **kwargs (dict): Arbitrary, optional arguments for users
-                overriding the call (unused by default).
+    )
+    handler = None
 
-        Returns:
-            prefix (str): The created channel prefix.
+    def at_channel_creation(self):
+        if not self.db.titles:
+            self.db.titles = dict()
+            self.db.settings = dict()
 
-        """
-        return '' if emit else '<|n|%s%s|n> ' % (self.db.color if self.db.color else 'n', self.key)
+    def load_settings(self):
+        saved_data = dict(self.attributes.get('settings', dict()))
+        for setting_def in self.settings_data:
+            try:
+                new_setting = SETTINGS[setting_def[2]](self, setting_def[0], setting_def[1], setting_def[3], saved_data.get(setting_def[0], None))
+                self.ndb.settings[new_setting.key] = new_setting
+            except Exception:
+                pass
+        self.ndb.loaded_settings = True
 
+    def save_settings(self):
+        save_data = dict()
+        for setting in self.ndb.settings.values():
+            data = setting.export()
+            if len(data):
+                save_data[setting.key] = data
+        self.db.settings = save_data
 
-class AthanorChannel(Channel):
-    """
-    The AthanorChannel is a nearly complete re-write of the Channel System. It does not rely on
-    Msg infrastructure and enables a unified sharing. It accepts the same .msg syntax to ensure
-    backwards compatability for external connections.
-    """
-    pass
+    def change_settings(self, session, key, value):
+        setting = partial_match(key, self.ndb.settings.values())
+        if not setting:
+            raise AthException("Setting '%s' not found!" % key)
+        old_value = setting.display()
+        setting.set(value, str(value).split(','), session)
+        self.save_settings()
+        return setting, old_value
+
+    def __getitem__(self, item):
+        if not self.ndb.loaded_settings:
+            self.load_settings()
+        return self.ndb.settings[item].value
 
 
 class PublicChannel(AthanorChannel):
-    pass
+    settings_data = (
+        ('titles_enabled', "Allow the use of Channel Titles?", 'bool', 1),
+        ('titles_max_length', "How many characters long can titles be?", 'positive_integer', 80),
+        ('color', 'What channel should the color be?', 'color', ''),
+    )
+    handler = 'channel'
+
+    def emit(self, source, text):
+        text = self.systems['character'].render(text)
+        for recip in self.subscriptions.online():
+            recip.ath[self.handler].receive(text, source=source, channel=self)
+        PublicChannelMessage.objects.create(channel=self, speaker=source, markup_text=text, date_created=utcnow())
+
+    def speech(self, source, text):
+        title = ''
+        if self['titles_enabled'] and source:
+            title = self.db.titles.get(source, '')[:self['titles_max_length']]
+        msg = Speech(speaker=source, speech_text=text, title=title, mode='channel')
+        for recip in self.subscriptions.online():
+            recip.ath[self.handler].receive(msg, source=source, channel=self)
+        PublicChannelMessage.objects.create(channel=self, speaker=source, markup_text=msg.log(), date_created=utcnow())

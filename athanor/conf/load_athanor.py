@@ -16,7 +16,7 @@ def at_server_start():
     from athanor.utils.utils import import_property
     try:
 
-        dicts = ('MANAGERS', 'HANDLERS_ACCOUNT', 'HANDLERS_CHARACTER', 'HANDLERS_SESSION', 'RENDERERS',
+        dicts = ('MANAGERS', 'HANDLERS_ACCOUNT', 'HANDLERS_CHARACTER', 'HANDLERS_SESSION',
                 'VALIDATORS', 'SETTINGS',
                  'SYSTEMS', 'HELP_TREES', 'HELP_FILES', 'SHELP_FILES', 'PROPERTIES_ACCOUNT', 'PROPERTIES_CHARACTER',
                  'PROPERTIES_SESSION')
@@ -59,6 +59,8 @@ def at_server_start():
             key = system.key
             found = system.objects.filter_family(db_key=key).first()
             if found:
+                if not found.is_typeclass(system, exact=True):
+                    found.swap_typeclass(system)
                 athanor.SYSTEMS[key] = found
             else:
                 athanor.SYSTEMS[key] = create_script(key=key, interval=system.interval, persistent=True, typeclass=system)

@@ -1,6 +1,5 @@
 import athanor
 from athanor.base.commands import AthCommand
-from athanor.base.handlers import AthanorRequest
 
 # Admin and building commands go here.
 class CmdDark(AthCommand):

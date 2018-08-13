@@ -1,7 +1,7 @@
-
 import re
 from evennia.utils.ansi import ANSIString, ANSI_PARSER
 from athanor import AthException, SYSTEMS
+
 
 def tabular_table(word_list=None, field_width=26, line_length=78, output_separator=" ", truncate_elements=True):
     """
@@ -33,6 +33,7 @@ def tabular_table(word_list=None, field_width=26, line_length=78, output_separat
             result_string += element
     return result_string
 
+
 def sanitize_string(text=None, length=None, strip_ansi=False, strip_mxp=True, strip_newlines=True, strip_indents=True):
     if not text:
         return ''
@@ -51,8 +52,10 @@ def sanitize_string(text=None, length=None, strip_ansi=False, strip_mxp=True, st
         text = text[:length]
     return text
 
+
 def normal_string(text=None):
     return sanitize_string(text, strip_ansi=True)
+
 
 def dramatic_capitalize(capitalize_string=''):
     capitalize_string = re.sub(r"(?i)(?:^|(?<=[_\/\-\|\s()\+]))(?P<name1>[a-z]+)",
@@ -72,7 +75,9 @@ def penn_substitutions(input=None):
         input = input.replace(bad_char, '|-')
     return input
 
+
 SYSTEM_CHARACTERS = ('/','|','=',',')
+
 
 def sanitize_name(name, system_name):
     name = sanitize_string(name)
@@ -82,6 +87,7 @@ def sanitize_name(name, system_name):
         if char in name:
             raise AthException("%s is not allowed in %s names!" % (char, system_name))
     return name
+
 
 def partial_match(match_text, candidates):
     candidate_list = sorted(candidates, key=lambda item: len(str(item)))
@@ -196,6 +202,23 @@ class Speech(object):
             return_string = '%s %s' % (pref, return_string)
 
         return self.colorize(return_string, viewer)
+
+    def log(self):
+        return_string = None
+        if self.special_format == 0:
+            return_string = '%s says, "%s|n"' % (self.markup_name, self.markup_string)
+        elif self.special_format == 1:
+            return_string = '%s %s' % (self.markup_name, self.markup_string)
+        elif self.special_format == 2:
+            return_string = '%s%s' % (self.markup_name, self.markup_string)
+        elif self.special_format == 3:
+            return_string = self.markup_string
+        if self.title:
+            return_string = '%s %s' % (self.title, return_string)
+        if self.mode == 'page' and len(self.targets) > 1:
+            pref = '(To %s)' % (', '.join(self.targets))
+            return_string = '%s %s' % (pref, return_string)
+        return return_string
 
     def demarkup(self):
         return_string = None

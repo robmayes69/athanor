@@ -186,10 +186,6 @@ class WordListSetting(BaseSetting):
 class ColorSetting(BaseSetting):
     expect_type = 'Color'
 
-    @property
-    def default(self):
-        return athanor.STYLES_FALLBACK[self.key]
-
     def do_validate(self, value, value_list, session):
         return self.valid['color'](session, value)
 

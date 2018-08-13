@@ -11,7 +11,6 @@ class CoreSystem(AthanorSystem):
     load_order = -1000
     settings_data = (
         ('public_email', "Game's public email for purpose of various messages.", 'email', ''),
-        ('alerts_channels', "Channels to send important admin-only code alerts to.", 'channels', []),
         ('require_approval', "Game makes use of the Approval system?", 'boolean', True)
     )
 

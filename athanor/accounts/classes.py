@@ -25,9 +25,7 @@ several more options for customizing the Guest account system.
 
 from evennia import DefaultAccount
 from evennia.utils.utils import lazy_property
-
 from athanor.accounts.managers import AccountManager
-from athanor.accounts.renderers import AccountRenderer
 
 
 class Account(DefaultAccount):
@@ -100,10 +98,6 @@ class Account(DefaultAccount):
     @lazy_property
     def ath(self):
         return AccountManager(self)
-
-    @lazy_property
-    def render(self):
-        return AccountRenderer(self)
 
     def at_account_creation(self):
         super(Account, self).at_account_creation()

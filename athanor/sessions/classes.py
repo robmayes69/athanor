@@ -1,8 +1,6 @@
 from evennia.server.serversession import ServerSession
 from evennia.utils import lazy_property
-
 from athanor.sessions.managers import SessionManager
-from athanor.sessions.renderers import SessionRenderer
 
 
 class Session(ServerSession):
@@ -10,10 +8,6 @@ class Session(ServerSession):
     @lazy_property
     def ath(self):
         return SessionManager(self)
-
-    @lazy_property
-    def render(self):
-        return SessionRenderer(self)
 
     def at_sync(self):
         super(Session, self).at_sync()
