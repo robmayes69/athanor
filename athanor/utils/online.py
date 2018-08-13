@@ -41,4 +41,4 @@ def admin():
 
     :return: list
     """
-    return [char for char in characters() if char.ath['core'].is_admin()]
+    return set([char for char in characters() if char.ath['core'].is_admin()])

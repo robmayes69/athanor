@@ -21,7 +21,7 @@ INSTALLED_APPS = ('athanor.apps.Core', )
 
 LOCK_FUNC_MODULES = ("athanor.funcs.lock", )
 INPUT_FUNC_MODULES = ['athanor.funcs.input', ]
-INLINE_FUNC_MODULES = ['athanor.funcs.inline', ]
+INLINEFUNC_MODULES = ['athanor.funcs.inline', ]
 
 # This dictionary will contain key->instances of all the loaded Athanor modules once loading is complete.
 MODULES = dict()
@@ -54,6 +54,7 @@ HANDLERS_CHARACTER = {
     'core': 'athanor.characters.handlers.CharacterCoreHandler',
     'character': 'athanor.characters.handlers.CharacterCharacterHandler',
     'menu': 'athanor.characters.handlers.CharacterMenuHandler',
+    'channel': 'athanor.characters.handlers.CharacterChannelHandler',
 }
 
 # Same but for sessions.
@@ -147,6 +148,12 @@ STYLES_DATA = {
     'help_file_header': ('color', '', 'c'),
     'help_file_emphasized': ('color', '', 'w'),
     'help_file_name': ('color', '', 'w'),
+    'quotes_channel': ('color', 'Color used for " marks on Channels.', ''),
+    'speech_channel': ('color', 'Color used for dialogue on Channels.', ''),
+    'quotes_ooc': ('color', 'Color used for " marks on OOC.', ''),
+    'speech_ooc': ('color', 'Color used for dialogue on OOC.', ''),
+    'quotes_ic': ('color', 'Color used for " marks on Channels.', ''),
+    'speech_ic': ('color', 'Color used for dialogue on Channels.', ''),
 }
 
 # Validators are used for checking user input and returning something the system use, or raising an error if it can't.
@@ -172,7 +179,6 @@ VALIDATORS = {
 
 
 SYSTEMS = {
-    'core': 'athanor.systems.core.CoreSystem',
     'account': 'athanor.accounts.systems.AccountSystem',
     'character': 'athanor.characters.systems.CharacterSystem',
     'channel': 'athanor.channels.systems.ChannelSystem',

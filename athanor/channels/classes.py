@@ -14,6 +14,7 @@ to be modified.
 
 from evennia import DefaultChannel
 from athanor import SETTINGS, AthException
+from athanor import SYSTEMS
 from athanor.models import PublicChannelMessage
 from athanor.utils.text import partial_match, Speech
 from athanor.utils.time import utcnow
@@ -70,16 +71,18 @@ class AthanorChannel(DefaultChannel):
     def at_channel_creation(self):
         if not self.db.titles:
             self.db.titles = dict()
+        if not self.db.settings:
             self.db.settings = dict()
 
     def load_settings(self):
         saved_data = dict(self.attributes.get('settings', dict()))
+        self.ndb.settings = dict()
         for setting_def in self.settings_data:
             try:
                 new_setting = SETTINGS[setting_def[2]](self, setting_def[0], setting_def[1], setting_def[3], saved_data.get(setting_def[0], None))
                 self.ndb.settings[new_setting.key] = new_setting
-            except Exception:
-                pass
+            except Exception as e:
+                print e
         self.ndb.loaded_settings = True
 
     def save_settings(self):
@@ -104,10 +107,12 @@ class AthanorChannel(DefaultChannel):
             self.load_settings()
         return self.ndb.settings[item].value
 
+    def online_characters(self):
+        return set(self.subscriptions.all()).intersection(SYSTEMS['character'].ndb.online_characters)
 
 class PublicChannel(AthanorChannel):
     settings_data = (
-        ('titles_enabled', "Allow the use of Channel Titles?", 'bool', 1),
+        ('titles_enabled', "Allow the use of Channel Titles?", 'boolean', 1),
         ('titles_max_length', "How many characters long can titles be?", 'positive_integer', 80),
         ('color', 'What channel should the color be?', 'color', ''),
     )
@@ -115,8 +120,8 @@ class PublicChannel(AthanorChannel):
 
     def emit(self, source, text):
         text = self.systems['character'].render(text)
-        for recip in self.subscriptions.online():
-            recip.ath[self.handler].receive(text, source=source, channel=self)
+        for recip in self.online_characters():
+            recip.ath[self.handler].receive(channel=self, message=text, source=source)
         PublicChannelMessage.objects.create(channel=self, speaker=source, markup_text=text, date_created=utcnow())
 
     def speech(self, source, text):
@@ -124,6 +129,6 @@ class PublicChannel(AthanorChannel):
         if self['titles_enabled'] and source:
             title = self.db.titles.get(source, '')[:self['titles_max_length']]
         msg = Speech(speaker=source, speech_text=text, title=title, mode='channel')
-        for recip in self.subscriptions.online():
-            recip.ath[self.handler].receive(msg, source=source, channel=self)
+        for recip in self.online_characters():
+            recip.ath[self.handler].receive(channel=self, message=msg, source=source)
         PublicChannelMessage.objects.create(channel=self, speaker=source, markup_text=msg.log(), date_created=utcnow())

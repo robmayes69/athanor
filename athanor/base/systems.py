@@ -10,21 +10,21 @@ class AthanorSystem(DefaultScript):
     key = 'base'
     system_name = 'SYSTEM'
     load_order = 0
-    interval = 0
+    run_interval = 0
     valid = VALIDATORS
     systems = SYSTEMS
 
     def at_start(self):
         # Most systems will implement their own Settings.
         self.ndb.loaded_settings = False
-        self.ndb.gagged = list()
+        self.ndb.gagged = set()
         # We'll probably be using this a lot.
 
         # Call easy-extensible loading process.
         self.load()
 
-    def load(self):
-        pass
+    def at_server_reload(self):
+        self.load()
 
     def __getitem__(self, item):
         if not self.ndb.loaded_settings:
@@ -59,8 +59,7 @@ class AthanorSystem(DefaultScript):
         return setting, old_value
 
     def listeners(self):
-        online = set(admin())
-        return online - set(self.ndb.gagged)
+        return admin() - self.ndb.gagged
 
     def alert(self, text, source=None):
         if source:

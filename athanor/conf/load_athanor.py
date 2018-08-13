@@ -61,9 +61,11 @@ def at_server_start():
             if found:
                 if not found.is_typeclass(system, exact=True):
                     found.swap_typeclass(system)
+                if not found.interval == system.run_interval:
+                    found.restart(interval=system.run_interval)
                 athanor.SYSTEMS[key] = found
             else:
-                athanor.SYSTEMS[key] = create_script(key=key, interval=system.interval, persistent=True, typeclass=system)
+                athanor.SYSTEMS[key] = create_script(key=key, interval=system.run_interval, persistent=True, typeclass=system)
 
         for help, data in athanor.HELP_TREES.iteritems():
             files = data[1].values()

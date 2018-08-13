@@ -105,6 +105,9 @@ def mxp(text="", command="", hints=""):
         return ANSIString("|lc%s|lt%s|le" % (command, command))
 
 
+RE_SPEECH = re.compile(r'(?s)"(?P<found>.*?)"')
+
+
 class Speech(object):
     """
     This class is similar to the Evennia Msg in that it represents an entity speaking.
@@ -120,8 +123,11 @@ class Speech(object):
     speech_dict = {':': 1, ';': 2, '|': 3, '"': 0, "'": 0}
 
     def __init__(self, speaker=None, speech_text=None, alternate_name=None, title=None, mode='ooc', system_name=None, targets=None, rendered_text=None):
-        self.name_dict = SYSTEMS['character'].name_map
-        self.targets = ['$charactername(%s,%s)' % (char.id, char.key) for char in targets]
+        self.name_dict = SYSTEMS['character'].ndb.name_map
+        if targets:
+            self.targets = ['$charactername(%s,%s)' % (char.id, char.key) for char in targets]
+        else:
+            self.targets = []
         self.mode = mode
         self.title = title
         self.speaker = speaker
@@ -237,11 +243,19 @@ class Speech(object):
     def colorize(self, message, viewer):
         quotes = 'quotes_%s' % self.mode
         speech = 'speech_%s' % self.mode
-        quote_color = viewer.player_config[quotes]
-        speech_color = viewer.player_config[speech]
+        colors = viewer.account.ath['color'].get_settings()
+        quote_color = colors[quotes].value
+        speech_color = colors[speech].value
 
-        def color_speech(found, viewer=viewer):
-            return '|%s"|n|%s%s|n|%s"|n' % (quote_color, speech_color, found.group('found'), quote_color)
+        def color_speech(found):
+            if not quote_color and not speech_color:
+                return '"%s"' % found.group('found')
+            if quote_color and not speech_color:
+                return '|%s"|n%s|n|%s"|n' % (quote_color, found.group('found'), quote_color)
+            if speech_color and not quote_color:
+                return '"|n|%s%s|n"' % (speech_color, found.group('found'))
+            if quote_color and speech_color:
+                return '|%s"|n|%s%s|n|%s"|n' % (quote_color, speech_color, found.group('found'), quote_color)
 
-        colorized_string = re.sub(r'(?s)"(?P<found>.*?)"', color_speech, message)
+        colorized_string = RE_SPEECH.sub(color_speech, message)
         return colorized_string

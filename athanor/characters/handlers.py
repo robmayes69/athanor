@@ -243,13 +243,14 @@ class CharacterChannelHandler(CharacterBaseHandler):
     def send(self, channel, input):
         channel.speech(source=self.owner, text=input)
 
-    def receive(self, channel, message):
+    def receive(self, channel, message, source=None):
         if channel in self.owner.ndb.channel_gags:
             return
         if not isinstance(message, basestring):
             message = message.render(viewer=self.owner)
         color = self.owner.db.channel_colors.get(channel, None) or channel['color'] or 'n'
-        format_message = '<|%s%s|n> %s' % (color, channel.key, message)
+        format_message = '[|%s%s|n] %s' % (color, channel.key, message)
+        print format_message
         self.owner.msg(format_message)
 
     def join(self, channel):

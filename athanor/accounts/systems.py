@@ -15,13 +15,14 @@ class AccountSystem(AthanorSystem):
     ('email_self', "Can users change their own email addresses?", 'boolean', True)
     )
     start_delay = True
-    interval = 60
+    run_interval = 60
 
     def load(self):
         results = Account.objects.filter_family().values_list('id', 'username', 'email')
         self.ndb.name_map = {q[1].upper(): q[0] for q in results}
         self.ndb.email_map = {q[2].upper(): q[0] for q in results}
         self.ndb.id_map = {q[0]: q[1] for q in results}
+        self.ndb.online_accounts = set(on_accounts())
 
     def create(self, session, name, password, email=None, method=None):
         name = self.valid['account_name'](session, name)
@@ -75,9 +76,6 @@ class AccountSystem(AthanorSystem):
 
     def unban(self, session, account):
         pass
-
-    def at_start(self):
-        self.ndb.online_accounts = set(on_accounts())
 
     def at_repeat(self):
         for acc in self.ndb.online_accounts:

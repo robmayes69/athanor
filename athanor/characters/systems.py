@@ -11,11 +11,13 @@ class CharacterSystem(AthanorSystem):
     settings_data = (
         ('rename_self', "Can players rename their own characters?", 'boolean', True),
     )
+    run_interval = 60
 
     def load(self):
         from athanor.characters.classes import Character
         results = Character.objects.filter_family().values_list('id', 'db_key')
         self.ndb.name_map = {q[1].upper(): q[0] for q in results}
+        self.ndb.online_characters = set(on_characters())
 
     def create(self, session, account, name):
         account = self.valid['account'](session, account)
@@ -56,9 +58,6 @@ class CharacterSystem(AthanorSystem):
 
     def render(self, input):
         return input
-
-    def at_start(self):
-        self.ndb.online_characters = set(on_characters())
 
     def at_repeat(self):
         for acc in self.ndb.online_characters:

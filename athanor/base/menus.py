@@ -6,7 +6,8 @@ THIS WAY I can use cmd locks!
 """
 
 from athanor.base.cmdsets import AthCmdSet
-from athanor.commands.base import AthCommand
+from athanor.base.commands import AthCommand
+
 
 class MenuCommand(AthCommand):
     """
@@ -17,7 +18,6 @@ class MenuCommand(AthCommand):
     menu_args = ''
     menu_explanation = ''
     menu_sort = 0
-
 
     def parse(self):
         super(MenuCommand, self).parse()
@@ -46,20 +46,19 @@ class MenuCommand(AthCommand):
     def display_menu(self):
         cmds = self.all_menu_commands()
         message = list()
-        message.append(self.session.render.header(self.original_cmdset.key, style=self.original_cmdset.style))
+        message.append(self.session.ath['render'].header(self.original_cmdset.key,))
         columns = (('Cmd', 16, 'l'), ('Arguments', 0, 'l'), ('Explanation', 0, 'l'))
-        menu_table = self.session.render.table(columns, style=self.original_cmdset.style)
+        menu_table = self.session.ath['render'].table(columns)
         for cmd in cmds:
             menu_table.add_row(cmd.key, cmd.menu_args, cmd.menu_explanation)
         message.append(menu_table)
-        message.append(self.session.render.footer(style=self.original_cmdset.style))
+        message.append(self.session.ath['render'].footer())
         self.msg_lines(message)
 
     def menu_exit(self, final=True):
         if final:
             self.character.sys_msg("Left Mode: %s" % self.menu_key)
         self.owner.ath['menu'].leave()
-
 
 
 class Finish(MenuCommand):

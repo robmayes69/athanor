@@ -60,7 +60,7 @@ class HelpNode(object):
         for contents in self.categories.values():
             contents.sort(key=lambda h: h.key)
 
-    def traverse_tree(self, viewer, path):
+    def traverse_tree(self, session, path):
         if '/' in path:
             file, onwards = path.split('/', 1)
         else:
@@ -68,22 +68,22 @@ class HelpNode(object):
             onwards = None
         find = self.find_sub(file)
         if not onwards:
-            return find.display(viewer)
-        return find.traverse_tree(viewer, onwards)
+            return find.display(session)
+        return find.traverse_tree(session, onwards)
 
-    def display(self, viewer):
+    def display(self, session):
         message = list()
-        message.append(viewer.render.header(self.node_path(), style=self.style))
-        message.append(self.contents(viewer))
-        message += self.display_sub_nodes(viewer)
-        message.append(viewer.render.footer(style=self.style))
+        message.append(session.ath['render'].header(self.node_path()))
+        message.append(self.contents(session))
+        message += self.display_sub_nodes(session)
+        message.append(session.ath['render'].footer())
         return '\n'.join([unicode(line) for line in message if line])
 
-    def color_name(self, viewer):
-        color = viewer.render[self.style]['help_file_name']
+    def color_name(self, session):
+        color = session.ath['render'].get_settings()['help_file_name'].value
         return ANSIString('|%s%s|n' % (color, self.key))
 
-    def markdown(self, viewer):
+    def markdown(self, session):
         """
         In an effort to make writing helpfiles easier, Athanor supports a very limited form of Markdown.
 
@@ -91,23 +91,23 @@ class HelpNode(object):
 
         If a line begins with a * followed by a space, the * will be colored as a bullet point.
 
-        Words enclosed in double-underscores will be colored.
+        Words enclosed in double-underscores will be hilighted white.
 
         All indentation and other features of Markdown will be IGNORED.
         """
         if not self.__doc__:
             return None
         orig_text = self.__doc__.strip('\n').split('\n')
-        colors = viewer.render[self.style]
-        bullet_color = colors['help_file_bullet']
-        heading_color = colors['help_file_header']
-        emphasized_color = colors['help_file_emphasized']
+        colors = session.ath['render'].get_settings()
+        bullet_color = colors['help_file_bullet'].value
+        heading_color = colors['help_file_header'].value
+        emphasized_color = colors['help_file_emphasized'].value
 
         def bullet(find):
             return '%s|%s*|n%s%s' % (find.group('spaces'), bullet_color, find.group('spaces2'), find.group('text'))
 
         def heading(find):
-            return '%s|%s%s|n' % (find.group('spaces'), heading_color, find.group('spaces2'), find.group('text'))
+            return '%s|%s%s%s|n' % (find.group('spaces'), heading_color, find.group('spaces2'), find.group('text'))
 
         def emphasized(find):
             return '|%s%s|n' % (emphasized_color, find.group('text'))
@@ -122,15 +122,15 @@ class HelpNode(object):
             output_text.append(out_line)
         return '\n'.join([unicode(l) for l in output_text])
 
-    def contents(self, viewer):
-        return self.markdown(viewer)
+    def contents(self, session):
+        return self.markdown(session)
 
-    def display_sub_nodes(self, viewer):
+    def display_sub_nodes(self, session):
         message = list()
-        width = viewer.render.width()
+        width = session.ath['render'].width()
         for category in sorted(self.categories.keys()):
-            message.append(viewer.render.subheader(category, style=self.style))
-            files = [file.color_name(viewer) for file in self.categories[category]]
+            message.append(session.ath['render'].subheader(category))
+            files = [file.color_name(session) for file in self.categories[category]]
             message.append(tabular_table(files, field_width=14, line_length=width))
         return message
 

@@ -14,6 +14,7 @@ class BaseHandler(object):
         self.loaded_settings = False
         self.settings = dict()
         self.load_cmdsets()
+        self.load()
 
     def load_settings(self):
         saved_data = dict(self.get_db('settings', dict()))
