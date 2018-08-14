@@ -205,3 +205,82 @@ class CmdCharacter(AthCommand):
         character = self.systems['character'].search(self.session, self.lhs)
         character, account = self.systems['character'].unbind(self.session, character)
         self.sys_msg("Un-Bound Character '%s' from Account '%s'" % (character, account))
+
+
+class CmdChannel(AthCommand):
+    key = '@channel'
+    locks = 'cmd:all()'
+    player_switches = ['join', 'leave', 'on', 'off', 'gag', 'ungag', 'who', 'details', 'list', 'color']
+    admin_switches = ['create', 'rename', 'lock', 'config']
+
+    def _main(self):
+        self.switch_details()
+
+    def switch_join(self):
+        channel = self.character.ath['channel'].search(self.lhs)
+        channel = self.character.ath['channel'].join(channel)
+        self.sys_msg("Turned on Channel '%s'!" % channel)
+
+    def switch_leave(self):
+        channel = self.character.ath['channel'].search(self.lhs)
+        channel = self.character.ath['channel'].leave(channel)
+        self.sys_msg("Left Channel '%s'!" % channel)
+
+    def switch_on(self):
+        self.switch_join()
+
+    def switch_off(self):
+        self.switch_leave()
+
+    def switch_gag(self):
+        if not self.lhs:
+            self.character.ath['channel'].gag_all()
+            self.sys_msg("Gagged all channels!")
+            return
+        channel = self.character.ath['channel'].search(self.lhs)
+        channel = self.character.ath['channel'].gag(channel)
+        self.sys_msg("Gagged Channel '%s'!" % channel)
+
+    def switch_ungag(self):
+        if not self.lhs:
+            self.character.ath['channel'].ungag_all()
+            self.sys_msg("Ungagged all gagged Channels!")
+            return
+        channel = self.character.ath['channel'].search(self.lhs)
+        channel = self.character.ath['channel'].ungag(channel)
+        self.sys_msg("Un-Gagged Channel '%s'!" % channel)
+
+    def switch_who(self):
+        channel = self.character.ath['channel'].search(self.lhs)
+
+    def switch_details(self):
+        channel = self.character.ath['channel'].search(self.lhs)
+
+    def switch_create(self):
+        channel = self.systems['channel'].create(self.session, self.lhs)
+
+    def switch_rename(self):
+        channel = self.character.ath['channel'].search(self.lhs)
+
+    def switch_lock(self):
+        channel = self.character.ath['channel'].search(self.lhs)
+
+    def switch_config(self):
+        channel = self.character.ath['channel'].search(self.lhs)
+
+
+class CmdConfig(AthCommand):
+    key = '@config'
+    locks = 'cmd:perm(Developer)'
+
+    def _main(self):
+        if self.lhs:
+            self.change()
+        else:
+            self.display()
+
+    def change(self):
+        pass
+
+    def display(self):
+        pass

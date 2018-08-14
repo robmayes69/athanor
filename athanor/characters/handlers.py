@@ -1,5 +1,6 @@
 import time
-from athanor.utils.text import mxp
+from athanor import AthException
+from athanor.utils.text import mxp, partial_match
 from athanor.utils.time import utcnow
 from athanor.base.handlers import CharacterBaseHandler
 from athanor.utils.utils import import_property
@@ -226,7 +227,6 @@ class CharacterMenuHandler(CharacterBaseHandler):
         self.owner.cmdset.add(menu)
         self.menu = menu
 
-
     def leave(self):
         if self.menu:
             self.owner.cmdset.remove(self.menu)
@@ -268,13 +268,34 @@ class CharacterChannelHandler(CharacterBaseHandler):
         self.owner.msg(format_message)
 
     def join(self, channel):
-        pass
+        results = channel.connect(self.owner)
+        return results
 
     def leave(self, channel):
-        pass
+        results = channel.disconnect(self.owner)
+        return results
 
     def gag(self, channel):
         self.owner.ndb.channel_gags.add(channel)
+        channel.mute(self.owner)
 
     def ungag(self, channel):
         self.owner.ndb.channel_gags.remove(channel)
+        channel.unmute(self.owner)
+
+    def gag_all(self):
+        for channel in self.all():
+            self.gag(channel)
+
+    def ungag_all(self):
+        for channel in self.owner.ndb.channel_gags:
+            self.ungag(channel)
+
+    def all(self):
+        return [chan for chan in self.base.systems['channel'].all() if chan.access(self.owner, 'listen')]
+
+    def search(self, find):
+        found = partial_match(find, self.all())
+        if not found:
+            raise AthException("Could not find Channel named '%s'" % find)
+        return found
