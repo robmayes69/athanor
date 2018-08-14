@@ -86,3 +86,122 @@ class CmdShelp(CmdHelp):
     key = '+shelp'
     locks = 'cmd:perm(Admin)'
     tree = athanor.HELP_TREES['+shelp']
+
+
+class CmdAccount(AthCommand):
+    key = '@account'
+    locks = 'cmd:perm(Admin)'
+    admin_switches = ['list', 'email', 'rename', 'create', 'disable', 'enable', 'ban', 'unban', 'password']
+    system_name = 'ACCOUNT'
+
+    def _main(self):
+        if self.lhs:
+            account = self.systems['account'].search(self.session, self.lhs)
+        else:
+            account = self.account
+
+    def switch_list(self):
+        pass
+
+    def switch_rename(self):
+        account = self.systems['account'].search(self.session, self.lhs)
+        found_account, old_name = self.systems['account'].rename(self.session, account, self.rhs)
+        self.ath['account'].alert("You Renamed Account '%s' to: %s" % (old_name, account))
+
+    def switch_create(self):
+        account = self.systems['account'].create(self.session, self.lhs, self.rhs, method="@account/create")
+        self.character.ath['core'].alert("You have created Account '%s'" % account, system='ACCOUNT')
+
+    def switch_email(self):
+        account = self.systems['account'].search(self.session, self.lhs)
+        account, new_email = self.systems['account'].email(self.session, account, self.rhs)
+        self.sys_msg("Changed Account '%s' Email to: %s" % (account, new_email))
+
+    def switch_enable(self):
+        account = self.systems['account'].search(self.session, self.lhs)
+        account = self.systems['account'].enable(self.session, account)
+        self.sys_msg("Enabled Account '%s'" % account)
+
+    def switch_disable(self):
+        account = self.systems['account'].search(self.session, self.lhs)
+        account = self.systems['account'].disable(self.session, account)
+        self.sys_msg("Disabled Account '%s'" % account)
+
+    def switch_ban(self):
+        account = self.systems['account'].search(self.session, self.lhs)
+        account, duration, until = self.systems['account'].ban(self.session, account, self.rhs)
+        self.sys_msg("Banned Account '%s' for %s - Until %s" % (account, duration, until))
+
+    def switch_unban(self):
+        account = self.systems['account'].search(self.session, self.lhs)
+        account = self.systems['account'].unban(self.session, account)
+        self.sys_msg("Unbanned Account '%s'" % account)
+
+    def switch_password(self):
+        account = self.systems['account'].search(self.session, self.lhs)
+        account = self.systems['account'].password(self.session, account, self.rhs)
+        self.sys_msg("Password for Account '%s' set! Don't forget it. Remember they are case sensitive." % account)
+
+    def switch_grant(self):
+        account = self.systems['account'].search(self.session, self.lhs)
+        account, permission = self.systems['account'].grant(self.session, account, self.rhs)
+        self.sys_msg("Granted Account '%s' Permission: %s" % (account, permission))
+
+    def switch_revoke(self):
+        account = self.systems['account'].search(self.session, self.lhs)
+        account, permission = self.systems['account'].revoke(self.session, account, self.rhs)
+        self.sys_msg("Revoke Account '%s' Permission: %s" % (account, permission))
+
+
+class CmdCharacter(AthCommand):
+    key = '@character'
+    locks = 'cmd:perm(Admin)'
+    admin_switches = ['list', 'rename', 'create', 'disable', 'enable', 'ban', 'unban', 'bind', 'unbind']
+    system_name = 'CHARACTER'
+
+    def _main(self):
+        pass
+
+    def switch_create(self):
+        account = self.systems['account'].search(self.session, self.rhs)
+        character = self.systems['character'].create(self.session, account, self.lhs)
+        self.sys_msg("Character '%s' created for Account '%s'!" % (character, account))
+
+    def switch_list(self):
+        pass
+
+    def switch_rename(self):
+        character = self.systems['character'].search(self.session, self.lhs)
+        character, old_name, new_name = self.systems['character'].rename(self.session, character, self.rhs)
+        self.sys_msg("Renamed Character '%s' to: %s" % (old_name, new_name))
+
+    def switch_disable(self):
+        character = self.systems['character'].search(self.session, self.lhs)
+        character = self.systems['character'].disable(self.session, character)
+        self.sys_msg("Disabled Character '%s'" % character)
+
+    def switch_enable(self):
+        character = self.systems['character'].search(self.session, self.lhs)
+        character = self.systems['character'].enable(self.session, character)
+        self.sys_msg("Enabled Character '%s'" % character)
+
+    def switch_ban(self):
+        character = self.systems['character'].search(self.session, self.lhs)
+        character, duration, until = self.systems['character'].ban(self.session, character, self.rhs)
+        self.sys_msg("Banned Character '%s' for %s - Until %s" % (character, duration, until))
+
+    def switch_unban(self):
+        character = self.systems['character'].search(self.session, self.lhs)
+        character = self.systems['character'].unban(self.session, character)
+        self.sys_msg("Un-Banned Character '%s'" % character)
+
+    def switch_bind(self):
+        character = self.systems['character'].search(self.session, self.lhs)
+        account = self.systems['account'].search(self.session, self.rhs)
+        character, account = self.systems['character'].bind(self.session, character, account)
+        self.sys_msg("Bound Character '%s' to Account '%s'" % (character, account))
+
+    def switch_unbind(self):
+        character = self.systems['character'].search(self.session, self.lhs)
+        character, account = self.systems['character'].unbind(self.session, character)
+        self.sys_msg("Un-Bound Character '%s' from Account '%s'" % (character, account))

@@ -63,6 +63,20 @@ class CharacterCoreHandler(CharacterBaseHandler):
             return 'Builder'
         return 'Mortal'
 
+    def permission_rank(self):
+        if self.is_developer():
+            return 4
+        if self.is_admin():
+            return 3
+        if self.is_builder():
+            return 2
+        return 1
+
+    def can_modify(self, target):
+        if not self.permission_rank() > 2:
+            return False
+        return self.permission_rank() > target.ath['core'].permission_rank()
+
     @property
     def account(self):
         return self.get_db('account')

@@ -12,7 +12,7 @@ class AccountCoreHandler(AccountBaseHandler):
     key = 'core'
     category = 'athanor'
     load_order = -1000
-    system_name = 'SYSTEM'
+    system_name = 'ACCOUNT'
     cmdsets = ('athanor.accounts.cmdsets.OOCCmdSet', )
     settings_data = (
         ('timezone', "Your choice of Timezone", 'timezone', 'UTC'),
@@ -39,6 +39,9 @@ class AccountCoreHandler(AccountBaseHandler):
     def is_developer(self):
         return self.owner.locks.check_lockstring(self.owner, "dummy:perm(Developer)")
 
+    def is_superuser(self):
+        return self.owner.is_superuser
+
     def status_name(self):
         if self.owner.is_superuser:
             return 'Superuser'
@@ -49,6 +52,22 @@ class AccountCoreHandler(AccountBaseHandler):
         if self.is_builder():
             return 'Builder'
         return 'Mortal'
+
+    def permission_rank(self):
+        if self.is_superuser():
+            return 5
+        if self.is_developer():
+            return 4
+        if self.is_admin():
+            return 3
+        if self.is_builder():
+            return 2
+        return 1
+
+    def can_modify(self, target):
+        if not self.permission_rank() > 2:
+            return False
+        return (self.permission_rank() > target.ath['core'].permission_rank()) or self.is_superuser()
 
     def change_password(self, enactor, old=None, new=None):
         if (enactor.account == self.owner) and not self.owner.check_password(old):
@@ -100,6 +119,8 @@ class AccountCoreHandler(AccountBaseHandler):
     @disabled.setter
     def disabled(self, value):
         self.set_db('disabled', value)
+        if value:
+            self.disconnect()
 
     @property
     def banned(self):
@@ -114,6 +135,16 @@ class AccountCoreHandler(AccountBaseHandler):
             self.set_db('banned', False)
         else:
             self.set_db('banned', value)
+            self.disconnect()
+
+    def disconnect(self):
+        sessions = self.owner.sessions.all()
+        if not sessions:
+            return
+        self.owner.unpuppet_all()
+        from evennia import SESSION_HANDLER
+        for session in sessions:
+            SESSION_HANDLER.sessions.disconnect(session)
 
     @property
     def playtime(self):
@@ -164,7 +195,6 @@ class AccountCoreHandler(AccountBaseHandler):
 
 class AccountCharacterHandler(AccountBaseHandler):
     key = 'character'
-    style = 'account'
     load_order = -999
     system_name = 'ACCOUNT'
 
@@ -285,9 +315,7 @@ class AccountCharacterHandler(AccountBaseHandler):
 
 class AccountMenuHandler(AccountBaseHandler):
     key = 'menu'
-    style = 'account'
     system_name = 'SYSTEM'
-    category = 'athanor'
 
     def load(self):
         self.menu = None

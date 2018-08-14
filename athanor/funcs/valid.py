@@ -120,9 +120,14 @@ def valid_account_name(checker, entry, rename_from=None):
             raise AthException("Account Names may not contain the characters: %s" % BAD_CHARS)
     if len(entry) != len(entry.strip()):
         raise AthException("Account names may not have leading or trailing spaces.")
+    if entry.lower() in ('me', 'self'):
+        raise AthException("Accounts may not be named 'me' or 'self'!")
     from athanor.accounts.classes import Account
-    exist = Account.objects.filter_family(db_key__iexact=entry).first()
-    if exist and (rename_from and exist != rename_from) or not rename_from:
+    if rename_from:
+        exist = Account.objects.filter_family(username__iexact=entry).exclude(id=rename_from.id).first()
+    else:
+        exist = Account.objects.filter_family(username__iexact=entry).first()
+    if exist:
         raise AthException("Account name is already in use!")
     return entry
 
@@ -155,8 +160,13 @@ def valid_character_name(checker, entry, rename_from=None):
             raise AthException("Character Names may not contain the character: %s" % char)
     if len(entry) != len(entry.strip()):
         raise AthException("Character names may not have leading or trailing spaces.")
+    if entry.lower() in ('me', 'self'):
+        raise AthException("Characters may not be named 'me' or 'self'!")
     from athanor.characters.classes import Character
-    exist = Character.objects.filter_family(db_key__iexact=entry).first()
+    if rename_from:
+        exist = Character.objects.filter_family(db_key__iexact=entry).exclude(id=rename_from.id).first()
+    else:
+        exist = Character.objects.filter_family(db_key__iexact=entry).first()
     if exist and ((exist != rename_from) or not rename_from):
         raise AthException("Character name is already in use!")
     return entry

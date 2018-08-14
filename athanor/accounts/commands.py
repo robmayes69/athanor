@@ -17,3 +17,5 @@ class CmdCharCreate(AthCommand):
 
     def _main(self):
         self.account.ath['character'].create(name=self.lhs)
+
+

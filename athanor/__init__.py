@@ -133,7 +133,7 @@ STYLES_DATA = {
     'separator_text_color': ('color', 'Color used for text inside Separator Lines.', 'w'),
     'footer_text_color': ('color', 'Color used for text inside Footer Lines.', 'w'),
     'border_color': ('color', 'Color used for miscellaneous borders like tables.', 'M'),
-    'msg_edge_color': ('color', 'Color used for the -=< >=- wrapper around system messages.', 'M'),
+    'msg_edge_color': ('color', 'Color used for the -=< >=- wrapper around system messages.', 'm'),
     'msg_name_color': ('color', 'Color used for the NAME within system message prefixes.', 'w'),
     'ooc_edge_color': ('color', 'Color used for the edge of OOC message prefixes.', 'R'),
     'ooc_prefix_color': ('color', 'Color used for the OOC within OOC message prefixes.', 'w'),

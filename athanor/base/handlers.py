@@ -7,6 +7,8 @@ class BaseHandler(object):
     cmdsets = ()
     load_order = 0
     settings_data = tuple()
+    category = 'athanor'
+    system_name = 'SYSTEM'
 
     def __init__(self, base):
         self.base = base
@@ -59,9 +61,26 @@ class BaseHandler(object):
         self.save_settings()
         return setting, old_value
 
+    def get_colors(self):
+        pass
+
+    def alert(self, text, system=None):
+        if not system:
+            system = self.system_name
+        if not self.owner.sessions.all():
+            return
+        colors = self.get_colors()
+        msg_edge = colors['msg_edge_color'].value
+        msg_name = colors['msg_name_color'].value
+        message = '|%s-=<|n|%s%s|n|%s>=-|n %s' % (msg_edge, msg_name, system.upper(), msg_edge, text)
+        self.owner.msg(message)
+
 
 class CharacterBaseHandler(BaseHandler):
     mode = 'character'
+
+    def get_colors(self):
+        return self.owner.account.ath['color'].get_settings()
 
     def at_init(self):
         pass
@@ -83,6 +102,9 @@ class CharacterBaseHandler(BaseHandler):
 
 
 class AccountBaseHandler(BaseHandler):
+
+    def get_colors(self):
+        return self.owner.ath['color'].get_settings()
 
     def at_account_creation(self):
         pass
