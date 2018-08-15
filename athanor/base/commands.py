@@ -104,3 +104,15 @@ class AthCommand(default_cmds.MuxCommand):
 
     def sys_msg(self, text):
         self.caller.ath['core'].alert(text, system=self.system_name)
+
+    def header(self, contents=None):
+        return self.session.ath['render'].header(contents)
+
+    def footer(self, contents=None):
+        return self.session.ath['render'].footer(contents)
+
+    def separator(self, contents=None):
+        return self.session.ath['render'].separator(contents)
+
+    def table(self, *args, **kwargs):
+        return self.session.ath['render'].table(*args, **kwargs)

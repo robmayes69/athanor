@@ -76,7 +76,7 @@ def valid_boolean(checker, entry):
     if not entry:
         raise AthException(error)
     if entry in ('1', 'TRUE', 'ON', 'ENABLED', 'ENABLE', 'YES'):
-        raise True
+        return True
     if entry in ('0', 'FALSE', 'OFF', 'DISABLED', 'DISABLE', 'NO'):
         return False
     raise AthException(error)

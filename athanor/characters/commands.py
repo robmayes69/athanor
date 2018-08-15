@@ -1,4 +1,5 @@
 import athanor
+from athanor import AthException
 from athanor.base.commands import AthCommand
 
 # Admin and building commands go here.
@@ -280,7 +281,31 @@ class CmdConfig(AthCommand):
             self.display()
 
     def change(self):
-        pass
+        if '/' not in self.lhs:
+            raise AthException("Must enter a <system>/<setting> combo!")
+        sysname, setname = self.lhs.split('/', 1)
+        if not sysname:
+            raise AthException("Must enter a system name!")
+        sys_choices = self.get_systems()
+        print sys_choices
+        system = self.partial(sysname, sys_choices)
+        if not system:
+            raise AthException("System not found. Choices are: %s" % ', '.join(sys_choices))
+        setting, old_value = system.change_settings(self.session, setname, self.rhs)
+        self.sys_msg("Changed System '%s' Setting '%s' to: %s" % (system, setting, setting.display()))
 
     def display(self):
-        pass
+        message = list()
+        for sys in self.get_systems():
+            message.append(self.header(sys.key.capitalize()))
+            columns = (('Name', 20, 'l'), ('Description', 43, 'l'), ('Value', 15, 'l'))
+            setting_table = self.table(columns)
+            for setting in sorted(sys.ndb.settings.values(), key=lambda s: s.key):
+                setting_table.add_row(setting.key, '(%s) %s' % (setting.expect_type, setting.description), setting.display())
+            message.append(setting_table)
+        message.append(self.footer())
+        self.msg_lines(message)
+
+    def get_systems(self):
+        all_systems = [sys for sys in self.systems.values() if sys.load_settings()]
+        return sorted(all_systems, key=lambda s: s)

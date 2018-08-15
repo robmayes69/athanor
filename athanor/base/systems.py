@@ -18,6 +18,7 @@ class AthanorSystem(DefaultScript):
         # Most systems will implement their own Settings.
         self.ndb.loaded_settings = False
         self.ndb.gagged = set()
+        self.ndb.settings = dict()
         # We'll probably be using this a lot.
 
         # Call easy-extensible loading process.
@@ -32,22 +33,26 @@ class AthanorSystem(DefaultScript):
         return self.ndb.settings[item].value
 
     def load_settings(self):
+        if self.ndb.loaded_settings:
+            return bool(self.ndb.settings)
         saved_data = dict(self.attributes.get('settings', dict()))
         for setting_def in self.settings_data:
             try:
                 new_setting = SETTINGS[setting_def[2]](self, setting_def[0], setting_def[1], setting_def[3], saved_data.get(setting_def[0], None))
+                print "save for %s: %s" % (setting_def[0], saved_data.get(setting_def[0], None))
                 self.ndb.settings[new_setting.key] = new_setting
-            except Exception:
+            except Exception as e:
                 pass
         self.ndb.loaded_settings = True
+        return bool(self.ndb.settings)
 
     def save_settings(self):
         save_data = dict()
         for setting in self.ndb.settings.values():
-            data = setting.export()
-            if len(data):
-                save_data[setting.key] = data
+            if setting.customized():
+                save_data[setting.key] = setting.export()
         self.db.settings = save_data
+        print self.db.settings
 
     def change_settings(self, session, key, value):
         setting = partial_match(key, self.ndb.settings.values())
@@ -56,6 +61,8 @@ class AthanorSystem(DefaultScript):
         old_value = setting.display()
         setting.set(value, str(value).split(','), session)
         self.save_settings()
+        self.alert("Setting '%s' changed to: %s (previously: %s)" % (setting, setting.display(), old_value),
+                   source=session)
         return setting, old_value
 
     def listeners(self):

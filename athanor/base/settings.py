@@ -30,12 +30,15 @@ class BaseSetting(object):
                 self.value_storage = self.valid_save(self.save_data)
                 self.loaded = True
                 return True
-            except:
-                pass # need some kind of error message here!
+            except Exception as e:
+                print e # need some kind of error message here!
         return False
 
     def export(self):
         return self.value_storage
+
+    def customized(self):
+        return self.value_storage != self.default_value
 
     def valid_save(self, save_data):
         return save_data
@@ -51,7 +54,7 @@ class BaseSetting(object):
 
     @property
     def value(self):
-        if not self.loaded and self.save_data:
+        if not self.loaded and self.save_data is not None:
             self.load()
         if self.loaded:
             return self.value_storage
@@ -67,6 +70,7 @@ class BaseSetting(object):
     def set(self, value, value_list, session):
         final_value = self.validate(value, value_list, session)
         self.value_storage = final_value
+        self.loaded = True
 
     def display(self):
         return self.value
