@@ -26,3 +26,7 @@ class CharacterCmdSet(AthCmdSet):
 
 class UnloggedCmdSet(AthCmdSet):
     priority = -19
+
+
+class SessionCmdSet(AthCmdSet):
+    priority = -10

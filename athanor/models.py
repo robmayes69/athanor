@@ -12,48 +12,6 @@ def validate_color(value):
         raise ValidationError("'%s' is not a valid color." % value)
 
 
-class AccountCore(models.Model):
-    account = models.OneToOneField('accounts.AccountDB', related_name='+')
-    banned = models.DateTimeField(null=True)
-    disabled = models.BooleanField(default=False)
-    playtime = models.DurationField(default=timedelta(0))
-    last_login = models.DateTimeField(null=True)
-    last_logout = models.DateTimeField(null=True)
-    shelved = models.BooleanField(default=False)
-    timezone = TimeZoneField(default='UTC')
-
-
-class AccountCharacter(models.Model):
-    account = models.OneToOneField('accounts.AccountDB', related_name='+')
-    last_character = models.ForeignKey('objects.ObjectDB', on_delete=models.SET_NULL, null=True)
-    extra_character_slots = models.SmallIntegerField(default=0)
-    characters = models.ManyToManyField('objects.ObjectDB', related_name='+')
-
-
-class CharacterCore(models.Model):
-    character = models.OneToOneField('objects.ObjectDB', related_name='+')
-    account = models.ForeignKey('accounts.AccountDB', related_name='+', null=True, on_delete=models.SET_NULL)
-    banned = models.DateTimeField(null=True)
-    disabled = models.BooleanField(default=False)
-    playtime = models.DurationField(default=timedelta(0))
-    last_login = models.DateTimeField(null=True)
-    last_logout = models.DateTimeField(null=True)
-    shelved = models.BooleanField(default=False)
-    dark = models.BooleanField(default=False)
-
-
-class CharacterCharacter(models.Model):
-    character = models.OneToOneField('objects.ObjectDB', related_name='+')
-
-
-class AccountOnline(models.Model):
-    account = models.OneToOneField('accounts.AccountDB', related_name='+')
-
-
-class CharacterOnline(models.Model):
-    character = models.OneToOneField('objects.ObjectDB', related_name='+')
-
-
 class WithLocks(models.Model):
     """
     Allows a Model to store Evennia-like Locks.
@@ -71,6 +29,17 @@ class WithLocks(models.Model):
 
     def save_locks(self):
         self.save(update_fields=['lock_storage'])
+
+
+class Zone(WithLocks):
+    key = models.CharField(max_length=255, null=False, blank=False)
+    parent = models.ForeignKey('athanor.Zone', related_name='children', null=True)
+    rooms = models.ManyToManyField('objects.ObjectDB', related_name='zones')
+    description = models.TextField(null=True, blank=True)
+    owner = models.ForeignKey('objects.ObjectDB', related_name='zones', null=True)
+
+    class Meta:
+        unique_together = (('owner', 'parent', 'key'),)
 
 
 class PublicChannelMessage(models.Model):

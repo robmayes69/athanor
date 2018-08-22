@@ -110,6 +110,7 @@ class AthanorChannel(DefaultChannel):
     def online_characters(self):
         return set(self.subscriptions.all()).intersection(SYSTEMS['character'].ndb.online_characters)
 
+
 class PublicChannel(AthanorChannel):
     settings_data = (
         ('titles_enabled', "Allow the use of Channel Titles?", 'boolean', 1),
@@ -132,3 +133,6 @@ class PublicChannel(AthanorChannel):
         for recip in self.online_characters():
             recip.ath[self.handler].receive(channel=self, message=msg, source=source)
         PublicChannelMessage.objects.create(channel=self, speaker=source, markup_text=msg.log(), date_created=utcnow())
+
+    def msg(self, message, senders=None, online=True, *args, **kwargs):
+        self.speech(senders, message)

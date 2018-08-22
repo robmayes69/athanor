@@ -11,7 +11,8 @@ class CharacterCoreHandler(CharacterBaseHandler):
     style = 'fallback'
     system_name = 'SYSTEM'
     load_order = -1000
-    cmdsets = ('athanor.characters.cmdsets.CoreCharacterCmdSet', )
+    cmdsets = ('athanor.characters.cmdsets.CoreCharacterCmdSet', 'athanor.base.original_cmdsets.CharacterAdminCmdset',
+               'athanor.base.original_cmdsets..CharacterBaseCmdSet')
 
     def at_init(self):
         super(CharacterCoreHandler).at_init()

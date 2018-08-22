@@ -38,6 +38,16 @@ BASE_CHANNEL_TYPECLASS = "athanor.channels.classes.PublicChannel"
 # but create custom variations of scripts on a per-case basis instead.
 #BASE_SCRIPT_TYPECLASS = "classes.scripts.Script"
 
+# Command set used on session before account has logged in
+CMDSET_UNLOGGEDIN = "athanor.base.cmdsets.UnloggedCmdSet"
+# Command set used on the logged-in session
+CMDSET_SESSION = "athanor.base.cmdsets.SessionCmdSet"
+# Default set for logged in account with characters (fallback)
+CMDSET_CHARACTER = "athanor.base.cmdsets.CharacterCmdSet"
+# Command set for accounts without a character (ooc)
+CMDSET_ACCOUNT = "athanor.base.cmdsets.AccountCmdSet"
+
+
 WEBSOCKET_ENABLED = True
 
 INLINEFUNC_ENABLED = True

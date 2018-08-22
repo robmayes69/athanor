@@ -13,7 +13,8 @@ class AccountCoreHandler(AccountBaseHandler):
     category = 'athanor'
     load_order = -1000
     system_name = 'ACCOUNT'
-    cmdsets = ('athanor.accounts.cmdsets.OOCCmdSet', )
+    cmdsets = ('athanor.accounts.cmdsets.OOCCmdSet', 'athanor.base.original_cmdsets.AccountAdminCmdSet',
+               'athanor.base.original_cmdsets.AccountBaseCmdSet')
     settings_data = (
         ('timezone', "Your choice of Timezone", 'timezone', 'UTC'),
     )
@@ -68,21 +69,6 @@ class AccountCoreHandler(AccountBaseHandler):
         if not self.permission_rank() > 2:
             return False
         return (self.permission_rank() > target.ath['core'].permission_rank()) or self.is_superuser()
-
-    def change_password(self, enactor, old=None, new=None):
-        if (enactor.account == self.owner) and not self.owner.check_password(old):
-            raise AthException("The entered old-password was incorrect.")
-        if not new:
-            raise AthException("No new password entered! Passwords cannot be blank.")
-        self.owner.set_password(new)
-        self.owner.save()
-        #self.console_msg("Your password has been changed.")
-
-    def change_email(self, enactor, new_email):
-        fixed_email = evennia.AccountDB.objects.normalize_email(new_email)
-        self.owner.email = fixed_email
-        self.owner.save()
-        #self.console_msg("Your Account Email was changed to: %s" % fixed_email)
 
     def display_time(self, date=None, format=None):
         """
