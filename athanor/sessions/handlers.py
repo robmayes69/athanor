@@ -24,27 +24,27 @@ class SessionCoreHandler(SessionBaseHandler):
             self.owner.cmdset.remove(cmdset)
 
     def is_builder(self):
-        if not hasattr(self.owner, 'account'):
+        if not self.owner.account:
             return False
         return self.owner.account.ath['core'].is_builder()
 
     def is_admin(self):
-        if not hasattr(self.owner, 'account'):
+        if not self.owner.account:
             return False
         return self.owner.account.ath['core'].is_admin()
 
     def is_developer(self):
-        if not hasattr(self.owner, 'account'):
+        if not self.owner.account:
             return False
         return self.owner.account.ath['core'].is_developer()
 
     def is_superuser(self):
-        if not hasattr(self.owner, 'account'):
+        if not self.owner.account:
             return False
         return self.owner.account.is_superuser
 
     def permission_rank(self):
-        if not hasattr(self.owner, 'account'):
+        if not self.owner.account:
             return 0
         return self.owner.account.ath['core'].permission_rank()
 
@@ -52,6 +52,7 @@ class SessionCoreHandler(SessionBaseHandler):
         if not self.permission_rank() > 2:
             return False
         return self.permission_rank() > target.ath['core'].permission_rank()
+
 
 class SessionRendererHandler(SessionBaseHandler):
     key = 'render'

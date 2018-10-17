@@ -153,6 +153,9 @@ class Account(DefaultAccount):
         """
         return sorted(super(Account, self).get_all_puppets(), key=lambda char: char.key)
 
+    def at_parse_command(self, command):
+        command.isic = False
+        command.account = self
 
     def at_look(self, target=None, session=None):
         """

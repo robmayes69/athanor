@@ -160,3 +160,6 @@ class SessionBaseHandler(BaseHandler):
 
     def get_db(self, name, default=None):
         return self.owner.nattributes.get(name, category=self.key) or default
+
+    def alert(self, text, system=None):
+        self.owner.msg(text)

@@ -1,4 +1,5 @@
 from django.db.models import Q
+from django.contrib.auth import authenticate
 from athanor.accounts.classes import Account
 from evennia.utils.create import create_account
 from athanor import AthException
@@ -36,7 +37,7 @@ class AccountSystem(AthanorSystem):
     def search(self, session, find):
         if not find:
             raise AthException("Must enter search terms!")
-        if find.lower() in ('self', 'me'):
+        if find.lower() in ('self', 'me') and hasattr(session, 'account'):
             return session.account
         if find.isdigit():
             results = Account.objects.filter_family(id=find).first()
@@ -45,7 +46,7 @@ class AccountSystem(AthanorSystem):
         if results:
             return results
         results = Account.objects.filter_family(username_istartswith=find).order_by('username')
-        if results.count() > 1:
+        if results.count() > 1 and session.ath['core'].is_admin:
             raise AthException("Account Search Ambiguous. Matched: %s" % ', '.join(results))
         if not results:
             raise AthException("Account not found!")
@@ -210,3 +211,15 @@ class AccountSystem(AthanorSystem):
         account.ath['core'].alert("Your Account has lost Permission: %s" % permission)
         self.alert("Revoked Account '%s' Permission: %s" % (account, permission))
         return account, permission
+
+    def login(self, session, account, password):
+        if session.account:
+            raise AthException("You are already logged in!")
+        account = self.valid['account'](session, account)
+        if not len(password):
+            raise AthException("You must enter a password!")
+        auth_account = authenticate(username=account.username, password=password)
+        if not auth_account:
+            account.at_failed_login(session)
+            raise AthException("Invalid password!")
+        session.sessionhandler.login(session, account)

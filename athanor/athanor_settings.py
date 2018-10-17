@@ -39,7 +39,7 @@ BASE_CHANNEL_TYPECLASS = "athanor.channels.classes.PublicChannel"
 #BASE_SCRIPT_TYPECLASS = "classes.scripts.Script"
 
 # Command set used on session before account has logged in
-CMDSET_UNLOGGEDIN = "athanor.base.cmdsets.UnloggedCmdSet"
+CMDSET_UNLOGGEDIN = "athanor.sessions.unlogged.UnloggedCmdSet"
 # Command set used on the logged-in session
 CMDSET_SESSION = "athanor.base.cmdsets.SessionCmdSet"
 # Default set for logged in account with characters (fallback)

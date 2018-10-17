@@ -20,3 +20,6 @@ class Session(ServerSession):
     def at_disconnect(self, reason=None):
         super(Session, self).at_disconnect(reason)
         self.ath.at_disconnect(reason)
+
+    def at_parse_command(self, command):
+        pass

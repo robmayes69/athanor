@@ -74,6 +74,12 @@ class BaseCharacter(DefaultCharacter):
         if self.sessions.count() == 1:
             self.at_true_login(session=session)
 
+    def at_parse_command(self, command):
+        if hasattr(self, "account"):
+            command.account = self.account
+        command.character = self
+        command.isic = True
+
     def at_look(self, session, target, **kwargs):
         """
         Called when this object performs a look. It allows to

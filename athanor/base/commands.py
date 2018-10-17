@@ -38,14 +38,10 @@ class AthCommand(default_cmds.MuxCommand):
         if self.lhs:
             self.lhs = unicode(self.lhs.strip())
             self.lhs_san = sanitize_string(self.lhs)
-        if hasattr(self.caller, "account"):
-            self.account = self.caller.account
-            self.character = self.caller
-            self.isic = True
-        else:
-            self.account = self.caller
-            self.isic = False
-            self.character = None
+        self.account = None
+        self.character = None
+        self.isic = False
+        self.caller.at_parse_command(self)
         self.is_admin = self.caller.ath['core'].is_admin()
         self.parse_switches()
 
