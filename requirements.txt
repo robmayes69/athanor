@@ -1,2 +1,2 @@
-evennia >= 0.7.0
+evennia >= 0.9
 django-timezone-field >= 2.1

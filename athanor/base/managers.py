@@ -28,32 +28,34 @@ class __BaseManager(object):
         self.attributes = owner.attributes
 
         # Load all handlers.
-        handlers = athanor.HANDLERS_SORTED[self.mode]
+        handlers = getattr(athanor.LOADER, 'handlers_%s' % self.mode)
         self.ordered_handlers = list()
         self.handlers = dict()
         for handler in handlers:
             loaded_handler = handler(self)
             self.handlers[handler.key] = loaded_handler
             self.ordered_handlers.append(loaded_handler)
+        for handler in self.ordered_handlers:
+            handler.load_final()
 
         # Call an extensible Load function for simplicity if need be.
         self.load()
 
     @property
     def valid(self):
-        return athanor.VALIDATORS
+        return athanor.LOADER.validators
 
     @property
     def systems(self):
-        return athanor.SYSTEMS
+        return athanor.LOADER.systems
 
     @property
     def properties(self):
-        return athanor.PROPERTIES_DICT[self.mode]
+        return getattr(athanor.LOADER, 'properties_%s' % self.mode)
 
     @property
     def settings(self):
-        return athanor.SETTINGS
+        return athanor.LOADER.settings
 
     def load(self):
         """

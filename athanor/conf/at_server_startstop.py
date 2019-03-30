@@ -16,15 +16,19 @@ at_server_cold_stop()
 
 """
 
+
 def at_server_start():
     """
     This is called every time the server starts up, regardless of
     how it was shut down.
     """
-    import athanor, importlib
-    for path in athanor.start_stop:
-        module = importlib.import_module(path)
-        module.at_server_start()
+    import athanor
+    athanor.LOADER.load_found()
+    athanor.LOADER.load_final()
+    athanor.LOADER.load_systems()
+    for m in athanor.LOADER.modules_order:
+        if hasattr(m, 'at_server_start'):
+            m.at_server_start()
 
 
 def at_server_stop():
@@ -32,30 +36,30 @@ def at_server_stop():
     This is called just before the server is shut down, regardless
     of it is for a reload, reset or shutdown.
     """
-    import athanor, importlib
-    for path in athanor.start_stop:
-        module = importlib.import_module(path)
-        module.at_server_stop()
+    import athanor
+    for m in athanor.LOADER.modules_order:
+        if hasattr(m, 'at_server_stop'):
+            m.at_server_stop()
 
 
 def at_server_reload_start():
     """
     This is called only when server starts back up after a reload.
     """
-    import athanor, importlib
-    for path in athanor.start_stop:
-        module = importlib.import_module(path)
-        module.at_server_reload_start()
+    import athanor
+    for m in athanor.LOADER.modules_order:
+        if hasattr(m, 'at_server_reload_start'):
+            m.at_server_reload_start()
 
 
 def at_server_reload_stop():
     """
     This is called only time the server stops before a reload.
     """
-    import athanor, importlib
-    for path in athanor.start_stop:
-        module = importlib.import_module(path)
-        module.at_server_reload_stop()
+    import athanor
+    for m in athanor.LOADER.modules_order:
+        if hasattr(m, 'at_server_reload_stop'):
+            m.at_server_reload_stop()
 
 
 def at_server_cold_start():
@@ -63,13 +67,10 @@ def at_server_cold_start():
     This is called only when the server starts "cold", i.e. after a
     shutdown or a reset.
     """
-    import athanor, importlib
-    for path in athanor.start_stop:
-        module = importlib.import_module(path)
-        module.at_server_cold_start()
-    from athanor.models import CharacterOnline, AccountOnline
-    for model in (CharacterOnline, AccountOnline):
-        model.objects.delete()
+    import athanor
+    for m in athanor.LOADER.modules_order:
+        if hasattr(m, 'at_server_cold_start'):
+            m.at_server_cold_start()
 
 
 def at_server_cold_stop():
@@ -77,7 +78,7 @@ def at_server_cold_stop():
     This is called only when the server goes down due to a shutdown or
     reset.
     """
-    import athanor, importlib
-    for path in athanor.start_stop:
-        module = importlib.import_module(path)
-        module.at_server_cold_stop()
+    import athanor
+    for m in athanor.LOADER.modules_order:
+        if hasattr(m, 'at_server_cold_stop'):
+            m.at_server_cold_stop()

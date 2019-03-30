@@ -4,11 +4,15 @@ The core module settings for Athanor.
 Besides storing core plugin settings this module is meant to be imported for accessing the properties like
 HANDLERS.
 """
+from athanor.base.loader import AthanorLoader
+
+LOADER = AthanorLoader()
 
 
 class AthException(Exception):
     """
-    This exception exists for code logic purposes, not actual code errors. Use AthException if you want your commands to abort and display an error message without a complicated return chain.
+    This exception exists for code logic purposes, not actual code errors. Use AthException if you want your commands
+    to abort and display an error message without a complicated return chain.
     """
     pass
 
@@ -23,11 +27,8 @@ LOCK_FUNC_MODULES = ("athanor.funcs.lock", )
 INPUT_FUNC_MODULES = ['athanor.funcs.input', ]
 INLINEFUNC_MODULES = ['athanor.funcs.inline', ]
 
-# This dictionary will contain key->instances of all the loaded Athanor modules once loading is complete.
-MODULES = dict()
 
-# This tuple will be set by the setup process to contain all of the modules in the order they are to be loaded.
-MODULES_ORDER = tuple()
+# Everything below this point is Athanor-specific.
 
 # Dictionary that contains the Types and Python Paths of the Athanor Managers that are to be used.
 # This can be overruled by modules that load later.
@@ -68,14 +69,6 @@ HANDLERS_SCRIPT = {
 
 }
 
-# This dictionary will contain type->tuple key-value pairs. The tuples are the complete
-# list of Handlers by type, sorted by load order. This optimizes the manager load process.
-HANDLERS_SORTED = {
-    'account': tuple(),
-    'character': tuple(),
-    'session': tuple(),
-    'script': tuple()
-}
 
 # The properties system provides a unified, overrideable interface of unique key->functions used for retrieving information
 # about a Type. For instance, you might want the location name of a character, or a prettified version of their idle time
@@ -242,27 +235,4 @@ HELP_TREES = {
     '+shelp': ('athanor.base.help.ShelpCore', SHELP_FILES)
 }
 
-# Athanor allows for multiple at_server_start, at_server_stop, etc, hooks to be fired off in sequence.
-# Simply add more modules to another module to add to the load process. The default load_athanor is mandatory.
-START_STOP = []
 
-INITIAL_SETUP = []
-
-# Core setup stuff below. Don't touch this.
-def setup(module_list):
-    import importlib
-    global MODULES, MODULES_ORDER, START_STOP, INITIAL_SETUP
-    for path in module_list:
-        module = importlib.import_module(path)
-        MODULES[path] = module
-
-    MODULES_ORDER = tuple(sorted(MODULES.values(), key=lambda m: m.LOAD_ORDER))
-
-    START_STOP.append('athanor.conf.load_athanor')
-    INITIAL_SETUP.append('athanor.conf.install_athanor')
-
-    for plugin in MODULES_ORDER:
-        if hasattr(plugin, 'INITIAL_SETUP'):
-            INITIAL_SETUP += plugin.INITIAL_SETUP
-        if hasattr(plugin, 'START_STOP'):
-            START_STOP += plugin.START_STOP

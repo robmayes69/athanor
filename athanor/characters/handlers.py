@@ -11,8 +11,7 @@ class CharacterCoreHandler(CharacterBaseHandler):
     style = 'fallback'
     system_name = 'SYSTEM'
     load_order = -1000
-    cmdsets = ('athanor.characters.cmdsets.CoreCharacterCmdSet', 'athanor.base.original_cmdsets.CharacterAdminCmdset',
-               'athanor.base.original_cmdsets..CharacterBaseCmdSet')
+#    cmdsets = ()
 
     def at_init(self):
         super(CharacterCoreHandler).at_init()
@@ -246,60 +245,4 @@ class CharacterMenuHandler(CharacterBaseHandler):
         self.launch(path)
 
 
-class CharacterChannelHandler(CharacterBaseHandler):
-    key = 'channel'
-    system_name = 'CHANNEL'
 
-    def load(self):
-        self.owner.ndb.channel_gags = set()
-
-    def colors(self):
-        if not self.owner.db.channel_colors:
-            self.owner.db.channel_colors = dict()
-        return self.owner.db.channel_colors
-
-    def send(self, channel, input):
-        channel.speech(source=self.owner, text=input)
-
-    def receive(self, channel, message, source=None):
-        if channel in self.owner.ndb.channel_gags:
-            return
-        if not isinstance(message, basestring):
-            message = message.render(viewer=self.owner)
-        color = self.colors().get(channel, None) or channel['color'] or 'n'
-        format_message = '[|%s%s|n] %s' % (color, channel.key, message)
-        print format_message
-        self.owner.msg(format_message)
-
-    def join(self, channel):
-        results = channel.connect(self.owner)
-        return results
-
-    def leave(self, channel):
-        results = channel.disconnect(self.owner)
-        return results
-
-    def gag(self, channel):
-        self.owner.ndb.channel_gags.add(channel)
-        channel.mute(self.owner)
-
-    def ungag(self, channel):
-        self.owner.ndb.channel_gags.remove(channel)
-        channel.unmute(self.owner)
-
-    def gag_all(self):
-        for channel in self.all():
-            self.gag(channel)
-
-    def ungag_all(self):
-        for channel in self.owner.ndb.channel_gags:
-            self.ungag(channel)
-
-    def all(self):
-        return [chan for chan in self.base.systems['channel'].all() if chan.access(self.owner, 'listen')]
-
-    def search(self, find):
-        found = partial_match(find, self.all())
-        if not found:
-            raise AthException("Could not find Channel named '%s'" % find)
-        return found

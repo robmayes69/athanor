@@ -11,7 +11,10 @@ def import_property(path):
     Returns:
         Hopefully, a function object or a variable or something of that sort.
     """
-    module, thing = path.rsplit('.', 1)
-    module = importlib.import_module(module)
-    thing = getattr(module, thing)
-    return thing
+    if '.' in path:
+        module, thing = path.rsplit('.', 1)
+        module = importlib.import_module(module)
+        thing = getattr(module, thing)
+        return thing
+    else:
+        return importlib.import_module(path)

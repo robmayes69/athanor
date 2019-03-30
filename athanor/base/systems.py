@@ -1,6 +1,7 @@
 from evennia import DefaultScript
+import athanor
+from athanor import AthException
 from athanor.utils.text import partial_match
-from athanor import VALIDATORS, SETTINGS, AthException, SYSTEMS
 from athanor.utils.online import admin
 
 
@@ -11,8 +12,8 @@ class AthanorSystem(DefaultScript):
     system_name = 'SYSTEM'
     load_order = 0
     run_interval = 0
-    valid = VALIDATORS
-    systems = SYSTEMS
+    valid = athanor.LOADER.validators
+    systems = athanor.LOADER.systems
 
     def at_start(self):
         # Most systems will implement their own Settings.
@@ -38,8 +39,7 @@ class AthanorSystem(DefaultScript):
         saved_data = dict(self.attributes.get('settings', dict()))
         for setting_def in self.settings_data:
             try:
-                new_setting = SETTINGS[setting_def[2]](self, setting_def[0], setting_def[1], setting_def[3], saved_data.get(setting_def[0], None))
-                print "save for %s: %s" % (setting_def[0], saved_data.get(setting_def[0], None))
+                new_setting = athanor.LOADER.settings[setting_def[2]](self, setting_def[0], setting_def[1], setting_def[3], saved_data.get(setting_def[0], None))
                 self.ndb.settings[new_setting.key] = new_setting
             except Exception as e:
                 pass
@@ -52,7 +52,6 @@ class AthanorSystem(DefaultScript):
             if setting.customized():
                 save_data[setting.key] = setting.export()
         self.db.settings = save_data
-        print self.db.settings
 
     def change_settings(self, session, key, value):
         setting = partial_match(key, self.ndb.settings.values())

@@ -176,6 +176,5 @@ class Account(DefaultAccount):
             target = self
         return target.return_appearance(session, self)
 
-
     def return_appearance(self, session, viewer):
         return self.ath.render_login(session, viewer)

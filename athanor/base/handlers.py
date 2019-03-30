@@ -38,6 +38,9 @@ class BaseHandler(object):
     def load(self):
         pass
 
+    def load_final(self):
+        pass
+
     def set_db(self, name, value):
         return self.owner.attributes.add(name, value, category=self.key)
 

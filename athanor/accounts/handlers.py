@@ -1,9 +1,10 @@
-import time, evennia
+import time
 from django.conf import settings
 from evennia import utils
 from evennia.utils.ansi import ANSIString
 from athanor.utils.time import utcnow
 from athanor.utils.utils import import_property
+from athanor.utils.text import partial_match
 from athanor.base.handlers import AccountBaseHandler
 from athanor import AthException, STYLES_DATA
 
@@ -13,8 +14,8 @@ class AccountCoreHandler(AccountBaseHandler):
     category = 'athanor'
     load_order = -1000
     system_name = 'ACCOUNT'
-    cmdsets = ('athanor.accounts.cmdsets.OOCCmdSet', 'athanor.base.original_cmdsets.AccountAdminCmdSet',
-               'athanor.base.original_cmdsets.AccountBaseCmdSet')
+#    cmdsets = ('athanor.accounts.cmdsets.OOCCmdSet', 'athanor.base.original_cmdsets.AccountAdminCmdSet',
+#               'athanor.base.original_cmdsets.AccountBaseCmdSet')
     settings_data = (
         ('timezone', "Your choice of Timezone", 'timezone', 'UTC'),
     )
@@ -237,7 +238,7 @@ class AccountCharacterHandler(AccountBaseHandler):
         message.append(session.ath['render'].subheader('Commands'))
         command_column = session.ath['render'].table([], header=False)
         command_text = list()
-        command_text.append(unicode(ANSIString(" |whelp|n - more commands")))
+        command_text.append(str(ANSIString(" |whelp|n - more commands")))
         if self.owner.db._reset_username:
             command_text.append(" |w@username <name>|n - Set your username!")
         if self.owner.db._reset_email or self.owner.email == 'dummy@dummy.com':
@@ -252,16 +253,16 @@ class AccountCharacterHandler(AccountBaseHandler):
             message += self.at_look_character_menu(session, viewer)
         message.append(session.ath['render'].subheader('Open Char Slots: %s/%s' % (
             self.available_character_slots, self.max_character_slots)))
-        return '\n'.join(unicode(line) for line in message if line)
+        return '\n'.join(str(line) for line in message if line)
 
     def at_look_info_section(self, session, viewer):
         message = list()
         info_column = session.ath['render'].table((), header=False)
         info_text = list()
-        info_text.append(unicode(ANSIString("Account:".rjust(8) + " |g%s|n" % (self.owner.key))))
+        info_text.append(str(ANSIString("Account:".rjust(8) + " |g%s|n" % (self.owner.key))))
         email = self.owner.email if self.owner.email != 'dummy@dummy.com' else '<blank>'
-        info_text.append(unicode(ANSIString("Email:".rjust(8) + ANSIString(" |g%s|n" % email))))
-        info_text.append(unicode(ANSIString("Perms:".rjust(8) + " |g%s|n" % ", ".join(self.owner.permissions.all()))))
+        info_text.append(str(ANSIString("Email:".rjust(8) + ANSIString(" |g%s|n" % email))))
+        info_text.append(str(ANSIString("Perms:".rjust(8) + " |g%s|n" % ", ".join(self.owner.permissions.all()))))
         info_column.add_row("\n".join(info_text))
         message.append(info_column)
         return message
@@ -362,7 +363,7 @@ class AccountColorHandler(AccountBaseHandler):
     @property
     def settings_data(self):
         data = list()
-        for k, v in STYLES_DATA.iteritems():
+        for k, v in STYLES_DATA.items():
             data.append((k, v[1], v[0], v[2]))
         return tuple(data)
 
@@ -370,3 +371,62 @@ class AccountColorHandler(AccountBaseHandler):
         if not self.loaded_settings:
             self.load_settings()
         return self.settings
+
+
+class AccountChannelHandler(AccountBaseHandler):
+    key = 'channel'
+    system_name = 'CHANNEL'
+
+    def load(self):
+        self.owner.ndb.channel_gags = set()
+
+    def colors(self):
+        if not self.owner.db.channel_colors:
+            self.owner.db.channel_colors = dict()
+        return self.owner.db.channel_colors
+
+    def send(self, channel, in_text):
+        channel.speech(source=self.owner, text=in_text)
+
+    def receive(self, channel, message, source=None):
+        if channel in self.owner.ndb.channel_gags:
+            return
+        if not isinstance(message, str):
+            message = message.render(viewer=self.owner)
+        color = self.colors().get(channel, None) or channel['color'] or 'n'
+        format_message = '[|%s%s|n] %s' % (color, channel.key, message)
+        print(format_message)
+        self.owner.msg(format_message)
+
+    def join(self, channel):
+        results = channel.connect(self.owner)
+        return results
+
+    def leave(self, channel):
+        results = channel.disconnect(self.owner)
+        return results
+
+    def gag(self, channel):
+        self.owner.ndb.channel_gags.add(channel)
+        channel.mute(self.owner)
+
+    def ungag(self, channel):
+        self.owner.ndb.channel_gags.remove(channel)
+        channel.unmute(self.owner)
+
+    def gag_all(self):
+        for channel in self.all():
+            self.gag(channel)
+
+    def ungag_all(self):
+        for channel in self.owner.ndb.channel_gags:
+            self.ungag(channel)
+
+    def all(self):
+        return [chan for chan in self.base.systems['channel'].all() if chan.access(self.owner, 'listen')]
+
+    def search(self, find):
+        found = partial_match(find, self.all())
+        if not found:
+            raise AthException("Could not find Channel named '%s'" % find)
+        return found

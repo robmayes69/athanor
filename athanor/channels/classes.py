@@ -82,7 +82,7 @@ class AthanorChannel(DefaultChannel):
                 new_setting = SETTINGS[setting_def[2]](self, setting_def[0], setting_def[1], setting_def[3], saved_data.get(setting_def[0], None))
                 self.ndb.settings[new_setting.key] = new_setting
             except Exception as e:
-                print e
+                print(e)
         self.ndb.loaded_settings = True
 
     def save_settings(self):

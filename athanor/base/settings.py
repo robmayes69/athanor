@@ -31,7 +31,7 @@ class BaseSetting(object):
                 self.loaded = True
                 return True
             except Exception as e:
-                print e # need some kind of error message here!
+                print(e)  # need some kind of error message here!
         return False
 
     def export(self):

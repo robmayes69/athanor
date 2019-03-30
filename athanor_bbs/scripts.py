@@ -1,8 +1,8 @@
 
 from evennia.locks.lockhandler import LockException
 from athanor.classes.scripts import AthanorScript
-from athanor.utils.text import sanitize_string, partial_match, mxp, sanitize_board_name
-from athanor.bbs.models import Board
+from athanor.utils.text import sanitize_string, partial_match, mxp
+from athanor_bbs.models import Board
 
 
 class BoardManager(AthanorScript):
@@ -12,7 +12,7 @@ class BoardManager(AthanorScript):
         self.desc = "Organizes BBS"
 
     def boards(self):
-        return Board.objects.order_by('group__key', 'order')
+        return Board.objects.order_by('category__key', 'order')
 
     def usable_boards(self, checker, mode='read', checkadmin=True):
         return [board for board in self.boards() if board.check_permission(checker, mode=mode, checkadmin=checkadmin)]
@@ -52,10 +52,10 @@ class BoardManager(AthanorScript):
                             mxp(board, "+bbread %s" % board.order), board.lock_storage, member)
         message.append(bbtable)
         message.append(viewer.render.footer())
-        return '\n'.join(unicode(line) for line in message)
+        return '\n'.join(str(line) for line in message)
 
     def create_board(self, enactor, name=None, group=None, order=None):
-        name = sanitize_board_name(name)
+        name = sanitize_name(name)
         if group:
             group.check_permission_error(enactor, 'bbadmin')
         else:
@@ -74,7 +74,7 @@ class BoardManager(AthanorScript):
         return board
 
     def delete_board(self, enactor, name, verify):
-        name = sanitize_board_name(name)
+        name = sanitize_name(name)
         board = self.find_board(name, enactor, visible_only=False)
         if board.group:
             board.group.check_permission_error(enactor, 'bbadmin')
@@ -86,14 +86,14 @@ class BoardManager(AthanorScript):
         board.delete()
 
     def rename_board(self, enactor, name=None, new_name=None):
-        name = sanitize_board_name(name)
+        name = sanitize_name(name)
         board = self.find_board(name, enactor, visible_only=False)
         if board.group:
             board.group.check_permission_error(enactor, 'bbadmin')
         else:
             if not enactor.accountsub.is_admin():
                 raise ValueError("Permission denied!")
-        new_name = sanitize_board_name(new_name)
+        new_name = sanitize_name(new_name)
         if name == new_name:
             raise ValueError("No point... names are the same.")
         if Board.objects.exclude(id=board.id).filter(key__iexact=new_name, group=board.group).exist():
@@ -103,7 +103,7 @@ class BoardManager(AthanorScript):
         board.save(update_fields=['key'])
 
     def order_board(self, enactor, name=None, order=None):
-        name = sanitize_board_name(name)
+        name = sanitize_name(name)
         board = self.find_board(name, enactor, visible_only=False)
         if board.group:
             board.group.check_permission_error(enactor, 'bbadmin')
@@ -125,7 +125,7 @@ class BoardManager(AthanorScript):
         board.save(update_fields=['order'])
 
     def lock_board(self, enactor, name=None, lock=None):
-        name = sanitize_board_name(name)
+        name = sanitize_name(name)
         board = self.find_board(name, enactor, visible_only=False)
         if board.group:
             board.group.check_permission_error(enactor, 'bbadmin')
@@ -150,8 +150,7 @@ class BoardManager(AthanorScript):
                 ok = board.locks.add(lock)
                 board.save(update_fields=['lock_storage'])
             except LockException as e:
-                raise ValueError(unicode(e))
-
+                raise ValueError(str(e))
 
     def display_boards(self, checker, viewer):
         message = list()
@@ -164,4 +163,4 @@ class BoardManager(AthanorScript):
                             board.posts.exclude(read=viewer).count())
         message.append(bbtable)
         message.append(viewer.render.footer())
-        return '\n'.join(unicode(line) for line in message)
+        return '\n'.join(str(line) for line in message)

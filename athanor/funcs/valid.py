@@ -90,6 +90,7 @@ def valid_timezone(checker, entry):
         return TZ_DICT[found]
     raise AthException("Could not find timezone '%s'!" % entry)
 
+
 def valid_account(checker, entry):
     from athanor.accounts.classes import Account
     if isinstance(entry, Account):
@@ -117,11 +118,11 @@ def valid_account_name(checker, entry, rename_from=None):
         raise AthException("Account name cannot be a number!")
     for char in BAD_CHARS:
         if char in entry:
-            raise AthException("Account Names may not contain the characters: %s" % BAD_CHARS)
+            raise AthException("Account Names may not contain the character: %s" % char)
     if len(entry) != len(entry.strip()):
         raise AthException("Account names may not have leading or trailing spaces.")
-    if entry.lower() in ('me', 'self'):
-        raise AthException("Accounts may not be named 'me' or 'self'!")
+    if entry.lower() in ('me', 'self', 'here'):
+        raise AthException("Accounts may not be named 'me' or 'self' or 'here'!")
     from athanor.accounts.classes import Account
     if rename_from:
         exist = Account.objects.filter_family(username__iexact=entry).exclude(id=rename_from.id).first()
@@ -160,8 +161,8 @@ def valid_character_name(checker, entry, rename_from=None):
             raise AthException("Character Names may not contain the character: %s" % char)
     if len(entry) != len(entry.strip()):
         raise AthException("Character names may not have leading or trailing spaces.")
-    if entry.lower() in ('me', 'self'):
-        raise AthException("Characters may not be named 'me' or 'self'!")
+    if entry.lower() in ('me', 'self', 'here'):
+        raise AthException("Characters may not be named 'me' or 'self' or 'here'!")
     from athanor.characters.classes import Character
     if rename_from:
         exist = Character.objects.filter_family(db_key__iexact=entry).exclude(id=rename_from.id).first()
@@ -213,11 +214,11 @@ def valid_channel(checker, entry):
     from athanor.channels.classes import PublicChannel
     if isinstance(entry, PublicChannel):
         return entry
-    if isinstance(entry, int) or (isinstance(entry, basestring) and entry.isdigit()):
+    if isinstance(entry, int) or (isinstance(entry, str) and entry.isdigit()):
         find = PublicChannel.objects.filter_family(id=int(entry)).first()
         if find:
             return find
-    if isinstance(entry, basestring):
+    if isinstance(entry, str):
         find = partial_match(entry, PublicChannel.objects.filter_family())
         if find:
             return find
@@ -226,7 +227,7 @@ def valid_channel(checker, entry):
 
 def valid_channel_id(checker, entry):
     from athanor.channels.classes import PublicChannel
-    if isinstance(entry, int) or (isinstance(entry, basestring) and entry.isdigit()):
+    if isinstance(entry, int) or (isinstance(entry, str) and entry.isdigit()):
         find = PublicChannel.objects.filter_family(id=int(entry)).first()
         if find:
             return find

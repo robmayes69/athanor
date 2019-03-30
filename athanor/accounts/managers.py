@@ -45,4 +45,4 @@ class AccountManager(__BaseManager):
         message = []
         for handler in self.ordered_handlers:
             message.append(handler.render_login(session, viewer))
-        return '\n'.join([unicode(line) for line in message if line])
+        return '\n'.join([str(line) for line in message if line])
