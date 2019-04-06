@@ -1,13 +1,14 @@
 
 from django.db import models
-from athanor.core.models import WithKey, WithLocks
+from athanor.models import WithLocks
 from athanor.utils.time import utcnow, duration_from_string
 
 
-class JobBucket(WithKey, WithLocks):
+class JobBucket(WithLocks):
+    key = models.CharField(max_length=255, blank=False, null=False, unique=True)
     anonymous = models.BooleanField(default=False)
     due = models.DurationField()
-    description = models.TextField(blank=True, null=True, default=None)
+    description = models.TextField(blank=True, null=True)
 
     def setup(self):
         self.locks.add('admin:perm(Wizards);post:all()')

@@ -29,3 +29,5 @@ class WithLocks(models.Model):
         self.save(update_fields=['lock_storage'])
 
 
+class AccountPlaytime(models.Model):
+    pass

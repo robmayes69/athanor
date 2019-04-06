@@ -9,7 +9,7 @@ from athanor.utils.text import tabular_table
 from athanor.utils.online import characters
 
 
-class BaseRoom(DefaultRoom):
+class AthanorBaseRoom(DefaultRoom):
     """
     This class is a placeholder meant to represent deleted rooms. It implements the main room logic, but should
     not be used for new rooms.
@@ -17,7 +17,7 @@ class BaseRoom(DefaultRoom):
     pass
 
 
-class Room(BaseRoom):
+class AthanorRoom(AthanorBaseRoom):
     """
     Rooms are like any Object, except their location is None
     (which is default). They also use basetype_setup() to

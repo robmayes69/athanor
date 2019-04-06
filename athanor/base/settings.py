@@ -1,8 +1,8 @@
 import datetime
 from evennia.utils.ansi import ANSIString
 import athanor
-from athanor.classes.rooms import Room
-from athanor.channels.classes import AthanorChannel
+from athanor.classes.rooms import AthanorRoom
+#from athanor.channels.classes import AthanorChannel
 from athanor.utils.text import partial_match
 from athanor import AthException
 from athanor.funcs.valid import TZ_DICT
@@ -260,13 +260,13 @@ class RoomSetting(BaseSetting):
     def do_validate(self, value, value_list, session):
         if not value:
             raise AthException("%s requires a value!" % self)
-        found = Room.objects.filter_family(id=value).first()
+        found = AthanorRoom.objects.filter_family(id=value).first()
         if not found:
             raise AthException("Room '%s' not found!" % value)
         return found
 
     def valid_save(self, save_data):
-        if isinstance(save_data, Room):
+        if isinstance(save_data, AthanorRoom):
             return save_data
         # else, error here
 

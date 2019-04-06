@@ -11,7 +11,7 @@ from evennia import DefaultCharacter
 
 
 # This implements the Athanor API, but the base Typeclass should be Character, below.
-class BaseCharacter(DefaultCharacter):
+class AthanorBaseCharacter(DefaultCharacter):
     """
     The Character defaults to implementing some of its hook methods with the
     following standard functionality:
@@ -34,5 +34,5 @@ class BaseCharacter(DefaultCharacter):
 
 
 # This is the character class Athanor uses for all its hard work. If you're gonna subclass, subclass from this.
-class Character(BaseCharacter):
+class AthanorCharacter(AthanorBaseCharacter):
     pass

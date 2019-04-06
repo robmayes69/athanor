@@ -61,11 +61,12 @@ class SessionRendererHandler(SessionBaseHandler):
         return self.owner.protocol_flags['SCREENWIDTH'][0]
 
     def load_settings(self):
-        for k, v in athanor.STYLES_DATA.iteritems():
+        for k, v in athanor.LOADER.styles.items():
             try:
-                new_setting = athanor.SETTINGS[v[0]](self, k, v[1], v[2], None)
+                new_setting = athanor.LOADER.settings[v[0]](self, k, v[1], v[2], None)
                 self.settings[new_setting.key] = new_setting
-            except Exception:
+            except Exception as e:
+                print("Cannot load setting: %s" % e)
                 pass
 
     def get_settings(self):
@@ -106,7 +107,7 @@ class SessionRendererHandler(SessionBaseHandler):
 
     def header(self, header_text=None, fill_character=None, edge_character=None, mode='header', color_header=True):
         styles = self.get_settings()
-        colors = {}
+        colors = dict()
         colors['border'] = styles['%s_fill_color' % mode].value
         colors['headertext'] = styles['%s_text_color' % mode].value
         colors['headerstar'] = styles['%s_star_color' % mode].value

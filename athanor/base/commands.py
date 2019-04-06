@@ -20,7 +20,7 @@ class AthCommand(default_cmds.MuxCommand):
     help_category = 'Athanor'
     system_name = 'SYSTEM'
     admin_help = False
-    systems = athanor.SYSTEMS
+    systems = athanor.LOADER.systems
 
     def valid(self, test, input):
         return athanor.VALIDATORS[test](self.session, input)
@@ -31,18 +31,18 @@ class AthCommand(default_cmds.MuxCommand):
     def parse(self):
         super(AthCommand, self).parse()
         if self.args:
-            self.args = unicode(self.args)
+            self.args = str(self.args)
         if self.rhs:
-            self.rhs = unicode(self.rhs.strip())
+            self.rhs = str(self.rhs.strip())
             self.rhs_san = sanitize_string(self.rhs)
         if self.lhs:
-            self.lhs = unicode(self.lhs.strip())
+            self.lhs = str(self.lhs.strip())
             self.lhs_san = sanitize_string(self.lhs)
         self.account = None
         self.character = None
         self.isic = False
-        self.caller.at_parse_command(self)
-        self.is_admin = self.caller.ath['core'].is_admin()
+        #self.caller.at_parse_command(self)
+        self.is_admin = self.session.ath['core'].is_admin()
         self.parse_switches()
 
     def parse_switches(self):
@@ -73,7 +73,7 @@ class AthCommand(default_cmds.MuxCommand):
             try:
                 return self._main()
             except AthException as err:
-                return self.sys_msg("|rERROR:|n " + unicode(err))
+                return self.sys_msg("|rERROR:|n " + str(err))
         try:
             switch = getattr(self, 'switch_%s' % self.final_switches[0])
         except:
@@ -81,7 +81,7 @@ class AthCommand(default_cmds.MuxCommand):
         try:
             switch()
         except AthException as err:
-            return self.sys_msg("|rERROR:|n " + unicode(err))
+            return self.sys_msg("|rERROR:|n " + str(err))
 
     def switch_style(self):
         if not self.style:
@@ -96,7 +96,7 @@ class AthCommand(default_cmds.MuxCommand):
             self.caller.styles[self.style].clear(enactor=self.caller, viewer=self.caller, style=self.lhs_san)
 
     def msg_lines(self, lines):
-        self.msg('\n'.join([unicode(line) for line in lines]))
+        self.msg('\n'.join([str(line) for line in lines]))
 
     def sys_msg(self, text):
         self.caller.ath['core'].alert(text, system=self.system_name)

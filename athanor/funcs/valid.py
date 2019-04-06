@@ -39,40 +39,40 @@ def valid_datetime(checker, entry):
     return utc_from_string(entry, tz)
 
 
-def valid_future(checker, entry):
+def valid_future(checker, entry, thing_name="Field"):
     time = valid_datetime(checker, entry)
     if time < utcnow():
-        raise AthException("That is in the past! Must give a Future datetime!")
+        raise AthException("That is in the past! Must give a Future datetime for %s!" % thing_name)
     return time
 
 
-def valid_signed_integer(checker, entry):
+def valid_signed_integer(checker, entry, thing_name="Field"):
     if not entry:
-        raise AthException("Must enter an integer!")
+        raise AthException("Must enter an integer for %s!" % thing_name)
     try:
         num = int(entry)
     except ValueError:
-        raise AthException("Could not convert that to a number.")
+        raise AthException("Could not convert that %s entry to a number." % thing_name)
     return num
 
 
-def valid_positive_integer(checker, entry):
+def valid_positive_integer(checker, entry, thing_name="Field"):
     num = valid_signed_integer(checker, entry)
     if not num >= 1:
-        raise AthException("Must enter a whole number greater than 0!")
+        raise AthException("Must enter a whole number greater than 0 for %s!" % thing_name)
     return num
 
 
-def valid_unsigned_integer(checker, entry):
-    num = valid_signed_integer(checker, entry)
+def valid_unsigned_integer(checker, entry, thing_name="Field"):
+    num = valid_signed_integer(checker, entry, thing_name)
     if not num >= 0:
-        raise AthException("Must enter a whole number greater than or equal to 0!")
+        raise AthException("%s must be a whole number greater than or equal to 0!" % thing_name)
     return num
 
 
-def valid_boolean(checker, entry):
+def valid_boolean(checker, entry, thing_name="Field"):
     entry = entry.upper()
-    error = "Must enter 0 (false) or 1 (true). Also accepts True, False, On, Off, Yes, No, Enabled, and Disabled"
+    error = "Must enter 0 (false) or 1 (true) for %s. Also accepts True, False, On, Off, Yes, No, Enabled, and Disabled" % thing_name
     if not entry:
         raise AthException(error)
     if entry in ('1', 'TRUE', 'ON', 'ENABLED', 'ENABLE', 'YES'):
@@ -232,3 +232,18 @@ def valid_channel_id(checker, entry):
         if find:
             return find
     raise AthException("Channel not found.")
+
+
+def valid_database_key(checker, entry, thing_name="Entity"):
+    if not len(entry):
+        raise AthException("%s Name field empty!" % thing_name)
+    if entry.strip().isdigit():
+        raise AthException("%s name cannot be a number!" % thing_name)
+    for char in BAD_CHARS:
+        if char in entry:
+            raise AthException("%s Names may not contain the character: %s" % (thing_name, char))
+    if len(entry) != len(entry.strip()):
+        raise AthException("%s names may not have leading or trailing spaces." % thing_name)
+    if entry.lower() in ('me', 'self', 'here'):
+        raise AthException("%s may not be named 'me' or 'self' or 'here'!" % thing_name)
+    return entry

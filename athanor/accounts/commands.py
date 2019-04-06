@@ -104,6 +104,7 @@ class CmdConfig(AthCommand):
         all_systems = [sys for sys in self.systems.values() if sys.load_settings()]
         return sorted(all_systems, key=lambda s: s)
 
+
 class CmdAccount(AthCommand):
     key = '@account'
     locks = 'cmd:perm(Admin)'

@@ -55,7 +55,7 @@ HANDLERS_CHARACTER = {
     'core': 'athanor.characters.handlers.CharacterCoreHandler',
     'character': 'athanor.characters.handlers.CharacterCharacterHandler',
     'menu': 'athanor.characters.handlers.CharacterMenuHandler',
-    'channel': 'athanor.characters.handlers.CharacterChannelHandler',
+    #'channel': 'athanor.characters.handlers.CharacterChannelHandler',
 }
 
 # Same but for sessions.
@@ -168,13 +168,14 @@ VALIDATORS = {
     'character_id': 'athanor.funcs.valid.valid_character_id',
     'account_id': 'athanor.funcs.valid.valid_account_id',
     'account': 'athanor.funcs.valid.valid_account',
+    'dbname': 'athanor.funcs.valid.valid_database_key',
 }
 
 
 SYSTEMS = {
     'account': 'athanor.accounts.systems.AccountSystem',
     'character': 'athanor.characters.systems.CharacterSystem',
-    'channel': 'athanor.channels.systems.ChannelSystem',
+#    'channel': 'athanor.channels.systems.ChannelSystem',
 }
 
 

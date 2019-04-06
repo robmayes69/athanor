@@ -4,7 +4,7 @@ from athanor import AthException
 from athanor.base.systems import AthanorSystem
 from athanor.utils.online import characters as on_characters
 from athanor.utils.time import utcnow
-from athanor.characters.classes import Character
+from athanor.characters.classes import AthanorCharacter
 
 
 class CharacterSystem(AthanorSystem):
@@ -22,12 +22,12 @@ class CharacterSystem(AthanorSystem):
         if find.lower() in ('self', 'me'):
             return session.get_puppet()
         if find.isdigit():
-            results = Character.objects.filter_family(id=find).first()
+            results = AthanorCharacter.objects.filter_family(id=find).first()
         else:
-            results = Character.objects.filter_family(db_key__iexact=find).first()
+            results = AthanorCharacter.objects.filter_family(db_key__iexact=find).first()
         if results:
             return results
-        results = Character.objects.filter_family(db_key_istartswith=find).order_by('db_key')
+        results = AthanorCharacter.objects.filter_family(db_key_istartswith=find).order_by('db_key')
         if results.count() > 1:
             raise AthException("Character Search Ambiguous. Matched: %s" % ', '.join(results))
         if not results:
@@ -35,8 +35,8 @@ class CharacterSystem(AthanorSystem):
         return results.first()
 
     def load(self):
-        from athanor.characters.classes import Character
-        results = Character.objects.filter_family().values_list('id', 'db_key')
+        from athanor.characters.classes import AthanorCharacter
+        results = AthanorCharacter.objects.filter_family().values_list('id', 'db_key')
         self.ndb.name_map = {q[1].upper(): q[0] for q in results}
         self.ndb.online_characters = set(on_characters())
 

@@ -12,8 +12,14 @@ class AthanorSystem(DefaultScript):
     system_name = 'SYSTEM'
     load_order = 0
     run_interval = 0
-    valid = athanor.LOADER.validators
-    systems = athanor.LOADER.systems
+
+    @property
+    def valid(self):
+        return athanor.LOADER.validators
+
+    @property
+    def systems(self):
+        return athanor.LOADER.systems
 
     def at_start(self):
         # Most systems will implement their own Settings.
@@ -27,6 +33,9 @@ class AthanorSystem(DefaultScript):
 
     def at_server_reload(self):
         self.load()
+
+    def load(self):
+        pass
 
     def __getitem__(self, item):
         if not self.ndb.loaded_settings:
@@ -42,6 +51,7 @@ class AthanorSystem(DefaultScript):
                 new_setting = athanor.LOADER.settings[setting_def[2]](self, setting_def[0], setting_def[1], setting_def[3], saved_data.get(setting_def[0], None))
                 self.ndb.settings[new_setting.key] = new_setting
             except Exception as e:
+                print("ERROR LOADING SETTING: %s" % e)
                 pass
         self.ndb.loaded_settings = True
         return bool(self.ndb.settings)

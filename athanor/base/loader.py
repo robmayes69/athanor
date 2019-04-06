@@ -42,6 +42,10 @@ class AthanorLoader(object):
         self.settings_found = dict()
         self.settings = dict()
 
+        self.styles_data_paths = dict()
+        self.styles_data_found = dict()
+        self.styles = dict()
+
     def register_module(self, path):
         try:
             found_module = import_property(path)
@@ -61,7 +65,7 @@ class AthanorLoader(object):
         for m in self.modules_order:
             for cat in (
                     'managers', 'systems', 'handlers_session', 'handlers_account', 'handlers_character', 'validators',
-                    'systems', 'settings'):
+                    'systems', 'settings', 'styles_data'):
                 if hasattr(m, cat.upper()):
                     getattr(self, '%s_paths' % cat).update(getattr(m, cat.upper()))
 
@@ -79,6 +83,7 @@ class AthanorLoader(object):
             setattr(self, '%s_found' % cat, found)
 
     def load_final(self):
+        self.styles = self.styles_data_paths
         self.managers = self.managers_found
         self.validators = self.validators_found
         self.settings = self.settings_found
@@ -92,6 +97,7 @@ class AthanorLoader(object):
         for system in sorted(self.systems_found.values(), key=lambda s: s.load_order):
             key = system.key
             found = system.objects.filter_family(db_key=key).first()
+            print("Found system?: %s" % found)
             if found:
                 if not found.is_typeclass(system, exact=True):
                     found.swap_typeclass(system)
@@ -100,3 +106,4 @@ class AthanorLoader(object):
                 self.systems[key] = found
             else:
                 self.systems[key] = create_script(key=key, interval=system.run_interval, persistent=True, typeclass=system)
+                print("System created! %s" % self.systems[key])

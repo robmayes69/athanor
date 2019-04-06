@@ -174,6 +174,8 @@ class Account(DefaultAccount):
         """
         if not target:
             target = self
+        else:
+            target = self
         return target.return_appearance(session, self)
 
     def return_appearance(self, session, viewer):

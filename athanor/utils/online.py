@@ -20,7 +20,7 @@ def accounts():
     """
     from athanor.accounts.classes import Account
     return sorted([acc for acc in evennia.SESSION_HANDLER.all_connected_accounts()
-            if acc.is_typeclass(Account, exact=False)], key=lambda acc: acc.key)
+                   if acc.is_typeclass(Account, exact=False)], key=lambda acc: acc.key)
 
 def characters():
     """
@@ -29,7 +29,7 @@ def characters():
     Returns:
         list
     """
-    from athanor.characters.classes import Character as chr
+    from athanor.characters.classes import AthanorCharacter as chr
     characters = [session.get_puppet() for session in sessions() if session.get_puppet()]
     characters = [char for char in characters if char.is_typeclass(chr, exact=False)]
     return sorted(list(set(characters)), key=lambda char: char.key)
