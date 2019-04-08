@@ -21,6 +21,9 @@ class AthanorSystem(DefaultScript):
     def systems(self):
         return athanor.LOADER.systems
 
+    def at_server_cold_start(self):
+        pass
+
     def at_start(self):
         # Most systems will implement their own Settings.
         self.ndb.loaded_settings = False

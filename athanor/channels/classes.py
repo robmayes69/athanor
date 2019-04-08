@@ -66,7 +66,7 @@ class AthanorChannel(DefaultChannel):
     settings_data = (
 
     )
-    handler = None
+    helper = None
 
     def at_channel_creation(self):
         if not self.db.titles:
@@ -117,12 +117,12 @@ class PublicChannel(AthanorChannel):
         ('titles_max_length', "How many characters long can titles be?", 'positive_integer', 80),
         ('color', 'What channel should the color be?', 'color', ''),
     )
-    handler = 'channel'
+    helper = 'channel'
 
     def emit(self, source, text):
         text = self.systems['character'].render(text)
         for recip in self.online_characters():
-            recip.ath[self.handler].receive(channel=self, message=text, source=source)
+            recip.ath[self.helper].receive(channel=self, message=text, source=source)
         PublicChannelMessage.objects.create(channel=self, speaker=source, markup_text=text, date_created=utcnow())
 
     def speech(self, source, text):
@@ -131,7 +131,7 @@ class PublicChannel(AthanorChannel):
             title = self.db.titles.get(source, '')[:self['titles_max_length']]
         msg = Speech(speaker=source, speech_text=text, title=title, mode='channel')
         for recip in self.online_characters():
-            recip.ath[self.handler].receive(channel=self, message=msg, source=source)
+            recip.ath[self.helper].receive(channel=self, message=msg, source=source)
         PublicChannelMessage.objects.create(channel=self, speaker=source, markup_text=msg.log(), date_created=utcnow())
 
     def msg(self, message, senders=None, online=True, *args, **kwargs):

@@ -30,4 +30,22 @@ class WithLocks(models.Model):
 
 
 class AccountPlaytime(models.Model):
-    pass
+    account = models.ForeignKey('accounts.AccountDB', related_name='playtime', on_delete=models.CASCADE)
+    login_time = models.DateTimeField(null=False, db_index=True)
+    logout_time = models.DateTimeField(null=True, db_index=True)
+
+
+class AccountCharacter(models.Model):
+    account = models.ForeignKey('accounts.AccountDB', related_name='character_data', on_delete=models.CASCADE)
+    character = models.ForeignKey('objects.ObjectDB', related_name='account_data', on_delete=models.CASCADE)
+    enabled = models.BooleanField(default=True, null=False)
+
+    class Meta:
+        unique_together = (('account', 'character'),)
+
+
+class CharacterPlaytime(models.Model):
+    player = models.ForeignKey(AccountCharacter, related_name='playtime', on_delete=models.CASCADE)
+    login_time = models.DateTimeField(null=False, db_index=True)
+    logout_time = models.DateTimeField(null=True, db_index=True)
+

@@ -1,4 +1,4 @@
-from athanor.accounts.handlers import AccountBaseHandler
+from athanor.accounts.helpers import AccountBaseHandler
 
 
 class StaffListHandler(AccountBaseHandler):

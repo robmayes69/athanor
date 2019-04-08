@@ -37,7 +37,7 @@ class CmdOptions(AthCommand):
         sysname, setname = self.lhs.split('/', 1)
         if not sysname:
             raise AthException("Must enter a category name!")
-        sys_choices = self.get_handlers()
+        sys_choices = self.get_helpers()
         system = self.partial(sysname, sys_choices)
         if not system:
             raise AthException("Category not found. Choices are: %s" % ', '.join(sys_choices))
@@ -46,7 +46,7 @@ class CmdOptions(AthCommand):
 
     def display(self):
         message = list()
-        for sys in self.get_handlers():
+        for sys in self.get_helpers():
             message.append(self.header(sys.key.capitalize()))
             columns = (('Name', 20, 'l'), ('Description', 43, 'l'), ('Value', 15, 'l'))
             setting_table = self.table(columns)
@@ -57,12 +57,12 @@ class CmdOptions(AthCommand):
         message.append(self.footer())
         self.msg_lines(message)
 
-    def get_handlers(self):
-        all_handlers = [sys for sys in self.account.ath.ordered_handlers if sys.settings_data]
-        for h in all_handlers:
+    def get_helpers(self):
+        all_helpers = [sys for sys in self.account.ath.ordered_helpers if sys.settings_data]
+        for h in all_helpers:
             if not h.loaded_settings:
                 h.load_settings()
-        return sorted(all_handlers, key=lambda s: s.key)
+        return sorted(all_helpers, key=lambda s: s.key)
 
 
 class CmdConfig(AthCommand):

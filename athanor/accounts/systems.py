@@ -7,6 +7,7 @@ from athanor.base.systems import AthanorSystem
 from athanor.utils.text import partial_match
 from athanor.utils.online import accounts as on_accounts
 from athanor.utils.time import utcnow
+from athanor.models import AccountPlaytime
 
 PERMISSIONS_DICT = {
     5: ('Superuser', 'Developer', 'Admin', 'Builder', 'Helper'),
@@ -33,6 +34,14 @@ class AccountSystem(AthanorSystem):
         self.ndb.email_map = {q[2].upper(): q[0] for q in results}
         self.ndb.id_map = {q[0]: q[1] for q in results}
         self.ndb.online_accounts = set(on_accounts())
+
+    def at_server_shutdown(self):
+        AccountPlaytime.objects.filter(logout_time__isnull=True).update(logout_time=utcnow())
+
+    def at_server_cold_start(self):
+        last = self.db.last_repeat
+        if last:
+            AccountPlaytime.objects.filter(logout_time__isnull=True).update(logout_time=last)
 
     def search(self, session, find):
         if not find:
@@ -144,8 +153,7 @@ class AccountSystem(AthanorSystem):
         return account
 
     def at_repeat(self):
-        for acc in self.ndb.online_accounts:
-            acc.ath['core'].update_playtime(self.interval)
+        self.db.last_repeat = utcnow()
 
     def add_online(self, account):
         self.ndb.online_accounts.add(account)
@@ -222,4 +230,4 @@ class AccountSystem(AthanorSystem):
         if not auth_account:
             account.at_failed_login(session)
             raise AthException("Invalid password!")
-        session.sessionhandler.login(session, account)
+        session.sessionhelper.login(session, account)

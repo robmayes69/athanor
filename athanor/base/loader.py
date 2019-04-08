@@ -18,17 +18,21 @@ class AthanorLoader(object):
         self.managers_found = dict()
         self.managers = dict()
 
-        self.handlers_session_paths = dict()
-        self.handlers_session_found = dict()
-        self.handlers_session = list()
+        self.helpers_session_paths = dict()
+        self.helpers_session_found = dict()
+        self.helpers_session = list()
 
-        self.handlers_account_paths = dict()
-        self.handlers_account_found = dict()
-        self.handlers_account = list()
+        self.helpers_account_paths = dict()
+        self.helpers_account_found = dict()
+        self.helpers_account = list()
 
-        self.handlers_character_paths = dict()
-        self.handlers_character_found = dict()
-        self.handlers_character = list()
+        self.helpers_character_paths = dict()
+        self.helpers_character_found = dict()
+        self.helpers_character = list()
+
+        self.helpers_render_paths = dict()
+        self.helpers_render_found = dict()
+        self.helpers_render = list()
 
         self.validators_paths = dict()
         self.validators_found = dict()
@@ -64,14 +68,14 @@ class AthanorLoader(object):
     def load_paths(self):
         for m in self.modules_order:
             for cat in (
-                    'managers', 'systems', 'handlers_session', 'handlers_account', 'handlers_character', 'validators',
-                    'systems', 'settings', 'styles_data'):
+                    'managers', 'systems', 'helpers_session', 'helpers_account', 'helpers_character', 'helpers_render',
+                    'validators', 'systems', 'settings', 'styles_data'):
                 if hasattr(m, cat.upper()):
                     getattr(self, '%s_paths' % cat).update(getattr(m, cat.upper()))
 
     def load_found(self):
-        for cat in ('managers', 'systems', 'handlers_session', 'handlers_account', 'handlers_character', 'validators',
-                    'systems', 'settings'):
+        for cat in ('managers', 'systems', 'helpers_session', 'helpers_account', 'helpers_character', 'helpers_render',
+                    'validators', 'systems', 'settings'):
             found = dict()
             for k, v in getattr(self, '%s_paths' % cat).items():
                 try:
@@ -87,10 +91,10 @@ class AthanorLoader(object):
         self.managers = self.managers_found
         self.validators = self.validators_found
         self.settings = self.settings_found
-        for cat in ('handlers_session', 'handlers_account', 'handlers_character'):
+        for cat in ('helpers_session', 'helpers_account', 'helpers_character', 'helpers_render'):
             found = getattr(self, '%s_found' % cat)
             setattr(self, cat, sorted(found.values(), key=lambda o: o.load_order))
-        print(self.handlers_account)
+        print(self.helpers_account)
 
     def load_systems(self):
         from evennia import create_script

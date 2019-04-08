@@ -24,8 +24,8 @@ several more options for customizing the Guest account system.
 
 
 from evennia import DefaultAccount
+from athanor.base.managers import AccountManager, RenderManager
 from evennia.utils.utils import lazy_property
-from athanor.accounts.managers import AccountManager
 
 
 class Account(DefaultAccount):
@@ -58,12 +58,12 @@ class Account(DefaultAccount):
 
     * Handlers
 
-     locks - lock-handler: use locks.add() to add new lock strings
-     db - attribute-handler: store/retrieve database attributes on this self.db.myattr=val, val=self.db.myattr
-     ndb - non-persistent attribute handler: same as db but does not create a database entry when storing data
-     scripts - script-handler. Add new scripts to object with scripts.add()
-     cmdset - cmdset-handler. Use cmdset.add() to add new cmdsets to object
-     nicks - nick-handler. New nicks with nicks.add().
+     locks - lock-helper: use locks.add() to add new lock strings
+     db - attribute-helper: store/retrieve database attributes on this self.db.myattr=val, val=self.db.myattr
+     ndb - non-persistent attribute helper: same as db but does not create a database entry when storing data
+     scripts - script-helper. Add new scripts to object with scripts.add()
+     cmdset - cmdset-helper. Use cmdset.add() to add new cmdsets to object
+     nicks - nick-helper. New nicks with nicks.add().
 
     * Helper methods
 
@@ -98,6 +98,10 @@ class Account(DefaultAccount):
     @lazy_property
     def ath(self):
         return AccountManager(self)
+
+    @lazy_property
+    def render(self):
+        return RenderManager(self)
 
     def at_account_creation(self):
         super(Account, self).at_account_creation()
@@ -153,10 +157,6 @@ class Account(DefaultAccount):
         """
         return sorted(super(Account, self).get_all_puppets(), key=lambda char: char.key)
 
-    def at_parse_command(self, command):
-        command.isic = False
-        command.account = self
-
     def at_look(self, target=None, session=None):
         """
         Called when this object executes a look. It allows to customize
@@ -176,7 +176,7 @@ class Account(DefaultAccount):
             target = self
         else:
             target = self
-        return target.return_appearance(session, self)
+        return target.return_appearance(session)
 
-    def return_appearance(self, session, viewer):
-        return self.ath.render_login(session, viewer)
+    def return_appearance(self, session):
+        return self.render['login'].display_login(session)

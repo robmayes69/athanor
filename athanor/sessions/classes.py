@@ -1,6 +1,6 @@
 from evennia.server.serversession import ServerSession
 from evennia.utils import lazy_property
-from athanor.sessions.managers import SessionManager
+from athanor.base.managers import SessionManager
 
 
 class Session(ServerSession):
@@ -21,5 +21,4 @@ class Session(ServerSession):
         super(Session, self).at_disconnect(reason)
         self.ath.at_disconnect(reason)
 
-    def at_parse_command(self, command):
-        pass
+

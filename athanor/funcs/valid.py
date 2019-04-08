@@ -10,6 +10,7 @@ import pytz
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from evennia.utils.ansi import ANSIString
+from evennia.locks.lockhandler import LockException
 from athanor.utils.text import partial_match
 from athanor.utils.time import utc_from_string, duration_from_string, utcnow
 from athanor import AthException
@@ -235,6 +236,7 @@ def valid_channel_id(checker, entry):
 
 
 def valid_database_key(checker, entry, thing_name="Entity"):
+    entry = entry.strip()
     if not len(entry):
         raise AthException("%s Name field empty!" % thing_name)
     if entry.strip().isdigit():
@@ -246,4 +248,20 @@ def valid_database_key(checker, entry, thing_name="Entity"):
         raise AthException("%s names may not have leading or trailing spaces." % thing_name)
     if entry.lower() in ('me', 'self', 'here'):
         raise AthException("%s may not be named 'me' or 'self' or 'here'!" % thing_name)
+    return entry
+
+def valid_lockstring(checker, entry, thing_name='lockstring', options=None):
+    entry = entry.strip()
+    if not entry:
+        raise AthException("No %s entered to set!" % thing_name)
+    for locksetting in entry.split(';'):
+        access_type, lockfunc = locksetting.split(':', 1)
+        if not access_type:
+            raise ValueError("Must enter an access type!")
+        if options:
+            accmatch = partial_match(access_type, options)
+            if not accmatch:
+                raise ValueError("Access type must be one of: %s" % ', '.join(options))
+        if not lockfunc:
+            raise ValueError("Lock func not entered.")
     return entry

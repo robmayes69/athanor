@@ -14,7 +14,7 @@ from athanor.classes.characters import Character
 from athanor.classes.accounts import Account
 from athanor.core.command import AthCommand
 from athanor.fclist.models import FCList, CharacterStatus, CharacterType
-from athanor.grid.models import District
+from athanor.rooms.models import District
 from athanor.groups.models import Group, GroupCategory
 from athanor.jobs.models import JobCategory
 from athanor.mushimport.convpenn import read_penn, process_penntext
@@ -43,7 +43,7 @@ class CmdImport(AthCommand):
     key = '+import'
     system_name = 'IMPORT'
     locks = 'cmd:perm(Immortals)'
-    admin_switches = ['initialize', 'grid', 'accounts', 'athanor-groups', 'athanor-bbs', 'ex2', 'ex3', 'experience', 'fclist', 'radio',
+    admin_switches = ['initialize', 'rooms', 'accounts', 'athanor-groups', 'athanor-bbs', 'ex2', 'ex3', 'experience', 'fclist', 'radio',
                       'jobs', 'scenes']
 
     def func(self):

@@ -2,7 +2,7 @@
 The core module settings for Athanor.
 
 Besides storing core plugin settings this module is meant to be imported for accessing the properties like
-HANDLERS.
+HELPERS.
 """
 from athanor.base.loader import AthanorLoader
 
@@ -34,39 +34,42 @@ INLINEFUNC_MODULES = ['athanor.funcs.inline', ]
 # This can be overruled by modules that load later.
 # Once it has loaded, this will contain key->class instances.
 MANAGERS = {
-    'character': 'athanor.characters.managers.CharacterManager',
-    'account': 'athanor.accounts.managers.AccountManager',
-    'session': 'athanor.sessions.managers.SessionManager',
+    'character': 'athanor.base.managers.CharacterManager',
+    'account': 'athanor.base.managers.AccountManager',
+    'session': 'athanor.base.managers.SessionManager',
 }
 
-# Dictionary that contains the Keys/Names and Python Paths to the Account Handlers for this module.
+# Dictionary that contains the Keys/Names and Python Paths to the Account Helpers for this module.
 # Other modules may also implement this dictionary. After the load process, the 'last remaiing' k/v pairs in the
 # dictionary will be converted to key->class format.
-# Hence, you can 'import athanor' and then access HANDLERS_ACCOUNT[key] to retrieve a class.
+# Hence, you can 'import athanor' and then access HELPERS_ACCOUNT[key] to retrieve a class.
 
-HANDLERS_ACCOUNT = {
-    'core': 'athanor.accounts.handlers.AccountCoreHandler',
-    'character': 'athanor.accounts.handlers.AccountCharacterHandler',
-    'color': 'athanor.accounts.handlers.AccountColorHandler',
+HELPERS_ACCOUNT = {
+    'core': 'athanor.accounts.helpers.AccountCoreHelper',
+    'character': 'athanor.accounts.helpers.AccountCharacterHelper',
 }
 
 # Just  like Account but for characters.
-HANDLERS_CHARACTER = {
-    'core': 'athanor.characters.handlers.CharacterCoreHandler',
-    'character': 'athanor.characters.handlers.CharacterCharacterHandler',
-    'menu': 'athanor.characters.handlers.CharacterMenuHandler',
-    #'channel': 'athanor.characters.handlers.CharacterChannelHandler',
+HELPERS_CHARACTER = {
+    'core': 'athanor.characters.helpers.CharacterCoreHelper',
+    'character': 'athanor.characters.helpers.CharacterCharacterHelper',
+    'menu': 'athanor.characters.helpers.CharacterMenuHelper',
+    #'channel': 'athanor.characters.helpers.CharacterChannelHelper',
 }
 
 # Same but for sessions.
-HANDLERS_SESSION = {
-    'core': 'athanor.sessions.handlers.SessionCoreHandler',
-    'render': 'athanor.sessions.handlers.SessionRendererHandler',
+HELPERS_SESSION = {
+    'core': 'athanor.sessions.helpers.SessionCoreHelper',
+    'render': 'athanor.sessions.helpers.SessionRendererHelper',
 }
 
 # In case these are ever implemented...
-HANDLERS_SCRIPT = {
+HELPERS_SCRIPT = {
 
+}
+
+HELPERS_RENDER = {
+    'login': 'athanor.accounts.render.RenderLoginHelper',
 }
 
 
@@ -113,40 +116,40 @@ PROPERTIES_DICT = {
 # If a color or appearance query is not found in a Style, it will fallback/default to these values.
 # Update this dictionary in a further module to change them.
 STYLES_DATA = {
-    'header_fill_color': ('color', 'Color used for Header fill.', 'M'),
-    'header_star_color': ('color', 'Color used for * inside Header lines.', 'm'),
-    'subheader_fill_color': ('color', 'Color used for Sub-Header fill.', 'M'),
-    'subheader_star_color': ('color', 'Color used for * inside Sub-Header Lines.', 'w'),
-    'separator_fill_color': ('color', 'Color used Separator fill.', 'M'),
-    'separator_star_color': ('color', 'Color used for * inside Separator Lines.', 'w'),
-    'footer_fill_color': ('color', 'Color used for Footer Lines.', 'M'),
-    'footer_star_color': ('color', 'Color used for * inside Footer Lines.', 'w'),
-    'header_text_color': ('color', 'Color used for text inside Header lines.', 'w'),
-    'subheader_text_color': ('color', 'Color used for text inside Sub-Header Lines.', 'w'),
-    'separator_text_color': ('color', 'Color used for text inside Separator Lines.', 'w'),
-    'footer_text_color': ('color', 'Color used for text inside Footer Lines.', 'w'),
-    'border_color': ('color', 'Color used for miscellaneous borders like tables.', 'M'),
-    'msg_edge_color': ('color', 'Color used for the -=< >=- wrapper around system messages.', 'm'),
-    'msg_name_color': ('color', 'Color used for the NAME within system message prefixes.', 'w'),
-    'ooc_edge_color': ('color', 'Color used for the edge of OOC message prefixes.', 'R'),
-    'ooc_prefix_color': ('color', 'Color used for the OOC within OOC message prefixes.', 'w'),
-    'exit_name_color': ('color', 'Color to display Exit names in.', 'n'),
-    'exit_alias_color': ('color', 'Color to display Exit Aliases in.', 'n'),
-    'table_column_header_text_color': ('color', 'Color used for table column header text.', 'G'),
-    'header_fill': ('word', 'Character used to fill Header lines.', '='),
-    'subheader_fill': ('word', 'Character used to fill Sub-Header Lines.', '='),
-    'separator_fill': ('word', 'Character used to fill Separator Lines.', '-'),
-    'footer_fill': ('word', 'Character used to fill Footer Lines.', '='),
-    'help_file_bullet': ('color', '', 'g'),
-    'help_file_header': ('color', '', 'c'),
-    'help_file_emphasized': ('color', '', 'w'),
-    'help_file_name': ('color', '', 'w'),
-    'quotes_channel': ('color', 'Color used for " marks on Channels.', ''),
-    'speech_channel': ('color', 'Color used for dialogue on Channels.', ''),
-    'quotes_ooc': ('color', 'Color used for " marks on OOC.', ''),
-    'speech_ooc': ('color', 'Color used for dialogue on OOC.', ''),
-    'quotes_ic': ('color', 'Color used for " marks on Channels.', ''),
-    'speech_ic': ('color', 'Color used for dialogue on Channels.', ''),
+    'header_fill_color': ('Color used for Header fill.', 'color', 'M'),
+    'header_star_color': ('Color used for * inside Header lines.', 'color', 'm'),
+    'subheader_fill_color': ('Color used for Sub-Header fill.', 'color', 'M'),
+    'subheader_star_color': ('Color used for * inside Sub-Header Lines.', 'color', 'w'),
+    'separator_fill_color': ('Color used Separator fill.', 'color', 'M'),
+    'separator_star_color': ('Color used for * inside Separator Lines.', 'color', 'w'),
+    'footer_fill_color': ('Color used for Footer Lines.', 'color', 'M'),
+    'footer_star_color': ('Color used for * inside Footer Lines.', 'color', 'w'),
+    'header_text_color': ('Color used for text inside Header lines.', 'color', 'w'),
+    'subheader_text_color': ('Color used for text inside Sub-Header Lines.', 'color', 'w'),
+    'separator_text_color': ('Color used for text inside Separator Lines.', 'color', 'w'),
+    'footer_text_color': ('Color used for text inside Footer Lines.', 'color', 'w'),
+    'border_color': ('Color used for miscellaneous borders like tables.', 'color', 'M'),
+    'msg_edge_color': ('Color used for the -=< >=- wrapper around system messages.', 'color', 'm'),
+    'msg_name_color': ('Color used for the NAME within system message prefixes.', 'color', 'w'),
+    'ooc_edge_color': ('Color used for the edge of OOC message prefixes.', 'color', 'R'),
+    'ooc_prefix_color': ('Color used for the OOC within OOC message prefixes.', 'color', 'w'),
+    'exit_name_color': ('Color to display Exit names in.', 'color', 'n'),
+    'exit_alias_color': ('Color to display Exit Aliases in.', 'color', 'n'),
+    'table_column_header_text_color': ('Color used for table column header text.', 'color', 'G'),
+    'header_fill': ('Character used to fill Header lines.', 'word', '='),
+    'subheader_fill': ('Character used to fill Sub-Header Lines.', 'word', '='),
+    'separator_fill': ('Character used to fill Separator Lines.', 'word', '-'),
+    'footer_fill': ('Character used to fill Footer Lines.', 'word', '='),
+    'help_file_bullet': ('', 'color', 'g'),
+    'help_file_header': ('', 'color', 'c'),
+    'help_file_emphasized': ('', 'color', 'w'),
+    'help_file_name': ('', 'color', 'w'),
+    'quotes_channel': ('Color used for " marks on Channels.', 'color', ''),
+    'speech_channel': ('Color used for dialogue on Channels.', 'color', ''),
+    'quotes_ooc': ('Color used for " marks on OOC.', 'color', ''),
+    'speech_ooc': ('Color used for dialogue on OOC.', 'color', ''),
+    'quotes_ic': ('Color used for " marks on Channels.', 'color', ''),
+    'speech_ic': ('Color used for dialogue on Channels.', 'color', ''),
 }
 
 # Validators are used for checking user input and returning something the system use, or raising an error if it can't.
@@ -169,6 +172,7 @@ VALIDATORS = {
     'account_id': 'athanor.funcs.valid.valid_account_id',
     'account': 'athanor.funcs.valid.valid_account',
     'dbname': 'athanor.funcs.valid.valid_database_key',
+    'locks': 'athanor.funcs.valid.valid_lockstring',
 }
 
 

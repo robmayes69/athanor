@@ -71,6 +71,8 @@ def at_server_cold_start():
     for m in athanor.LOADER.modules_order:
         if hasattr(m, 'at_server_cold_start'):
             m.at_server_cold_start()
+    for s in athanor.LOADER.systems.values():
+        s.at_server_cold_start()
 
 
 def at_server_cold_stop():

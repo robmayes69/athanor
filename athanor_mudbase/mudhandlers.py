@@ -441,7 +441,7 @@ class StackHandler(MudHandler):
         return bool(self.get('is_stack'))
 
     def can(self, item):
-        if not (self.is_stack() and item.stackable.is_stack()):
+        if not (self.is_stack() and item.stack.is_stack()):
             return False
 
     def can_stack(self):
@@ -494,7 +494,7 @@ class StackHandler(MudHandler):
     def merge(self, item, no_check=False):
         if not no_check:
             self.can_merge(item)
-        self.quantity_change(item.stack.quantity())
+        self.quantity_change(item.stack.quantity(), no_signal=True)
         item.safe_delete(reason='stack_merge')
 
     def stack_all(self, item):
@@ -591,16 +591,32 @@ class InventoryHandler(MudHandler, _HasPrototypes):
         for i in self.items:
             self.register_prototypes(i)
 
-    def receive(self, item, method='get', source=None):
+    def receive(self, item, method=None, source=None):
         pass
 
-    def receive_can(self, item, method='give', source=None):
+    def receive_can(self, item, method=None, source=None):
+        if item.location == self:
+            raise AthException('already_possessed')
+        if not self.weight_can_add(item):
+            raise AthException('weight')
+        if not self.volume_can_add(item):
+            raise AthException('volume')
+        contain_tags = set(self.tags.get(category='contain', return_list=True))
+        item_types = set(item.tags.get(category='itemtype', return_list=True))
+        if contain_tags:
+            if not contain_tags.intersection(item_types):
+                raise AthException('incompatible_type')
+        location = self.location
+        while location is not None:
+            if location == item:
+                raise AthException('recursion')
+            location = location.location
+        return True
+
+    def release(self, item, method=None, destination=None):
         pass
 
-    def release(self, item, method='give', destination=None):
-        pass
-
-    def release_can(self, item, method='give', destination=None):
+    def release_can(self, item, method=None, destination=None):
         pass
 
     def item_display(self):
@@ -716,8 +732,47 @@ class EquipHandler(MudHandler, _HasPrototypes):
         message = list()
         if not viewer:
             viewer = self
-        slots = self.equip_slots()
+        slots = self.slots()
         for s in slots:
             for l in self.equipped.filter(slot__key=s.key).order_by('layer'):
                 message.append('<%s> (Layer %s): %s' % (s.value[1], l.layer, l.item))
         viewer.msg('\n'.join(str(l) for l in message))
+
+
+class TemplateHandler(MudHandler):
+    template_keys = dict()
+    template_categories = dict()
+    template_tags = dict()
+    template_loaded = False
+
+    def load_templates(self):
+        """
+        This loads up the Template data to the Class itself. The template candidates are referenced on the Typeclass.
+
+        Returns:
+            None
+        """
+        candidates = self.owner.template_candidates
+        for c in candidates:
+            self.template_keys[c.key] = c
+            if c.category is not None:
+                if c.category not in self.template_categories:
+                    self.template_categories[c.category] = list()
+                self.template_categories[c.category].append(c)
+            for t in c.tags:
+                if t not in self.template_tags:
+                    self.template_tags[t] = list()
+                self.template_tags[t].append(t)
+        self.template_loaded = True
+
+    def load(self):
+        if not self.template_loaded:
+            self.load_templates()
+        self.slots_dict = {i.key: i for i in self.owner.attributes.get(category='templateslot',
+                                                           return_list=True, return_obj=True) if i}
+        save_data = [s for s in self.attr.get(category='templatesave', return_obj=True, return_list=True) if s]
+        self.templates = dict()
+        for s in save_data:
+            if s.value in self.template_keys and s.key in self.slots_dict:
+                self.templates[s.key] = self.template_keys[s.value](self)
+

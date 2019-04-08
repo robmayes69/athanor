@@ -2,7 +2,7 @@ import time
 from athanor import AthException
 from athanor.utils.text import mxp, partial_match
 from athanor.utils.time import utcnow
-from athanor.base.handlers import CharacterBaseHandler
+from athanor.base.helpers import CharacterBaseHandler
 from athanor.utils.utils import import_property
 
 

@@ -1,6 +1,6 @@
 """
 Athanor Core module's Server loader. This is responsible for readying Athanor! It will load all
-classes, validators, handlers, managers, etc, retrieving their actual objects from Python Paths.
+classes, validators, helpers, managers, etc, retrieving their actual objects from Python Paths.
 
 Afterwards, the 'athanor' module will have all needed data to run.
 """

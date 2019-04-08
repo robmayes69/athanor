@@ -2,9 +2,12 @@ from evennia import DefaultObject, DefaultRoom, DefaultCharacter
 from evennia.utils import lazy_property
 from athanor import AthException
 from athanor_mudbase.mudhandlers import WeightHandler, VolumeHandler, StackHandler, InventoryHandler, EquipHandler
+from athanor_mudbase.mudhandlers import TemplateHandler
 
 
 class HasInventory(DefaultObject):
+
+    template_candidates = []
 
     @lazy_property
     def weight(self):
@@ -26,41 +29,15 @@ class HasInventory(DefaultObject):
     def equip(self):
         return EquipHandler(self)
 
+    @lazy_property
+    def template(self):
+        return TemplateHandler(self)
+
     def at_object_leave(self, moved_obj, destination, **kwargs):
-        self.weight.unregister_item(moved_obj)
-        self.volume.unregister_item(moved_obj)
+        self.items.release(moved_obj, method=kwargs.get('method', None), destination=destination)
 
     def at_object_receive(self, moved_obj, source_location, **kwargs):
-        self.weight.register_item(moved_obj)
-        self.volume.register_item(moved_obj)
-
-    def object_can_move(self, mover, **kwargs):
-        """
-        Meant to be used for handling fixed objects. Stuff that just cannot be moved or removed from inventory
-        or whatever. Use self.location if in doubt about such rules!
-        """
-        if self.tags.get('fixed', category='item'):
-            raise AthException('fixed')
-        return True
-
-    def object_can_receive(self, item, **kwargs):
-        if item.location == self:
-            raise AthException('already_possessed')
-        if not self.weight_can_add(item):
-            raise AthException('weight')
-        if not self.volume_can_add(item):
-            raise AthException('volume')
-        contain_tags = set(self.tags.get(category='contain', return_list=True))
-        item_types = set(item.tags.get(category='itemtype', return_list=True))
-        if contain_tags:
-            if not contain_tags.intersection(item_types):
-                raise AthException('incompatible_type')
-        location = self.location
-        while location is not None:
-            if location == item:
-                raise AthException('recursion')
-            location = location.location
-        return True
+        self.items.receive(moved_obj, method=kwargs.get('method', None), source=source_location)
 
     def at_before_get(self, getter, **kwargs):
         force = kwargs.get('force', False)
@@ -80,11 +57,6 @@ class HasInventory(DefaultObject):
             return False
         return True
 
-    def print_relocate_error(self, error, item, destination=None):
-        if not destination:
-            destination = self
-        self.msg(error)
-
     def at_before_give(self, giver, getter, **kwargs):
         force = kwargs.get('force', False)
         try:
@@ -99,9 +71,6 @@ class HasInventory(DefaultObject):
                 return True
             return False
         return True
-
-    def print_equip_error(self, error, item, slot, layer, equip_verb, **kwargs):
-        self.msg(error)
 
     def at_before_equip_item(self, item, slot_key, layer, equipper, **kwargs):
         pass
@@ -127,8 +96,8 @@ class HasInventory(DefaultObject):
     def at_before_unequipped(self, remover, **kwargs):
         pass
 
-    def print_unequip_error(self, error, item, remove_verb, **kwargs):
-        self.msg(error)
+    def safe_delete(self):
+        pass
 
 
 class MudItem(HasInventory):
@@ -136,6 +105,10 @@ class MudItem(HasInventory):
 
 
 class MudRoom(DefaultRoom, HasInventory):
+    pass
+
+
+class MudZone(DefaultRoom, HasInventory):
     pass
 
 

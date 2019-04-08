@@ -1,4 +1,4 @@
-from athanor.base.handlers import AccountHandler
+from athanor.base.helpers import AccountHandler
 from athanor_awho.models import AccountWho
 
 class AWhoHandler(AccountHandler):

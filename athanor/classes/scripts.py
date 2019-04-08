@@ -43,10 +43,10 @@ class AthanorScript(DefaultScript):
 
     * Handlers
 
-     locks - lock-handler: use locks.add() to add new lock strings
-     db - attribute-handler: store/retrieve database attributes on this
+     locks - lock-helper: use locks.add() to add new lock strings
+     db - attribute-helper: store/retrieve database attributes on this
                         self.db.myattr=val, val=self.db.myattr
-     ndb - non-persistent attribute handler: same as db but does not
+     ndb - non-persistent attribute helper: same as db but does not
                         create a database entry when storing data
 
     * Helper methods

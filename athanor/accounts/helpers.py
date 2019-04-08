@@ -5,11 +5,12 @@ from evennia.utils.ansi import ANSIString
 from athanor.utils.time import utcnow
 from athanor.utils.utils import import_property
 from athanor.utils.text import partial_match
-from athanor.base.handlers import AccountBaseHandler
+from athanor.base.helpers import AccountBaseHelper
 from athanor import AthException, STYLES_DATA
+from athanor.models import AccountPlaytime
 
 
-class AccountCoreHandler(AccountBaseHandler):
+class AccountCoreHelper(AccountBaseHelper):
     key = 'core'
     category = 'athanor'
     load_order = -1000
@@ -20,12 +21,7 @@ class AccountCoreHandler(AccountBaseHandler):
         ('timezone', "Your choice of Timezone", 'timezone', 'UTC'),
     )
 
-    def at_account_creation(self):
-        self.set_db('last_login', utcnow())
-        self.set_db('last_logout', utcnow())
-
     def at_post_login(self, session, **kwargs):
-        self.set_db('last_login', utcnow())
         self.base.systems['account'].add_online(self.owner)
 
     def at_true_logout(self, account, session, **kwargs):
@@ -71,33 +67,11 @@ class AccountCoreHandler(AccountBaseHandler):
             return False
         return (self.permission_rank() > target.ath['core'].permission_rank()) or self.is_superuser()
 
-    def display_time(self, date=None, format=None):
-        """
-        Displays a DateTime in a localized timezone to the account.
 
-        :param date: A datetime object. Will be utcnow() if not provided.
-        :param format: a strftime formatter.
-        :return: Time as String
-        """
-        if not format:
-            format = '%b %d %I:%M%p %Z'
-        if not date:
-            date = utcnow()
-        tz = self.timezone
-        time = date.astimezone(tz)
-        return time.strftime(format)
 
     @property
     def timezone(self):
         return self['timezone']
-
-    @property
-    def shelved(self):
-        return bool(self.get_db('shelved'))
-
-    @shelved.setter
-    def shelved(self, value):
-        self.set_db('shelved', value)
 
     @property
     def disabled(self):
@@ -153,17 +127,7 @@ class AccountCoreHandler(AccountBaseHandler):
         data[character] = data.get(character, 0) + seconds
         self.set_db('playtime_characters', data)
 
-    @property
-    def last_played(self):
-        return max(self.last_login, self.last_logout)
 
-    @property
-    def last_login(self):
-        return self.get_db('last_login')
-
-    @property
-    def last_logout(self):
-        return self.get_db('last_logout')
 
     @property
     def connection_time(self):
@@ -180,7 +144,32 @@ class AccountCoreHandler(AccountBaseHandler):
         return -1
 
 
-class AccountCharacterHandler(AccountBaseHandler):
+class AccountPlaytimeHelper(AccountBaseHelper):
+    key = 'playtime'
+    system_name = 'PLAYTIME'
+    load_order = -900
+    interval = 60
+
+    def at_true_login(self, session, **kwargs):
+        playtime = AccountPlaytime.objects.create(account=self.owner, login_time=utcnow())
+
+    def at_true_logout(self, session, **kwargs):
+        AccountPlaytime.objects.filter(account=self.owner, logout_time__isnull=True).update(logout_time=utcnow())
+
+    @property
+    def last_played(self):
+        return max(self.last_login, self.last_logout)
+
+    @property
+    def last_login(self):
+        return self.owner.playtime.order_by('login_time').first().login_time
+
+    @property
+    def last_logout(self):
+        return self.owner.playtime.filter(logout_time__isnull=False).order_by('logout_time').first().logout_time
+
+
+class AccountCharacterHelper(AccountBaseHelper):
     key = 'character'
     load_order = -999
     system_name = 'ACCOUNT'
@@ -229,78 +218,10 @@ class AccountCharacterHandler(AccountBaseHandler):
     def max_character_slots(self):
         return self.base_character_slots + self.extra_character_slots
 
-    def render_login(self, session, viewer):
-        characters = self.base['character'].all()
-        message = list()
-        message.append(session.ath['render'].header("%s: Account Management" % settings.SERVERNAME))
-        message += self.at_look_info_section(session, viewer)
-        message += self.at_look_session_menu(session, viewer)
-        message.append(session.ath['render'].subheader('Commands'))
-        command_column = session.ath['render'].table([], header=False)
-        command_text = list()
-        command_text.append(str(ANSIString(" |whelp|n - more commands")))
-        if self.owner.db._reset_username:
-            command_text.append(" |w@username <name>|n - Set your username!")
-        if self.owner.db._reset_email or self.owner.email == 'dummy@dummy.com':
-            command_text.append(" |w@email <address>|n - Set your email!")
-        if self.owner.db._was_lost:
-            command_text.append(" |w@penn <character>=<password>|n - Link an imported PennMUSH character.")
-        command_text.append(" |w@charcreate <name> [=description]|n - create new character")
-        command_text.append(" |w@ic <character>|n - enter the game (|w@ooc|n to get back here)")
-        command_column.add_row("\n".join(command_text))
-        message.append(command_column)
-        if characters:
-            message += self.at_look_character_menu(session, viewer)
-        message.append(session.ath['render'].subheader('Open Char Slots: %s/%s' % (
-            self.available_character_slots, self.max_character_slots)))
-        return '\n'.join(str(line) for line in message if line)
-
-    def at_look_info_section(self, session, viewer):
-        message = list()
-        info_column = session.ath['render'].table((), header=False)
-        info_text = list()
-        info_text.append(str(ANSIString("Account:".rjust(8) + " |g%s|n" % (self.owner.key))))
-        email = self.owner.email if self.owner.email != 'dummy@dummy.com' else '<blank>'
-        info_text.append(str(ANSIString("Email:".rjust(8) + ANSIString(" |g%s|n" % email))))
-        info_text.append(str(ANSIString("Perms:".rjust(8) + " |g%s|n" % ", ".join(self.owner.permissions.all()))))
-        info_column.add_row("\n".join(info_text))
-        message.append(info_column)
-        return message
-
-    def at_look_session_menu(self, session, viewer):
-        sessions = self.owner.sessions.all()
-        message = list()
-        message.append(session.ath['render'].subheader('Sessions'))
-        columns = (('ID', 7, 'l'), ('Protocol', 0, 'l'), ('Address', 0, 'l'), ('Connected', 0, 'l'))
-        sesstable = session.ath['render'].table(columns)
-        for session in sessions:
-            conn_duration = time.time() - session.conn_time
-            sesstable.add_row(session.sessid, session.protocol_key,
-                                isinstance(session.address, tuple) and str(session.address[0]) or str(
-                                    session.address),
-                                 utils.time_format(conn_duration, 0))
-        message.append(sesstable)
-        return message
-
-    def at_look_character_menu(self, session, viewer):
-        message = list()
-        characters = self.base['character'].all()
-        message.append(session.ath['render'].subheader('Characters'))
-        columns = (('ID', 7, 'l'), ('Name', 0, 'l'), ('Type', 0, 'l'), ('Last Login', 0, 'l'))
-        chartable = session.ath['render'].table(columns)
-        for character in characters:
-            login = character.ath['core'].last_played
-            if login:
-                login = self.owner.ath['core'].display_time(date=login)
-            else:
-                login = 'N/A'
-            type = 'N/A'
-            chartable.add_row(character.id, character.key, type, login)
-        message.append(chartable)
-        return message
 
 
-class AccountMenuHandler(AccountBaseHandler):
+
+class AccountMenuHelper(AccountBaseHelper):
     key = 'menu'
     system_name = 'SYSTEM'
 
@@ -356,24 +277,7 @@ class AccountMenuHandler(AccountBaseHandler):
         self.launch(path)
 
 
-class AccountColorHandler(AccountBaseHandler):
-    key = 'color'
-    system_name = 'COLOR'
-
-    @property
-    def settings_data(self):
-        data = list()
-        for k, v in STYLES_DATA.items():
-            data.append((k, v[1], v[0], v[2]))
-        return tuple(data)
-
-    def get_settings(self):
-        if not self.loaded_settings:
-            self.load_settings()
-        return self.settings
-
-
-class AccountChannelHandler(AccountBaseHandler):
+class AccountChannelHelper(AccountBaseHelper):
     key = 'channel'
     system_name = 'CHANNEL'
 

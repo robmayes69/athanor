@@ -8,7 +8,7 @@ This module is loaded by being included in the
 `settings.INPUT_FUNC_MODULES` tuple.
 
 All *global functions* included in this module are considered
-input-handler functions and can be called by the client to handle
+input-helper functions and can be called by the client to handle
 input.
 
 An input function must have the following call signature:
@@ -26,7 +26,7 @@ as argument.
 
 """
 
-# import the contents of the default inputhandler_func module
+# import the contents of the default inputhelper_func module
 #from evennia.server.inputfuncs import *
 
 
@@ -45,7 +45,7 @@ as argument.
 #
 # def default(session, cmdname, *args, **kwargs):
 #     """
-#     Handles commands without a matching inputhandler func.
+#     Handles commands without a matching inputhelper func.
 #
 #     Args:
 #         session (Session): The active Session.

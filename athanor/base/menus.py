@@ -85,7 +85,7 @@ class Menu(MenuCommand):
 
 class MenuCmdSet(AthCmdSet):
     """
-    This Class is used as the parent of CmdSets assigned by the Menu handler.
+    This Class is used as the parent of CmdSets assigned by the Menu helper.
 
     ALL Menus across all Athanor Modules must have a unique Key or there will be stored data conflicts.
 
