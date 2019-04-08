@@ -2,6 +2,7 @@ from evennia.locks.lockhandler import LockException
 from athanor import AthException
 from athanor.base.systems import AthanorSystem
 from athanor.utils.text import sanitize_string, partial_match, mxp
+from athanor.utils.time import utcnow()
 from athanor_bbs.models import Board, BoardCategory, Post, PostRead
 
 
@@ -10,9 +11,9 @@ class BoardManager(AthanorSystem):
     system_name = 'BBS'
     load_order = -50
     settings_data = (
-        ('category_locks', 'Default locks to use for new Board Categories?', 'locks',
+        ('category_locks', 'Default locks to use for new Board Categories?', 'lock',
          "see:all();create:pperm(Admin);delete:pperm(Admin);admin:pperm(Admin)"),
-        ('board_locks', 'Default locks for new Boards?', 'locks', "read:all();post:all();admin:pperm(Admin)"),
+        ('board_locks', 'Default locks for new Boards?', 'lock', "read:all();post:all();admin:pperm(Admin)"),
     )
 
     def categories(self):
@@ -21,7 +22,7 @@ class BoardManager(AthanorSystem):
     def create_category(self, session, name, abbr=''):
         if not session.ath['core'].is_admin():
             raise AthException("Permission denied!")
-        name = self.valid['dbname'](name, thing_name='BBS Category')
+        name = self.valid['dbname'](session, name, thing_name='BBS Category')
         if BoardCategory.objects.filter(key__iexact=name).exists():
             raise AthException("Names must be unique!")
         if abbr != '':
@@ -59,11 +60,11 @@ class BoardManager(AthanorSystem):
         category = self.find_category(session, category)
         if not category.locks.check('admin', session.account):
             raise AthException("Permission denied!")
-        new_name = self.valid['dbname'](new_name, thing_name='BBS Category')
+        new_name = self.valid['dbname'](session, new_name, thing_name='BBS Category')
         if BoardCategory.objects.filter(key__iexact=new_name).exclude(id=category).exists():
             raise AthException("Names must be unique!")
         if new_abbr != '':
-            new_abbr = self.valid['dbname'](new_abbr, thing_name='BBS Prefix')
+            new_abbr = self.valid['dbname'](session, new_abbr, thing_name='BBS Prefix')
         if ' ' in new_abbr:
             raise AthException("BBS Prefixes may not contain spaces.")
         if len(new_abbr) > 5:
@@ -94,7 +95,7 @@ class BoardManager(AthanorSystem):
         category = self.find_category(session, category)
         if not session.account.is_superuser:
             raise AthException("Permission denied! Superuser only!")
-        new_locks = self.valid['locks'](new_locks, thing_name='BBS Category Locks', 
+        new_locks = self.valid['locks'](session, new_locks, thing_name='BBS Category Locks',
                                         options=['see', 'create', 'delete', 'admin'])
         try:
             category.locks.add(new_locks)
@@ -108,11 +109,11 @@ class BoardManager(AthanorSystem):
 
     def usable_boards(self, session, mode='read', check_admin=True):
         return [board for board in self.boards() if board.check_permission(session, mode=mode, checkadmin=check_admin)
-                and board.category.locks.check('see', session)]
+                and board.category.locks.check(session.account, 'see')]
 
     def visible_boards(self, session, check_admin=True):
         return [board for board in self.usable_boards(session, mode='read', check_admin=check_admin)
-                if session not in board.ignore_list.all() and board.category.locks.check('see', session)]
+                if session.account not in board.ignore_list.all() and board.category.locks.check(session.account, 'see')]
 
     def find_board(self, session, find_name=None, visible_only=True):
         if not find_name:
@@ -149,7 +150,7 @@ class BoardManager(AthanorSystem):
         category = self.find_category(session, category)
         if not category.locks.check(session.account, 'create'):
             raise AthException("Permission denied!")
-        name = self.valid['dbname'](name, thing_name='BBS Board')
+        name = self.valid['dbname'](session, name, thing_name='BBS Board')
         if category.boards.filter(key__iexact=name).exists():
             raise AthException("Names must be unique!")
         if not order:
@@ -158,7 +159,7 @@ class BoardManager(AthanorSystem):
             order = int(order)
             if category.boards.filter(order=order).exists():
                 raise AthException("Orders must be unique per group!")
-        board = category.objects.create(key=name, order=order, lock_storage=self['board_locks'])
+        board = category.boards.create(key=name, order=order, lock_storage=self['board_locks'])
         board.save()
         self.alert(f"BBS Board Created: ({category}) - {board.alias}: {board.key}", source=session)
         return board
@@ -176,7 +177,7 @@ class BoardManager(AthanorSystem):
         board = self.find_board(session, name)
         if not board.category.locks.check('admin', session.account):
             raise AthException("Permission denied!")
-        new_name = self.valid['dbname'](new_name, thing_name='BBS Board')
+        new_name = self.valid['dbname'](session, new_name, thing_name='BBS Board')
         if board.key == new_name:
             raise AthException("No point... names are the same.")
         if board.category.boards.exclude(id=board).filter(key__iexact=new_name).exists():
@@ -193,7 +194,7 @@ class BoardManager(AthanorSystem):
             raise AthException("Permission denied!")
         if not order:
             raise AthException("No order entered!")
-        order = self.valid['positive_integer'](order, thing_name='BBS Board Order')
+        order = self.valid['positive_integer'](session, order, thing_name='BBS Board Order')
         if board.order == order:
             raise AthException("No point to this operation.")
         if board.category.boards.exclude(id=board.id).filter(order=order).exists():
@@ -208,7 +209,7 @@ class BoardManager(AthanorSystem):
             raise AthException("Permission denied!")
         if not lock:
             raise AthException("Must enter a lockstring.")
-        lockstring = self.valid['locks'](lock, thing_name='BBS Board Lock')
+        lockstring = self.valid['locks'](session, lock, thing_name='BBS Board Lock')
         try:
             board.locks.add(lockstring)
             board.save(update_fields=['lock_storage'])
@@ -216,3 +217,16 @@ class BoardManager(AthanorSystem):
             raise AthException(str(e))
         self.alert(f"BBS Board ({board.category.key}) - {board.alias}: {board.key} lock changed to: {lockstring}",
                    source=session)
+
+    def create_post(self, session, board=None, subject=None, text=None, announce=True, date=None):
+        board = self.find_board(session, board)
+        if not text:
+            raise ValueError("Text field empty.")
+        if not subject:
+            raise ValueError("Subject field empty.")
+        if not date:
+            date = utcnow()
+        order = board.posts.all().count() + 1
+        post = board.posts.create(account=session.account, subject=subject, text=text, creation_date=date,
+                                 modify_date=date, order=order)
+        return post

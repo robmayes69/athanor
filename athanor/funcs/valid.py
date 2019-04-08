@@ -234,7 +234,6 @@ def valid_channel_id(checker, entry):
             return find
     raise AthException("Channel not found.")
 
-
 def valid_database_key(checker, entry, thing_name="Entity"):
     entry = entry.strip()
     if not len(entry):

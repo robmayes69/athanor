@@ -69,18 +69,21 @@ class Board(WithLocks):
             if re.match(r"^\d+$", arg):
                 fullnums.append(int(arg))
             if re.match(r"^U$", arg.upper()):
-                fullnums += self.posts.exclude(read__account=account, modify_date__lte=models.F('read__read_date')).values_list('order', flat=True)
+                fullnums += self.unread_posts(account).values_list('order', flat=True)
         return self.posts.filter(order__in=fullnums).order_by('order')
 
     def check_permission(self, checker=None, mode="read", checkadmin=True):
-        if checker.is_admin():
+        if checker.ath['core'].is_admin():
             return True
-        if self.locks.check(checker, "Admin") and checkadmin:
+        if self.locks.check(checker.account, "admin") and checkadmin:
             return True
-        elif self.locks.check(checker, mode):
+        elif self.locks.check(checker.account, mode):
             return True
         else:
             return False
+
+    def unread_posts(self, session):
+        return self.posts.exclude(read__account=session.account, modify_date__lte=models.F('read__read_date'))
 
     def display_permissions(self, checker=None):
         if not checker:
@@ -104,32 +107,11 @@ class Board(WithLocks):
         return [acc for acc in online_accounts() if self.check_permission(checker=acc)
                 and acc not in self.ignore_list.all()]
 
-    def make_post(self, account=None, subject=None, text=None, announce=True, date=None):
-        if not account:
-            raise ValueError("No player data to use.")
-        if not text:
-            raise ValueError("Text field empty.")
-        if not subject:
-            raise ValueError("Subject field empty.")
-        if not date:
-            date = utcnow()
-        order = self.posts.all().count() + 1
-        post = self.posts.create(owner=account, subject=subject, text=text, creation_date=date,
-                                 modify_date=date, order=order)
-        return post
-
     def squish_posts(self):
         for count, post in enumerate(self.posts.order_by('order')):
             if post.order != count +1:
                 post.order = count + 1
                 post.save(update_fields=['order'])
-
-    def last_post(self, viewer):
-        find = self.posts.all().order_by('creation_date').first()
-        if find:
-            return viewer.time.display(date=find.creation_date, format='%X %x %Z')
-        else:
-            return "None"
 
 
 class Post(models.Model):

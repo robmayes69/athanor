@@ -8,7 +8,7 @@ class RenderBBSHelper(RenderBaseHelper):
         boards = self.base.systems['bbs'].visible_boards(session)
         message = list()
         message.append(self.header(session, 'BBS'))
-        columns = f"{'Alias'.ljust(6)}{'Name'.ljust(31)}{'Last Post'.ljust(7)}{'#'.rjust(4)}{'U'.rjust(4)}    {'Perms'}"
+        columns = f"{'Alias'.ljust(6)}{'Name'.ljust(31)}{'Last Post'.ljust(11)}{'#'.rjust(4)}{'U'.rjust(4)}    {'Perms'}"
         message.append(self.columns(session, columns))
         category = None
         for b in boards:
@@ -16,14 +16,21 @@ class RenderBBSHelper(RenderBaseHelper):
                 message.append(self.separator(session, b.category.key))
                 category = b.category
             message.append(self.read_all_line(session, b))
-        message.append(self.footer(session))
+        footer = self.footer(session)
+        message.append(footer)
+        message.append("'rpa' = 'read, post, admin', underline means this privilege is not public")
+        message.append(footer)
         return '\n'.join(str(l) for l in message)
 
     def read_all_line(self, session, board):
         count = str(board.posts.count())
-        unread = str()
-        perms = "rpa"
-        return f"{board.alias.ljust(6)}{board.key.ljust(31)}{'Date'.ljust(7)}{count.rjust(4)}{unread.rjust(4)}    {perms}"
+        unread = str(board.posts.count() - board.unread_posts(session).count())
+        perms = board.display_permissions(session)
+        last_post = board.posts.all().order_by('creation_date').first()
+        display_date = 'None'
+        if last_post:
+            display_date = self.local_time(last_post.creation_date, time_format='%X %x %Z')
+        return f"{board.alias.ljust(6)}{board.key[:30].ljust(31)}{display_date.ljust(11)}{count.rjust(4)}{unread.rjust(4)}    {perms}"
 
     def read_board(self, session, board):
         message = list()

@@ -198,6 +198,7 @@ SETTINGS = {
     'datetime': 'athanor.base.settings.DateTimeSetting',
     'future': 'athanor.base.settings.FutureSetting',
     'email': 'athanor.base.settings.EmailSetting',
+    'lock': 'athanor.base.settings.LockSetting',
 }
 
 # A dictionary of command families. CmdSets can be pointed at one of these keys to retrieve the prefix all of their

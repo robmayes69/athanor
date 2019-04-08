@@ -305,3 +305,9 @@ class FutureSetting(DateTimeSetting):
 
     def do_validate(self, value, value_list, session):
         return self.valid['future'](session.account, value)
+
+
+class LockSetting(WordSetting):
+
+    def do_validate(self, value, value_list, session):
+        return self.valid['locks'](session, value)

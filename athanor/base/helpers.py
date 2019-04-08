@@ -249,7 +249,7 @@ class RenderBaseHelper(BaseHelper):
             left_width = remain_fill / 2
         else:
             right_width = math.floor(remain_fill / 2)
-            left_width = math.ceil(remain_fill / 2) + 1
+            left_width = math.ceil(remain_fill / 2)
 
         right_fill = ANSIString('|n|%s%s|n' % (colors['border'], fill_character * int(right_width)))
         left_fill = ANSIString('|n|%s%s|n' % (colors['border'], fill_character * int(left_width)))
