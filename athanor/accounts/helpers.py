@@ -334,3 +334,11 @@ class AccountChannelHelper(AccountBaseHelper):
         if not found:
             raise AthException("Could not find Channel named '%s'" % find)
         return found
+
+
+class StaffListHandler(AccountBaseHelper):
+    key = 'staff'
+    category = 'athanor'
+    load_order = 0
+    system_name = 'STAFF'
+    cmdsets = ('athanor.accounts.cmdsets.StaffListCmdSet', )

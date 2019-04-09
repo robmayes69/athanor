@@ -7,9 +7,9 @@ os.chdir(os.path.dirname(os.path.realpath(__file__)))
 VERSION_PATH = os.path.join('athanor', 'VERSION.txt')
 OS_WINDOWS = os.name == "nt"
 
-ALL_MODULES = ('athanor', 'athanor_ainfo', 'athanor_mail', 'athanor_awho', 'athanor_bbs', 'athanor_channels',
-               'athanor_cmail', 'athanor_cwho', 'athanor_district', 'athanor_fclist', 'athanor_watch', 'athanor_groups',
-               'athanor_guest', 'athanor_jobs', 'athanor_logintrack', 'athanor_meetme', 'athanor_navigation',
+ALL_MODULES = ('athanor', 'athanor_ainfo', 'athanor_mail', 'athanor_awho', 'bbs', 'athanor_channels',
+               'athanor_cmail', 'athanor_cwho', 'athanor_district', 'athanor_fclist', 'watch', 'factions',
+               'athanor_guest', 'jobs', 'athanor_logintrack', 'athanor_meetme', 'athanor_navigation',
                'athanor_page', 'athanor_pennmush', 'athanor_radio', 'athanor_scene', 'athanor_staff')
 
 def get_requirements():

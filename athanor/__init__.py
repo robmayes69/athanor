@@ -70,6 +70,7 @@ HELPERS_SCRIPT = {
 
 HELPERS_RENDER = {
     'login': 'athanor.accounts.render.RenderLoginHelper',
+    'bbs': 'bbs.render.RenderBBSHelper',
 }
 
 
@@ -179,6 +180,7 @@ VALIDATORS = {
 SYSTEMS = {
     'account': 'athanor.accounts.systems.AccountSystem',
     'character': 'athanor.characters.systems.CharacterSystem',
+    'bbs': 'bbs.systems.BoardManager',
 #    'channel': 'athanor.channels.systems.ChannelSystem',
 }
 

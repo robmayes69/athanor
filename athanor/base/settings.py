@@ -8,10 +8,14 @@ from athanor import AthException
 from athanor.funcs.valid import TZ_DICT
 
 
+class HasSettingsMixin(object):
+
+
+
 class BaseSetting(object):
     expect_type = ''
     value_storage = None
-    valid = athanor.VALIDATORS
+    valid = athanor.LOADER.validators
 
     def __str__(self):
         return self.key
