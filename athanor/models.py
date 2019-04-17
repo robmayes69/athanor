@@ -98,7 +98,15 @@ class BoardCategory(WithLocks):
     def __str__(self):
         return self.key
 
-# Create your models here.
+
+class AccountStub(models.Model):
+    account = models.OneToOneField('accounts.AccountDB', related_name='stub', on_delete=models.SET_NULL, null=True)
+    key = models.CharField(max_length=255, null=False, blank=False)
+
+
+class CharacterStub(models.Model):
+    character = models.OneToOneField('objects.ObjectDB', related_name='stub', on_delete=models.SET_NULL, null=True)
+    key = models.CharField(max_length=255, null=False, blank=False)
 
 
 class Board(WithLocks):
@@ -196,7 +204,7 @@ class Board(WithLocks):
 
 class Post(models.Model):
     board = models.ForeignKey('Board', related_name='posts', on_delete=models.CASCADE)
-    account = models.ForeignKey('accounts.AccountDB', related_name='+', on_delete=models.CASCADE)
+    account_stub = models.ForeignKey(AccountStub, related_name='+', on_delete=models.CASCADE)
     creation_date = models.DateTimeField(null=True)
     modify_date = models.DateTimeField(null=True)
     text = models.TextField(blank=True)
@@ -214,7 +222,7 @@ class Post(models.Model):
         return f"{self.board.alias}/{self.order}"
 
     def can_edit(self, checker=None):
-        if self.account == checker.account:
+        if self.account_stub.account == checker:
             return True
         return self.board.check_permission(checker=checker, type="admin")
 
@@ -331,13 +339,13 @@ class Job(models.Model):
     admin_update = models.DateTimeField(null=True)
 
     def handlers(self):
-        return self.characters.filter(is_handler=True)
+        return self.links.filter(is_handler=True)
 
     def handler_names(self):
         return ', '.join([hand.character.key for hand in self.handlers()])
 
     def helpers(self):
-        return self.characters.filter(is_helper=True)
+        return self.links.filter(is_helper=True)
 
     def comments(self):
         return JobComment.objects.filter(handler__job=self).order_by('date_made')
@@ -371,7 +379,7 @@ class Job(models.Model):
 
     @property
     def owner(self):
-        return self.characters.filter(is_owner=True).first()
+        return self.links.filter(is_owner=True).first()
 
     @property
     def locks(self):
@@ -403,7 +411,7 @@ class Job(models.Model):
             targets += self.handlers
         else:
             targets += admin
-            targets += [char for char in self.characters.all()]
+            targets += [char for char in self.links.all()]
         targets = set(targets)
         final_list = targets.intersection(online)
 
@@ -411,8 +419,8 @@ class Job(models.Model):
             char.sys_msg(text, sys_name='JOBS')
 
     def appoint_handler(self, enactor, target):
-        ehandler, created1 = self.characters.get_or_create(character=enactor)
-        handler, created = self.characters.get_or_create(character=target)
+        ehandler, created1 = self.links.get_or_create(character=enactor)
+        handler, created = self.links.get_or_create(character=target)
         if handler.is_handler:
             raise ValueError("%s is already handling this job!" % target)
         handler.is_handler = True
@@ -421,8 +429,8 @@ class Job(models.Model):
         ehandler.make_comment(comment_mode=8, text='%s' % target)
 
     def remove_handler(self, enactor, target):
-        ehandler, created1 = self.characters.get_or_create(character=enactor)
-        handler, created = self.characters.get_or_create(character=target)
+        ehandler, created1 = self.links.get_or_create(character=enactor)
+        handler, created = self.links.get_or_create(character=target)
         if not handler.is_handler:
             raise ValueError("%s is not handling this job!" % target)
         handler.is_handler = False
@@ -431,8 +439,8 @@ class Job(models.Model):
         ehandler.make_comment(comment_mode=10, text='%s' % target)
 
     def appoint_helper(self, enactor, target):
-        ehandler, created1 = self.characters.get_or_create(character=enactor)
-        handler, created = self.characters.get_or_create(character=target)
+        ehandler, created1 = self.links.get_or_create(character=enactor)
+        handler, created = self.links.get_or_create(character=target)
         if handler.is_helper:
             raise ValueError("%s is already helping this job!" % target)
         handler.is_helper = True
@@ -441,8 +449,8 @@ class Job(models.Model):
         ehandler.make_comment(comment_mode=8, text='%s' % target)
 
     def remove_helper(self, enactor, target):
-        ehandler, created1 = self.characters.get_or_create(character=enactor)
-        handler, created = self.characters.get_or_create(character=target)
+        ehandler, created1 = self.links.get_or_create(character=enactor)
+        handler, created = self.links.get_or_create(character=target)
         if not handler.is_helper:
             raise ValueError("%s is not helping this job!" % target)
         handler.is_helper = False
@@ -457,12 +465,12 @@ class Job(models.Model):
         self.category = newcat
         self.announce('%s moved job from: %s' % (enactor, oldcat))
         self.save(update_fields=['category'])
-        handler, created = self.characters.get_or_create(character=enactor)
+        handler, created = self.links.get_or_create(character=enactor)
         handler.make_comment(comment_mode=3, text='%s to %s' % (oldcat, newcat))
 
     def display(self, viewer):
         admin = False
-        if self.locks.check(viewer, 'admin') or self.characters.filter(is_handler=True, character=viewer):
+        if self.locks.check(viewer, 'admin') or self.links.filter(is_handler=True, character=viewer):
             admin = True
         message = list()
         message.append(viewer.render.header('%s Job %s' % (self.category.key, self.id)))
@@ -475,12 +483,12 @@ class Job(models.Model):
             message.append(viewer.render.separator())
             message.append(com.display(viewer, admin))
         message.append(viewer.render.footer())
-        handler, created = self.characters.get_or_create(character=viewer)
+        handler, created = self.links.get_or_create(character=viewer)
         handler.check()
         return message
 
     def make_reply(self, enactor, contents):
-        handler, created = self.characters.get_or_create(character=enactor)
+        handler, created = self.links.get_or_create(character=enactor)
         handler.make_comment(text=contents, comment_mode=1)
         name = enactor.key
         if handler.is_owner and self.anonymous:
@@ -488,14 +496,14 @@ class Job(models.Model):
         self.announce('%s sent a reply.' % name)
 
     def make_comment(self, enactor, contents):
-        handler, created = self.characters.get_or_create(character=enactor)
+        handler, created = self.links.get_or_create(character=enactor)
         handler.make_comment(text=contents, comment_mode=1, is_private=True)
         self.announce('%s added a |rSTAFF COMMENT|n.' % enactor, only_admin=True)
 
     def set_approved(self, enactor, contents):
         if not self.status == 0:
             raise ValueError("Job is not pending, cannot be approved.")
-        handler, created = self.characters.get_or_create(character=enactor)
+        handler, created = self.links.get_or_create(character=enactor)
         handler.make_comment(text=contents, comment_mode=4)
         self.status = 1
         self.close_date = utcnow()
@@ -505,7 +513,7 @@ class Job(models.Model):
     def set_denied(self, enactor, contents):
         if not self.status == 0:
             raise ValueError("Job is not pending, cannot be denied.")
-        handler, created = self.characters.get_or_create(character=enactor)
+        handler, created = self.links.get_or_create(character=enactor)
         handler.make_comment(text=contents, comment_mode=5)
         self.status = 2
         self.close_date = utcnow()
@@ -515,7 +523,7 @@ class Job(models.Model):
     def set_canceled(self, enactor, contents):
         if not self.status == 0:
             raise ValueError("Job is not pending, cannot be canceled.")
-        handler, created = self.characters.get_or_create(character=enactor)
+        handler, created = self.links.get_or_create(character=enactor)
         handler.make_comment(text=contents, comment_mode=6)
         self.status = 3
         self.close_date = utcnow()
@@ -525,7 +533,7 @@ class Job(models.Model):
     def set_pending(self, enactor, contents):
         if self.status == 0:
             raise ValueError("Job is not finished, cannot be revived.")
-        handler, created = self.characters.get_or_create(character=enactor)
+        handler, created = self.links.get_or_create(character=enactor)
         handler.make_comment(text=contents, comment_mode=7)
         self.status = 0
         self.close_date = None
@@ -535,22 +543,22 @@ class Job(models.Model):
     def set_due(self, enactor, new_date):
         self.due_date = new_date
         self.save(update_fields=['due_date'])
-        handler, created = self.characters.get_or_create(character=enactor)
+        handler, created = self.links.get_or_create(character=enactor)
         handler.make_comment(comment_mode=12, text='%s' % self.due_date)
         self.announce('%s changed the Due Date to: %s' % (enactor, self.due_date))
 
 
 class JobLink(models.Model):
-    account = models.ForeignKey('accounts.AccontDB', related_name='job_handling', on_delete=models.CASCADE)
-    job = models.ForeignKey('jobs.Job', related_name='characters', on_delete=models.CASCADE)
+    account_stub = models.ForeignKey(AccountStub, related_name='job_handling', on_delete=models.CASCADE)
+    job = models.ForeignKey('jobs.Job', related_name='links', on_delete=models.CASCADE)
     link_type = models.PositiveSmallIntegerField(default=0)
     check_date = models.DateTimeField(null=True)
 
     class Meta:
-        unique_together = (("account", "job"),)
+        unique_together = (("account_stub", "job"),)
 
     def __str__(self):
-        return str(self.account)
+        return str(self.account_stub)
 
     def check(self):
         self.check_date = utcnow()

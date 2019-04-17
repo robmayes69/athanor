@@ -165,10 +165,10 @@ class Speech(object):
         return '$charactername(%s,%s)' % (self.name_dict[found.upper()], found)
 
     def __str__(self):
-        str(unicode(self))
+        str(self)
 
     def __unicode__(self):
-        return unicode(self.demarkup())
+        return str(self.demarkup())
 
     def monitor_display(self, viewer=None):
         if not viewer:

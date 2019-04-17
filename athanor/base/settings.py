@@ -8,8 +8,6 @@ from athanor import AthException
 from athanor.funcs.valid import TZ_DICT
 
 
-class HasSettingsMixin(object):
-
 
 
 class BaseSetting(object):
