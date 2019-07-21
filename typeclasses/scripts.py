@@ -14,11 +14,12 @@ just overloads its hooks to have it perform its function.
 
 from evennia import DefaultScript
 from evennia.utils.optionhandler import OptionHandler
-from evennia.utils.utils import lazy_property
-from evennia.utils.utils import partial_match, class_from_module
-from evennia.utils.validatorfuncs import simple_name, text
+from evennia.utils.utils import lazy_property, class_from_module
+from evennia.utils.validatorfuncs import text
+from world.utils.valid import simple_name
 from evennia.utils.search import search_script_tag
 from world.utils.online import admin_accounts
+from world.utils.text import partial_match
 
 
 class Script(DefaultScript):
@@ -176,7 +177,7 @@ class AbstractTreeScript(GlobalScript):
             search_text, next_search = search_text.split('/', 1)
         found = partial_match(search_text, self.all(looker))
         if found and next_search:
-            return found.search(next_search)
+            return found.search(next_search, looker)
         return found
 
     def name_used(self, candidate_name):

@@ -162,6 +162,7 @@ from evennia.utils import make_iter
 #             else:
 #                 self.character = None
 
+
 class Command(MuxCommand):
     """
     Inherit from this if you want to create your own command styles

@@ -16,6 +16,7 @@ own cmdsets by inheriting from them or directly from `evennia.CmdSet`.
 
 from evennia import default_cmds
 from .bbs import ALL_COMMANDS as BBS_COMMANDS
+from .jobs import JOB_COMMANDS
 
 
 class CharacterCmdSet(default_cmds.CharacterCmdSet):
@@ -34,6 +35,8 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         #
         # any commands you add below will overload the default ones.
         #
+        for cmd in BBS_COMMANDS:
+            self.add(cmd)
 
 
 class AccountCmdSet(default_cmds.AccountCmdSet):
@@ -53,9 +56,9 @@ class AccountCmdSet(default_cmds.AccountCmdSet):
         #
         # any commands you add below will overload the default ones.
         #
-        for cmd in BBS_COMMANDS:
+        for cmd in JOB_COMMANDS:
             self.add(cmd)
-
+        
 
 class UnloggedinCmdSet(default_cmds.UnloggedinCmdSet):
     """

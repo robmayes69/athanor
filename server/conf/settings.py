@@ -151,8 +151,17 @@ FACTION_DEFAULT_FACTION_LOCKS = 'control:perm(Admin) or perm(Faction_Admin);see:
 # BBS Settings
 ######################################################################
 GLOBAL_SCRIPTS['bbs'] = {
-    'typeclass': 'typeclasses.bbs.BoardManager',
+    'typeclass': 'typeclasses.gscripts.bbs.BoardManager',
     'repeats': -1, 'interval': 60, 'desc': 'BBS API for Account BBS',
+    'locks': "admin:perm(Admin)",
+}
+
+######################################################################
+# BBS Settings
+######################################################################
+GLOBAL_SCRIPTS['jobs'] = {
+    'typeclass': 'typeclasses.gscripts.jobs.JobManager',
+    'repeats': -1, 'interval': 60, 'desc': 'Job API for Job System',
     'locks': "admin:perm(Admin)",
 }
 

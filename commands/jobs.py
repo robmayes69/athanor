@@ -1,477 +1,289 @@
-import math
+import math, datetime
+from django.conf import settings
 from django.db.models import Q
-from evennia.utils.utils import time_format
-from evennia.locks.lockhandler import LockException
-from athanor.jobs.models import JobCategory, Job
-from athanor.core.command import AthCommand
-from athanor.utils.text import normal_string
-from athanor.utils.time import utcnow, duration_from_string
+import evennia
+from evennia.utils.utils import time_format, class_from_module
+from world.models import JobComment
+
+COMMAND_DEFAULT_CLASS = class_from_module(settings.COMMAND_DEFAULT_CLASS)
+
+JOB_COLUMNS = f"*    ID Submitter       Title                         Claimed         Due  Lst"
 
 
-class CmdBucket(AthCommand):
-    key = '+bucket'
-    locks = 'cmd:perm(Admin) or perm(Job_Admin)'
-    switch_options = ['create', 'delete', 'rename', 'lock', 'due']
+class JobCmd(COMMAND_DEFAULT_CLASS):
+    account_caller = True
+    system_name = "JOBS"
+    help_category = "Job System / Issue Tracker"
 
-    def switch_create(self):
-        if not self.player.account.is_immortal():
-            return self.error("Permission denied!")
-        name = normal_string(lhs)
-        if not name:
-            return self.error("Nothing entered to create.")
-        if name.isdigit():
-            raise ValueError("Can't name Job categories numbers!")
-        found = JobCategory.objects.filter(key__iexact=name).count()
-        if found:
-            return self.error("Category already exists. Use /rencategory to rename it.")
-        due = self.valid_duration('1w')
-        JobCategory.objects.get_or_create(key=name, due=due)
-        msg = "Created New Job Category: %s" % name
-        self.sys_report(msg)
-        self.sys_msg(msg)
-
-    def switch_delete(self):
-        if not self.player.account.is_immortal():
-            self.error("Permission denied!")
-            return
-        try:
-            cat = self.valid_jobcategory(lhs)
-        except ValueError as err:
-            self.error(str(err))
-            return
-        if not self.verify('delete job category %s' % cat.id):
-            self.sys_msg("This will delete the Job Category '%s' and ALL ASSOCIATED JOBS. This cannot be undone."
-                         "Enter the same command again in ten seconds to verify!")
-
-    def switch_rename(self):
-        if not self.player.account.is_immortal():
-            self.error("Permission denied!")
-            return
-        try:
-            cat = self.valid_jobcategory(lhs)
-        except ValueError as err:
-            self.error(str(err))
-            return
-        name = normal_string(rhs)
-        if name.isdigit():
-            raise ValueError("Can't name Job categories numbers!")
-        if not name:
-            return self.error("Job category new name field empty.")
-        found = JobCategory.objects.exclude(id=cat.id).filter(key__iexact=name).first()
-        if found:
-            return self.error("That would conflict with an existing category.")
-        msg = "Renamed Job Category '%s' to '%s'!" % (cat.key, name)
-        cat.key = name
-        cat.save(update_fields=['key'])
-        self.sys_msg(msg)
-        self.sys_report(msg)
-
-    def switch_lock(self):
-        if not self.player.account.is_immortal():
-            self.error("Permission denied!")
-            return
-        try:
-            cat = self.valid_jobcategory(lhs)
-        except ValueError as err:
-            self.error(str(err))
-            return
-        if not rhs:
-            self.error("Must enter a lockstring.")
-            return
-        for locksetting in rhs.split(';'):
-            access_type, lockfunc = locksetting.split(':', 1)
-            if not access_type:
-                self.error("Must enter an access type: post or admin.")
-                return
-            accmatch = self.partial(access_type, ['admin', 'post'])
-            if not accmatch:
-                self.error("Access type must be post or admin.")
-                return
-            if not lockfunc:
-                self.error("Lock func not entered.")
-                return
-            ok = False
-            try:
-                ok = cat.locks.add(rhs)
-                cat.save_locks()
-            except LockException as e:
-                self.error(unicode(e))
-            if ok:
-                msg = "Added lock '%s' to %s." % (rhs, cat)
-                self.sys_msg(msg)
-                self.sys_report(msg)
-            return
-
-    def switch_due(self):
-        pass
-
-
-class CmdJob(AthCommand):
-    key = '+job'
-    aliases = ['+jobs']
-    system_name = 'JOBS'
-    switch_options = ['reply', 'old', 'approve', 'deny', 'cancel', 'revive', 'comment', 'due', 'claim', 'unclaim',
-                       'scan', 'next', 'pending', 'addhelper', 'remhelper', 'brief', 'search', 'move']
-
-
-    def list_categories(self, lhs, rhs):
+    def display_job(self, lhs):
+        admin = False
+        job = evennia.GLOBAL_SCRIPTS.jobs.find_job(self.account, self.lhs)
+        if job.bucket.access(self.account, 'admin') or job.links.filter(link_type=2, account_stub=self.account.stub):
+            admin = True
         message = list()
-        message.append(self.player.render.header('Job Categories'))
-        cat_table = self.player.render.make_table(
-            ['Name', 'Description', 'Pen', 'App', 'Dny', 'Cnc', 'Over', 'Due', 'Anon'],
-            width=[10, 35, 5, 5, 5, 5, 5, 5, 5])
-        for cat in JobCategory.objects.all().order_by('key'):
-            pending = cat.jobs.filter(status=0).count()
-            approved = cat.jobs.filter(status=1).count()
-            denied = cat.jobs.filter(status=2).count()
-            canceled = cat.jobs.filter(status=3).count()
-            anon = 'Yes' if cat.anonymous else 'No'
-            now = utcnow()
-            overdue = cat.jobs.filter(status=0, due_date__lt=now).count()
-            due = time_format(cat.due.total_seconds(), style=1)
-            cat_table.add_row(cat.key, cat.description, pending, approved, denied, canceled, overdue, due, anon)
-        message.append(cat_table)
-        message.append(self.player.render.footer())
-        self.msg_lines(message)
+        message.append(self.styled_header(f'{job.bucket} Job {job.id} - {job.status_word()}'))
+        message.append(f"|hTitle:|n {job.title}")
+        message.append(f'|hHandlers:|n {job.handler_names()}')
+        message.append(f'|hHelpers:|n {job.helper_names()}')
+        comments = job.comments()
+        if not admin:
+            comments = comments.exclude(is_private=True)
+        for com in comments:
+            message.append(self.styled_separator())
+            message.append(com.display(self.account, admin))
+        message.append(self.styled_footer(f"Due: {self.account.display_time(job.due_date)}"))
+        job.update_read(self.account)
+        self.msg('\n'.join(message))
 
+    def display_buckets(self):
+        message = list()
+        message.append(self.styled_header('Job Buckets'))
+        col_color = self.account.options.column_names_color
+        message.append(f"|{col_color}Name     Description                        Pen  App  Dny  Cnc  Over Due  Anon|n")
+        message.append(self.styled_separator())
+        for bucket in evennia.GLOBAL_SCRIPTS.jobs.visible_buckets(self.account):
+            bkey = bucket.key[:8].ljust(8)
+            description = bucket.description
+            if not description:
+                description = ""
+            pending = str(bucket.jobs.filter(status=0).count()).rjust(3).ljust(4)
+            approved = str(bucket.jobs.filter(status=1).count()).rjust(3).ljust(4)
+            denied = str(bucket.jobs.filter(status=2).count()).rjust(3).ljust(4)
+            canceled = str(bucket.jobs.filter(status=3).count()).rjust(3).ljust(4)
+            anon = 'No'
+            now = datetime.datetime.utcnow()
+            overdue = str(bucket.jobs.filter(status=0, due_date__lt=now).count()).rjust(3).ljust(4)
+            due = time_format(bucket.due.total_seconds(), style=1).rjust(3)
+            message.append(f"{bkey} {description[:34].ljust(34)} {pending} {approved} {denied} {canceled} {overdue} {due}  {anon}")
+        message.append(self.styled_footer())
+        self.msg('\n'.join(str(l) for l in message))
 
-    def valid_jobcategory(self, entry=None, check_permission=''):
-        if not entry:
-            raise ValueError("Job category name field empty.")
-        choices = JobCategory.objects.all().order_by('key')
-        if check_permission:
-            choices = [cat for cat in choices if cat.locks.check(self.character, check_permission)]
-        found = self.partial(entry, choices)
-        if not found:
-            raise ValueError("Job Category not found or permission denied.")
-        return found
-
-
-    def valid_job(self, entry=None, check_access=True):
-        if not entry:
-            raise ValueError("Must enter a Job ID.")
-        job_id = self.valid_posint(entry)
-        found = Job.objects.filter(id=job_id).first()
-        if not found:
-            raise ValueError("Job %s not found." % job_id)
-        handler, created = found.characters.get_or_create(character=self.character)
-        if not check_access:
-            return found
-        if found.locks.check(self.character, 'admin'):
-            return found
-        if handler.is_handler or handler.is_owner or handler.is_helper:
-            return found
-        raise ValueError("Permission denied.")
-
-    def switch_move(self, lhs, rhs):
-        job = self.valid_job(lhs)
-        if not job.locks.check(self.character, 'admin'):
-            raise ValueError("Permission denied. Need admin on source category.")
-        self.check_finished(job)
-        cat = self.valid_jobcategory(rhs, check_permission='admin')
-        job.change_category(self.character, cat)
-
-    def switch_display(self, lhs, rhs, old=False):
-        if not lhs:
-            raise ValueError("What will you display?")
-        if lhs.isdigit():
-            return self.display_job(lhs)
-        return self.display_category(lhs, old)
-
-    def switch_old(self, lhs, rhs):
-        return self.switch_display(lhs, rhs, old=True)
-
-    def display_category(self, lhs, old=False):
-        cat = self.valid_jobcategory(lhs)
-        viewer = self.character
-        page = self.page
+    def display_bucket(self, bucket, old=False):
+        page = 1
+        if '/' in bucket:
+            bucket, page = bucket.split('/', 1)
+            if page.isdigit():
+                page = int(page)
+            else:
+                page = 1
+        bucket = evennia.GLOBAL_SCRIPTS.jobs.find_bucket(self.account, bucket)
+        admin = bucket.access(self.account, "admin")
+        if not admin:
+            raise ValueError("Permission denied.")
         if old:
-            jobs_count = cat.old().count()
+            jobs = bucket.old()
         else:
-            jobs_count = cat.active().count()
+            jobs = bucket.active()
+        jobs_count = len(jobs)
+        if not jobs_count:
+            raise ValueError("No jobs to display!")
         pages = float(jobs_count) / 30.0
         pages = int(math.ceil(pages))
         if page > pages:
             page = pages
-        if not pages:
-            raise ValueError("No jobs to display!")
-        mode = 'display'
-        if old:
-            mode = 'old'
-        header = 'Jobs - %s' % cat
-        message = cat.display(viewer=self.character, mode=mode, page=page,
-                              header_text=header)
-        foot = '< Page %s of %s >' % (page, pages)
-        message.append(viewer.render.footer(foot))
-        self.msg_lines(message)
+        if page < 1:
+            page = 1
+        message = list()
+        message.append(self.styled_header(f"{'Old' if old else 'Active'} Jobs - {bucket}"))
+        message.append(JOB_COLUMNS)
+        message.append(self.styled_separator())
+        for job in jobs:
+            message.append(job.display_line(self.account, admin))
+        message.append(self.styled_footer(f'< Page {page} of {pages} >'))
+        self.msg("\n".join(str(l) for l in message))
 
-    def display_job(self, lhs):
-        job = self.valid_job(lhs, check_access=True)
-        handler, created = job.characters.get_or_create(character=self.character)
-        handler.check()
-        self.msg_lines(job.display(self.character))
-
-    def switch_pending(self, lhs, rhs):
-        if lhs:
-            cats = [self.valid_jobcategory(lhs, check_permission='admin'), ]
+    def switch_main(self):
+        if self.args:
+            if self.lhs.isdigit():
+                self.display_job(self.lhs)
+            else:
+                self.display_bucket(self.lhs)
         else:
-            cats = [cat for cat in JobCategory.objects.all().order_by('key') if cat.jobs.filter(status=0).count()]
-        cats = [cat for cat in cats if cat.locks.check(self.character, 'admin')]
-        if not cats:
-            raise ValueError("No visible Pending jobs for applicable Job categories.")
-        message = list()
-        viewer = self.character
-        render = self.character.render
-        for cat in cats:
-            pen = 'Pending Jobs - %s' % cat
-            message += cat.display(viewer=viewer, mode='pending', header_text=pen)
-        message.append(render.footer(()))
-        self.msg_lines(message)
+            self.display_buckets()
 
-    def switch_scan(self, lhs, rhs):
-        cats = [cat for cat in JobCategory.objects.all().order_by('key')
-                if cat.locks.check(self.character, 'admin')]
-        message = list()
-        all_cats = list()
-        viewer = self.character
-        for cat in cats:
-            pen_jobs = cat.new(viewer)
-            if pen_jobs:
-                all_cats.append((cat, pen_jobs))
-        if not all_cats:
-            raise ValueError("Nothing new to show!")
-        for group in all_cats:
-            head = 'Job Activity - %s' % group[0]
-            message += group[0].display(viewer, mode=group[1], header_text=head)
-        message.append(viewer.render.footer())
-        self.msg_lines(message)
 
-    def switch_next(self, lhs, rhs):
-        cats = [cat for cat in JobCategory.objects.all().order_by('key')
-                if cat.locks.check(self.character, 'admin')]
-        job = None
-        viewer = self.character
-        for cat in cats:
-            if job:
-                continue
-            job = cat.new(viewer).first()
-        if not job:
-            raise ValueError("Nothing new to show!")
-        handler, created = job.characters.get_or_create(character=viewer)
-        handler.check()
-        self.msg_lines(job.display(viewer))
+class CmdJBucket(JobCmd):
+    key = '+jbucket'
+    aliases = ['+jbuckets', ]
+    locks = 'cmd:perm(Admin) or perm(Job_Admin)'
+    switch_options = ['create', 'delete', 'rename', 'lock', 'due', 'describe']
 
-    def switch_help(self, lhs, rhs):
+    def switch_create(self):
+        evennia.GLOBAL_SCRIPTS.jobs.create_bucket(self.account, self.lhs, self.rhs)
+
+    def switch_delete(self):
+        evennia.GLOBAL_SCRIPTS.jobs.delete_bucket(self.account, self.args)
+        
+    def switch_rename(self):
+        evennia.GLOBAL_SCRIPTS.jobs.rename_bucket(self.account, self.lhs, self.rhs)
+
+    def switch_lock(self):
+        evennia.GLOBAL_SCRIPTS.jobs.lock_bucket(self.account, self.lhs, self.rhs)
+
+    def switch_due(self):
+        evennia.GLOBAL_SCRIPTS.jobs.due_bucket(self.account, self.lhs, self.rhs)
+
+    def switch_describe(self):
+        evennia.GLOBAL_SCRIPTS.jobs.describe_bucket(self.account, self.lhs, self.rhs)
+
+    def switch_main(self):
+        self.display_buckets()
+
+
+class CmdJobAdmin(JobCmd):
+    key = "+jadmin"
+    switch_options = ['addhandler', 'remhandler', 'addhelper', 'remhelper', 'move', 'due', 'approve', 'deny', 'cancel',
+                      'revive', 'claim', 'unclaim']
+
+    def switch_claim(self):
+        self.switch_addhandler()
+
+    def switch_unclaim(self):
+        self.switch_remhandler()
+
+    def switch_addhandler(self):
+        if self.rhs:
+            handler = self.account.search(self.rhs)
+        else:
+            handler = self.account
+        evennia.GLOBAL_SCRIPTS.jobs.promote_account(self.account, self.lhs, handler, show_word="Handler",
+                                                    rank=2, start_type=0)
+
+    def switch_remhandler(self):
+        if self.rhs:
+            handler = self.account.search(self.rhs)
+        else:
+            handler = self.account
+        evennia.GLOBAL_SCRIPTS.jobs.demote_account(self.account, self.lhs, handler, show_word="Handler",
+                                                   rank=0, start_type=2)
+
+    def switch_addhelper(self):
+        if self.rhs:
+            handler = self.account.search(self.rhs)
+        else:
+            handler = self.account
+        evennia.GLOBAL_SCRIPTS.jobs.promote_account(self.account, self.lhs, handler, show_word="Helper",
+                                                    rank=1, start_type=0)
+
+    def switch_remhelper(self):
+        if self.rhs:
+            handler = self.account.search(self.rhs)
+        else:
+            handler = self.account
+        evennia.GLOBAL_SCRIPTS.jobs.demote_account(self.account, self.lhs, handler, show_word="Helper",
+                                                   rank=0, start_type=1)
+
+    def switch_approve(self):
         pass
 
-    def switch_claim(self, lhs, rhs):
-        job = self.valid_job(lhs)
-        if not job.locks.check(self.character, 'admin'):
-            raise ValueError("Permission denied. Need admin on source category.")
-        if not rhs:
-            return job.appoint_handler(self.character, self.character)
-        self.check_finished(job)
-        for target in self.rhslist:
-            try:
-                find = self.character.search_character(target)
-                job.appoint_handler(self.character, find)
-            except ValueError as err:
-                self.error(str(err))
+    def switch_deny(self):
+        pass
 
-    def switch_unclaim(self, lhs, rhs):
-        job = self.valid_job(lhs)
-        if not job.locks.check(self.character, 'admin'):
-            raise ValueError("Permission denied. Need admin on source category.")
-        self.check_finished(job)
-        if not rhs:
-            return job.remove_handler(self.character, self.character)
-        for target in self.rhslist:
-            try:
-                find = self.character.search_character(target)
-                job.remove_handler(self.character, find)
-            except ValueError as err:
-                self.error(str(err))
+    def switch_cancel(self):
+        pass
 
-    def switch_addhelper(self, lhs, rhs):
-        job = self.valid_job(lhs)
-        if not job.locks.check(self.character, 'admin'):
-            raise ValueError("Permission denied. Need admin on source category.")
-        self.check_finished(job)
-        if not rhs:
-            return job.appoint_helper(self.character, self.character)
-        for target in self.rhslist:
-            try:
-                find = self.character.search_character(target)
-                job.appoint_helper(self.character, find)
-            except ValueError as err:
-                self.error(str(err))
+    def switch_revive(self):
+        pass
 
-    def switch_remhelper(self, lhs, rhs):
-        job = self.valid_job(lhs)
-        if not job.locks.check(self.character, 'admin'):
-            raise ValueError("Permission denied. Need admin on source category.")
-        self.check_finished(job)
-        if not rhs:
-            return job.remove_helper(self.character, self.character)
-        for target in self.rhslist:
-            try:
-                find = self.character.search_character(target)
-                job.remove_helper(self.character, find)
-            except ValueError as err:
-                self.error(str(err))
+    def switch_due(self):
+        pass
 
-    def check_finished(self, job):
-        if not job.status == 0:
-            raise ValueError("Cannot modify Job %s. It is %s." % (job.id, job.status_word()))
-        return
-
-    def switch_reply(self, lhs, rhs):
-        job = self.valid_job(lhs)
-        self.check_finished(job)
-        if not rhs:
-            return self.error("What will you say?")
-        job.make_reply(self.character, rhs)
-
-    def switch_comment(self, lhs, rhs):
-        job = self.valid_job(lhs)
-        handler, created = job.characters.get_or_create(character=self.character)
-        if not job.locks.check(self.character, 'admin') or handler.is_handler:
-            raise ValueError("Permission denied.")
-        self.check_finished(job)
-        if not rhs:
-            return self.error("What will you say?")
-        job.make_comment(self.character, rhs)
-
-    def switch_approve(self, lhs, rhs):
-        job = self.valid_job(lhs)
-        handler, created = job.characters.get_or_create(character=self.character)
-        if not job.locks.check(self.character, 'admin') or handler.is_handler:
-            raise ValueError("Permission denied.")
-        if not rhs:
-            return self.error("What will you say?")
-        job.set_approved(self.character, rhs)
-
-    def switch_deny(self, lhs, rhs):
-        job = self.valid_job(lhs)
-        handler, created = job.characters.get_or_create(character=self.character)
-        if not job.locks.check(self.character, 'admin') or handler.is_handler:
-            raise ValueError("Permission denied.")
-        if not rhs:
-            return self.error("What will you say?")
-        job.set_denied(self.character, rhs)
-
-    def switch_cancel(self, lhs, rhs):
-        job = self.valid_job(lhs)
-        handler, created = job.characters.get_or_create(character=self.character)
-        if not job.locks.check(self.character, 'admin') or handler.is_handler:
-            raise ValueError("Permission denied.")
-        if not rhs:
-            return self.error("What will you say?")
-        job.set_canceled(self.character, rhs)
-
-    def switch_revive(self, lhs, rhs):
-        job = self.valid_job(lhs)
-        handler, created = job.characters.get_or_create(character=self.character)
-        if not job.locks.check(self.character, 'admin') or handler.is_handler:
-            raise ValueError("Permission denied.")
-        if not rhs:
-            return self.error("What will you say?")
-        job.set_pending(self.character, rhs)
-
-    def switch_due(self, lhs, rhs):
-        job = self.valid_job(lhs)
-        if not job.locks.check(self.character, 'admin'):
-            raise ValueError("Permission denied.")
-        new_date = self.valid_date(rhs, self.player)
-        job.set_due(self.character, new_date)
+    def switch_move(self):
+        evennia.GLOBAL_SCRIPTS.jobs.move_job(self.account, self.lhs, self.rhs)
 
 
-class CmdRequest(AthCommand):
-    key = '+request'
+class CmdJobList(JobCmd):
+    key = "+jlist"
+    switch_options = ['old', 'pending', 'brief', 'search', 'scan', 'next']
+
+    def switch_pending(self):
+        if self.lhs:
+            buckets = [bucket for bucket in [evennia.GLOBAL_SCRIPTS.jobs.find_bucket(self.account, self.lhs), ] if bucket.jobs.filter(status=0).count() and bucket.access(self.account, "admin")]
+        else:
+            buckets = [bucket for bucket in evennia.GLOBAL_SCRIPTS.jobs.visible_buckets(self.account)
+                       if bucket.jobs.filter(status=0).count() and bucket.access(self.account, "admin")]
+        if not buckets:
+            raise ValueError("No visible Pending jobs for applicable Job Buckets.")
+        message = list()
+        message.append(self.styled_header("Pending Jobs"))
+        message.append(JOB_COLUMNS)
+        for bucket in buckets:
+            message.append(self.styled_separator(f"Pending for: {bucket} - {bucket.jobs.filter(status=0).count()} Total"))
+            for j in bucket.jobs.filter(status=0).reverse()[:20]:
+                message.append(j.display_line(self.account, admin=True))
+        message.append(self.styled_footer(()))
+        self.msg('\n'.join(message))
+
+    def switch_scan(self):
+        buckets = [bucket for bucket in evennia.GLOBAL_SCRIPTS.jobs.visible_buckets(self.account)
+                   if bucket.access(self.account, "admin")]
+        message = list()
+        all_buckets = list()
+        for bucket in buckets:
+            pen_jobs = bucket.new(self.account)
+            if pen_jobs:
+                all_buckets.append((bucket, pen_jobs))
+        if not all_buckets:
+            raise ValueError("Nothing new to show!")
+        for bucket, jobs in all_buckets:
+            message.append(self.styled_separator(f'Job Activity - {bucket}'))
+            for j in jobs:
+                message.append(j.display_line(self.account, admin=True))
+        message.append(self.styled_footer())
+        self.msg('\n'.join(message))
+
+    def switch_next(self):
+        buckets = [bucket for bucket in evennia.GLOBAL_SCRIPTS.jobs.visible_buckets(self.account)
+                   if bucket.access(self.account, "admin")]
+        job = None
+        for bucket in buckets:
+            job = bucket.new(self.account).first()
+            if job:
+                break
+        if not job:
+            raise ValueError("Nothing new to show!")
+        self.display_job(str(job.id))
+
+    def switch_old(self):
+        self.display_bucket(self.lhs, old=True)
+
+    def switch_brief(self):
+        pass
+
+    def switch_search(self):
+        pass
+
+
+class CmdJob(JobCmd):
+    key = '+job'
+    aliases = ['+jobs', ]
+    switch_options = ['reply', 'comment']
+
+    def switch_reply(self):
+        evennia.GLOBAL_SCRIPTS.jobs.create_comment(self.account, self.lhs, comment_text=self.rhs, comment_type=1)
+
+    def switch_comment(self):
+        evennia.GLOBAL_SCRIPTS.jobs.create_comment(self.account, self.lhs, comment_text=self.rhs, comment_type=2)
+
+
+class CmdJRequest(JobCmd):
+    key = '+jrequest'
     system_name = 'REQUEST'
 
-    def func(self):
-        default = self.settings.get('job_default')
-        if default.value:
-            category = default.value
-        else:
-            category = None
-        if not self.switches and not category:
-            return self.error("No default set. Must use a /switch to choose Category.")
-        if self.switches:
-            choices = [cat for cat in JobCategory.objects.all().order_by('key')
-                       if cat.locks.check(self.character, 'post')]
-            switch = self.switches[0]
-            found = self.partial(switch, choices)
-            if not found:
-                return self.error("Category '%s' not Found. Choices are: %s" %
-                                  (switch, ', '.join(cat.key for cat in choices)))
-            category = found
-        if not category:
-            return self.error("Category not found!")
-        if not category.locks.check(self.character, 'post'):
-            return self.error("Permission denied!")
-        title = normal_string(self.lhs)
-        if not title:
-            return self.error("Must enter a subject!")
-        opening = self.rhs
-        if not opening:
-            self.error("No opening text included!")
-        category.make_job(self.character, title, opening)
+    def switch_main(self):
+        if not self.lhs:
+            raise ValueError("No Bucket or Subject entered!")
+        if '/' not in self.lhs:
+            raise ValueError("Usage: +request <bucket>/<subject>=<text>")
+        bucket, subject = self.lhs.split('/', 1)
+        evennia.GLOBAL_SCRIPTS.jobs.create_job(self.account, bucket, subject, self.rhs)
 
 
 class CmdMyJob(CmdJob):
     key = '+myjob'
     aliases = ['+myjobs']
-    system_name = 'MYJOBS'
-    player_switches = ['reply', 'old', 'approve', 'deny', 'cancel', 'revive', 'comment', 'due', 'claim', 'unclaim',
+    switch_options = ['reply', 'old', 'approve', 'deny', 'cancel', 'revive', 'comment', 'due', 'claim', 'unclaim',
                        'addhelper', 'remhelper']
-    admin_switches = []
 
-    def switch_display(self, lhs, rhs, old=False):
-        if not lhs:
-            return self.list_categories(lhs, rhs, old)
-        if lhs.isdigit():
-            return self.display_job(lhs)
-        raise ValueError("What will you display?")
 
-    def switch_old(self, lhs, rhs):
-        return self.switch_display(lhs, rhs, old=True)
-
-    def list_categories(self, lhs, rhs, old=False):
-        viewer = self.character
-        page = self.page
-        message = list()
-        jobs = Job.objects.filter(characters__character=self.character).order_by('id').reverse()
-        jobs = jobs.filter(Q(characters__is_handler=True) | Q(characters__is_helper=True) | Q(characters__is_owner=True))
-        if old:
-            jobs = jobs.exclude(status=0)
-        else:
-            interval = utcnow() - duration_from_string('7d')
-            jobs = jobs.filter(Q(status=0, close_date=None) | Q(close_date__gte=interval))
-        jobs_count = jobs.count()
-        pages = float(jobs_count) / 30.0
-        pages = int(math.ceil(pages))
-        if page > pages:
-            page = pages
-        if not pages:
-            raise ValueError("No jobs to display!")
-        start = (page - 1) * 30
-        final_jobs = jobs[start:start + 30]
-        cat_ids = final_jobs.values_list('category', flat=True)
-        cats = JobCategory.objects.filter(id__in=cat_ids)
-        cat_min = {cat: cat.locks.check(self.character, 'admin') for cat in cats}
-        show = list(final_jobs)
-        show.reverse()
-        message.append(viewer.render.header('MyJobs'))
-        job_table = viewer.render.make_table(["*", "ID", "Cat", "From", "Title", "Due", "Handling", "Upd", "LstAct"],
-                                             width=[3, 4, 8, 19, 16, 6, 10, 6, 8])
-        for j in show:
-            cat = j.category
-            admin = cat_min[cat]
-            job_table.add_row(j.status_letter(), j.id, cat, j.owner, j.title, j.display_due(viewer),
-                              j.handler_names(), j.display_last(viewer, admin), j.last_from(admin))
-        message.append(job_table)
-        foot = '< Page %s of %s >' % (page, pages)
-        message.append(viewer.render.footer(foot))
-        self.msg_lines(message)
+JOB_COMMANDS = [CmdJBucket, CmdJob, CmdJobAdmin, CmdJobList, CmdMyJob, CmdJRequest]

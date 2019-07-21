@@ -1,4 +1,4 @@
-from evennia import GLOBAL_SCRIPTS
+import evennia
 from django.conf import settings
 from evennia.utils.utils import class_from_module
 
@@ -9,44 +9,38 @@ class CmdZone(COMMAND_DEFAULT_CLASS):
     """
 
     """
-    key = "@zone"
+    key = "+zone"
     help_category = "Building"
     locks = "cmd:perm(Admin)"
     switch_options = ('create', 'rename', 'delete', 'move', 'set', 'lock', 'select')
 
-    def func(self):
-        if self.switches:
-            if len(self.switches) > 1:
-                self.msg(f"{self.key} does not support multiple switches.")
-                return
-            return getattr(self, f'switch_{self.switches[0]}')()
-
-        self.list_zones()
-
-    def find_zone(self, search):
-        manager = GLOBAL_SCRIPTS.zone
-        return manager.find
-
-    def list_zones(self):
+    def switch_main(self):
         pass
 
     def switch_create(self):
-        pass
+        if '/' in self.lhs:
+            dists = self.lhs.split('/')
+            final = dists.pop()
+            start_zone = evennia.GLOBAL_SCRIPTS.zone.search(looker=self.account, search_text='/'.join(dists))
+        else:
+            start_zone = evennia.GLOBAL_SCRIPTS.zone
+            final = self.lhs
+        new_zone = start_zone.create_child(creator=self.account, name=final)
 
     def switch_rename(self):
-        pass
+        zone = evennia.GLOBAL_SCRIPTS.zone.search(looker=self.account, search_text=self.lhs)
 
     def switch_delete(self):
-        pass
+        zone = evennia.GLOBAL_SCRIPTS.zone.search(looker=self.account, search_text=self.lhs)
 
     def switch_move(self):
-        pass
+        zone = evennia.GLOBAL_SCRIPTS.zone.search(looker=self.account, search_text=self.lhs)
 
     def switch_set(self):
-        pass
+        zone = evennia.GLOBAL_SCRIPTS.zone.search(looker=self.account, search_text=self.lhs)
 
     def switch_lock(self):
-        pass
+        zone = evennia.GLOBAL_SCRIPTS.zone.search(looker=self.account, search_text=self.lhs)
 
     def switch_select(self):
-        pass
+        zone = evennia.GLOBAL_SCRIPTS.zone.search(looker=self.account, search_text=self.lhs)
