@@ -1,6 +1,7 @@
 from evennia.commands.cmdset import CmdSet
 import athanor
 
+
 class AthCmdSet(CmdSet):
     command_classes = tuple()
     prefix_mode = None

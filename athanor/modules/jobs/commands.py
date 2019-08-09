@@ -2,7 +2,7 @@ import math
 from django.db.models import Q
 from evennia.utils.utils import time_format
 from evennia.locks.lockhandler import LockException
-from athanor.jobs.models import JobCategory, Job
+from athanor.modules.jobs.models import JobCategory, Job
 from athanor.core.command import AthCommand
 from athanor.utils.text import normal_string
 from athanor.utils.time import utcnow, duration_from_string

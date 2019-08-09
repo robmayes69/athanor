@@ -3,7 +3,7 @@ from athanor import AthException
 from athanor.base.systems import AthanorSystem
 from athanor.utils.text import partial_match, mxp
 from athanor.utils.time import utcnow
-from athanor.models import Board, BoardCategory
+from athanor.modules.core.models import Board, BoardCategory
 
 
 class BoardManager(AthanorSystem):

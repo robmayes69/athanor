@@ -1,6 +1,6 @@
 from athanor import AthException
 from athanor.base.systems import AthanorSystem
-from athanor.models import JobBucket, Job
+from athanor.modules.core.models import JobBucket, Job
 from athanor.utils.text import partial_match
 
 

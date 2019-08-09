@@ -1,6 +1,6 @@
 from athanor.base.settings import BaseSetting
 import athanor
-from athanor.bbs.models import Board
+from athanor.modules.bbs import Board
 
 
 class BoardSetting(BaseSetting):

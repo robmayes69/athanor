@@ -1,5 +1,5 @@
 from athanor.base.cmdsets import AthCmdSet
-from athanor.staff.commands import CmdStaff
+from athanor.modules.staff import CmdStaff
 
 
 class StaffListCmdSet(AthCmdSet):

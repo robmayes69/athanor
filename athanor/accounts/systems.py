@@ -7,7 +7,7 @@ from athanor.base.systems import AthanorSystem
 from athanor.utils.text import partial_match
 from athanor.utils.online import accounts as on_accounts
 from athanor.utils.time import utcnow
-from athanor.models import AccountPlaytime
+from athanor.modules.core.models import AccountPlaytime
 
 PERMISSIONS_DICT = {
     5: ('Superuser', 'Developer', 'Admin', 'Builder', 'Helper'),

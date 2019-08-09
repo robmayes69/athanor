@@ -15,7 +15,7 @@ to be modified.
 from evennia import DefaultChannel
 from athanor import SETTINGS, AthException
 from athanor import SYSTEMS
-from athanor.models import PublicChannelMessage
+from athanor.modules.core.models import PublicChannelMessage
 from athanor.utils.text import partial_match, Speech
 from athanor.utils.time import utcnow
 

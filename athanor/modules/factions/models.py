@@ -2,8 +2,8 @@ import re
 from django.db import models
 from evennia.utils.ansi import ANSIString
 from evennia.utils.create import create_channel
-from athanor.models import WithLocks, WithKey
-from athanor.models import validate_color
+from athanor.modules.core.models import WithLocks, WithKey
+from athanor.modules.core.models import validate_color
 from athanor.utils.text import sanitize_string, partial_match
 
 SYSTEM_PERMISSIONS = ['manage', 'moderate', 'bbadmin', 'ic', 'ooc', 'titleself', 'titleother']

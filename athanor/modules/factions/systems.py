@@ -1,8 +1,7 @@
-import athanor
 from athanor import AthException
 from athanor.base.systems import AthanorSystem
 from athanor.utils.text import partial_match, sanitize_string
-from athanor.factions.scripts import FactionScript
+from athanor.modules.factions.scripts import FactionScript
 
 
 class FactionSystem(AthanorSystem):

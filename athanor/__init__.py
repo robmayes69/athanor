@@ -4,7 +4,7 @@ The core module settings for Athanor.
 Besides storing core plugin settings this module is meant to be imported for accessing the properties like
 HELPERS.
 """
-from athanor.base.loader import AthanorLoader
+from athanor.loader import AthanorLoader
 
 LOADER = AthanorLoader()
 

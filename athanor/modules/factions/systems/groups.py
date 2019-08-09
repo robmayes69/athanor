@@ -1,7 +1,7 @@
 from athanor.base.systems import AthanorSystem
 from athanor.utils.text import sanitize_string, partial_match, sanitize_name
 from athanor import AthException
-from athanor.factions import GroupTier, Group
+from athanor.modules.factions import GroupTier, Group
 
 
 class GroupSystem(AthanorSystem):

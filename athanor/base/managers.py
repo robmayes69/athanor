@@ -5,9 +5,6 @@ respective Handlers for that Typeclass base.
 Managers are available on characters, accounts, and sessions via their .ath property.
 """
 import athanor
-import math
-from evennia.utils.ansi import ANSIString
-from evennia.utils.evtable import EvTable
 
 
 class __BaseManager(object):

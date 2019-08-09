@@ -664,7 +664,7 @@ class EquipHandler(MudHandler, _HasPrototypes):
             return False
         if transfer:
             item.move_to(self.owner, quiet=True)
-        from athanor.mud.models import EquipSlotType
+        from athanor.modules.mud import EquipSlotType
         slot_type, created = EquipSlotType.objects.get_or_create(key=slot_key)
         self.owner.equipped.create(slot=slot_type, layer=layer, item=item)
         self.owner.weight.equipped_changed(item.weight.total())

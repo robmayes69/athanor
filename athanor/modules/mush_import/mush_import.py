@@ -9,20 +9,20 @@ import random
 from django.conf import settings
 from evennia.utils import create
 
-from athanor.bbs.models import BoardGroup
+from athanor.modules.bbs import BoardGroup
 from athanor.classes.characters import Character
 from athanor.classes.accounts import Account
 from athanor.core.command import AthCommand
 from athanor.fclist.models import FCList, CharacterStatus, CharacterType
 from athanor.rooms.models import District
 from athanor.groups.models import Group, GroupCategory
-from athanor.jobs.models import JobCategory
+from athanor.modules.jobs import JobCategory
 from athanor.mushimport.convpenn import read_penn, process_penntext
 from athanor.mushimport.models import MushObject, cobj, pmatch, objmatch, MushAttributeName
 from athanor.radio.models import RadioFrequency
-from athanor.scene.models import Plot, Event, Runner, Source, Action
+from athanor.scene.models import Plot, Event, Source
 from athanor.utils.text import partial_match, dramatic_capitalize, sanitize_string, penn_substitutions
-from athanor.utils.time import utcnow, duration_from_string
+from athanor.utils.time import duration_from_string
 
 
 def from_unixtimestring(secs):

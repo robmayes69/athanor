@@ -1,5 +1,5 @@
 from athanor.base.helpers import AccountHandler
-from athanor.athanor_awho.models import AccountWho
+from athanor.modules.awho.models import AccountWho
 
 class AWhoHandler(AccountHandler):
     key = 'awho'
@@ -7,7 +7,7 @@ class AWhoHandler(AccountHandler):
     category = 'athanor'
     system_name = 'WHO'
     django_model = AccountWho
-    cmdsets = ('athanor_awho.accounts.cmdsets.AWhoCmdSet',)
+    cmdsets = ('awho.accounts.cmdsets.AWhoCmdSet',)
 
 
     def at_true_logout(self, **kwargs):

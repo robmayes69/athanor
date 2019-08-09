@@ -1,13 +1,11 @@
 import time
 from django.conf import settings
-from evennia import utils
-from evennia.utils.ansi import ANSIString
 from athanor.utils.time import utcnow
 from athanor.utils.utils import import_property
 from athanor.utils.text import partial_match
 from athanor.base.helpers import AccountBaseHelper
-from athanor import AthException, STYLES_DATA
-from athanor.models import AccountPlaytime
+from athanor import AthException
+from athanor.modules.core.models import AccountPlaytime
 
 
 class AccountCoreHelper(AccountBaseHelper):

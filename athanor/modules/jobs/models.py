@@ -1,6 +1,6 @@
 
 from django.db import models
-from athanor.models import WithLocks
+from athanor.modules.core.models import WithLocks
 from athanor.utils.time import utcnow, duration_from_string
 
 

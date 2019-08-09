@@ -1,6 +1,6 @@
 from athanor.base.cmdsets import AccountCmdSet
 
-from athanor.athanor_awho.accounts.commands import CmdWho
+from athanor.modules.awho.accounts import CmdWho
 
 class AWhoCmdSet(AccountCmdSet):
     key = 'awho'
