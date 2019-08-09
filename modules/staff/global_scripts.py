@@ -1,6 +1,6 @@
 from evennia.utils.ansi import ANSIString
 from athanor.base.systems import AthanorSystem
-from world.models import StaffCategory, StaffEntry
+from modules.core.models import StaffCategory, StaffEntry
 from athanor import AthException
 
 

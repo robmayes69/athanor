@@ -1,10 +1,10 @@
 import re
 from evennia.locks.lockhandler import LockException
 from typeclasses.scripts import GlobalScript
-from world.utils.text import partial_match
-from world.utils.time import utcnow
-from world.models import Board, BoardCategory
-from world.utils.valid import simple_name
+from utils.text import partial_match
+from utils.time import utcnow
+from modules.core.models import Board, BoardCategory
+from utils.valid import simple_name
 
 _RE_PRE = re.compile(r"^[a-zA-Z]{1,3}$")
 

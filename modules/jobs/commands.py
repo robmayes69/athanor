@@ -1,9 +1,7 @@
 import math, datetime
 from django.conf import settings
-from django.db.models import Q
 import evennia
 from evennia.utils.utils import time_format, class_from_module
-from world.models import JobComment
 
 COMMAND_DEFAULT_CLASS = class_from_module(settings.COMMAND_DEFAULT_CLASS)
 

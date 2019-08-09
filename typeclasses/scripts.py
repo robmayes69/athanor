@@ -16,10 +16,10 @@ from evennia import DefaultScript
 from evennia.utils.optionhandler import OptionHandler
 from evennia.utils.utils import lazy_property, class_from_module
 from evennia.utils.validatorfuncs import text
-from world.utils.valid import simple_name
+from utils.valid import simple_name
 from evennia.utils.search import search_script_tag
-from world.utils.online import admin_accounts
-from world.utils.text import partial_match
+from utils.online import admin_accounts
+from utils.text import partial_match
 
 
 class Script(DefaultScript):

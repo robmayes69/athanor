@@ -15,8 +15,8 @@ own cmdsets by inheriting from them or directly from `evennia.CmdSet`.
 """
 
 from evennia import default_cmds
-from .bbs import ALL_COMMANDS as BBS_COMMANDS
-from .jobs import JOB_COMMANDS
+from modules.bbs.commands import ALL_COMMANDS as BBS_COMMANDS
+from modules.jobs.commands import JOB_COMMANDS
 
 
 class CharacterCmdSet(default_cmds.CharacterCmdSet):

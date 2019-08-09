@@ -23,7 +23,7 @@ several more options for customizing the Guest account system.
 """
 
 from evennia import DefaultAccount, DefaultGuest
-from world.models import AccountStub
+from modules.core.models import AccountStub
 
 
 class Account(DefaultAccount):
