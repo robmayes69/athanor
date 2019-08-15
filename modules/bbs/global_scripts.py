@@ -3,7 +3,7 @@ from evennia.locks.lockhandler import LockException
 from typeclasses.scripts import GlobalScript
 from utils.text import partial_match
 from utils.time import utcnow
-from modules.core.models import Board, BoardCategory
+from . models import Board, BoardCategory
 from utils.valid import simple_name
 
 _RE_PRE = re.compile(r"^[a-zA-Z]{1,3}$")

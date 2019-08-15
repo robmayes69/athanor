@@ -114,7 +114,7 @@ class FactionScript(AbstractTreeScript):
         Args:
             enactor (ObjectDB): The character whose permissions are to be checked
                 for this operation.
-            character (ObjectDB): The character whose rank is being altered..
+            character (ObjectDB): The character whose rank is being altered.
             rank_int (int): The new rank for the character.
 
         Returns:

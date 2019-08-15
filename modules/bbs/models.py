@@ -1,3 +1,9 @@
+import re
+from django.db import models
+from ..core.models import WithLocks
+from ... utils.time import utcnow
+from ... utils.online import puppets as online_puppets
+
 class BoardCategory(WithLocks):
     key = models.CharField(max_length=255, unique=True, blank=False, null=False)
     abbr = models.CharField(max_length=5, unique=True, blank=True, null=False)
@@ -111,8 +117,8 @@ class Board(WithLocks):
 
 class Post(models.Model):
     board = models.ForeignKey('Board', related_name='posts', on_delete=models.CASCADE)
-    account_stub = models.ForeignKey(AccountStub, related_name='+', on_delete=models.CASCADE)
-    object_stub = models.ForeignKey(ObjectStub, related_name='+', on_delete=models.CASCADE)
+    account_stub = models.ForeignKey('core.AccountStub', related_name='+', on_delete=models.CASCADE)
+    object_stub = models.ForeignKey('core.ObjectStub', related_name='+', on_delete=models.CASCADE)
     creation_date = models.DateTimeField(null=True)
     modify_date = models.DateTimeField(null=True)
     text = models.TextField(blank=True)

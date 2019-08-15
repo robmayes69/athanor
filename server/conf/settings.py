@@ -74,7 +74,9 @@ WEBSOCKET_ENABLED = True
 
 INLINEFUNC_ENABLED = True
 
-INSTALLED_APPS = INSTALLED_APPS + ('world', )
+INSTALLED_APPS = INSTALLED_APPS + ('modules.core', 'modules.factions', 'modules.bbs', 'modules.staff', 'modules.themes',
+                                   'modules.info', 'modules.jobs', 'modules.areas', 'modules.mapper', 'modules.rplogger',
+                                   'modules.mush_import')
 
 ROOT_URLCONF = None
 
@@ -98,11 +100,11 @@ OPTIONS_ACCOUNT_DEFAULT['sys_msg_text'] = ('For text in sys_msg', 'Color', 'w')
 FACTION_AVAILABLE_PERMISSIONS = {'moderate', 'manage', 'titleself'}
 
 GLOBAL_SCRIPTS['faction'] = {
-    'typeclass': 'typeclasses.factions.FactionManagerScript',
+    'typeclass': 'modules.factions.global_scripts.FactionManagerScript',
     'repeats': -1, 'interval': 50, 'desc': 'Faction Manager for Faction System'
 }
 
-FACTION_FACTION_TYPECLASS = 'typeclasses.factions.FactionScript'
+FACTION_FACTION_TYPECLASS = 'modules.factions.global_scripts.FactionScript'
 
 FACTION_FACTION_CONFIG = {
     'repeats': -1, 'interval': 60, 'desc': 'Faction Script'

@@ -1,3 +1,6 @@
+from django.db import models
+
+
 class StaffCategory(models.Model):
     key = models.CharField(max_length=255, null=False, blank=False, unique=True)
     order = models.PositiveSmallIntegerField(default=0, unique=True)
