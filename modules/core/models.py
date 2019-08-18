@@ -70,3 +70,19 @@ class ChannelStub(models.Model):
         if self.channel:
             return str(self.channel)
         return f"{self.key} |X(x {self.orig_id})|n"
+
+
+class AccountCharacterStub(models.Model):
+    """
+    Many systems depend on a UNIQUE COMBINATION of an Account and Character. In the event that a Character can change
+    hands, this model ensures that certain systems will maintain separate 'spaces' for data storage. For example, if a
+    system for tracking the praise a given player receives for their performance as a certain character exists, it makes
+    sense for the praise logs to be attached to this unique (Account + Character) combination, not just the character.
+    This way, if the character changes hands the new Player does not inherit false praise, and if the character is
+    returned to its previous holder they will still have their old logs.
+    """
+    character_stub = models.ForeignKey(ObjectStub, related_name='account_characters', on_delete=models.DO_NOTHING)
+    account_stub = models.ForeignKey(AccountStub, related_name='account_characters', on_delete=models.DO_NOTHING)
+
+    class Meta:
+        unique_together = (('character_stub', 'account_stub'),)

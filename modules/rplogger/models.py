@@ -1,3 +1,6 @@
+from django.db import models
+
+
 class Plot(models.Model):
     title = models.CharField(max_length=150)
     description = models.TextField(blank=True)
@@ -108,7 +111,7 @@ class Event(models.Model):
 
 
 class Participant(models.Model):
-    character = models.ForeignKey(ObjectStub, related_name='scene', on_delete=models.CASCADE)
+    character = models.ForeignKey('core.AccountCharacterStub', related_name='scene', on_delete=models.CASCADE)
     event = models.ForeignKey(Event, related_name='participants', on_delete=models.CASCADE)
     participant_type = models.PositiveSmallIntegerField(default=0)
     action_count = models.PositiveIntegerField(default=0)
@@ -119,8 +122,8 @@ class Participant(models.Model):
 
 class Source(models.Model):
     key = models.CharField(max_length=255)
-    channel = models.ForeignKey('comms.ChannelDB', null=True, related_name='event_logs', on_delete=models.SET_NULL)
-    location = models.ForeignKey(ObjectStub, null=True, related_name='poses_here', on_delete=models.SET_NULL)
+    channel = models.ForeignKey('core.ChannelStub', null=True, related_name='event_logs', on_delete=models.SET_NULL)
+    location = models.ForeignKey('core.ObjectStub', null=True, related_name='poses_here', on_delete=models.SET_NULL)
     mode = models.PositiveSmallIntegerField(default=0)
     # mode: 0 = 'Location Pose'. 1 = Public Channel. 2 = Group IC. 3 = Group OOC. 4 = Radio. 5 = Local OOC. 6 = Combat
 

@@ -1,3 +1,12 @@
+from django.db import models
+from modules.core.models import WithLocks
+from utils.time import utcnow
+from utils.online import accounts as online_accounts
+from evennia.utils.utils import time_format
+from evennia.utils.ansi import ANSIString
+from evennia.utils.validatorfuncs import duration
+
+
 class JobBucket(WithLocks):
     key = models.CharField(max_length=255, blank=False, null=False, unique=True)
     due = models.DurationField()
@@ -199,16 +208,16 @@ class Job(models.Model):
 
 
 class JobLink(models.Model):
-    account_stub = models.ForeignKey(AccountStub, related_name='job_handling', on_delete=models.CASCADE)
+    owner = models.ForeignKey('core.AccountCharacterStub', related_name='job_handling', on_delete=models.DO_NOTHING)
     job = models.ForeignKey(Job, related_name='links', on_delete=models.CASCADE)
     link_type = models.PositiveSmallIntegerField(default=0)
     check_date = models.DateTimeField(null=True)
 
     class Meta:
-        unique_together = (("account_stub", "job"),)
+        unique_together = (("owner", "job"),)
 
     def __str__(self):
-        return str(self.account_stub)
+        return str(self.owner)
 
     def latest_check(self):
         self.check_date = utcnow()
@@ -224,6 +233,10 @@ class JobLink(models.Model):
 
     def link_type_name(self):
         return {0: 'Admin', 1: 'Helper', 2: 'Handler', 3: 'Owner'}.get(int(self.link_type))
+
+    @property
+    def is_owner(self):
+        return self.link_type == 3
 
 
 class JobComment(models.Model):
@@ -242,7 +255,7 @@ class JobComment(models.Model):
     def poster(self):
         if self.link.job.anonymous and self.link.is_owner:
             return 'Anonymous'
-        return self.link.account_stub
+        return self.link.owner
 
     def action_phrase(self):
         kind = {0: 'Opened', 1: 'Replied', 2: '|rSTAFF COMMENTED|n', 3: 'Moved', 4: 'Approved',

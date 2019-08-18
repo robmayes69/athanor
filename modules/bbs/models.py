@@ -1,8 +1,9 @@
 import re
 from django.db import models
-from ..core.models import WithLocks
-from ... utils.time import utcnow
-from ... utils.online import puppets as online_puppets
+from modules.core.models import WithLocks
+from utils.time import utcnow
+from utils.online import puppets as online_puppets
+
 
 class BoardCategory(WithLocks):
     key = models.CharField(max_length=255, unique=True, blank=False, null=False)
@@ -117,11 +118,10 @@ class Board(WithLocks):
 
 class Post(models.Model):
     board = models.ForeignKey('Board', related_name='posts', on_delete=models.CASCADE)
-    account_stub = models.ForeignKey('core.AccountStub', related_name='+', on_delete=models.CASCADE)
-    object_stub = models.ForeignKey('core.ObjectStub', related_name='+', on_delete=models.CASCADE)
-    creation_date = models.DateTimeField(null=True)
-    modify_date = models.DateTimeField(null=True)
-    text = models.TextField(blank=True)
+    owner = models.ForeignKey('core.AccountCharacter', related_name='+', on_delete=models.CASCADE)
+    date_created = models.DateTimeField(null=True)
+    date_modified = models.DateTimeField(null=True)
+    text = models.TextField(blank=False, null=False)
     subject = models.CharField(max_length=30)
     order = models.PositiveIntegerField(null=True)
     anonymous = models.BooleanField(default=False)
@@ -136,7 +136,7 @@ class Post(models.Model):
         return f"{self.board.alias}/{self.order}"
 
     def can_edit(self, checker=None):
-        if self.account_stub.account == checker:
+        if self.owner.account_stub.account == checker:
             return True
         return self.board.check_permission(checker=checker, type="admin")
 
@@ -145,20 +145,32 @@ class Post(models.Model):
             raise ValueError("No text entered to find.")
         if not replace:
             replace = ''
-        self.modify_date = utcnow()
+        self.date_modified = utcnow()
         self.text = self.text.replace(find, replace)
-        self.save(update_fields=['text', 'modify_date'])
+        self.save(update_fields=['text', 'date_modified'])
 
     def update_read(self, account):
         acc_read, created = self.read.get_or_create(account=account)
-        acc_read.read_date = utcnow()
+        acc_read.date_read = utcnow()
         acc_read.save()
 
 
 class PostRead(models.Model):
     account = models.ForeignKey('accounts.AccountDB', related_name='bbs_read', on_delete=models.CASCADE)
     post = models.ForeignKey(Post, related_name='read', on_delete=models.CASCADE)
-    read_date = models.DateTimeField(null=True)
+    date_read = models.DateTimeField(null=True)
 
     class Meta:
         unique_together = (('account', 'post'),)
+
+
+class PostComment(models.Model):
+    post = models.ForeignKey(Post, related_name='comments', on_delete=models.CASCADE)
+    owner = models.ForeignKey('core.AccountCharacter', related_name='+', on_delete=models.CASCADE)
+    date_created = models.DateTimeField(null=True)
+    date_modified = models.DateTimeField(null=True)
+    text = models.TextField(blank=False, null=False)
+    order = models.PositiveIntegerField(null=True)
+
+    class Meta:
+        unique_together = (('post', 'order'), )

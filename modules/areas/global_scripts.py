@@ -16,17 +16,17 @@ advanced Typeclasses to be built upon.
 from typeclasses.scripts import AbstractTreeManagerScript, AbstractTreeScript
 
 
-class Zone(AbstractTreeScript):
+class Area(AbstractTreeScript):
     pass
 
 
-class ZoneManager(AbstractTreeManagerScript):
-    system_name = 'ZONE'
+class AreaManager(AbstractTreeManagerScript):
+    system_name = 'AREA'
     option_dict = {
-        'zone_locks': (
-        'Default locks to use for new Zones', 'Lock', 'see:all()')
+        'area_locks': (
+        'Default locks to use for new Areas', 'Lock', 'see:all()')
     }
-    type_name = 'Zone'
-    type_path = Zone
-    type_tag = 'zone'
+    type_name = 'Area'
+    type_path = Area
+    type_tag = 'area'
 
