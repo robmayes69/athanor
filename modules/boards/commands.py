@@ -28,7 +28,7 @@ class CmdBBList(BBCommand):
     key = '+bblist'
 
     def switch_main(self):
-        boards = evennia.GLOBAL_SCRIPTS.bbs.visible_boards(self.character, check_admin=True)
+        boards = evennia.GLOBAL_SCRIPTS.boards.visible_boards(self.caller, check_admin=True)
         message = list()
         col_color = self.account.options.column_names_color
         message.append(self.styled_header('BBS Boards'))
@@ -44,14 +44,14 @@ class CmdBBList(BBCommand):
         self.msg('\n'.join(str(l) for l in message))
 
     def switch_join(self):
-        board = evennia.GLOBAL_SCRIPTS.bbs.find_board(self.character, self.args, visible_only=False)
-        board.ignore_list.remove(self.character)
+        board = evennia.GLOBAL_SCRIPTS.boards.find_board(self.caller, self.args, visible_only=False)
+        board.ignore_list.remove(self.caller)
 
     def switch_leave(self):
-        board = evennia.GLOBAL_SCRIPTS.bbs.find_board(self.character, self.args)
+        board = evennia.GLOBAL_SCRIPTS.boards.find_board(self.caller, self.args)
         if board.mandatory:
             raise ValueError("Cannot leave mandatory boards!")
-        board.ignore_list.add(self.character)
+        board.ignore_list.add(self.caller)
 
 
 class CmdBBCat(BBCommand):
@@ -75,7 +75,7 @@ class CmdBBCat(BBCommand):
     switch_options = ('create', 'delete', 'rename', 'prefix', 'lock')
 
     def switch_main(self):
-        cats = evennia.GLOBAL_SCRIPTS.bbs.visible_categories(self.character)
+        cats = evennia.GLOBAL_SCRIPTS.boards.visible_categories(self.caller)
         message = list()
         message.append(self.styled_header('BBS Categories'))
         for cat in cats:
@@ -84,19 +84,19 @@ class CmdBBCat(BBCommand):
         self.msg('\n'.join(str(l) for l in message))
 
     def switch_create(self):
-        evennia.GLOBAL_SCRIPTS.bbs.create_category(self.character, self.lhs, self.rhs)
+        evennia.GLOBAL_SCRIPTS.boards.create_category(self.caller, self.lhs, self.rhs)
 
     def switch_delete(self):
-        evennia.GLOBAL_SCRIPTS.bbs.delete_category(self.character, self.lhs, self.rhs)
+        evennia.GLOBAL_SCRIPTS.boards.delete_category(self.caller, self.lhs, self.rhs)
 
     def switch_rename(self):
-        evennia.GLOBAL_SCRIPTS.bbs.rename_category(self.character, self.lhs, self.rhs)
+        evennia.GLOBAL_SCRIPTS.boards.rename_category(self.caller, self.lhs, self.rhs)
 
     def switch_prefix(self):
-        evennia.GLOBAL_SCRIPTS.bbs.prefix_category(self.character, self.lhs, self.rhs)
+        evennia.GLOBAL_SCRIPTS.boards.prefix_category(self.caller, self.lhs, self.rhs)
 
     def switch_lock(self):
-        evennia.GLOBAL_SCRIPTS.bbs.lock_category(self.character, self.lhs, self.rhs)
+        evennia.GLOBAL_SCRIPTS.boards.lock_category(self.caller, self.lhs, self.rhs)
 
 
 class CmdBBAdmin(BBCommand):
@@ -136,22 +136,22 @@ class CmdBBAdmin(BBCommand):
         if '/' not in self.rhs:
             raise ValueError("Usage: +bbadmin/create <category>=<board name>/<board order>")
         name, order = self.rhs.split('/', 1)
-        evennia.GLOBAL_SCRIPTS.bbs.create_board(self.character, category=self.lhs, name=name, order=order)
+        evennia.GLOBAL_SCRIPTS.boards.create_board(self.caller, category=self.lhs, name=name, order=order)
 
     def switch_delete(self):
-        evennia.GLOBAL_SCRIPTS.bbs.delete_board(self.character, name=self.lhs, verify=self.rhs)
+        evennia.GLOBAL_SCRIPTS.boards.delete_board(self.caller, name=self.lhs, verify=self.rhs)
 
     def switch_rename(self):
-        evennia.GLOBAL_SCRIPTS.bbs.rename_board(self.character, name=self.lhs, new_name=self.rhs)
+        evennia.GLOBAL_SCRIPTS.boards.rename_board(self.caller, name=self.lhs, new_name=self.rhs)
 
     def switch_mandatory(self):
-        evennia.GLOBAL_SCRIPTS.bbs.mandatory_board(self.character, name=self.lhs, new_name=self.rhs)
+        evennia.GLOBAL_SCRIPTS.boards.mandatory_board(self.caller, name=self.lhs, new_name=self.rhs)
 
     def switch_order(self):
-        evennia.GLOBAL_SCRIPTS.bbs.order_board(self.character, name=self.rhs, order=self.lhs)
+        evennia.GLOBAL_SCRIPTS.boards.order_board(self.caller, name=self.rhs, order=self.lhs)
 
     def switch_lock(self):
-        evennia.GLOBAL_SCRIPTS.bbs.lock_board(self.character, name=self.rhs, lock=self.lhs)
+        evennia.GLOBAL_SCRIPTS.boards.lock_board(self.caller, name=self.rhs, lock=self.lhs)
 
 
 class CmdBBPost(BBCommand):
@@ -176,27 +176,27 @@ class CmdBBPost(BBCommand):
         if '/' not in self.lhs:
             raise ValueError("Usage: +bbpost <board>/<subject>=<post text>")
         board, subject = self.lhs.split('/', 1)
-        evennia.GLOBAL_SCRIPTS.bbs.create_post(self.character, board=board, subject=subject, text=self.rhs)
+        evennia.GLOBAL_SCRIPTS.boards.create_post(self.caller, board=board, subject=subject, text=self.rhs)
 
     def switch_edit(self):
         if '/' not in self.lhs or '^^^' not in self.rhs:
             raise ValueError("Usage: +bbpost/edit <board>/<post>=<search>^^^<replace>")
         board, post = self.lhs.split('/', 1)
         search, replace = self.rhs.split('^^^', 1)
-        evennia.GLOBAL_SCRIPTS.bbs.edit_post(self.character, board=board, post=post, seek_text=search,
+        evennia.GLOBAL_SCRIPTS.boards.edit_post(self.caller, board=board, post=post, seek_text=search,
                                               replace_text=replace)
 
     def switch_move(self):
         if '/' not in self.lhs:
             raise ValueError("Usage: +bbpost/move <board>/<post>=<destination board>")
         board, post = self.lhs.split('/', 1)
-        evennia.GLOBAL_SCRIPTS.bbs.move_post(self.character, board=board, post=post, destination=self.rhs)
+        evennia.GLOBAL_SCRIPTS.boards.move_post(self.caller, board=board, post=post, destination=self.rhs)
 
     def switch_delete(self):
         if '/' not in self.lhs:
             raise ValueError("Usage: +bbpost/move <board>/<post>")
         board, post = self.lhs.split('/', 1)
-        evennia.GLOBAL_SCRIPTS.bbs.delete_post(self.character, board=board, post=post)
+        evennia.GLOBAL_SCRIPTS.boards.delete_post(self.caller, board=board, post=post)
 
 
 class CmdBBRead(BBCommand):
@@ -229,7 +229,7 @@ class CmdBBRead(BBCommand):
         return self.display_posts()
 
     def display_boards(self):
-        boards = evennia.GLOBAL_SCRIPTS.bbs.visible_boards(self.character, check_admin=True)
+        boards = evennia.GLOBAL_SCRIPTS.boards.visible_boards(self.caller, check_admin=True)
         message = list()
         col_color = self.account.options.column_names_color
         message.append(self.styled_header('BBS Boards'))
@@ -240,24 +240,24 @@ class CmdBBRead(BBCommand):
             if this_cat != board.category:
                 message.append(self.styled_separator(board.category.key))
                 this_cat = board.category
-            alias = board.alias[:5].ljust(5)
+            alias = board.prefix_order[:5].ljust(5)
             bname = board.key[:30].ljust(30)
             last_post = board.last_post()
             if last_post:
-                last_post = self.account.display_time(last_post.creation_date, time_format='%b %d %Y')
+                last_post = self.account.display_time(last_post.date_created, time_format='%b %d %Y')
             else:
                 last_post = 'N/A'
             last_post = last_post[:12].ljust(12)
             mess = str(board.posts.count())[:5].ljust(5)
             unrd = str(board.unread_posts(self.account).count())[:5].ljust(5)
-            perms = board.display_permissions(looker=self.character)
+            perms = board.display_permissions(looker=self.caller)
             message.append(f"{alias} {bname} {last_post} {mess} {unrd} {perms}")
         message.append(self.styled_footer())
         self.msg('\n'.join(str(l) for l in message))
 
     def display_board(self):
-        board = evennia.GLOBAL_SCRIPTS.bbs.find_board(self.character, find_name=self.lhs)
-        posts = board.posts.order_by('order')
+        board = evennia.GLOBAL_SCRIPTS.boards.find_board(self.caller, find_name=self.lhs)
+        posts = board.posts.order_by('db_order')
         message = list()
         col_color = self.account.options.column_names_color
         message.append(self.styled_header(f'BBS - {board.key}'))
@@ -265,11 +265,11 @@ class CmdBBRead(BBCommand):
         message.append(self.styled_separator())
         unread = board.unread_posts(self.account)
         for post in posts:
-            id = f"{post.board.alias}/{post.order}".ljust(9)
+            id = f"{post.board.prefix_order}/{post.order}".ljust(9)
             rd = 'U ' if post in unread else '  '.ljust(2)
-            subject = post.subject[:34].ljust(34)
-            post_date = self.account.display_time(post.creation_date, time_format='%b %d %Y').ljust(11)
-            author = post.object_stub
+            subject = post.key[:34].ljust(34)
+            post_date = self.account.display_time(post.date_created, time_format='%b %d %Y').ljust(11)
+            author = post.owner
             message.append(f"{id} {rd} {subject} {post_date} {author}")
         message.append(self.styled_footer())
         self.msg('\n'.join(str(l) for l in message))
@@ -277,11 +277,11 @@ class CmdBBRead(BBCommand):
     def render_post(self, post):
         message = list()
         message.append(self.styled_header(f'BBS - {post.board.key}'))
-        msg = f"{post.board.alias}/{post.order}"[:25].ljust(25)
+        msg = f"{post.board.prefix_order}/{post.order}"[:25].ljust(25)
         message.append(f"Message: {msg} Posted        Author")
-        subj = post.subject[:34].ljust(34)
-        disp_time = self.account.display_time(post.creation_date, time_format='%b %d %Y').ljust(13)
-        message.append(f"{subj} {disp_time} {post.account_stub}")
+        subj = post.key[:34].ljust(34)
+        disp_time = self.account.display_time(post.date_created, time_format='%b %d %Y').ljust(13)
+        message.append(f"{subj} {disp_time} {post.owner}")
         message.append(self.styled_header())
         message.append(post.text)
         message.append(self.styled_separator())
@@ -289,7 +289,7 @@ class CmdBBRead(BBCommand):
 
     def display_posts(self):
         board, posts = self.lhs.split('/', 1)
-        board = evennia.GLOBAL_SCRIPTS.bbs.find_board(self.character, find_name=board)
+        board = evennia.GLOBAL_SCRIPTS.boards.find_board(self.caller, find_name=board)
         posts = board.parse_postnums(self.account, posts)
         for post in posts:
             self.msg(self.render_post(post))
@@ -299,11 +299,11 @@ class CmdBBRead(BBCommand):
         if not self.args:
             raise ValueError("Usage: +bbcatchup <board or all>")
         if self.args.lower() == 'all':
-            boards = evennia.GLOBAL_SCRIPTS.bbs.visible_boards(self.character, check_admin=True)
+            boards = evennia.GLOBAL_SCRIPTS.boards.visible_boards(self.caller, check_admin=True)
         else:
             boards = list()
             for arg in self.lhslist:
-                found_board = evennia.GLOBAL_SCRIPTS.bbs.find_board(self.character, arg)
+                found_board = evennia.GLOBAL_SCRIPTS.boards.find_board(self.caller, arg)
                 if found_board not in boards:
                     boards.append(found_board)
         for board in boards:
@@ -313,10 +313,10 @@ class CmdBBRead(BBCommand):
             unread = board.unread_posts(self.account)
             for post in unread:
                 post.update_read(self.account)
-            self.msg(f"Skipped {len(unread)} posts on Board '{board.alias} - {board.key}'")
+            self.msg(f"Skipped {len(unread)} posts on Board '{board.prefix_order} - {board.key}'")
 
     def switch_scan(self):
-        boards = evennia.GLOBAL_SCRIPTS.bbs.visible_boards(self.character, check_admin=True)
+        boards = evennia.GLOBAL_SCRIPTS.boards.visible_boards(self.caller, check_admin=True)
         unread = dict()
         show_boards = list()
         for board in boards:
@@ -337,12 +337,12 @@ class CmdBBRead(BBCommand):
             this_unread = len(unread[board])
             total_unread += this_unread
             unread_nums = ', '.join(p.order for p in unread[board])
-            message.append(f"{board.key} ({board.alias}): {this_unread} Unread: ({unread_nums})")
+            message.append(f"{board.key} ({board.prefix_order}): {this_unread} Unread: ({unread_nums})")
         message.append(self.styled_footer(f"Total Unread: {total_unread}"))
         return '\n'.join(str(l) for l in message)
 
     def switch_next(self):
-        boards = evennia.GLOBAL_SCRIPTS.bbs.visible_boards(self.character, check_admin=True)
+        boards = evennia.GLOBAL_SCRIPTS.boards.visible_boards(self.caller, check_admin=True)
         for board in boards:
             b_unread = board.unread_posts(self.account).first()
             if b_unread:

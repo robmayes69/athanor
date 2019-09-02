@@ -1,3 +1,6 @@
+from django.db import models
+
+
 class MapRegion(models.Model):
     """
     MapRegions are just names to organize the Maps under.

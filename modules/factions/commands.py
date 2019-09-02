@@ -32,7 +32,7 @@ class _CmdBase(COMMAND_DEFAULT_CLASS):
 
 
 class CmdFactions(_CmdBase):
-    key = '@factions'
+    key = '+factions'
     aliases = ('@fac',)
     locks = "cmd:all()"
     switch_options = ('select', 'tree')
@@ -107,7 +107,7 @@ class CmdFactions(_CmdBase):
 
 
 class CmdFacAdmin(_CmdBase):
-    key = '@fadmin'
+    key = '+fadmin'
     locks = "cmd:perm(Admin) or perm(Faction_Admin)"
     switch_options = ('config', 'describe', 'create', 'disband', 'rename', 'move', 'category', 'abbreviation', 'lock')
 
@@ -115,14 +115,7 @@ class CmdFacAdmin(_CmdBase):
         pass
 
     def switch_create(self):
-        rhs = self.rhs
-        if not rhs:
-            rhs = '/'
-        if rhs == '/':
-            target = evennia.GLOBAL_SCRIPTS.faction
-        else:
-            target = self.target_faction(rhs)
-        results = target.create_child(self.lhs, creator=self.caller)
+        results = evennia.GLOBAL_SCRIPTS.faction.create_faction(name=self.lhs, creator=self.caller, tree=self.rhs)
         self.msg(f"Created the Faction: {results.path_name(self.caller)}")
 
     def switch_config(self):
@@ -151,7 +144,7 @@ class CmdFacAdmin(_CmdBase):
 
 
 class CmdFacRank(_CmdBase):
-    key = '@frank'
+    key = '+frank'
     locks = "cmd:all()"
     switch_options = ('create', 'rename', 'delete', 'permissions')
 
@@ -169,7 +162,7 @@ class CmdFacRank(_CmdBase):
 
 
 class CmdFacMember(_CmdBase):
-    key = '@fmember'
+    key = '+fmember'
     locks = 'cmd:all()'
     switch_options = ('add', 'invite', 'join', 'kick', 'leave', 'rank', 'uninvite', 'title', 'permissions')
 
@@ -202,7 +195,7 @@ class CmdFacMember(_CmdBase):
 
 
 class CmdFacPerm(_CmdBase):
-    key = '@fperm'
+    key = '+fperm'
     locks = 'cmd:all()'
     switch_options = ('create', 'delete', 'basic', 'member')
 

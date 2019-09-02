@@ -1,27 +1,24 @@
-
 import re, hashlib
 from django.db import models
 from django.db.models import Q
-from athanor.utils.text import partial_match
-
-# Create your models here.
+from utils.text import partial_match
 
 
 class MushObject(models.Model):
-    obj = models.OneToOneField('objects.ObjectDB', related_name='mush', null=True)
-    account = models.OneToOneField('accounts.AccountDB', related_name='mush', null=True)
-    group = models.OneToOneField('athanor-groups.Group', related_name='mush', null=True)
-    board = models.OneToOneField('athanor-bbs.Board', related_name='mush', null=True)
-    fclist = models.OneToOneField('fclist.FCList', related_name='mush', null=True)
+    obj = models.OneToOneField('objects.ObjectDB', related_name='mush', null=True, on_delete=models.SET_NULL)
+    account = models.OneToOneField('accounts.AccountDB', related_name='mush', null=True, on_delete=models.SET_NULL)
+    group = models.OneToOneField('factions.FactionDB', related_name='mush', null=True, on_delete=models.SET_NULL)
+    board = models.OneToOneField('boards.BoardDB', related_name='mush', null=True, on_delete=models.SET_NULL)
+    fclist = models.OneToOneField('themes.Theme', related_name='mush', null=True, on_delete=models.SET_NULL)
     dbref = models.CharField(max_length=15, db_index=True)
     objid = models.CharField(max_length=30, unique=True, db_index=True)
     type = models.PositiveSmallIntegerField(db_index=True)
     name = models.CharField(max_length=80)
     created = models.DateTimeField()
-    location = models.ForeignKey('MushObject', related_name='contents', null=True)
-    destination = models.ForeignKey('MushObject', related_name='exits_to', null=True)
-    parent = models.ForeignKey('MushObject', related_name='children', null=True)
-    owner = models.ForeignKey('MushObject', related_name='owned', null=True)
+    location = models.ForeignKey('self', related_name='contents', null=True, on_delete=models.SET_NULL)
+    destination = models.ForeignKey('self', related_name='exits_to', null=True, on_delete=models.SET_NULL)
+    parent = models.ForeignKey('self', related_name='children', null=True, on_delete=models.SET_NULL)
+    owner = models.ForeignKey('self', related_name='owned', null=True, on_delete=models.SET_NULL)
     flags = models.TextField(blank=True)
     powers = models.TextField(blank=True)
     recreated = models.BooleanField(default=False)
@@ -148,8 +145,8 @@ class MushAttributeName(models.Model):
 
 
 class MushAttribute(models.Model):
-    dbref = models.ForeignKey(MushObject, related_name='attrs')
-    attr = models.ForeignKey('mushimport.MushAttributeName', related_name='characters')
+    dbref = models.ForeignKey(MushObject, related_name='attrs', on_delete=models.CASCADE)
+    attr = models.ForeignKey(MushAttributeName, related_name='characters', on_delete=models.SET_NULL)
     value = models.TextField(blank=True)
 
 

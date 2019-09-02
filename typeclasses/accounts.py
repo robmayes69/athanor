@@ -22,11 +22,11 @@ several more options for customizing the Guest account system.
 
 """
 
-from evennia import DefaultAccount, DefaultGuest
-from modules.core.models import AccountStub
+from modules.core.accounts import AthanorAccount, AthanorGuest
 
 
-class Account(DefaultAccount):
+
+class Account(AthanorAccount):
     """
     This class describes the actual OOC account (i.e. the user connecting
     to the MUD). It does NOT have visual appearance in the game world (that
@@ -95,46 +95,9 @@ class Account(DefaultAccount):
     """
     pass
 
-    @property
-    def stub(self):
-        found, created = AccountStub.objects.get_or_create(account=self, key=self.username, orig_id=self.id)
-        return found
-    
-    def msg(self, text=None, **kwargs):
-        if not text:
-            return
-        
-        # Admin alert system.
-        admin_alert = kwargs.pop('admin_alert', None)
-        if admin_alert:
-            admin_enactor = kwargs.pop('admin_enactor', None)
-            text = f"|rAdmin Alert:|n |w[{admin_enactor.key}]|n {admin_alert.upper()}: {text}"
-
-        # System Msg System
-        system_alert = kwargs.pop('system_alert', None)
-        if system_alert:
-            sysmsg_border = self.options.sys_msg_border
-            sysmsg_text = self.options.sys_msg_text
-            text = f"|{sysmsg_border}-=<|n|{sysmsg_text}{system_alert.upper()}|n|{sysmsg_border}>=-|n {text}"
-
-        super(Account, self).msg(text, **kwargs)
-
-    def display_time(self, time_disp=None, time_format=None, tz=None):
-        if not time_format:
-            time_format = '%b %d %I:%M%p %Z'
-        if not time_disp:
-            import datetime
-            time_disp = datetime.datetime.utcnow()
-        if not tz:
-            tz = self.options.timezone
-        time = time_disp.astimezone(tz)
-        return time.strftime(time_format)
-
-    def __str__(self):
-        return self.key
 
 
-class Guest(DefaultGuest):
+class Guest(AthanorGuest):
     """
     This class is used for guest logins. Unlike Accounts, Guests and their
     characters are deleted after disconnection.

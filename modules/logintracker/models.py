@@ -7,7 +7,7 @@ class Site(models.Model):
 
 
 class LoginRecord(models.Model):
-    account = models.ForeignKey('accounts.AccountDB', related_name='login_records', on_delete=models.CASCADE)
+    account_stub = models.ForeignKey('core.AccountStub', related_name='login_records', on_delete=models.CASCADE)
     site = models.ForeignKey('logintracker.Site', related_name='logins', on_delete=models.DO_NOTHING)
     date_created = models.DateTimeField(null=False)
-    login_result = models.PositiveSmallIntegerField(default=0)
+    result = models.PositiveSmallIntegerField(default=0)

@@ -49,7 +49,7 @@ class Plot(models.Model):
 
 class Runner(models.Model):
     plot = models.ForeignKey(Plot, related_name='runners', on_delete=models.CASCADE)
-    character = models.ForeignKey(ObjectStub, related_name='plots', on_delete=models.CASCADE)
+    character = models.ForeignKey('core.ObjectStub', related_name='plots', on_delete=models.CASCADE)
     runner_type = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
@@ -65,7 +65,7 @@ class Event(models.Model):
     date_started = models.DateTimeField(null=True)
     date_finished = models.DateTimeField(null=True)
     plot = models.ForeignKey('Plot', null=True, related_name='scene', on_delete=models.SET_NULL)
-    post = models.OneToOneField(Post, related_name='event', null=True, on_delete=models.SET_NULL)
+    post = models.OneToOneField('boards.PostDB', related_name='event', null=True, on_delete=models.SET_NULL)
     public = models.BooleanField(default=True)
     status = models.PositiveSmallIntegerField(default=0, db_index=True)
     log_ooc = models.BooleanField(default=True)
@@ -138,8 +138,8 @@ class Action(models.Model):
     date_made = models.DateTimeField(db_index=True)
     text = models.TextField(blank=True)
     codename = models.CharField(max_length=255, null=True, blank=True, default=None)
-    location = models.ForeignKey(ObjectStub, related_name='actions_here', null=True, on_delete=models.SET_NULL)
-    channel = models.ForeignKey(ChannelStub, related_name='actions_logged', null=True, on_delete=models.SET_NULL)
+    location = models.ForeignKey('core.ObjectStub', related_name='actions_here', null=True, on_delete=models.SET_NULL)
+    channel = models.ForeignKey('core.ChannelStub', related_name='actions_logged', null=True, on_delete=models.SET_NULL)
 
 
     def display_pose(self, viewer):

@@ -1,7 +1,7 @@
 import re
 from evennia.locks.lockhandler import LockException
 from typeclasses.scripts import GlobalScript
-from modules.core.models import JobBucket, Job
+from modules.jobs.models import BucketDB, JobDB
 from utils.text import partial_match
 from evennia.utils.validatorfuncs import duration, unsigned_integer, lock
 
@@ -21,7 +21,7 @@ class JobManager(GlobalScript):
     }
 
     def buckets(self):
-        return JobBucket.objects.order_by('key')
+        return BucketDB.objects.filter_family().order_by('db_key')
 
     def visible_buckets(self, account):
         return [b for b in self.buckets() if b.access(account, 'see')]
@@ -31,9 +31,9 @@ class JobManager(GlobalScript):
             raise ValueError("Permission denied!")
         if not _RE_BUCKET.match(name):
             raise ValueError("Buckets must be 3-8 alphabetical characters!")
-        if JobBucket.objects.filter(key__iexact=name).exists():
+        if BucketDB.objects.filter(key__iexact=name).exists():
             raise ValueError("Name is already in use.")
-        new_bucket = JobBucket.objects.create(key=name, lock_storage=self.options.bucket_locks,
+        new_bucket = BucketDB.objects.create(key=name, lock_storage=self.options.bucket_locks,
                                               due=self.options.bucket_due, description=description)
         new_bucket.save()
         announce = f"Bucket Created: {new_bucket.key}"
@@ -42,7 +42,7 @@ class JobManager(GlobalScript):
         return new_bucket
 
     def find_bucket(self, account, bucket=None):
-        if isinstance(bucket, JobBucket):
+        if isinstance(bucket, BucketDB):
             return bucket
         if not bucket:
             raise ValueError("Must enter a bucket name!")
@@ -83,7 +83,7 @@ class JobManager(GlobalScript):
         bucket = self.find_bucket(account, bucket)
         if not _RE_BUCKET.match(new_name):
             raise ValueError("Buckets must be 3-8 alphabetical characters!")
-        if JobBucket.objects.filter(key__iexact=new_name).exclude(id=bucket.id).exists():
+        if BucketDB.objects.filter(key__iexact=new_name).exclude(id=bucket.id).exists():
             raise ValueError("Name is already in use.")
         old_name = bucket.key
         bucket.key = new_name
@@ -128,10 +128,10 @@ class JobManager(GlobalScript):
         return job
 
     def find_job(self, account, job=None, check_access=True):
-        if isinstance(job, Job):
+        if isinstance(job, JobDB):
             return job
         job_id = unsigned_integer(job, option_key='Job ID')
-        found = Job.objects.filter(id=job_id).first()
+        found = JobDB.objects.filter(id=job_id).first()
         if not found:
             raise ValueError("Job not found!")
         if not check_access:

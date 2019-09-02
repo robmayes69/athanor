@@ -43,7 +43,7 @@ class CmdImport(AthCommand):
     key = '+import'
     system_name = 'IMPORT'
     locks = 'cmd:perm(Immortals)'
-    admin_switches = ['initialize', 'rooms', 'accounts', 'athanor-groups', 'athanor-bbs', 'ex2', 'ex3', 'experience', 'fclist', 'radio',
+    admin_switches = ['initialize', 'rooms', 'accounts', 'athanor-groups', 'athanor-boards', 'ex2', 'ex3', 'experience', 'fclist', 'radio',
                       'jobs', 'scenes']
 
     def func(self):
@@ -307,7 +307,7 @@ class CmdImport(AthCommand):
                 self.convert_board(new_board)
 
     def switch_bbs(self):
-        penn_boards = cobj('athanor-bbs').contents.all()
+        penn_boards = cobj('athanor-boards').contents.all()
         board_group, created5 = BoardGroup.objects.get_or_create(main=1, group=None)
         for old_board in penn_boards:
             if not old_board.board:

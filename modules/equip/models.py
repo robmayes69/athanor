@@ -1,3 +1,6 @@
+from django.db import models
+
+
 class EquipSlotType(models.Model):
     key = models.CharField(max_length=80, blank=False, null=False, unique=True)
 

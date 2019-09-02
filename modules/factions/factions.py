@@ -1,11 +1,50 @@
-from django.db import models
-from django.conf import settings
 from evennia.typeclasses.models import TypeclassBase
 from modules.factions.models import FactionDB, FactionMembershipDB
 from future.utils import with_metaclass
+from utils.valid import simple_name
 
 
 class DefaultFaction(with_metaclass(TypeclassBase, FactionDB)):
+
+    def at_first_save(self, *args, **kwargs):
+        pass
+
+    @property
+    def ancestors(self):
+        full_list = list()
+        p = self.parent
+        while p is not None:
+            full_list.append(p)
+            p = p.parent
+        full_list.reverse()
+        return full_list
+
+    @classmethod
+    def validate_key(cls, key_text, rename_from=None, parent=None):
+        if not key_text:
+            raise ValueError("Factions must have a name!")
+        key_text = simple_name(key_text, option_key='Faction Name')
+        query = FactionDB.objects.filter_family(db_key__ixact=key_text, db_parent=parent)
+        if rename_from:
+            query = query.exclude(id=rename_from)
+        if query.count():
+            raise ValueError("Another Faction already uses that name!")
+        return key_text
+
+    @classmethod
+    def create(cls, *args, **kwargs):
+        parent = kwargs.get('parent', None)
+        if parent and not isinstance(parent, FactionDB):
+            raise ValueError("Parent must be an instance of a Faction!")
+
+        key = kwargs.get('key', None)
+        key = cls.validate_key(key, parent=parent)
+        tier = kwargs.get('tier', 0)
+
+        new_faction = cls(db_key=key, db_tier=tier, db_parent=parent)
+        new_faction.save()
+        return new_faction
+
 
     def entity_has_privilege(self, entity, privilege_name, admin_bypass=True):
         if admin_bypass and entity.is_admin:
@@ -76,6 +115,10 @@ class DefaultFaction(with_metaclass(TypeclassBase, FactionDB)):
 
 
 class DefaultFactionMembership(with_metaclass(TypeclassBase, FactionMembershipDB)):
+
+    @classmethod
+    def create(cls, *args, **kwargs):
+        pass
 
     def add_role(self, role):
         pass

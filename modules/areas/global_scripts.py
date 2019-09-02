@@ -12,21 +12,13 @@ This Typeclass is not very useful by itself. It's a foundation for other, more
 advanced Typeclasses to be built upon.
 """
 
-
-from typeclasses.scripts import AbstractTreeManagerScript, AbstractTreeScript
-
-
-class Area(AbstractTreeScript):
-    pass
+from typeclasses.scripts import GlobalScript
 
 
-class AreaManager(AbstractTreeManagerScript):
+class DefaultAreaManager(GlobalScript):
     system_name = 'AREA'
     option_dict = {
         'area_locks': (
         'Default locks to use for new Areas', 'Lock', 'see:all()')
     }
-    type_name = 'Area'
-    type_path = Area
-    type_tag = 'area'
 

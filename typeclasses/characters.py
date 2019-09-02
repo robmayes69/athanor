@@ -7,10 +7,10 @@ is setup to be the "default" character type created by the default
 creation commands.
 
 """
-from evennia import DefaultCharacter
+from modules.core.objects import AthanorCharacter
 
 
-class Character(DefaultCharacter):
+class Character(AthanorCharacter):
     """
     The Character defaults to reimplementing some of base Object's hook methods with the
     following functionality:
@@ -33,11 +33,11 @@ class Character(DefaultCharacter):
     pass
 
 
-class PlayerCharacter(DefaultCharacter):
+class PlayerCharacter(Character):
     pass
 
 
-class MobileCharacter(DefaultCharacter):
+class MobileCharacter(Character):
     """
     This is used for all NPCs.
     """

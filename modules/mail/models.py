@@ -16,3 +16,4 @@ class MailLink(models.Model):
 
     class Meta:
         unique_together = (('mail', 'owner'),)
+        index_together = (('owner', 'link_active', 'link_type'),)

@@ -10,7 +10,7 @@ class StaffCategory(models.Model):
 
 
 class StaffEntry(models.Model):
-    account = models.OneToOneField('accounts.AccountDB', related_name='+', on_delete=models.CASCADE)
+    character = models.OneToOneField('objects.ObjectDB', related_name='+', on_delete=models.CASCADE)
     category = models.ForeignKey(StaffCategory, related_name='staffers', on_delete=models.CASCADE)
     order = models.PositiveSmallIntegerField(default=0)
     position = models.CharField(max_length=255, null=True, blank=True)
@@ -19,4 +19,4 @@ class StaffEntry(models.Model):
     vacation = models.DateTimeField(null=True)
 
     def __str__(self):
-        return self.account.key
+        return self.character.key

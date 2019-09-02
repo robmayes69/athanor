@@ -1,55 +1,16 @@
 import re
 from django.conf import settings
-from typeclasses.scripts import AbstractTreeScript, AbstractTreeManagerScript
-from evennia.utils.validatorfuncs import positive_integer, simple_name
-from evennia.utils.utils import modify_string_set
+from typeclasses.scripts import GlobalScript
+from evennia.utils.validatorfuncs import positive_integer
+from utils.valid import simple_name
 
 _PERM_RE = re.compile(r"^[a-zA-Z]+$")
 
 
-class FactionScript(AbstractTreeScript):
-    """
-    Each instance of FactionScript is a Faction.
-    """
-    type_name = 'Faction'
-    type_path = settings.FACTION_FACTION_TYPECLASS
-    type_data = settings.FACTION_FACTION_CONFIG
-    type_locks = settings.FACTION_DEFAULT_FACTION_LOCKS
-    type_tag = 'faction'
-    option_dict = settings.OPTIONS_FACTION_DEFAULT
-
-    def at_script_creation(self):
-        super(FactionScript, self).at_script_creation()
-
-        if not isinstance(self.db.ranks, dict):
-            self.db.ranks = dict()
-            self.db.ranks.update(settings.FACTION_DEFAULT_RANKS)
-
-        # members is a simple dict() that contains all member ObjectDBs.
-        if not isinstance(self.db.main_members, dict):
-            self.db.main_members = dict()
-
-        # basic members are anything that is technically a member, but does not
-        # need to be listed in any kind of display. Useful for soldier NPCs maybe.
-        if not isinstance(self.db.basic_members, set):
-            self.db.basic_members = set()
-
-        # permissions are strings that govern permissions within this group. No connection
-        # to Evennia's own permissions system.
-        if not isinstance(self.db.permissions, set):
-            self.db.permissions = set(settings.FACTION_AVAILABLE_PERMISSIONS)
-
-        # Base Permissions are permissions granted to any Main Member of the group.
-        if not isinstance(self.db.member_permissions, set):
-            self.db.member_permissions = set(settings.FACTION_DEFAULT_MAIN_PERMISSIONS)
-
-        # basic permissions re granted to basic_members.
-        if not isinstance(self.db.basic_permissions, set):
-            self.db.basic_permissions = set(settings.FACTION_DEFAULT_BASIC_PERMISSIONS)
-
-        # Permissions in this set are granted to NON-MEMBERS of the group.
-        if not isinstance(self.db.public_permissions, set):
-            self.db.public_permissions = set(settings.FACTION_DEFAULT_PUBLIC_PERMISSIONS)
+class DefaultFactionManager(GlobalScript):
+    system_name = 'FACTION'
+    option_dict = {
+    }
 
     def add_main_member(self, enactor, character, rank_int):
         """
@@ -472,12 +433,3 @@ class FactionScript(AbstractTreeScript):
             return True
 
 
-class FactionManagerScript(AbstractTreeManagerScript):
-    """
-
-    """
-    type_name = 'Faction'
-    type_path = settings.FACTION_FACTION_TYPECLASS
-    type_data = settings.FACTION_FACTION_CONFIG
-    type_locks = settings.FACTION_DEFAULT_FACTION_LOCKS
-    type_tag = 'faction'

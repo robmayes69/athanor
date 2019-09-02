@@ -54,6 +54,7 @@ class ObjectStub(models.Model):
     obj = models.OneToOneField('objects.ObjectDB', related_name='stub_model', on_delete=models.SET_NULL, null=True)
     key = models.CharField(max_length=255, null=False, blank=False)
     orig_id = models.PositiveIntegerField(null=False)
+    account_stub = models.ForeignKey(AccountStub, null=True, related_name='object_stubs', on_delete=models.SET_NULL)
 
     def __str__(self):
         if self.obj:
@@ -86,3 +87,6 @@ class AccountCharacterStub(models.Model):
 
     class Meta:
         unique_together = (('character_stub', 'account_stub'),)
+
+    def __str__(self):
+        return str(self.character_stub)

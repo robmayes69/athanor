@@ -64,7 +64,7 @@ WEBSOCKET_ENABLED = True
 
 INLINEFUNC_ENABLED = True
 
-INSTALLED_APPS = INSTALLED_APPS + ('modules.core', 'modules.factions', 'modules.bbs', 'modules.staff', 'modules.themes',
+INSTALLED_APPS = INSTALLED_APPS + ('modules.core', 'modules.factions', 'modules.boards', 'modules.staff', 'modules.themes',
                                    'modules.info', 'modules.jobs', 'modules.areas', 'modules.mapper', 'modules.rplogger',
                                    'modules.mush_import')
 
@@ -80,6 +80,16 @@ OPTIONS_ACCOUNT_DEFAULT['sys_msg_border'] = ('For -=<>=-', 'Color', 'm')
 OPTIONS_ACCOUNT_DEFAULT['sys_msg_text'] = ('For text in sys_msg', 'Color', 'w')
 
 ######################################################################
+# Area Settings
+######################################################################
+GLOBAL_SCRIPTS['area'] = {
+    'typeclass': 'typeclasses.areas.AreaManager',
+    'repeats': -1, 'interval': 50, 'desc': 'Area Manager for Area System'
+}
+
+BASE_AREA_TYPECLASS = 'typeclasses.areas.Area'
+
+######################################################################
 # Faction Settings
 ######################################################################
 # These are the permissions that can be granted to characters and ranks.
@@ -87,72 +97,69 @@ OPTIONS_ACCOUNT_DEFAULT['sys_msg_text'] = ('For text in sys_msg', 'Color', 'w')
 # manage: who can add/remove members, and arbitrarily set titles. Can promote members up to
 #   just under your own rank.
 # titleself: can set your own title.
-FACTION_AVAILABLE_PERMISSIONS = {'moderate', 'manage', 'titleself'}
 
 GLOBAL_SCRIPTS['faction'] = {
-    'typeclass': 'modules.factions.global_scripts.FactionManagerScript',
+    'typeclass': 'typeclasses.factions.FactionManager',
     'repeats': -1, 'interval': 50, 'desc': 'Faction Manager for Faction System'
 }
 
-FACTION_FACTION_TYPECLASS = 'modules.factions.global_scripts.FactionScript'
+BASE_FACTION_TYPECLASS = 'typeclasses.factions.Faction'
+BASE_FACTIONMEMBERSHIP_TYPECLASS = 'typeclasses.factions.FactionMembership'
 
-FACTION_FACTION_CONFIG = {
-    'repeats': -1, 'interval': 60, 'desc': 'Faction Script'
+FACTION_PRIVILEGES = {
+    'channel': {
+        'description': "Can use basic Faction Channels."
+    },
+    'discipline': {
+        'description': "Can mute people from faction Channels."
+    }
+
 }
 
-# Ranks 1-4 are special. They can be renamed but not deleted.
-# Rank 1 holds special privileges.
-
-OPTIONS_FACTION_DEFAULT = {
-    'color': ("The Faction's color.", 'Color', 'n'),
-    'start_rank': ("Default Start Rank for newbies.", 'PositiveInteger', 4),
+FACTION_ROLES = {
+    'Leader': {
+        "sort_order": 1,
+        "privileges": ('channel', 'discipline'),
+        "description": "Who calls the Shots.",
+        "can_bestow": ("Second", "Officer", "Member")
+    },
+    "Second": {
+        "sort_order": 2,
+        "privileges": ('channel', 'discipline'),
+        "description": "The Second in Command",
+        "can_bestow": ("Officer", "Member")
+    },
+    "Officer": {
+        "sort_order": 3,
+        "privileges": ('channel', 'discipline'),
+        "description": "Basic Officer responsibilities.",
+        "can_bestow": ('Member',)
+    },
+    "Member": {
+        'sort_order': 4,
+        'privileges': ('channel',),
+        'description': "Basic Faction Membership."
+    }
 }
-
-FACTION_DEFAULT_RANKS = {
-    1: {
-        'name': 'Leader',
-        'members': set(),
-        'permissions': {'moderate', 'manage', 'titleself'}
-    },
-    2: {
-        'name': 'Second',
-        'members': set(),
-        'permissions': {'moderate', 'manage', 'titleself'}
-    },
-    3: {
-        'name': 'Officer',
-        'members': set(),
-        'permissions': {'moderate', 'manage', 'titleself'}
-    },
-    4: {
-        'name': 'Member',
-        'members': set(),
-        'permissions': {'titleself', }
-    },
-}
-
-FACTION_DEFAULT_MAIN_PERMISSIONS = set()
-
-FACTION_DEFAULT_BASIC_PERMISSIONS = set()
-
-FACTION_DEFAULT_PUBLIC_PERMISSIONS = set()
-
-FACTION_DEFAULT_FACTION_LOCKS = 'control:perm(Admin) or perm(Faction_Admin);see:all()'
 
 ######################################################################
 # BBS Settings
 ######################################################################
-GLOBAL_SCRIPTS['bbs'] = {
-    'typeclass': 'typeclasses.gscripts.bbs.BoardManager',
+GLOBAL_SCRIPTS['boards'] = {
+    'typeclass': 'typeclasses.boards.BoardManager',
     'repeats': -1, 'interval': 60, 'desc': 'BBS API for Account BBS',
     'locks': "admin:perm(Admin)",
 }
 
+BASE_BOARDCATEGORY_TYPECLASS = 'typeclasses.boards.BoardCategory'
+BASE_BOARD_TYPECLASS = 'typeclasses.boards.Board'
+BASE_POST_TYPECLASS = 'typeclasses.boards.Post'
+
 ######################################################################
-# BBS Settings
+# Job Settings
 ######################################################################
 GLOBAL_SCRIPTS['jobs'] = {
-    'typeclass': 'typeclasses.gscripts.jobs.JobManager',
+    'typeclass': 'modules.jobs.global_scripts.JobManager',
     'repeats': -1, 'interval': 60, 'desc': 'Job API for Job System',
     'locks': "admin:perm(Admin)",
 }
