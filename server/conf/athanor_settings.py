@@ -73,6 +73,23 @@ ROOT_URLCONF = None
 COMMAND_DEFAULT_CLASS = "commands.command.Command"
 
 ######################################################################
+# Arango Options
+######################################################################
+ARANGO = {
+    'protocol': 'http',
+    'host': 'localhost',
+    'port': 8529,
+    'database': 'athanor',
+    'username': 'athanor',
+    'password': 'athanor'
+}
+
+GLOBAL_SCRIPTS['arango'] = {
+    'typeclass': 'typeclasses.database.ArangoManager',
+    'repeats': -1, 'interval': 50, 'desc': 'Arango Database Manager'
+}
+
+######################################################################
 # Account Options
 ######################################################################
 
