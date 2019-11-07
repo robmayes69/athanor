@@ -26,7 +26,7 @@ class AthanorAccount(DefaultAccount):
             sysmsg_text = self.options.sys_msg_text
             text = f"|{sysmsg_border}-=<|n|{sysmsg_text}{system_alert.upper()}|n|{sysmsg_border}>=-|n {text}"
 
-        super(DefaultAccount, self).msg(text, **kwargs)
+        super(AthanorAccount, self).msg(text, **kwargs)
 
     def display_time(self, time_disp=None, time_format=None, tz=None):
         if not time_format:

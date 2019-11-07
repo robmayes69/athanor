@@ -25,7 +25,6 @@ several more options for customizing the Guest account system.
 from modules.core.accounts import AthanorAccount, AthanorGuest
 
 
-
 class Account(AthanorAccount):
     """
     This class describes the actual OOC account (i.e. the user connecting

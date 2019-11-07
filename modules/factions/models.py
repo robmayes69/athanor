@@ -40,7 +40,7 @@ class FactionPrivilege(models.Model):
 class FactionRole(models.Model):
     faction = models.ForeignKey(FactionDB, null=False, on_delete=models.CASCADE, related_name='roles')
     key = models.CharField(blank=False, null=False, max_length=255)
-    description = models.TextField(blank=False, null=False)
+    description = models.TextField(null=True, blank=True)
     privileges = models.ManyToManyField(FactionPrivilege, related_name='roles')
     sort_order = models.PositiveIntegerField(default=0, blank=False, null=False)
     can_bestow = models.ManyToManyField('self', related_name='grantable_by')
