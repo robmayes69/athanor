@@ -1,6 +1,15 @@
 from django.db import models
 
 
+class InventoryDB(models.Model):
+    db_owner = models.ForeignKey('objects.ObjectDB', related_name='inventories', on_delete=models.CASCADE)
+    db_slots = models.IntegerField(default=0, null=False)
+
+
+class GearSetDB(models.Model):
+    db_owner = models.ForeignKey('objects.ObjectDB', related_name='gearsets', on_delete=models.CASCADE)
+
+
 class EquipSlotType(models.Model):
     key = models.CharField(max_length=80, blank=False, null=False, unique=True)
 

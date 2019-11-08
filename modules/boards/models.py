@@ -35,30 +35,52 @@ class BoardDB(TypedObject):
     objects = TypeclassManager()
 
 
-class PostDB(TypedObject):
-    __settingclasspath__ = "modules.boards.boards.DefaultPost"
-    __defaultclasspath__ = "modules.boards.boards.DefaultPost"
+class ThreadDB(TypedObject):
+    __settingclasspath__ = "modules.boards.boards.DefaultThread"
+    __defaultclasspath__ = "modules.boards.boards.DefaultThread"
     __applabel__ = "boards"
 
+    db_account = models.ForeignKey('accounts.AccountDB', related_name="+", null=True, on_delete=models.PROTECT)
+    db_character = models.ForeignKey('objects.ObjectDB', related_name='+', null=True, on_delete=models.PROTECT)
     db_date_created = models.DateTimeField('creation date', editable=True, auto_now_add=True)
-    db_board = models.ForeignKey(BoardDB, related_name='posts', on_delete=models.CASCADE)
-    db_owner = models.ForeignKey('core.AccountCharacterStub', related_name='+', on_delete=models.CASCADE)
+    db_board = models.ForeignKey(BoardDB, related_name='threads', on_delete=models.CASCADE)
     db_date_modified = models.DateTimeField(editable=True, auto_now_add=True)
-    db_text = models.TextField(blank=False, null=False)
     db_order = models.PositiveIntegerField(null=True)
 
     class Meta:
-        verbose_name = 'Post'
-        verbose_name_plural = 'Posts'
+        verbose_name = 'Thread'
+        verbose_name_plural = 'Threads'
         unique_together = (('db_board', 'db_order'), )
 
     objects = TypeclassManager()
 
 
-class PostRead(models.Model):
+class ThreadRead(models.Model):
     account = models.ForeignKey('accounts.AccountDB', related_name='bbs_read', on_delete=models.CASCADE)
-    post = models.ForeignKey(PostDB, related_name='read', on_delete=models.CASCADE)
+    thread = models.ForeignKey(ThreadDB, related_name='read', on_delete=models.CASCADE)
     date_read = models.DateTimeField(null=True)
 
     class Meta:
-        unique_together = (('account', 'post'),)
+        unique_together = (('account', 'thread'),)
+
+
+class PostDB(TypedObject):
+    __settingclasspath__ = "modules.boards.boards.DefaultPost"
+    __defaultclasspath__ = "modules.boards.boards.DefaultPost"
+    __applabel__ = "boards"
+
+    db_account = models.ForeignKey('accounts.AccountDB', related_name="+", null=True, on_delete=models.PROTECT)
+    db_character = models.ForeignKey('objects.ObjectDB', related_name='+', null=True, on_delete=models.PROTECT)
+    db_date_created = models.DateTimeField('creation date', editable=True, auto_now_add=True)
+    db_thread = models.ForeignKey(ThreadDB, related_name='posts', on_delete=models.CASCADE)
+    db_date_modified = models.DateTimeField(editable=True, auto_now_add=True)
+    db_order = models.PositiveIntegerField(null=True)
+    db_title = models.TextField(null=True, blank=True)
+    db_body = models.TextField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'Post'
+        verbose_name_plural = 'Posts'
+        unique_together = (('db_thread', 'db_order'), )
+
+    objects = TypeclassManager()
