@@ -1,5 +1,5 @@
-from modules.areas.areas import DefaultArea
-from modules.areas.global_scripts import DefaultAreaManager
+from features.areas.areas import DefaultArea
+from features.areas.global_scripts import DefaultAreaManager
 
 
 class AreaManager(DefaultAreaManager):

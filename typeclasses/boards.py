@@ -1,5 +1,5 @@
-from modules.boards.boards import DefaultBoard, DefaultBoardCategory, DefaultPost
-from modules.boards.global_scripts import DefaultBoardManager
+from features.boards.boards import DefaultBoard, DefaultBoardCategory, DefaultPost
+from features.boards.global_scripts import DefaultBoardManager
 
 
 class BoardManager(DefaultBoardManager):

@@ -64,9 +64,9 @@ WEBSOCKET_ENABLED = True
 
 INLINEFUNC_ENABLED = True
 
-INSTALLED_APPS = INSTALLED_APPS + ('modules.core', 'modules.factions', 'modules.boards', 'modules.staff', 'modules.themes',
-                                   'modules.info', 'modules.jobs', 'modules.areas', 'modules.mapper', 'modules.rplogger',
-                                   'modules.mush_import')
+INSTALLED_APPS = INSTALLED_APPS + ('features.core', 'features.factions', 'features.boards', 'features.staff', 'features.themes',
+                                   'features.info', 'features.jobs', 'features.areas', 'features.mapper', 'features.rplogger',
+                                   'features.mush_import')
 
 ROOT_URLCONF = None
 
@@ -176,7 +176,7 @@ BASE_POST_TYPECLASS = 'typeclasses.boards.Post'
 # Job Settings
 ######################################################################
 GLOBAL_SCRIPTS['jobs'] = {
-    'typeclass': 'modules.jobs.global_scripts.JobManager',
+    'typeclass': 'features.jobs.global_scripts.JobManager',
     'repeats': -1, 'interval': 60, 'desc': 'Job API for Job System',
     'locks': "admin:perm(Admin)",
 }

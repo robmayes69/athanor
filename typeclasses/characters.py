@@ -7,7 +7,7 @@ is setup to be the "default" character type created by the default
 creation commands.
 
 """
-from modules.core.objects import AthanorCharacter
+from features.core.objects import AthanorCharacter
 
 
 class Character(AthanorCharacter):

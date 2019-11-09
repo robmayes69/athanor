@@ -22,7 +22,7 @@ several more options for customizing the Guest account system.
 
 """
 
-from modules.core.accounts import AthanorAccount, AthanorGuest
+from features.core.accounts import AthanorAccount, AthanorGuest
 
 
 class Account(AthanorAccount):
