@@ -77,7 +77,7 @@ class Script(DefaultScript):
                   at the current time. If is_valid() returns False, the running
                   script is stopped and removed from the game. You can use this
                   to check state changes (i.e. an script tracking some combat
-                  stats at regular intervals is only valid to run while there is
+                  traits at regular intervals is only valid to run while there is
                   actual combat going on).
       at_start() - Called every time the script is started, which for persistent
                   scripts is at least once every server start. Note that this is

@@ -1,17 +1,27 @@
 from evennia.objects.objects import DefaultCharacter, DefaultExit, DefaultObject, DefaultRoom
+from utils.events import EventEmitter
 
 
-class AthanorCharacter(DefaultCharacter):
-    pass
+class AthanorCharacter(DefaultCharacter, EventEmitter):
+
+    def __init__(self, *args, **kwargs):
+        DefaultCharacter.__init__(self, *args, **kwargs)
+        EventEmitter.__init__(self, *args, **kwargs)
 
 
-class AthanorExit(DefaultExit):
-    pass
+class AthanorExit(DefaultExit, EventEmitter):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(self, *args, **kwargs)
 
 
-class AthanorItem(DefaultObject):
-    pass
+class AthanorItem(DefaultObject, EventEmitter):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(self, *args, **kwargs)
 
 
-class AthanorRoom(DefaultRoom):
-    pass
+class AthanorRoom(DefaultRoom, EventEmitter):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(self, *args, **kwargs)

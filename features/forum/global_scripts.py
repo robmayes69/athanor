@@ -2,10 +2,10 @@ from django.conf import settings
 from evennia.utils.utils import class_from_module
 from typeclasses.scripts import GlobalScript
 from utils.text import partial_match
-from features.boards.models import BoardCategoryDB, BoardDB
+from features.forum.models import ForumCategoryDB, ForumBoardDB
 
 
-class DefaultBoardManager(GlobalScript):
+class DefaultForumManager(GlobalScript):
     system_name = 'BBS'
     option_dict = {
         'category_locks': ('Default locks to use for new Board Categories?', 'Lock',
@@ -13,7 +13,7 @@ class DefaultBoardManager(GlobalScript):
     }
 
     def categories(self):
-        return BoardCategoryDB.objects.filter_family().order_by('db_key')
+        return ForumCategoryDB.objects.filter_family().order_by('db_key')
 
     def visible_categories(self, character):
         return [cat for cat in self.categories() if cat.access(character, 'see')]
@@ -94,7 +94,7 @@ class DefaultBoardManager(GlobalScript):
         self.msg_target(announce, character)
 
     def boards(self):
-        return BoardDB.objects.filter_family().order_by('db_category__db_key', 'db_order')
+        return ForumBoardDB.objects.filter_family().order_by('db_category__db_key', 'db_order')
 
     def usable_boards(self, character, mode='read', check_admin=True):
         return [board for board in self.boards() if board.check_permission(character, mode=mode, checkadmin=check_admin)
@@ -112,7 +112,7 @@ class DefaultBoardManager(GlobalScript):
         else:
             boards = self.usable_boards(character)
         if not boards:
-            raise ValueError("No applicable boards.")
+            raise ValueError("No applicable forum.")
 
         board_dict = {board.prefix_order.upper(): board for board in boards}
 

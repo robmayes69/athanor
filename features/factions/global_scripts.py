@@ -351,10 +351,12 @@ class DefaultFactionManager(GlobalScript):
         return self.db.main_members[character]['rank']
 
     def at_start(self):
-        self.recalculate_basic_membership()
+        pass
+        #self.recalculate_basic_membership()
 
     def at_server_reload(self):
-        self.recalculate_basic_membership()
+        pass
+        #self.recalculate_basic_membership()
 
     def get_basic_members(self):
         """

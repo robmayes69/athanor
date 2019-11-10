@@ -30,7 +30,10 @@ class Character(AthanorCharacter):
     at_post_puppet - Echoes "AccountName has entered the game" to the room.
 
     """
-    pass
+
+    def testmsg(self, sender, **kwargs):
+        kwargs.pop('signal')
+        return self.msg(**kwargs)
 
 
 class PlayerCharacter(Character):

@@ -15,7 +15,7 @@ own cmdsets by inheriting from them or directly from `evennia.CmdSet`.
 """
 
 from evennia import default_cmds
-from features.boards.commands import ALL_COMMANDS as BBS_COMMANDS
+from features.forum.commands import ALL_COMMANDS as BBS_COMMANDS
 from features.jobs.commands import JOB_COMMANDS
 
 
@@ -90,7 +90,7 @@ class SessionCmdSet(default_cmds.SessionCmdSet):
         its creation. It should populate the set with command instances.
 
         As and example we just add the empty base `Command` object.
-        It prints some info.
+        It prints some note.
         """
         super().at_cmdset_creation()
         #

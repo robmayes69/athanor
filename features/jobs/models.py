@@ -1,6 +1,6 @@
 from django.db import models
 from evennia.typeclasses.models import TypedObject
-from evennia.typeclasses.managers import TypeclassManager
+
 
 class BucketDB(TypedObject):
     __settingclasspath__ = "features.jobs.jobs.DefaultBucket"
@@ -10,7 +10,6 @@ class BucketDB(TypedObject):
     db_due = models.DurationField()
     db_description = models.TextField(blank=True, null=True)
 
-    objects = TypeclassManager()
 
     class Meta:
         verbose_name = 'Bucket'
@@ -31,7 +30,7 @@ class JobDB(TypedObject):
     db_date_public_update = models.DateTimeField(null=True)
     db_date_admin_update = models.DateTimeField(null=True)
 
-    objects = TypeclassManager()
+
 
     class Meta:
         verbose_name = 'Job'
@@ -43,7 +42,8 @@ class JobLinkDB(TypedObject):
     __defaultclasspath__ = "features.jobs.jobs.DefaultJobLink"
     __applabel__ = "jobs"
 
-    db_owner = models.ForeignKey('core.AccountCharacterStub', related_name='job_handling', on_delete=models.DO_NOTHING)
+    db_account = models.ForeignKey('accounts.AccountDB', related_name='job_handling', on_delete=models.PROTECT)
+    db_character = models.ForeignKey('objects.ObjectDB', related_name='job_handling', on_delete=models.PROTECT)
     db_job = models.ForeignKey(JobDB, related_name='links', on_delete=models.CASCADE)
     db_link_type = models.PositiveSmallIntegerField(default=0)
     db_date_checked = models.DateTimeField(null=True)
@@ -51,9 +51,9 @@ class JobLinkDB(TypedObject):
     class Meta:
         verbose_name = 'JobLink'
         verbose_name_plural = 'JobLinks'
-        unique_together = (("db_owner", "db_job"),)
+        unique_together = (("db_account", "db_character", "db_job"),)
 
-    objects = TypeclassManager()
+
 
 
 class JobCommentDB(TypedObject):
@@ -74,4 +74,4 @@ class JobCommentDB(TypedObject):
         verbose_name = 'JobComment'
         verbose_name_plural = 'JobComments'
 
-    objects = TypeclassManager()
+

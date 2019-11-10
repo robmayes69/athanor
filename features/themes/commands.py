@@ -15,7 +15,7 @@ class CmdFCList(AthCommand):
     aliases = ["+theme"]
     locks = "cmd:all()"
     help_category = "Communications"
-    player_switches = ['info', 'powers', 'mail', 'cast']
+    player_switches = ['note', 'powers', 'mail', 'cast']
     admin_switches = ['create', 'rename', 'delete', 'assign', 'remove', 'describe', 'setinfo', 'clearinfo',
                       'setpowers', 'clearpowers', 'status', 'type']
     system_name = 'FCLIST'
@@ -247,7 +247,7 @@ class CmdFCList(AthCommand):
             self.error("You must enter a text field!")
             return
         found.info = rhs
-        found.save(update_fields=['info'])
+        found.save(update_fields=['note'])
         self.sys_msg("Info for %s updated!" % found)
         self.sys_report("Updated Info for Theme: %s" % found)
 
@@ -264,7 +264,7 @@ class CmdFCList(AthCommand):
             self.error("Theme not found.")
             return
         found.info = None
-        found.save(update_fields=['info'])
+        found.save(update_fields=['note'])
         self.sys_msg("Info for %s cleared!" % found)
         self.sys_report("Cleared Info for Theme: %s" % found)
 
@@ -318,7 +318,7 @@ class CmdFCList(AthCommand):
             self.error("Theme not found.")
             return
         if not found.info:
-            self.error("Theme has no info.")
+            self.error("Theme has no note.")
             return
         message = list()
         message.append(self.player.render.header('Info for Theme: %s' % found))

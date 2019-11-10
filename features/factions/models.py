@@ -1,6 +1,5 @@
 from django.db import models
 from evennia.typeclasses.models import TypedObject
-from evennia.typeclasses.managers import TypeclassManager
 
 
 class FactionDB(TypedObject):
@@ -8,45 +7,52 @@ class FactionDB(TypedObject):
     __defaultclasspath__ = "features.factions.factions.DefaultFaction"
     __applabel__ = "factions"
 
-    db_parent = models.ForeignKey('self', null=True, on_delete=models.DO_NOTHING, related_name='children')
+    db_parent = models.ForeignKey('self', null=True, on_delete=models.PROTECT, related_name='children')
     db_administrators = models.ManyToManyField('objects.ObjectDB', related_name='faction_admin')
     db_tier = models.PositiveIntegerField(default=0, null=False, blank=False)
+    db_abbreviation = models.CharField(max_length=20, null=True, blank=True, unique=True)
+    db_global_identifier = models.CharField(max_length=255, null=True, blank=False, unique=True)
+    db_membership_typeclass = models.CharField(max_length=255, null=True)
+    db_privilege_typeclass = models.CharField(max_length=255, null=True)
+    db_role_typeclass = models.CharField(max_length=255, null=True)
 
     class Meta:
         verbose_name = 'Faction'
         verbose_name_plural = 'Factions'
         unique_together = (('db_key', 'db_parent'),)
 
-    objects = TypeclassManager()
 
+class FactionPrivilegeDB(TypedObject):
+    __settingclasspath__ = "features.factions.factions.DefaultFactionPrivilege"
+    __defaultclasspath__ = "features.factions.factions.DefaultFactionPrivilege"
+    __applabel__ = "factions"
 
-class FactionPrivilege(models.Model):
-    faction = models.ForeignKey(FactionDB, null=False, on_delete=models.CASCADE, related_name='privileges')
-    key = models.CharField(blank=False, null=False, max_length=255)
-    child_inherits = models.BooleanField(default=False, null=False)
-    ancestor_inherits = models.BooleanField(default=False, null=False)
-    all_members = models.BooleanField(default=False, null=False)
-    non_members = models.BooleanField(default=False, null=False)
-    specific_members = models.ManyToManyField('objects.ObjectDB', related_name='faction_privileges')
-    description = models.TextField(blank=True, null=True)
+    db_faction = models.ForeignKey(FactionDB, null=False, on_delete=models.CASCADE, related_name='privileges')
+    db_description = models.TextField(blank=True, null=True)
 
     class Meta:
-        unique_together = (('faction', 'key'),)
+        unique_together = (('db_faction', 'db_key'),)
+        verbose_name = 'FactionPrivilege'
+        verbose_name_plural = 'FactionPrivileges'
 
     def __str__(self):
         return self.key
 
 
-class FactionRole(models.Model):
-    faction = models.ForeignKey(FactionDB, null=False, on_delete=models.CASCADE, related_name='roles')
-    key = models.CharField(blank=False, null=False, max_length=255)
-    description = models.TextField(null=True, blank=True)
-    privileges = models.ManyToManyField(FactionPrivilege, related_name='roles')
-    sort_order = models.PositiveIntegerField(default=0, blank=False, null=False)
-    can_bestow = models.ManyToManyField('self', related_name='grantable_by')
+class FactionRoleDB(TypedObject):
+    __settingclasspath__ = "features.factions.factions.DefaultFactionRole"
+    __defaultclasspath__ = "features.factions.factions.DefaultFactionRole"
+    __applabel__ = "factions"
+
+    db_faction = models.ForeignKey(FactionDB, null=False, on_delete=models.CASCADE, related_name='roles')
+    db_description = models.TextField(null=True, blank=True)
+    db_privileges = models.ManyToManyField(FactionPrivilegeDB, related_name='roles')
+    db_rank = models.PositiveIntegerField(default=0, null=False, blank=False)
 
     class Meta:
-        unique_together = (('faction', 'key'),)
+        unique_together = (('db_faction', 'db_key'),)
+        verbose_name = 'FactionRole'
+        verbose_name_plural = 'FactionRoles'
 
     def __str__(self):
         return self.key
@@ -60,12 +66,10 @@ class FactionMembershipDB(TypedObject):
     db_faction = models.ForeignKey(FactionDB, null=False, on_delete=models.CASCADE, related_name='memberships')
     db_entity = models.ForeignKey('objects.ObjectDB', null=False, on_delete=models.CASCADE, related_name='faction_memberships')
 
-    db_roles = models.ManyToManyField(FactionRole, related_name='memberships')
-    db_privileges = models.ManyToManyField(FactionPrivilege, related_name='memberships')
+    db_roles = models.ManyToManyField(FactionRoleDB, related_name='memberships')
 
     class Meta:
         verbose_name = 'Faction Membership'
         verbose_name_plural = 'Faction Memberships'
         unique_together = (('db_entity', 'db_faction'),)
 
-    objects = TypeclassManager()

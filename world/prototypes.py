@@ -32,7 +32,7 @@ Possible keywords are:
     ndb_<name> - value of a nattribute (the "ndb_" part is ignored).
     any other keywords are interpreted as Attributes and their values.
 
-See the `@spawn` command and `evennia.utils.spawner` for more info.
+See the `@spawn` command and `evennia.utils.spawner` for more note.
 
 """
 """
@@ -69,7 +69,7 @@ Possible keywords are:
     ndb_<name> - value of a nattribute (the "ndb_" part is ignored).
     any other keywords are interpreted as Attributes and their values.
 
-See the `@spawn` command and `evennia.utils.spawner` for more info.
+See the `@spawn` command and `evennia.utils.spawner` for more note.
 
 """
 STD_EQUIP = {

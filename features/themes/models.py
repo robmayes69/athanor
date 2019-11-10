@@ -1,25 +1,28 @@
 from django.db import models
+from evennia.typeclasses.models import TypedObject
 
 
-class ThemeStatus(models.Model):
-    key = models.CharField(max_length=50, blank=False, null=False, unique=True)
+class ThemeDB(TypedObject):
+    __settingclasspath__ = "features.themes.themes.DefaultTheme"
+    __defaultclasspath__ = "features.themes.themes.DefaultTheme"
+    __applabel__ = "theme"
+
+    db_description = models.TextField(blank=False, null=False)
+
+    class Meta:
+        verbose_name = 'Theme'
+        verbose_name_plural = 'Themes'
 
 
-class ThemeType(models.Model):
-    key = models.CharField(max_length=50, blank=False, null=False, unique=True)
+class ThemeParticipantDB(TypedObject):
+    __settingclasspath__ = "features.themes.themes.DefaultTheme"
+    __defaultclasspath__ = "features.themes.themes.DefaultTheme"
+    __applabel__ = "theme"
 
+    db_theme = models.ForeignKey(ThemeDB, related_name='participants', on_delete=models.CASCADE)
+    db_character = models.ForeignKey('objects.ObjectDB', related_name='theme_status', on_delete=models.PROTECT)
+    db_status = models.CharField(max_length=50, blank=False, null=False)
+    db_list_type = models.CharField(max_length=50, blank=False, null=False)
 
-class ThemeCharacterStatus(models.Model):
-    character_stub = models.OneToOneField('core.ObjectStub', related_name='theme_status', on_delete=models.CASCADE)
-    status = models.ForeignKey(ThemeStatus, related_name='character_status', null=True, on_delete=models.SET_NULL)
-
-
-class Theme(models.Model):
-    key = models.CharField(max_length=255, blank=False, null=False, unique=True)
-    description = models.TextField(blank=False, null=False)
-
-
-class ThemeParticipant(models.Model):
-    theme = models.ForeignKey(Theme, related_name='participants', on_delete=models.CASCADE)
-    character_status = models.ForeignKey(ThemeCharacterStatus, related_name='participating_in', on_delete=models.CASCADE)
-    list_type = models.ForeignKey(ThemeType, related_name='used_by', on_delete=models.DO_NOTHING)
+    class Meta:
+        unique_together = (('db_theme', 'db_character'),)

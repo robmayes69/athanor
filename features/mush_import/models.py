@@ -1,4 +1,4 @@
-import re, hashlib
+import hashlib
 from django.db import models
 from django.db.models import Q
 from utils.text import partial_match
@@ -8,8 +8,8 @@ class MushObject(models.Model):
     obj = models.OneToOneField('objects.ObjectDB', related_name='mush', null=True, on_delete=models.SET_NULL)
     account = models.OneToOneField('accounts.AccountDB', related_name='mush', null=True, on_delete=models.SET_NULL)
     group = models.OneToOneField('factions.FactionDB', related_name='mush', null=True, on_delete=models.SET_NULL)
-    board = models.OneToOneField('boards.BoardDB', related_name='mush', null=True, on_delete=models.SET_NULL)
-    fclist = models.OneToOneField('themes.Theme', related_name='mush', null=True, on_delete=models.SET_NULL)
+    board = models.OneToOneField('forum.ForumBoardDB', related_name='mush', null=True, on_delete=models.SET_NULL)
+    fclist = models.OneToOneField('themes.ThemeDB', related_name='mush', null=True, on_delete=models.SET_NULL)
     dbref = models.CharField(max_length=15, db_index=True)
     objid = models.CharField(max_length=30, unique=True, db_index=True)
     type = models.PositiveSmallIntegerField(db_index=True)

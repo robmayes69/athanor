@@ -5,24 +5,24 @@ from evennia.utils.utils import lazy_property
 from evennia.utils.optionhandler import OptionHandler
 from evennia.locks.lockhandler import LockException
 from evennia.utils.validatorfuncs import lock as validate_lock
-from features.boards.models import BoardCategoryDB, BoardDB, PostDB
 from utils.time import utcnow
 from utils.online import puppets as online_puppets
 from utils.valid import simple_name
+from . models import ForumCategoryDB, ForumBoardDB, ForumThreadDB, ForumPostDB, ForumThreadRead
 
 
-class DefaultBoardCategory(TypeclassBase, metaclass=BoardCategoryDB):
+class DefaultForumCategory(ForumCategoryDB, metaclass=TypeclassBase):
     option_dict = {
         'board_locks': ('Default locks for new Boards?', 'Lock', "read:all();post:all();admin:perm(Admin)"),
         'color': ('Color to display Prefix in.', 'Color', 'n'),
         'faction': ('Faction to use for Lock Templates', 'Faction', None)
     }
-    prefix_regex = re.compile(r"^[a-zA-Z]{1,3}$")
+    prefix_regex = re.compile(r"^[a-zA-Z]{0,3}$")
 
     @classmethod
     def validate_prefix(cls, prefix_text, rename_target=None):
         if not cls.prefix_regex.match(prefix_text):
-            raise ValueError("Prefixes must be 0-3 alphanumeric characters.")
+            raise ValueError("Prefixes must be 0-3 alphabetical characters.")
         query = cls.objects.filter(db_abbr__iexact=prefix_text)
         if rename_target:
             query = query.exclude(id=rename_target.id)
@@ -96,7 +96,7 @@ class DefaultBoardCategory(TypeclassBase, metaclass=BoardCategoryDB):
         return new_locks
 
 
-class DefaultBoard(with_metaclass(TypeclassBase, BoardDB)):
+class DefaultForumBoard(ForumBoardDB, metaclass=TypeclassBase):
 
     @classmethod
     def validate_key(cls, key_text, category, rename_target=None):
@@ -263,7 +263,7 @@ class DefaultBoard(with_metaclass(TypeclassBase, BoardDB)):
         return new_locks
 
 
-class DefaultPost(with_metaclass(TypeclassBase, PostDB)):
+class DefaultForumThread(ForumThreadDB, metaclass=TypeclassBase):
 
     def at_first_save(self, *args, **kwargs):
         pass
@@ -279,7 +279,7 @@ class DefaultPost(with_metaclass(TypeclassBase, PostDB)):
     @classmethod
     def create(cls, *args, **kwargs):
         board = kwargs.get('board', None)
-        if not isinstance(board, BoardDB):
+        if not isinstance(board, ForumThreadDB):
             raise ValueError("Posts must be linked to a board!")
 
         owner = kwargs.get('owner', None)
@@ -327,3 +327,7 @@ class DefaultPost(with_metaclass(TypeclassBase, PostDB)):
         acc_read, created = self.read.get_or_create(account=account)
         acc_read.date_read = utcnow()
         acc_read.save()
+
+
+class DefaultForumPost(ForumPostDB, metaclass=TypeclassBase):
+    pass

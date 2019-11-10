@@ -1,10 +1,9 @@
 from evennia.typeclasses.models import TypeclassBase
-from features.factions.models import FactionDB, FactionMembershipDB
-from future.utils import with_metaclass
+from features.factions.models import FactionDB, FactionMembershipDB, FactionRoleDB, FactionPrivilegeDB
 from utils.valid import simple_name
 
 
-class DefaultFaction(with_metaclass(TypeclassBase, FactionDB)):
+class DefaultFaction(FactionDB, metaclass=TypeclassBase):
 
     def at_first_save(self, *args, **kwargs):
         pass
@@ -44,7 +43,6 @@ class DefaultFaction(with_metaclass(TypeclassBase, FactionDB)):
         new_faction = cls(db_key=key, db_tier=tier, db_parent=parent)
         new_faction.save()
         return new_faction
-
 
     def entity_has_privilege(self, entity, privilege_name, admin_bypass=True):
         if admin_bypass and entity.is_admin:
@@ -114,7 +112,7 @@ class DefaultFaction(with_metaclass(TypeclassBase, FactionDB)):
         pass
 
 
-class DefaultFactionMembership(with_metaclass(TypeclassBase, FactionMembershipDB)):
+class DefaultFactionMembership(FactionMembershipDB, metaclass=TypeclassBase):
 
     @classmethod
     def create(cls, *args, **kwargs):
@@ -131,3 +129,11 @@ class DefaultFactionMembership(with_metaclass(TypeclassBase, FactionMembershipDB
 
     def remove_privilege(self, privilege):
         pass
+
+
+class DefaultFactionRole(FactionRoleDB, metaclass=TypeclassBase):
+    pass
+
+
+class DefaultFactionPrivilege(FactionPrivilegeDB, metaclass=TypeclassBase):
+    pass

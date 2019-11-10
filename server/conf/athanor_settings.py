@@ -64,30 +64,15 @@ WEBSOCKET_ENABLED = True
 
 INLINEFUNC_ENABLED = True
 
-INSTALLED_APPS = INSTALLED_APPS + ('features.core', 'features.factions', 'features.boards', 'features.staff', 'features.themes',
-                                   'features.info', 'features.jobs', 'features.areas', 'features.mapper', 'features.rplogger',
-                                   'features.mush_import')
+INSTALLED_APPS = INSTALLED_APPS + ['features.core', 'features.factions', 'features.forum', 'features.staff', 'features.themes',
+                                   'features.note', 'features.jobs', 'features.areas', 'features.mapper', 'features.rplogger',
+                                   'features.mush_import', "features.effects", "features.gear", "features.market",
+                                   "features.quests", "features.traits"]
 
 ROOT_URLCONF = None
 
 COMMAND_DEFAULT_CLASS = "commands.command.Command"
 
-######################################################################
-# Arango Options
-######################################################################
-ARANGO = {
-    'protocol': 'http',
-    'host': 'localhost',
-    'port': 8529,
-    'database': 'athanor',
-    'username': 'athanor',
-    'password': 'athanor'
-}
-
-GLOBAL_SCRIPTS['arango'] = {
-    'typeclass': 'typeclasses.database.ArangoManager',
-    'repeats': -1, 'interval': 50, 'desc': 'Arango Database Manager'
-}
 
 ######################################################################
 # Account Options
@@ -160,17 +145,18 @@ FACTION_ROLES = {
 }
 
 ######################################################################
-# BBS Settings
+# Forum Settings
 ######################################################################
-GLOBAL_SCRIPTS['boards'] = {
-    'typeclass': 'typeclasses.boards.BoardManager',
-    'repeats': -1, 'interval': 60, 'desc': 'BBS API for Account BBS',
+GLOBAL_SCRIPTS['forum'] = {
+    'typeclass': 'typeclasses.forum.ForumManager',
+    'repeats': -1, 'interval': 60, 'desc': 'Forum BBS API',
     'locks': "admin:perm(Admin)",
 }
 
-BASE_BOARDCATEGORY_TYPECLASS = 'typeclasses.boards.BoardCategory'
-BASE_BOARD_TYPECLASS = 'typeclasses.boards.Board'
-BASE_POST_TYPECLASS = 'typeclasses.boards.Post'
+BASE_FORUMCATEGORY_TYPECLASS = 'typeclasses.forum.ForumCategory'
+BASE_FORUMBOARD_TYPECLASS = 'typeclasses.forum.ForumBoard'
+BASE_FORUMTHREAD_TYPECLASS = "typeclasses.forum.ForumThread"
+BASE_FORUMPOST_TYPECLASS = 'typeclasses.forum.ForumPost'
 
 ######################################################################
 # Job Settings

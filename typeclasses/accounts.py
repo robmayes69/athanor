@@ -33,7 +33,7 @@ class Account(AthanorAccount):
     are attended/joined using this object.
 
     It can be useful e.g. for storing configuration options for your game, but
-    should generally not hold any character-related info (that's best handled
+    should generally not hold any character-related note (that's best handled
     on the character level).
 
     Can be set using BASE_ACCOUNT_TYPECLASS.

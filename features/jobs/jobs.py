@@ -3,7 +3,7 @@ from django.db.models import Q, F
 from evennia.utils.utils import time_format
 from evennia.utils.ansi import ANSIString
 from evennia.utils.validatorfuncs import duration
-from evennia.typeclasses.managers import TypeclassManager
+
 from utils.time import utcnow
 from utils.online import accounts as online_accounts
 

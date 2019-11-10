@@ -20,7 +20,7 @@ class CmdBBList(BBCommand):
     syntax and appearance.
 
     Board Membership
-        +bblist - Shows all visible boards.
+        +bblist - Shows all visible forum.
         +bblist/join <alias> - Join a board.
         +bblist/leave <alias> - Leave a board.
 
@@ -50,7 +50,7 @@ class CmdBBList(BBCommand):
     def switch_leave(self):
         board = evennia.GLOBAL_SCRIPTS.boards.find_board(self.caller, self.args)
         if board.mandatory:
-            raise ValueError("Cannot leave mandatory boards!")
+            raise ValueError("Cannot leave mandatory forum!")
         board.ignore_list.add(self.caller)
 
 
@@ -68,7 +68,7 @@ class CmdBBCat(BBCommand):
 
     Locks:
         see - Who can see this category. This blocks all Board-specific locks
-            for child boards.
+            for child forum.
     """
     key = '+bbcat'
     locks = 'cmd:perm(Admin) or perm(BBS_Admin)'
@@ -106,14 +106,14 @@ class CmdBBAdmin(BBCommand):
     syntax and appearance.
 
     Managing Boards - Staff Only
-        +bbadmin - Show all boards and locks.
+        +bbadmin - Show all forum and locks.
         +bbadmin/create <category>=<boardname/<order> - Creates a new board.
         +bbadmin/delete <board>=<full name> - Deletes a board.
         +bbadmin/rename <board>=<new name> - Renames a board.
         +bbadmin/order <board>=<new order> - Change a board's order.
         +bbadmin/lock <board>=<lock string> - Lock a board.
         +bbadmin/mandatory <board>=<boolean> - Change whether a board is
-            mandatory or not. mandatory boards insistently announce that
+            mandatory or not. mandatory forum insistently announce that
             connected accounts must read them and cannot be skipped with
             +bbread/catchup
 
@@ -206,7 +206,7 @@ class CmdBBRead(BBCommand):
     syntax and appearance.
 
     Reading Posts
-        +bbread - Show all message boards.
+        +bbread - Show all message forum.
         +bbread <board> - Shows a board's messages. <board> can be its name
             (supports partial matches) or number.
         +bbread <board>/<list> - Read a message. <list> is comma-seperated.
@@ -215,7 +215,7 @@ class CmdBBRead(BBCommand):
         +bbread/next - shows first available unread message.
         +bbread/new - Same as +bbnext.
         +bbread/catchup <board> - Mark all messages on a board read. use /catchup all to
-            mark all boards as read.
+            mark all forum as read.
         +bbread/scan - Lists unread messages in compact form.
     """
     key = '+bbread'
