@@ -2,7 +2,7 @@ from django.conf import settings
 from evennia.utils.utils import class_from_module
 from typeclasses.scripts import GlobalScript
 from utils.text import partial_match
-from features.forum.models import ForumCategoryDB, ForumBoardDB
+from typeclasses.forum import ForumCategory, ForumBoard
 
 
 class DefaultForumManager(GlobalScript):
@@ -13,7 +13,7 @@ class DefaultForumManager(GlobalScript):
     }
 
     def categories(self):
-        return ForumCategoryDB.objects.filter_family().order_by('db_key')
+        return ForumCategory.objects.filter_family().order_by('db_key')
 
     def visible_categories(self, character):
         return [cat for cat in self.categories() if cat.access(character, 'see')]
@@ -94,7 +94,7 @@ class DefaultForumManager(GlobalScript):
         self.msg_target(announce, character)
 
     def boards(self):
-        return ForumBoardDB.objects.filter_family().order_by('db_category__db_key', 'db_order')
+        return ForumBoard.objects.filter_family().order_by('db_category__db_key', 'db_order')
 
     def usable_boards(self, character, mode='read', check_admin=True):
         return [board for board in self.boards() if board.check_permission(character, mode=mode, checkadmin=check_admin)
@@ -167,7 +167,7 @@ class DefaultForumManager(GlobalScript):
         if not board.category.access('admin', character):
             raise ValueError("Permission denied!")
         lock = board.change_locks(lock)
-        announce = f"BBS Board ({board.category.key}) - {board.alias}: {board.key} lock changed to: {lockstring}"
+        announce = f"BBS Board ({board.category.key}) - {board.alias}: {board.key} lock changed to: {lock}"
         self.alert(announce, enactor=character)
         self.msg_target(announce, character)
 

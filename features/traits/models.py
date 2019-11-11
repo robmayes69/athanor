@@ -19,7 +19,7 @@ class TraitDefinitionDB(TypedObject):
     db_require_context = models.BooleanField(default=False, null=False)
 
     class Meta:
-        unique_together = (('db_key', 'db_parent'), ('db_parent', 'db_formal_name'),)
+        unique_together = (('db_parent', 'db_key'), ('db_parent', 'db_formal_name'),)
         verbose_name = 'TraitDefinition'
         verbose_name_plural = 'TraitDefinitions'
 
@@ -29,13 +29,14 @@ class TraitValueDB(TypedObject):
     __defaultclasspath__ = "features.traits.traits.DefaultTrait"
     __applabel__ = "traits"
 
-    db_owner = models.ForeignKey('objects.ObjectDB', related_name='trait_storage', on_delete=models.CASCADE)
-    db_category = models.ForeignKey(TraitDefinitionDB, related_name='traits', on_delete=models.PROTECT)
+    db_model = models.ForeignKey('core.ModelMap', related_name='trait_values', on_delete=models.PROTECT)
+    db_model_id = models.IntegerField(null=False)
+    db_trait = models.ForeignKey(TraitDefinitionDB, related_name='traits', on_delete=models.PROTECT)
     db_context = models.CharField(max_length=255, null=False, blank=True, default='')
     db_base_value = models.BigIntegerField(default=0, null=False, blank=False)
     db_damage_value = models.BigIntegerField(default=0, null=False, blank=False)
 
     class Meta:
-        unique_together = (('db_owner', 'db_category', 'db_key', 'db_context'),)
+        unique_together = (('db_model', 'db_model_id', 'db_trait', 'db_key', 'db_context'),)
         verbose_name = 'Trait'
         verbose_name_plural = 'Traits'

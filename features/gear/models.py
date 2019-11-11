@@ -7,10 +7,12 @@ class InventoryDB(TypedObject):
     __defaultclasspath__ = "features.gear.gear.DefaultInventory"
     __applabel__ = "gear"
 
-    db_owner = models.ForeignKey('objects.ObjectDB', related_name='inventories', on_delete=models.CASCADE)
+    db_model = models.ForeignKey('core.ModelMap', related_name='inventories', on_delete=models.PROTECT)
+    db_model_id = models.IntegerField(null=False, blank=False)
+    db_slot_typeclass = models.CharField(max_length=255, null=True)
 
     class Meta:
-        unique_together = (('db_owner', 'db_key'),)
+        unique_together = (('db_model', 'db_model_id', 'db_key'),)
         verbose_name = 'Inventory'
         verbose_name_plural = 'Inventories'
 
@@ -23,6 +25,7 @@ class InventorySlotDB(TypedObject):
     db_inventory = models.ForeignKey(InventoryDB, related_name='slots', on_delete=models.PROTECT)
     db_item = models.ForeignKey('objects.ObjectDB', related_name='inventory_slot', unique=True, on_delete=models.PROTECT)
     db_sort = models.PositiveIntegerField(default=0, null=False, blank=False)
+    db_hidden = models.BooleanField(default=False, null=False)
 
     class Meta:
         unique_together = (('db_inventory', 'db_sort'),)
@@ -35,10 +38,12 @@ class GearSetDB(TypedObject):
     __defaultclasspath__ = "features.gear.gear.DefaultGearSet"
     __applabel__ = "gear"
 
-    db_owner = models.ForeignKey('objects.ObjectDB', related_name='gearsets', on_delete=models.CASCADE)
+    db_model = models.ForeignKey('core.ModelMap', related_name='gearsets', on_delete=models.PROTECT)
+    db_model_id = models.IntegerField(null=False, blank=False)
+    db_slot_typeclass = models.CharField(max_length=255, null=True)
 
     class Meta:
-        unique_together = (('db_owner', 'db_key'),)
+        unique_together = (('db_model', 'db_model_id', 'db_key'),)
         verbose_name = 'GearSet'
         verbose_name_plural = 'GearSets'
 

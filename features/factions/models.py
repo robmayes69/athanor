@@ -2,12 +2,35 @@ from django.db import models
 from evennia.typeclasses.models import TypedObject
 
 
+class TreasuryDB(TypedObject):
+    __settingclasspath__ = "features.factions.factions.DefaultTreasury"
+    __defaultclasspath__ = "features.factions.factions.DefaultTreasury"
+    __applabel__ = "factions"
+
+    db_model = models.CharField(max_length=255, null=False, blank=False)
+    db_model_id = models.IntegerField(null=False, blank=False)
+
+    class Meta:
+        unique_together = (('db_model', 'db_model_id', 'db_key'),)
+
+
+class AllianceDB(TypedObject):
+    __settingclasspath__ = "features.factions.factions.DefaultAlliance"
+    __defaultclasspath__ = "features.factions.factions.DefaultAlliance"
+    __applabel__ = "factions"
+
+    db_tier = models.PositiveIntegerField(default=0, null=False, blank=False)
+    db_abbreviation = models.CharField(max_length=20, null=True, blank=True, unique=True)
+    db_global_identifier = models.CharField(max_length=255, null=True, blank=False, unique=True)
+
+
+
 class FactionDB(TypedObject):
     __settingclasspath__ = "features.factions.factions.DefaultFaction"
     __defaultclasspath__ = "features.factions.factions.DefaultFaction"
     __applabel__ = "factions"
 
-    db_parent = models.ForeignKey('self', null=True, on_delete=models.PROTECT, related_name='children')
+    db_alliance = models.ForeignKey(AllianceDB, null=True, on_delete=models.SET_NULL, related_name='factions')
     db_administrators = models.ManyToManyField('objects.ObjectDB', related_name='faction_admin')
     db_tier = models.PositiveIntegerField(default=0, null=False, blank=False)
     db_abbreviation = models.CharField(max_length=20, null=True, blank=True, unique=True)
@@ -19,7 +42,6 @@ class FactionDB(TypedObject):
     class Meta:
         verbose_name = 'Faction'
         verbose_name_plural = 'Factions'
-        unique_together = (('db_key', 'db_parent'),)
 
 
 class FactionPrivilegeDB(TypedObject):
@@ -61,7 +83,7 @@ class FactionRoleDB(TypedObject):
 class FactionMembershipDB(TypedObject):
     __settingclasspath__ = "features.factions.factions.DefaultFactionMembership"
     __defaultclasspath__ = "features.factions.factions.DefaultFactionMembership"
-    __applabel__ = "faction_memberships"
+    __applabel__ = "factions"
 
     db_faction = models.ForeignKey(FactionDB, null=False, on_delete=models.CASCADE, related_name='memberships')
     db_entity = models.ForeignKey('objects.ObjectDB', null=False, on_delete=models.CASCADE, related_name='faction_memberships')
@@ -72,4 +94,25 @@ class FactionMembershipDB(TypedObject):
         verbose_name = 'Faction Membership'
         verbose_name_plural = 'Faction Memberships'
         unique_together = (('db_entity', 'db_faction'),)
+
+
+class DivisionDB(TypedObject):
+    __settingclasspath__ = "features.factions.factions.DefaultDivision"
+    __defaultclasspath__ = "features.factions.factions.DefaultDivision"
+    __applabel__ = "factions"
+
+    db_faction = models.ForeignKey(FactionDB, on_delete=models.PROTECT, related_name='divisons')
+    db_description = models.TextField(blank=True, null=True)
+    db_administrators = models.ManyToManyField('objects.ObjectDB', related_name='division_admin')
+    db_tier = models.PositiveIntegerField(default=0, null=False, blank=False)
+    db_abbreviation = models.CharField(max_length=20, null=True, blank=True, unique=True)
+    db_global_identifier = models.CharField(max_length=255, null=True, blank=False, unique=True)
+    db_membership_typeclass = models.CharField(max_length=255, null=True)
+    db_privilege_typeclass = models.CharField(max_length=255, null=True)
+    db_role_typeclass = models.CharField(max_length=255, null=True)
+
+    class Meta:
+        unique_together = (('db_faction', 'db_key'))
+
+
 
