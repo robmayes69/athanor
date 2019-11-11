@@ -13,10 +13,11 @@ to add/remove commands from the default lineup. You can create your
 own cmdsets by inheriting from them or directly from `evennia.CmdSet`.
 
 """
-
+from django.conf import settings
 from evennia import default_cmds
 from features.forum.commands import ALL_COMMANDS as BBS_COMMANDS
 from features.jobs.commands import JOB_COMMANDS
+from features.core.exit_errors import ExitErrorCmdSet
 
 
 class CharacterCmdSet(default_cmds.CharacterCmdSet):
@@ -37,6 +38,8 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         #
         for cmd in BBS_COMMANDS:
             self.add(cmd)
+        if settings.EXIT_ERRORS:
+            self.add(ExitErrorCmdSet)
 
 
 class AccountCmdSet(default_cmds.AccountCmdSet):

@@ -64,10 +64,10 @@ WEBSOCKET_ENABLED = True
 
 INLINEFUNC_ENABLED = True
 
-INSTALLED_APPS = INSTALLED_APPS + ['features.core', 'features.factions', 'features.forum', 'features.staff', 'features.themes',
+INSTALLED_APPS = INSTALLED_APPS + tuple(['features.core', 'features.factions', 'features.forum', 'features.staff', 'features.themes',
                                    'features.note', 'features.jobs', 'features.areas', 'features.mapper', 'features.rplogger',
                                    'features.mush_import', "features.effects", "features.gear", "features.market",
-                                   "features.quests", "features.traits"]
+                                   "features.quests", "features.traits"])
 
 ROOT_URLCONF = None
 
@@ -112,6 +112,7 @@ BASE_EFFECT_TYPECLASS = 'typeclasses.effects.Effect'
 # Exit Settings
 ######################################################################
 BASE_EXIT_TYPECLASS = "typeclasses.exits.Exit"
+EXIT_ERRORS = True
 
 ######################################################################
 # Faction Settings
