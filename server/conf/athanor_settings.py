@@ -186,9 +186,12 @@ BASE_NOTE_TYPECLASS = 'typeclasses.note.Note'
 ######################################################################
 # Funcs Settings
 ######################################################################
-EXTRA_LOCK_FUNCS = tuple([f"features.{s}.locks" for s in ['areas', 'effects', 'factions', 'forum', 'gear',
-                                                    'market', 'note', 'quests', 'rplogger']])
+sections = ['areas', 'effects', 'factions', 'forum', 'gear', 'market',
+            'note', 'quests', 'rplogger']
+EXTRA_LOCK_FUNCS = tuple([f"features.{s}.locks" for s in sections])
 LOCK_FUNC_MODULES = LOCK_FUNC_MODULES + EXTRA_LOCK_FUNCS
+del EXTRA_LOCK_FUNCS
+del sections
 
 ######################################################################
 # Misc Settings

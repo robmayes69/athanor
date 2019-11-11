@@ -5,7 +5,7 @@ Commands describe the input the account can do to the game.
 
 """
 
-from evennia.commands.default.muxcommand import MuxCommand
+from features.core.command import AthanorCommand
 # from evennia import default_cmds
 from evennia.utils import make_iter
 
@@ -163,7 +163,7 @@ from evennia.utils import make_iter
 #                 self.character = None
 
 
-class Command(MuxCommand):
+class Command(AthanorCommand):
     """
     Inherit from this if you want to create your own command styles
     from scratch.  Note that Evennia's default commands inherits from
@@ -183,74 +183,5 @@ class Command(MuxCommand):
             every command, like prompts.
 
     """
+    pass
 
-    def func(self):
-        try:
-            if self.switches:
-                if len(self.switches) > 1:
-                    raise ValueError(f"{self.key} does not support multiple simultaneous switches!")
-                switch = self.switches[0]
-                return getattr(self, f"switch_{switch}")()
-
-            self.switch_main()
-        except ValueError as err:
-            self.msg(f"ERROR: {str(err)}")
-            return
-
-    def parse_targets(self, objects):
-        result_dict = {}
-        for o in objects:
-            common_key = o.common_key(self)
-            for key in common_key.split():
-                if key not in result_dict:
-                    result_dict[key] = list()
-                result_dict[key].append(o)
-        return result_dict
-
-    def choose_targets(self, pattern, candidates, checker=None, verb="target"):
-        if not checker:
-            checker = self.character
-        target_all = False
-        target_index = None
-        if '.' in pattern:
-            number, find_key = pattern.split('.')
-            if not find_key:
-                raise ValueError("You want to %s a %s? What is that?" % (verb, find_key))
-            if number.isdigit():
-                target_index = int(number) - 1
-                if target_index < 0:
-                    raise ValueError("You want to %s the 0th of something? Yeah how about not." % verb)
-            elif number.lower() == 'all':
-                target_all = True
-            else:
-                raise ValueError("If you use a . in targeting it must be either a "
-                                 "number or 'all'! all.thing or 5.thing!")
-        else:
-            find_key = pattern
-            target_index = 0
-        candidate_keys = sorted(candidates.keys())
-        result_key = None
-        for k in candidate_keys:
-            if find_key.lower() == k.lower():
-                result_key = k
-                break
-        if not result_key:
-            raise ValueError("That turned up nothing!")
-        objects = candidates[result_key]
-        if target_all:
-            return objects
-        if len(objects) > target_index:
-            return make_iter(objects[target_index])
-        else:
-            raise ValueError("There isn't a %s to %s!" % (pattern, verb))
-
-    def target_occupants(self, target, pattern, verb="target", checker=None):
-        if not checker:
-            checker = self.character
-        occupants = target.visible_occupants(checker)
-        if not occupants:
-            raise ValueError("Nothing to %s here!" % verb)
-        parsed = self.parse_targets(occupants)
-        chosen = self.choose_targets(pattern, parsed, verb)
-        if not chosen:
-            raise ValueError("You want to %s a %s? What is that?" % (verb, pattern))
