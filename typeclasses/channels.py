@@ -12,10 +12,10 @@ to be modified.
 
 """
 
-from evennia import DefaultChannel
+from features.core.channels import AthanorChannel
 
 
-class Channel(DefaultChannel):
+class Channel(AthanorChannel):
     """
     Working methods:
         at_channel_creation() - called once, when the channel is created

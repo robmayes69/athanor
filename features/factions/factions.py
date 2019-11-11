@@ -1,9 +1,14 @@
 from evennia.typeclasses.models import TypeclassBase
 from features.factions.models import FactionDB, FactionMembershipDB, FactionRoleDB, FactionPrivilegeDB
 from utils.valid import simple_name
+from utils.events import EventEmitter
 
 
-class DefaultFaction(FactionDB, metaclass=TypeclassBase):
+class DefaultFaction(FactionDB, EventEmitter, metaclass=TypeclassBase):
+
+    def __init__(self, *args, **kwargs):
+        FactionDB.__init__(self, *args, **kwargs)
+        EventEmitter.__init__(self, *args, **kwargs)
 
     def at_first_save(self, *args, **kwargs):
         pass
@@ -112,7 +117,11 @@ class DefaultFaction(FactionDB, metaclass=TypeclassBase):
         pass
 
 
-class DefaultFactionMembership(FactionMembershipDB, metaclass=TypeclassBase):
+class DefaultFactionMembership(FactionMembershipDB, EventEmitter, metaclass=TypeclassBase):
+
+    def __init__(self, *args, **kwargs):
+        FactionMembershipDB.__init__(self, *args, **kwargs)
+        EventEmitter.__init__(self, *args, **kwargs)
 
     @classmethod
     def create(cls, *args, **kwargs):
@@ -131,9 +140,15 @@ class DefaultFactionMembership(FactionMembershipDB, metaclass=TypeclassBase):
         pass
 
 
-class DefaultFactionRole(FactionRoleDB, metaclass=TypeclassBase):
-    pass
+class DefaultFactionRole(FactionRoleDB, EventEmitter, metaclass=TypeclassBase):
+
+    def __init__(self, *args, **kwargs):
+        FactionRoleDB.__init__(self, *args, **kwargs)
+        EventEmitter.__init__(self, *args, **kwargs)
 
 
-class DefaultFactionPrivilege(FactionPrivilegeDB, metaclass=TypeclassBase):
-    pass
+class DefaultFactionPrivilege(FactionPrivilegeDB, EventEmitter, metaclass=TypeclassBase):
+
+    def __init__(self, *args, **kwargs):
+        FactionPrivilegeDB.__init__(self, *args, **kwargs)
+        EventEmitter.__init__(self, *args, **kwargs)

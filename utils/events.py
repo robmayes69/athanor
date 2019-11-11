@@ -1,4 +1,5 @@
 from django.dispatch import Signal
+from utils.time import utcnow
 
 
 class EventManager(object):
@@ -17,6 +18,7 @@ class EventManager(object):
 
     def emit(self, obj, event, **kwargs):
         sig = self.get_event(event)
+        kwargs['event_timestamp'] = utcnow()
         results = sig.send(obj, **kwargs)
         return tuple([(r[0].__self__, r[1]) for r in results if r[0]])
 
