@@ -3,7 +3,7 @@ from features.areas.models import AreaDB
 from typeclasses.scripts import GlobalScript
 from utils.events import EventEmitter
 
-class DefaultAreaManager(GlobalScript):
+class DefaultAreaController(GlobalScript):
     system_name = 'AREA'
     option_dict = {
         'area_locks': (

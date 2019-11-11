@@ -7,7 +7,7 @@ from utils.valid import simple_name
 _PERM_RE = re.compile(r"^[a-zA-Z]+$")
 
 
-class DefaultFactionManager(GlobalScript):
+class DefaultFactionController(GlobalScript):
     system_name = 'FACTION'
     option_dict = {
     }

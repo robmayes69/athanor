@@ -8,6 +8,7 @@ class ThemeDB(TypedObject):
     __applabel__ = "theme"
 
     db_description = models.TextField(blank=False, null=False)
+    db_participant_typeclass = models.CharField(max_length=255, null=True)
 
     class Meta:
         verbose_name = 'Theme'
@@ -26,3 +27,5 @@ class ThemeParticipantDB(TypedObject):
 
     class Meta:
         unique_together = (('db_theme', 'db_character'),)
+        verbose_name = 'ThemeParticipant'
+        verbose_name = 'ThemeParticipants'

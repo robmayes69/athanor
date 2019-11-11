@@ -2,12 +2,10 @@ from django.db import models
 from evennia.typeclasses.models import TypedObject
 
 
-
 class InventoryDB(TypedObject):
     __settingclasspath__ = "features.gear.gear.DefaultInventory"
     __defaultclasspath__ = "features.gear.gear.DefaultInventory"
     __applabel__ = "gear"
-
 
     db_owner = models.ForeignKey('objects.ObjectDB', related_name='inventories', on_delete=models.CASCADE)
 
@@ -22,20 +20,20 @@ class InventorySlotDB(TypedObject):
     __defaultclasspath__ = "features.gear.gear.DefaultInventorySlot"
     __applabel__ = "gear"
 
-
     db_inventory = models.ForeignKey(InventoryDB, related_name='slots', on_delete=models.PROTECT)
     db_item = models.ForeignKey('objects.ObjectDB', related_name='inventory_slot', unique=True, on_delete=models.PROTECT)
     db_sort = models.PositiveIntegerField(default=0, null=False, blank=False)
 
     class Meta:
-        unique_together = (('db_inventory', 'db_sort'))
+        unique_together = (('db_inventory', 'db_sort'),)
+        verbose_name = 'InventorySlot'
+        verbose_name_plural = 'InventorySlots'
 
 
 class GearSetDB(TypedObject):
     __settingclasspath__ = "features.gear.gear.DefaultGearSet"
     __defaultclasspath__ = "features.gear.gear.DefaultGearSet"
     __applabel__ = "gear"
-
 
     db_owner = models.ForeignKey('objects.ObjectDB', related_name='gearsets', on_delete=models.CASCADE)
 
@@ -50,7 +48,6 @@ class GearSlotDB(TypedObject):
     __defaultclasspath__ = "features.gear.gear.DefaultGearSlot"
     __applabel__ = "gear"
 
-
     db_gearset = models.ForeignKey(GearSetDB, related_name='equipped', on_delete=models.CASCADE)
     db_slot = models.CharField(max_length=80, blank=False, null=False)
     db_layer = models.PositiveIntegerField(default=0, null=False)
@@ -58,3 +55,5 @@ class GearSlotDB(TypedObject):
 
     class Meta:
         unique_together = (('db_gearset', 'db_slot', 'db_layer'), )
+        verbose_name = 'GearSet'
+        verbose_name_plural = 'GearSets'

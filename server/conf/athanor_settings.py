@@ -77,6 +77,7 @@ COMMAND_DEFAULT_CLASS = "commands.command.Command"
 ######################################################################
 # Account Options
 ######################################################################
+BASE_ACCOUNT_TYPECLASS = "typeclasses.accounts.Account"
 
 OPTIONS_ACCOUNT_DEFAULT['sys_msg_border'] = ('For -=<>=-', 'Color', 'm')
 OPTIONS_ACCOUNT_DEFAULT['sys_msg_text'] = ('For text in sys_msg', 'Color', 'w')
@@ -85,11 +86,32 @@ OPTIONS_ACCOUNT_DEFAULT['sys_msg_text'] = ('For text in sys_msg', 'Color', 'w')
 # Area Settings
 ######################################################################
 GLOBAL_SCRIPTS['area'] = {
-    'typeclass': 'typeclasses.areas.AreaManager',
-    'repeats': -1, 'interval': 50, 'desc': 'Area Manager for Area System'
+    'typeclass': 'typeclasses.areas.AreaController',
+    'repeats': -1, 'interval': 50, 'desc': 'Controller for Area System'
 }
 
 BASE_AREA_TYPECLASS = 'typeclasses.areas.Area'
+
+######################################################################
+# Channel Settings
+######################################################################
+BASE_CHANNEL_TYPECLASS = "typeclasses.channels.Channel"
+CHANNEL_COMMAND_CLASS = "evennia.comms.channelhandler.ChannelCommand"
+
+######################################################################
+# Character Settings
+######################################################################
+BASE_CHARACTER_TYPECLASS = "typeclasses.characters.PlayerCharacter"
+
+######################################################################
+# Effect Settings
+######################################################################
+BASE_EFFECT_TYPECLASS = 'typeclasses.effects.Effect'
+
+######################################################################
+# Exit Settings
+######################################################################
+BASE_EXIT_TYPECLASS = "typeclasses.exits.Exit"
 
 ######################################################################
 # Faction Settings
@@ -101,48 +123,15 @@ BASE_AREA_TYPECLASS = 'typeclasses.areas.Area'
 # titleself: can set your own title.
 
 GLOBAL_SCRIPTS['faction'] = {
-    'typeclass': 'typeclasses.factions.FactionManager',
+    'typeclass': 'typeclasses.factions.FactionController',
     'repeats': -1, 'interval': 50, 'desc': 'Faction Manager for Faction System'
 }
 
 BASE_FACTION_TYPECLASS = 'typeclasses.factions.Faction'
-BASE_FACTIONMEMBERSHIP_TYPECLASS = 'typeclasses.factions.FactionMembership'
+BASE_FACTION_PRIVILEGE_TYPECLASS = 'typeclasses.factions.FactionPrivilege'
+BASE_FACTION_ROLE_TYPECLASS = 'typeclasses.factions.FactionRole'
+BASE_FACTION_MEMBERSHIP_TYPECLASS = 'typeclasses.factions.FactionMembership'
 
-FACTION_PRIVILEGES = {
-    'channel': {
-        'description': "Can use basic Faction Channels."
-    },
-    'discipline': {
-        'description': "Can mute people from faction Channels."
-    }
-
-}
-
-FACTION_ROLES = {
-    'Leader': {
-        "sort_order": 1,
-        "privileges": ('channel', 'discipline'),
-        "description": "Who calls the Shots.",
-        "can_bestow": ("Second", "Officer", "Member")
-    },
-    "Second": {
-        "sort_order": 2,
-        "privileges": ('channel', 'discipline'),
-        "description": "The Second in Command",
-        "can_bestow": ("Officer", "Member")
-    },
-    "Officer": {
-        "sort_order": 3,
-        "privileges": ('channel', 'discipline'),
-        "description": "Basic Officer responsibilities.",
-        "can_bestow": ('Member',)
-    },
-    "Member": {
-        'sort_order': 4,
-        'privileges': ('channel',),
-        'description': "Basic Faction Membership."
-    }
-}
 
 ######################################################################
 # Forum Settings
@@ -153,10 +142,24 @@ GLOBAL_SCRIPTS['forum'] = {
     'locks': "admin:perm(Admin)",
 }
 
-BASE_FORUMCATEGORY_TYPECLASS = 'typeclasses.forum.ForumCategory'
-BASE_FORUMBOARD_TYPECLASS = 'typeclasses.forum.ForumBoard'
-BASE_FORUMTHREAD_TYPECLASS = "typeclasses.forum.ForumThread"
-BASE_FORUMPOST_TYPECLASS = 'typeclasses.forum.ForumPost'
+BASE_FORUM_CATEGORY_TYPECLASS = 'typeclasses.forum.ForumCategory'
+BASE_FORUM_BOARD_TYPECLASS = 'typeclasses.forum.ForumBoard'
+BASE_FORUM_THREAD_TYPECLASS = "typeclasses.forum.ForumThread"
+BASE_FORUM_POST_TYPECLASS = 'typeclasses.forum.ForumPost'
+
+######################################################################
+# Gear Settings
+######################################################################
+BASE_INVENTORY_TYPECLASS = 'typeclasses.gear.Inventory'
+BASE_INVENTORY_SLOT_TYPECLASS = 'typeclasses.gear.InventorySlot'
+
+BASE_GEAR_SET_TYPECLASS = 'typeclasses.gear.GearSet'
+BASE_GEAR_SLOT_TYPECLASS = 'typeclasses.gear.GearSLot'
+
+######################################################################
+# Gear Settings
+######################################################################
+BASE_ITEM_TYPECLASS = 'typeclasses.items.Item'
 
 ######################################################################
 # Job Settings
@@ -166,6 +169,26 @@ GLOBAL_SCRIPTS['jobs'] = {
     'repeats': -1, 'interval': 60, 'desc': 'Job API for Job System',
     'locks': "admin:perm(Admin)",
 }
+
+######################################################################
+# Market Settings
+######################################################################
+BASE_MARKET_TYPECLASS = 'typeclasses.market.Market'
+BASE_MARKET_BRANCH_TYPECLASS = 'typeclasses.market.MarketBranch'
+BASE_MARKET_LISTING_TYPECLASS = 'typeclasses.market.MarketListing'
+
+######################################################################
+# Note Settings
+######################################################################
+BASE_NOTE_CATEGORY_TYPECLASS = 'typeclasses.note.NoteCategory'
+BASE_NOTE_TYPECLASS = 'typeclasses.note.Note'
+
+######################################################################
+# Funcs Settings
+######################################################################
+EXTRA_LOCK_FUNCS = tuple([f"features.{s}.locks" for s in ['areas', 'effects', 'factions', 'forum', 'gear',
+                                                    'market', 'note', 'quests', 'rplogger']])
+LOCK_FUNC_MODULES = LOCK_FUNC_MODULES + EXTRA_LOCK_FUNCS
 
 ######################################################################
 # Misc Settings

@@ -7,7 +7,7 @@ is setup to be the "default" character type created by the default
 creation commands.
 
 """
-from features.core.objects import AthanorCharacter
+from features.core.characters import AthanorCharacter, AthanorPlayerCharacter, AthanorMobileCharacter
 
 
 class Character(AthanorCharacter):
@@ -30,17 +30,14 @@ class Character(AthanorCharacter):
     at_post_puppet - Echoes "AccountName has entered the game" to the room.
 
     """
-
-    def testmsg(self, sender, **kwargs):
-        kwargs.pop('signal')
-        return self.msg(**kwargs)
-
-
-class PlayerCharacter(Character):
     pass
 
 
-class MobileCharacter(Character):
+class PlayerCharacter(AthanorPlayerCharacter):
+    pass
+
+
+class MobileCharacter(AthanorMobileCharacter):
     """
     This is used for all NPCs.
     """

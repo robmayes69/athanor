@@ -1,8 +1,13 @@
 from evennia.typeclasses.models import TypeclassBase
 from . models import PlotDB, PlotRunnerDB, EventDB, EventParticipantDB, EventCodenameDB, EventSourceDB, EventActionDB
+from utils.events import EventEmitter
 
 
-class DefaultPlot(PlotDB, metaclass=TypeclassBase):
+class DefaultPlot(PlotDB, EventEmitter, metaclass=TypeclassBase):
+
+    def __init__(self, *args, **kwargs):
+        PlotDB.__init__(self, *args, **kwargs)
+        EventEmitter.__init__(self, *args, **kwargs)
 
     def display_plot(self, viewer):
         message = list()
@@ -43,11 +48,18 @@ class DefaultPlot(PlotDB, metaclass=TypeclassBase):
         return None
 
 
-class DefaultPlotRunner(PlotRunnerDB, metaclass=TypeclassBase):
-    pass
+class DefaultPlotRunner(PlotRunnerDB, EventEmitter, metaclass=TypeclassBase):
+
+    def __init__(self, *args, **kwargs):
+        PlotRunnerDB.__init__(self, *args, **kwargs)
+        EventEmitter.__init__(self, *args, **kwargs)
 
 
-class DefaultEvent(EventDB, metaclass=TypeclassBase):
+class DefaultEvent(EventDB, EventEmitter, metaclass=TypeclassBase):
+
+    def __init__(self, *args, **kwargs):
+        EventDB.__init__(self, *args, **kwargs)
+        EventEmitter.__init__(self, *args, **kwargs)
 
     def display(self, viewer):
         message = list()
@@ -86,19 +98,32 @@ class DefaultEvent(EventDB, metaclass=TypeclassBase):
         return EventActionDB.objects.filter(owner__event=self)
 
 
-class DefaultEventParticipant(EventParticipantDB, metaclass=TypeclassBase):
-    pass
+class DefaultEventParticipant(EventParticipantDB, EventEmitter, metaclass=TypeclassBase):
+
+    def __init__(self, *args, **kwargs):
+        EventParticipantDB.__init__(self, *args, **kwargs)
+        EventEmitter.__init__(self, *args, **kwargs)
 
 
-class DefaultEventCodename(EventCodenameDB, metaclass=TypeclassBase):
-    pass
+class DefaultEventCodename(EventCodenameDB, EventEmitter, metaclass=TypeclassBase):
+
+    def __init__(self, *args, **kwargs):
+        EventCodenameDB.__init__(self, *args, **kwargs)
+        EventEmitter.__init__(self, *args, **kwargs)
 
 
-class DefaultEventSource(EventSourceDB, metaclass=TypeclassBase):
-    pass
+class DefaultEventSource(EventSourceDB, EventEmitter, metaclass=TypeclassBase):
+
+    def __init__(self, *args, **kwargs):
+        EventSourceDB.__init__(self, *args, **kwargs)
+        EventEmitter.__init__(self, *args, **kwargs)
 
 
-class DefaultEventAction(EventActionDB, metaclass=TypeclassBase):
+class DefaultEventAction(EventActionDB, EventEmitter, metaclass=TypeclassBase):
+
+    def __init__(self, *args, **kwargs):
+        EventActionDB.__init__(self, *args, **kwargs)
+        EventEmitter.__init__(self, *args, **kwargs)
 
     def display_pose(self, viewer):
         message = []

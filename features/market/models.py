@@ -8,8 +8,9 @@ class MarketDB(TypedObject):
     __defaultclasspath__ = "features.market.market.DefaultMarket"
     __applabel__ = "market"
 
-
     db_description = models.TextField(null=True)
+    db_branch_typeclass = models.CharField(max_length=255, null=True)
+    db_listing_typeclass = models.CharField(max_length=255, null=True)
 
     class Meta:
         verbose_name = 'Market'

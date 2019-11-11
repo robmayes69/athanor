@@ -1,12 +1,20 @@
-from features.factions.factions import DefaultFaction, DefaultFactionMembership
-from features.factions.global_scripts import DefaultFactionManager
+from features.factions.factions import DefaultFaction, DefaultFactionMembership, DefaultFactionPrivilege, DefaultFactionRole
+from features.factions.global_scripts import DefaultFactionController
 
 
-class FactionManager(DefaultFactionManager):
+class FactionController(DefaultFactionController):
     pass
 
 
 class Faction(DefaultFaction):
+    pass
+
+
+class FactionPrivilege(DefaultFactionPrivilege):
+    pass
+
+
+class FactionRole(DefaultFactionRole):
     pass
 
 

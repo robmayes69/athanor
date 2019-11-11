@@ -1,7 +1,7 @@
-from features.areas.areas import DefaultAreaManager, DefaultArea
+from features.areas.areas import DefaultAreaController, DefaultArea
 
 
-class AreaManager(DefaultAreaManager):
+class AreaController(DefaultAreaController):
     pass
 
 

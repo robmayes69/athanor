@@ -8,11 +8,12 @@ class NoteCategoryDB(TypedObject):
     __applabel__ = "notes"
 
     db_owner = models.ForeignKey('objects.ObjectDB', related_name='info_categories', on_delete=models.CASCADE)
+    db_note_typeclass = models.CharField(max_length=255, null=True)
 
     class Meta:
         unique_together = (('db_owner', 'db_key'),)
-        verbose_name = 'BoardCategory'
-        verbose_name_plural = 'BoardCategories'
+        verbose_name = 'NoteCategory'
+        verbose_name_plural = 'NoteCategories'
 
 
 class NoteDB(TypedObject):
@@ -26,3 +27,5 @@ class NoteDB(TypedObject):
 
     class Meta:
         unique_together = (('db_category', 'db_key'),)
+        verbose_name = 'Note'
+        verbose_name_plural = 'Notes'

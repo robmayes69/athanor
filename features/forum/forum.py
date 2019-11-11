@@ -9,15 +9,20 @@ from utils.time import utcnow
 from utils.online import puppets as online_puppets
 from utils.valid import simple_name
 from . models import ForumCategoryDB, ForumBoardDB, ForumThreadDB, ForumPostDB, ForumThreadRead
+from utils.events import EventEmitter
 
 
-class DefaultForumCategory(ForumCategoryDB, metaclass=TypeclassBase):
+class DefaultForumCategory(ForumCategoryDB, EventEmitter, metaclass=TypeclassBase):
     option_dict = {
         'board_locks': ('Default locks for new Boards?', 'Lock', "read:all();post:all();admin:perm(Admin)"),
         'color': ('Color to display Prefix in.', 'Color', 'n'),
         'faction': ('Faction to use for Lock Templates', 'Faction', None)
     }
     prefix_regex = re.compile(r"^[a-zA-Z]{0,3}$")
+
+    def __init__(self, *args, **kwargs):
+        ForumCategoryDB.__init__(self, *args, **kwargs)
+        EventEmitter.__init__(self, *args, **kwargs)
 
     @classmethod
     def validate_prefix(cls, prefix_text, rename_target=None):
@@ -96,7 +101,11 @@ class DefaultForumCategory(ForumCategoryDB, metaclass=TypeclassBase):
         return new_locks
 
 
-class DefaultForumBoard(ForumBoardDB, metaclass=TypeclassBase):
+class DefaultForumBoard(ForumBoardDB, EventEmitter, metaclass=TypeclassBase):
+
+    def __init__(self, *args, **kwargs):
+        ForumBoardDB.__init__(self, *args, **kwargs)
+        EventEmitter.__init__(self, *args, **kwargs)
 
     @classmethod
     def validate_key(cls, key_text, category, rename_target=None):
@@ -135,7 +144,7 @@ class DefaultForumBoard(ForumBoardDB, metaclass=TypeclassBase):
     @classmethod
     def create(cls, *args, **kwargs):
         category = kwargs.get('category', None)
-        if not isinstance(category, BoardCategoryDB):
+        if not isinstance(category, ForumCategoryDB):
             raise ValueError("Must provide a BoardCategory!")
 
         key = kwargs.get('key', None)
@@ -263,7 +272,11 @@ class DefaultForumBoard(ForumBoardDB, metaclass=TypeclassBase):
         return new_locks
 
 
-class DefaultForumThread(ForumThreadDB, metaclass=TypeclassBase):
+class DefaultForumThread(ForumThreadDB, EventEmitter, metaclass=TypeclassBase):
+
+    def __init__(self, *args, **kwargs):
+        ForumThreadDB.__init__(self, *args, **kwargs)
+        EventEmitter.__init__(self, *args, **kwargs)
 
     def at_first_save(self, *args, **kwargs):
         pass
@@ -329,5 +342,8 @@ class DefaultForumThread(ForumThreadDB, metaclass=TypeclassBase):
         acc_read.save()
 
 
-class DefaultForumPost(ForumPostDB, metaclass=TypeclassBase):
-    pass
+class DefaultForumPost(ForumPostDB, EventEmitter, metaclass=TypeclassBase):
+
+    def __init__(self, *args, **kwargs):
+        ForumPostDB.__init__(self, *args, **kwargs)
+        EventEmitter.__init__(self, *args, **kwargs)
