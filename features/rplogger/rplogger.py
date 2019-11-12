@@ -1,13 +1,13 @@
 from evennia.typeclasses.models import TypeclassBase
 from . models import PlotDB, PlotRunnerDB, EventDB, EventParticipantDB, EventCodenameDB, EventSourceDB, EventActionDB
-from utils.events import EventEmitter
+from features.core.base import AthanorTypeEntity
 
 
-class DefaultPlot(PlotDB, EventEmitter, metaclass=TypeclassBase):
+class DefaultPlot(PlotDB, AthanorTypeEntity, metaclass=TypeclassBase):
 
     def __init__(self, *args, **kwargs):
         PlotDB.__init__(self, *args, **kwargs)
-        EventEmitter.__init__(self, *args, **kwargs)
+        AthanorTypeEntity.__init__(self, *args, **kwargs)
 
     def display_plot(self, viewer):
         message = list()
@@ -48,18 +48,18 @@ class DefaultPlot(PlotDB, EventEmitter, metaclass=TypeclassBase):
         return None
 
 
-class DefaultPlotRunner(PlotRunnerDB, EventEmitter, metaclass=TypeclassBase):
+class DefaultPlotRunner(PlotRunnerDB, AthanorTypeEntity, metaclass=TypeclassBase):
 
     def __init__(self, *args, **kwargs):
         PlotRunnerDB.__init__(self, *args, **kwargs)
-        EventEmitter.__init__(self, *args, **kwargs)
+        AthanorTypeEntity.__init__(self, *args, **kwargs)
 
 
-class DefaultEvent(EventDB, EventEmitter, metaclass=TypeclassBase):
+class DefaultEvent(EventDB, AthanorTypeEntity, metaclass=TypeclassBase):
 
     def __init__(self, *args, **kwargs):
         EventDB.__init__(self, *args, **kwargs)
-        EventEmitter.__init__(self, *args, **kwargs)
+        AthanorTypeEntity.__init__(self, *args, **kwargs)
 
     def display(self, viewer):
         message = list()
@@ -98,32 +98,32 @@ class DefaultEvent(EventDB, EventEmitter, metaclass=TypeclassBase):
         return EventActionDB.objects.filter(owner__event=self)
 
 
-class DefaultEventParticipant(EventParticipantDB, EventEmitter, metaclass=TypeclassBase):
+class DefaultEventParticipant(EventParticipantDB, AthanorTypeEntity, metaclass=TypeclassBase):
 
     def __init__(self, *args, **kwargs):
         EventParticipantDB.__init__(self, *args, **kwargs)
-        EventEmitter.__init__(self, *args, **kwargs)
+        AthanorTypeEntity.__init__(self, *args, **kwargs)
 
 
-class DefaultEventCodename(EventCodenameDB, EventEmitter, metaclass=TypeclassBase):
+class DefaultEventCodename(EventCodenameDB, AthanorTypeEntity, metaclass=TypeclassBase):
 
     def __init__(self, *args, **kwargs):
         EventCodenameDB.__init__(self, *args, **kwargs)
-        EventEmitter.__init__(self, *args, **kwargs)
+        AthanorTypeEntity.__init__(self, *args, **kwargs)
 
 
-class DefaultEventSource(EventSourceDB, EventEmitter, metaclass=TypeclassBase):
+class DefaultEventSource(EventSourceDB, AthanorTypeEntity, metaclass=TypeclassBase):
 
     def __init__(self, *args, **kwargs):
         EventSourceDB.__init__(self, *args, **kwargs)
-        EventEmitter.__init__(self, *args, **kwargs)
+        AthanorTypeEntity.__init__(self, *args, **kwargs)
 
 
-class DefaultEventAction(EventActionDB, EventEmitter, metaclass=TypeclassBase):
+class DefaultEventAction(EventActionDB, AthanorTypeEntity, metaclass=TypeclassBase):
 
     def __init__(self, *args, **kwargs):
         EventActionDB.__init__(self, *args, **kwargs)
-        EventEmitter.__init__(self, *args, **kwargs)
+        AthanorTypeEntity.__init__(self, *args, **kwargs)
 
     def display_pose(self, viewer):
         message = []

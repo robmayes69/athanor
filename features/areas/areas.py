@@ -1,7 +1,7 @@
 from evennia.typeclasses.models import TypeclassBase
 from features.areas.models import AreaDB
 from typeclasses.scripts import GlobalScript
-from utils.events import EventEmitter
+from features.core.base import AthanorTypeEntity
 
 class DefaultAreaController(GlobalScript):
     system_name = 'AREA'
@@ -11,9 +11,9 @@ class DefaultAreaController(GlobalScript):
     }
 
 
-class DefaultArea(AreaDB, EventEmitter, metaclass=TypeclassBase):
+class DefaultArea(AreaDB, AthanorTypeEntity, metaclass=TypeclassBase):
 
     def __init__(self, *args, **kwargs):
         AreaDB.__init__(self, *args, **kwargs)
-        EventEmitter.__init__(self, *args, **kwargs)
+        AthanorTypeEntity.__init__(self, *args, **kwargs)
 

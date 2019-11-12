@@ -26,19 +26,18 @@ class TraitDefinitionDB(TypedObject):
         verbose_name_plural = 'TraitDefinitions'
 
 
-class TraitValueDB(TypedObject):
+class TraitDB(TypedObject):
     __settingclasspath__ = "features.traits.traits.DefaultTrait"
     __defaultclasspath__ = "features.traits.traits.DefaultTrait"
     __applabel__ = "traits"
 
-    db_model = models.ForeignKey('core.ModelMap', related_name='trait_values', on_delete=models.PROTECT)
-    db_model_instance = models.IntegerField(null=False)
+    db_entity = models.ForeignKey('core.EntityMapDB', related_name='traits', on_delete=models.PROTECT)
     db_trait = models.ForeignKey(TraitDefinitionDB, related_name='traits', on_delete=models.PROTECT)
     db_context = models.CharField(max_length=255, null=False, blank=True, default='')
     db_base_value = models.BigIntegerField(default=0, null=False, blank=False)
     db_damage_value = models.BigIntegerField(default=0, null=False, blank=False)
 
     class Meta:
-        unique_together = (('db_model', 'db_model_instance', 'db_trait', 'db_key', 'db_context'),)
+        unique_together = (('db_entity', 'db_trait', 'db_key', 'db_context'),)
         verbose_name = 'TraitValue'
         verbose_name_plural = 'TraitValues'

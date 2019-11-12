@@ -1,7 +1,12 @@
 from evennia.accounts.accounts import DefaultAccount, DefaultGuest
+from . base import AthanorEntity
 
 
-class AthanorAccount(DefaultAccount):
+class AthanorAccount(DefaultAccount, AthanorEntity):
+
+    def __init__(self, *args, **kwargs):
+        DefaultAccount.__init__(self, *args, **kwargs)
+        AthanorEntity.__init__(self, *args, **kwargs)
 
     def msg(self, text=None, **kwargs):
         if not text:

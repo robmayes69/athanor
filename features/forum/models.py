@@ -37,6 +37,7 @@ class ForumThreadDB(TypedObject):
 
     db_account = models.ForeignKey('accounts.AccountDB', related_name="+", null=True, on_delete=models.PROTECT)
     db_character = models.ForeignKey('objects.ObjectDB', related_name='+', null=True, on_delete=models.PROTECT)
+    db_entity = models.ForeignKey('core.EntityMapDB', related_name='+', null=True, on_delete=models.PROTECT)
     db_date_created = models.DateTimeField('creation date', editable=True, auto_now_add=True)
     db_board = models.ForeignKey(ForumBoardDB, related_name='threads', on_delete=models.CASCADE)
     db_date_modified = models.DateTimeField(editable=True, auto_now_add=True)
@@ -64,6 +65,7 @@ class ForumPostDB(TypedObject):
 
     db_account = models.ForeignKey('accounts.AccountDB', related_name="+", null=True, on_delete=models.PROTECT)
     db_character = models.ForeignKey('objects.ObjectDB', related_name='+', null=True, on_delete=models.PROTECT)
+    db_entity = models.ForeignKey('core.EntityMapDB', related_name='+', null=True, on_delete=models.PROTECT)
     db_date_created = models.DateTimeField('creation date', editable=True, auto_now_add=True)
     db_thread = models.ForeignKey(ForumThreadDB, related_name='posts', on_delete=models.CASCADE)
     db_date_modified = models.DateTimeField(editable=True, auto_now_add=True)

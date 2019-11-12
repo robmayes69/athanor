@@ -1,22 +1,22 @@
 from evennia.typeclasses.models import TypeclassBase
-from . models import EffectDefinitionDB, EffectValueDB
-from utils.events import EventEmitter
+from . models import EffectDefinitionDB, EffectDB
+from features.core.base import AthanorTypeEntity
 from features.core.handler import AthanorFlexHandler
 
 
-class DefaultEffectDefinition(EffectDefinitionDB, EventEmitter, metaclass=TypeclassBase):
+class DefaultEffectDefinition(EffectDefinitionDB, AthanorTypeEntity, metaclass=TypeclassBase):
 
     def __init__(self, *args, **kwargs):
         EffectDefinitionDB.__init__(self, *args, **kwargs)
-        EventEmitter.__init__(self, *args, **kwargs)
+        AthanorTypeEntity.__init__(self, *args, **kwargs)
 
 
-class DefaultEffectValue(EffectValueDB, EventEmitter, metaclass=TypeclassBase):
+class DefaultEffect(EffectDB, AthanorTypeEntity, metaclass=TypeclassBase):
 
     def __init__(self, *args, **kwargs):
-        EffectValueDB.__init__(self, *args, **kwargs)
-        EventEmitter.__init__(self, *args, **kwargs)
+        EffectDB.__init__(self, *args, **kwargs)
+        AthanorTypeEntity.__init__(self, *args, **kwargs)
 
 
 class EffectHandler(AthanorFlexHandler):
-    model_class = EffectValueDB
+    model_class = DefaultEffect

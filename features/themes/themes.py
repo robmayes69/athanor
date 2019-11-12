@@ -1,17 +1,17 @@
 from evennia.typeclasses.models import TypeclassBase
 from . models import ThemeDB, ThemeParticipantDB
-from utils.events import EventEmitter
+from features.core.base import AthanorTypeEntity
 
 
-class DefaultTheme(ThemeDB, EventEmitter, metaclass=TypeclassBase):
+class DefaultTheme(ThemeDB, AthanorTypeEntity, metaclass=TypeclassBase):
 
     def __init__(self, *args, **kwargs):
         ThemeDB.__init__(self, *args, **kwargs)
-        EventEmitter.__init__(self, *args, **kwargs)
+        AthanorTypeEntity.__init__(self, *args, **kwargs)
 
 
-class DefaultThemeParticipant(ThemeParticipantDB, EventEmitter, metaclass=TypeclassBase):
+class DefaultThemeParticipant(ThemeParticipantDB, AthanorTypeEntity, metaclass=TypeclassBase):
 
     def __init__(self, *args, **kwargs):
         ThemeParticipantDB.__init__(self, *args, **kwargs)
-        EventEmitter.__init__(self, *args, **kwargs)
+        AthanorTypeEntity.__init__(self, *args, **kwargs)

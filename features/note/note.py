@@ -1,17 +1,17 @@
 from evennia.typeclasses.models import TypeclassBase
 from . models import NoteCategoryDB, NoteDB
-from utils.events import EventEmitter
+from features.core.base import AthanorTypeEntity
 
 
-class DefaultNoteCategory(NoteCategoryDB, EventEmitter, metaclass=TypeclassBase):
+class DefaultNoteCategory(NoteCategoryDB, AthanorTypeEntity, metaclass=TypeclassBase):
 
     def __init__(self, *args, **kwargs):
         NoteCategoryDB.__init__(self, *args, **kwargs)
-        EventEmitter.__init__(self, *args, **kwargs)
+        AthanorTypeEntity.__init__(self, *args, **kwargs)
 
 
-class DefaultNote(NoteDB, EventEmitter, metaclass=TypeclassBase):
+class DefaultNote(NoteDB, AthanorTypeEntity, metaclass=TypeclassBase):
 
     def __init__(self, *args, **kwargs):
         NoteDB.__init__(self, *args, **kwargs)
-        EventEmitter.__init__(self, *args, **kwargs)
+        AthanorTypeEntity.__init__(self, *args, **kwargs)

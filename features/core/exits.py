@@ -1,9 +1,9 @@
 from evennia.objects.objects import DefaultExit
-from utils.events import EventEmitter
+from features.core.base import AthanorEntity
 
 
-class AthanorExit(DefaultExit, EventEmitter):
+class AthanorExit(DefaultExit, AthanorEntity):
 
     def __init__(self, *args, **kwargs):
         DefaultExit.__init__(self, *args, **kwargs)
-        EventEmitter.__init__(self, *args, **kwargs)
+        AthanorEntity.__init__(self, *args, **kwargs)

@@ -17,19 +17,18 @@ class EffectDefinitionDB(TypedObject):
         verbose_name_plural = 'EffectDefinitions'
 
 
-class EffectValueDB(TypedObject):
-    __settingclasspath__ = "features.Effects.Effects.DefaultEffectValue"
-    __defaultclasspath__ = "features.Effects.Effects.DefaultEffectValue"
+class EffectDB(TypedObject):
+    __settingclasspath__ = "features.Effects.Effects.DefaultEffect"
+    __defaultclasspath__ = "features.Effects.Effects.DefaultEffect"
     __applabel__ = "effects"
 
-    db_model = models.ForeignKey('core.ModelMap', related_name='effects', on_delete=models.PROTECT)
-    db_model_instance = models.IntegerField(null=False)
+    db_entity = models.ForeignKey('core.EntityMapDB', related_name='effects', on_delete=models.PROTECT)
     db_effect = models.ForeignKey(EffectDefinitionDB, related_name='values', on_delete=models.PROTECT)
     db_seconds_remaining = models.PositiveIntegerField(default=-1, null=False, blank=False)
     db_seconds_countdown = models.PositiveIntegerField(default=-1, null=False, blank=False)
     db_enabled = models.BooleanField(default=False, null=False, blank=False)
 
     class Meta:
-        unique_together = (('db_model', 'db_model_instance', 'db_effect', 'db_key'), )
-        verbose_name = 'EffectValue'
-        verbose_name_plural = 'EffectValues'
+        unique_together = (('db_entity', 'db_effect', 'db_key'), )
+        verbose_name = 'Effect'
+        verbose_name_plural = 'Effects'

@@ -9,10 +9,10 @@ from utils.time import utcnow
 from utils.online import puppets as online_puppets
 from utils.valid import simple_name
 from . models import ForumCategoryDB, ForumBoardDB, ForumThreadDB, ForumPostDB, ForumThreadRead
-from utils.events import EventEmitter
+from features.core.base import AthanorTypeEntity
 
 
-class DefaultForumCategory(ForumCategoryDB, EventEmitter, metaclass=TypeclassBase):
+class DefaultForumCategory(ForumCategoryDB, AthanorTypeEntity, metaclass=TypeclassBase):
     option_dict = {
         'board_locks': ('Default locks for new Boards?', 'Lock', "read:all();post:all();admin:perm(Admin)"),
         'color': ('Color to display Prefix in.', 'Color', 'n'),
@@ -22,7 +22,7 @@ class DefaultForumCategory(ForumCategoryDB, EventEmitter, metaclass=TypeclassBas
 
     def __init__(self, *args, **kwargs):
         ForumCategoryDB.__init__(self, *args, **kwargs)
-        EventEmitter.__init__(self, *args, **kwargs)
+        AthanorTypeEntity.__init__(self, *args, **kwargs)
 
     @classmethod
     def validate_prefix(cls, prefix_text, rename_target=None):
@@ -101,11 +101,11 @@ class DefaultForumCategory(ForumCategoryDB, EventEmitter, metaclass=TypeclassBas
         return new_locks
 
 
-class DefaultForumBoard(ForumBoardDB, EventEmitter, metaclass=TypeclassBase):
+class DefaultForumBoard(ForumBoardDB, AthanorTypeEntity, metaclass=TypeclassBase):
 
     def __init__(self, *args, **kwargs):
         ForumBoardDB.__init__(self, *args, **kwargs)
-        EventEmitter.__init__(self, *args, **kwargs)
+        AthanorTypeEntity.__init__(self, *args, **kwargs)
 
     @classmethod
     def validate_key(cls, key_text, category, rename_target=None):
@@ -272,11 +272,11 @@ class DefaultForumBoard(ForumBoardDB, EventEmitter, metaclass=TypeclassBase):
         return new_locks
 
 
-class DefaultForumThread(ForumThreadDB, EventEmitter, metaclass=TypeclassBase):
+class DefaultForumThread(ForumThreadDB, AthanorTypeEntity, metaclass=TypeclassBase):
 
     def __init__(self, *args, **kwargs):
         ForumThreadDB.__init__(self, *args, **kwargs)
-        EventEmitter.__init__(self, *args, **kwargs)
+        AthanorTypeEntity.__init__(self, *args, **kwargs)
 
     def at_first_save(self, *args, **kwargs):
         pass
@@ -342,8 +342,8 @@ class DefaultForumThread(ForumThreadDB, EventEmitter, metaclass=TypeclassBase):
         acc_read.save()
 
 
-class DefaultForumPost(ForumPostDB, EventEmitter, metaclass=TypeclassBase):
+class DefaultForumPost(ForumPostDB, AthanorTypeEntity, metaclass=TypeclassBase):
 
     def __init__(self, *args, **kwargs):
         ForumPostDB.__init__(self, *args, **kwargs)
-        EventEmitter.__init__(self, *args, **kwargs)
+        AthanorTypeEntity.__init__(self, *args, **kwargs)

@@ -1,14 +1,14 @@
 from evennia.typeclasses.models import TypeclassBase
-from features.factions.models import FactionDB, FactionMembershipDB, FactionRoleDB, FactionPrivilegeDB
+from features.factions.models import FactionDB, FactionLinkDB, FactionRoleDB, FactionPrivilegeDB
 from utils.valid import simple_name
-from utils.events import EventEmitter
+from features.core.base import AthanorTypeEntity
 
 
-class DefaultFaction(FactionDB, EventEmitter, metaclass=TypeclassBase):
+class DefaultFaction(FactionDB, AthanorTypeEntity, metaclass=TypeclassBase):
 
     def __init__(self, *args, **kwargs):
         FactionDB.__init__(self, *args, **kwargs)
-        EventEmitter.__init__(self, *args, **kwargs)
+        AthanorTypeEntity.__init__(self, *args, **kwargs)
 
     def at_first_save(self, *args, **kwargs):
         pass
@@ -117,11 +117,11 @@ class DefaultFaction(FactionDB, EventEmitter, metaclass=TypeclassBase):
         pass
 
 
-class DefaultFactionMembership(FactionMembershipDB, EventEmitter, metaclass=TypeclassBase):
+class DefaultFactionLink(FactionLinkDB, AthanorTypeEntity, metaclass=TypeclassBase):
 
     def __init__(self, *args, **kwargs):
-        FactionMembershipDB.__init__(self, *args, **kwargs)
-        EventEmitter.__init__(self, *args, **kwargs)
+        FactionLinkDB.__init__(self, *args, **kwargs)
+        AthanorTypeEntity.__init__(self, *args, **kwargs)
 
     @classmethod
     def create(cls, *args, **kwargs):
@@ -140,15 +140,15 @@ class DefaultFactionMembership(FactionMembershipDB, EventEmitter, metaclass=Type
         pass
 
 
-class DefaultFactionRole(FactionRoleDB, EventEmitter, metaclass=TypeclassBase):
+class DefaultFactionRole(FactionRoleDB, AthanorTypeEntity, metaclass=TypeclassBase):
 
     def __init__(self, *args, **kwargs):
         FactionRoleDB.__init__(self, *args, **kwargs)
-        EventEmitter.__init__(self, *args, **kwargs)
+        AthanorTypeEntity.__init__(self, *args, **kwargs)
 
 
-class DefaultFactionPrivilege(FactionPrivilegeDB, EventEmitter, metaclass=TypeclassBase):
+class DefaultFactionPrivilege(FactionPrivilegeDB, AthanorTypeEntity, metaclass=TypeclassBase):
 
     def __init__(self, *args, **kwargs):
         FactionPrivilegeDB.__init__(self, *args, **kwargs)
-        EventEmitter.__init__(self, *args, **kwargs)
+        AthanorTypeEntity.__init__(self, *args, **kwargs)

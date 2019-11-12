@@ -12,6 +12,20 @@ class AllianceDB(TypedObject):
     db_global_identifier = models.CharField(max_length=255, null=True, blank=False, unique=True)
 
 
+class AllianceLinkDB(TypedObject):
+    __settingclasspath__ = "features.factions.factions.DefaultAllianceLink"
+    __defaultclasspath__ = "features.factions.factions.DefaultAllianceLink"
+    __applabel__ = "factions"
+
+    db_alliance = models.ForeignKey(AllianceDB, null=False, on_delete=models.CASCADE, related_name='relationships')
+    db_entity = models.ForeignKey('core.EntityMapDB', on_delete=models.CASCADE, related_name='alliance_links')
+
+    class Meta:
+        verbose_name = 'AllianceLink'
+        verbose_name_plural = 'AllianceLinks'
+        unique_together = (('db_alliance', 'db_entity'),)
+
+
 class FactionDB(TypedObject):
     __settingclasspath__ = "features.factions.factions.DefaultFaction"
     __defaultclasspath__ = "features.factions.factions.DefaultFaction"
@@ -67,20 +81,21 @@ class FactionRoleDB(TypedObject):
         return self.key
 
 
-class FactionMembershipDB(TypedObject):
-    __settingclasspath__ = "features.factions.factions.DefaultFactionMembership"
-    __defaultclasspath__ = "features.factions.factions.DefaultFactionMembership"
+class FactionLinkDB(TypedObject):
+    __settingclasspath__ = "features.factions.factions.DefaultFactionLink"
+    __defaultclasspath__ = "features.factions.factions.DefaultFactionLink"
     __applabel__ = "factions"
 
     db_faction = models.ForeignKey(FactionDB, null=False, on_delete=models.CASCADE, related_name='memberships')
-    db_entity = models.ForeignKey('objects.ObjectDB', null=False, on_delete=models.CASCADE, related_name='faction_memberships')
-
-    db_roles = models.ManyToManyField(FactionRoleDB, related_name='memberships')
+    db_entity = models.ForeignKey('core.EntityMapDB', null=False, on_delete=models.CASCADE, related_name='faction_links')
+    db_membership = models.BooleanField(default=False)
+    db_primary_role = models.ForeignKey(FactionRoleDB, related_name='primaries', null=True, on_delete=models.CASCADE)
+    db_roles = models.ManyToManyField(FactionRoleDB, related_name='links')
 
     class Meta:
-        verbose_name = 'Faction Membership'
-        verbose_name_plural = 'Faction Memberships'
-        unique_together = (('db_entity', 'db_faction'),)
+        verbose_name = 'FactionLink'
+        verbose_name_plural = 'FactionLinks'
+        unique_together = (('db_faction', 'db_entity'),)
 
 
 class DivisionDB(TypedObject):
@@ -99,7 +114,7 @@ class DivisionDB(TypedObject):
     db_role_typeclass = models.CharField(max_length=255, null=True)
 
     class Meta:
-        unique_together = (('db_faction', 'db_key'))
+        unique_together = (('db_faction', 'db_key'),)
 
 
 

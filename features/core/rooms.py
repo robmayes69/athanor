@@ -1,5 +1,5 @@
 from evennia.objects.objects import DefaultRoom
-from utils.events import EventEmitter
+from features.core.base import AthanorEntity
 from collections import defaultdict
 from evennia.utils import list_to_string
 from . submessage import SubMessageMixin
@@ -9,11 +9,11 @@ from . handler import KeywordHandler
 HEADER_LINE = "O----------------------------------------------------------------------O"
 
 
-class AthanorRoom(DefaultRoom, EventEmitter, SubMessageMixin):
+class AthanorRoom(DefaultRoom, AthanorEntity, SubMessageMixin):
 
     def __init__(self, *args, **kwargs):
         DefaultRoom.__init__(self, *args, **kwargs)
-        EventEmitter.__init__(self, *args, **kwargs)
+        AthanorEntity.__init__(self, *args, **kwargs)
 
     @lazy_property
     def keywords(self):

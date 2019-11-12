@@ -2,14 +2,14 @@ from evennia import DefaultScript
 from evennia.utils.optionhandler import OptionHandler
 from evennia.utils.utils import lazy_property
 from utils.online import admin_accounts
-from utils.events import EventEmitter
+from features.core.base import AthanorEntity
 
 
-class AthanorScript(DefaultScript, EventEmitter):
+class AthanorScript(DefaultScript, AthanorEntity):
 
     def __init__(self, *args, **kwargs):
         DefaultScript.__init__(self, *args, **kwargs)
-        EventEmitter.__init__(self, *args, **kwargs)
+        AthanorEntity.__init__(self, *args, **kwargs)
 
 
 class AthanorOptionScript(AthanorScript):

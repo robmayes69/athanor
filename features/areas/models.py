@@ -8,6 +8,7 @@ class AreaDB(TypedObject):
     __applabel__ = "areas"
 
     db_parent = models.ForeignKey('self', null=True, on_delete=models.PROTECT, related_name='children')
+    db_alliance = models.ForeignKey('factions.AllianceDB', related_name='territory', null=True, on_delete=models.SET_NULL)
     db_faction = models.ForeignKey('factions.FactionDB', related_name='territory', null=True, on_delete=models.SET_NULL)
     db_fixtures = models.ManyToManyField('objects.ObjectDB', related_name='areas')
     db_transient = models.ManyToManyField('objects.ObjectDB', related_name='current_areas')
