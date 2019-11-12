@@ -2,18 +2,6 @@ from django.db import models
 from evennia.typeclasses.models import TypedObject
 
 
-class TreasuryDB(TypedObject):
-    __settingclasspath__ = "features.factions.factions.DefaultTreasury"
-    __defaultclasspath__ = "features.factions.factions.DefaultTreasury"
-    __applabel__ = "factions"
-
-    db_model = models.CharField(max_length=255, null=False, blank=False)
-    db_model_id = models.IntegerField(null=False, blank=False)
-
-    class Meta:
-        unique_together = (('db_model', 'db_model_id', 'db_key'),)
-
-
 class AllianceDB(TypedObject):
     __settingclasspath__ = "features.factions.factions.DefaultAlliance"
     __defaultclasspath__ = "features.factions.factions.DefaultAlliance"
@@ -22,7 +10,6 @@ class AllianceDB(TypedObject):
     db_tier = models.PositiveIntegerField(default=0, null=False, blank=False)
     db_abbreviation = models.CharField(max_length=20, null=True, blank=True, unique=True)
     db_global_identifier = models.CharField(max_length=255, null=True, blank=False, unique=True)
-
 
 
 class FactionDB(TypedObject):

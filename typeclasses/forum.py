@@ -1,8 +1,8 @@
 from features.forum.forum import DefaultForumCategory, DefaultForumBoard, DefaultForumThread, DefaultForumPost
-from features.forum.global_scripts import DefaultForumManager
+from features.forum.global_scripts import DefaultForumController
 
 
-class ForumManager(DefaultForumManager):
+class ForumController(DefaultForumController):
     pass
 
 

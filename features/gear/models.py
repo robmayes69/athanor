@@ -2,17 +2,30 @@ from django.db import models
 from evennia.typeclasses.models import TypedObject
 
 
+class InventoryDefinitionDB(TypedObject):
+    __settingclasspath__ = "features.gear.gear.DefaultInventoryDefinition"
+    __defaultclasspath__ = "features.gear.gear.DefaultInventoryDefinition"
+    __applabel__ = "gear"
+
+    db_value_typeclass = models.ForeignKey('core.TypeclassMap', null=True, on_delete=models.PROTECT, related_name='+')
+    db_slot_typeclass = models.ForeignKey('core.TypeclassMap', null=True, on_delete=models.PROTECT, related_name='+')
+
+    class Meta:
+        verbose_name = 'InventoryDefinition'
+        verbose_name_plural = 'InventoryDefinitions'
+
+
 class InventoryDB(TypedObject):
     __settingclasspath__ = "features.gear.gear.DefaultInventory"
     __defaultclasspath__ = "features.gear.gear.DefaultInventory"
     __applabel__ = "gear"
 
     db_model = models.ForeignKey('core.ModelMap', related_name='inventories', on_delete=models.PROTECT)
-    db_model_id = models.IntegerField(null=False, blank=False)
-    db_slot_typeclass = models.CharField(max_length=255, null=True)
+    db_model_instance = models.IntegerField(null=False, blank=False)
+    db_definition = models.ForeignKey(InventoryDefinitionDB, related_name='inventories', on_delete=models.PROTECT)
 
     class Meta:
-        unique_together = (('db_model', 'db_model_id', 'db_key'),)
+        unique_together = (('db_model', 'db_model_instance', 'db_definition', 'db_key'),)
         verbose_name = 'Inventory'
         verbose_name_plural = 'Inventories'
 
@@ -33,17 +46,26 @@ class InventorySlotDB(TypedObject):
         verbose_name_plural = 'InventorySlots'
 
 
+class GearSetDefinitionDB(TypedObject):
+    __settingclasspath__ = "features.gear.gear.DefaultGearSetDefinition"
+    __defaultclasspath__ = "features.gear.gear.DefaultGearSetDefinition"
+    __applabel__ = "gear"
+
+    db_value_typeclass = models.ForeignKey('core.TypeclassMap', null=True, on_delete=models.PROTECT, related_name='+')
+    db_slot_typeclass = models.ForeignKey('core.TypeclassMap', null=True, on_delete=models.PROTECT, related_name='+')
+
+
 class GearSetDB(TypedObject):
     __settingclasspath__ = "features.gear.gear.DefaultGearSet"
     __defaultclasspath__ = "features.gear.gear.DefaultGearSet"
     __applabel__ = "gear"
 
     db_model = models.ForeignKey('core.ModelMap', related_name='gearsets', on_delete=models.PROTECT)
-    db_model_id = models.IntegerField(null=False, blank=False)
+    db_model_instance = models.IntegerField(null=False, blank=False)
     db_slot_typeclass = models.CharField(max_length=255, null=True)
 
     class Meta:
-        unique_together = (('db_model', 'db_model_id', 'db_key'),)
+        unique_together = (('db_model', 'db_model_instance', 'db_key'),)
         verbose_name = 'GearSet'
         verbose_name_plural = 'GearSets'
 

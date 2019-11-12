@@ -1,10 +1,10 @@
-class MsgPackMixin(object):
+class SubMessageMixin(object):
 
-    def msg_pack_vars(self, viewer):
+    def generate_substitutions(self, viewer):
         return dict()
 
 
-class MsgPackMixinCharacter(MsgPackMixin):
+class SubMessageMixinCharacter(SubMessageMixin):
     gender_pack = {
         'male': {
             'gender': 'male',
@@ -112,33 +112,32 @@ class MsgPackMixinCharacter(MsgPackMixin):
         }
     }
 
-    def msg_pack_vars(self, viewer):
+    def generate_substitutions(self, viewer):
         response = dict()
-        name = self.display_name(viewer=viewer)
+        name = self.get_display_name(looker=viewer)
         response['name'] = name
         response['NAME'] = name.upper()
         response['Name'] = name.capitalize()
-        gender = self.get_gender(viewer=viewer)
+        gender = self.get_gender(looker=viewer)
         response.update(self.gender_pack[gender])
         if viewer == self:
             response.update(self.gender_pack['self'])
+        return response
 
 
-class MsgPack(object):
-    source_message = "This source message has not been implemented."
+class SubMessage(object):
+    source_message = "This source message for {source_NAME} has not been implemented."
     target_message = "This target message has not been implemented."
     others_message = "This others message has not been implemented."
     mode = None
 
-    def __init__(self, source, target=None, tool=None, location=None, entity=None, override_source_message=None,
+    def __init__(self, source, target=None, location=None, override_source_message=None,
                  override_target_message=None, override_others_message=None, use_others=True, others=None, **kwargs):
         self.source = source
         self.target = target
         if location is None:
             self.location = source.location
-        self.tool = tool
         self.extra_parameters = kwargs
-        self.entity = entity
         self.override_source_message = override_source_message
         self.override_target_message = override_target_message
         self.override_others_message = override_others_message
@@ -162,14 +161,11 @@ class MsgPack(object):
     def send_source(self):
         packvars = dict()
         packvars.update(self.extra_parameters)
-        for k, v in self.source.msg_pack_vars(self.source).iteritems():
+        for k, v in self.source.generate_substitutions(self.source).items():
             packvars[f"source_{k}"] = v
-        if self.entity:
-            for k, v in self.entity.msg_pack_vars(self.source).iteritems():
-                packvars[f"entity_{k}"] = v
-        if self.tool:
-            for k, v in self.entity.msg_pack_vars(self.source).iteritems():
-                packvars[f"tool_{k}"] = v
+        for k, v in self.extra_parameters.items():
+            for k1, v1 in v.generate_substitutions(self.source).items():
+                packvars[f"{k}_{k1}"] = v1
         preformatted = self.source_message
         if self.override_source_message:
             preformatted = self.override_source_message
@@ -181,16 +177,13 @@ class MsgPack(object):
     def send_target(self):
         packvars = dict()
         packvars.update(self.extra_parameters)
-        for k, v in self.source.msg_pack_vars(self.target).iteritems():
+        for k, v in self.source.generate_substitutions(self.target).items():
             packvars[f"source_{k}"] = v
-        for k, v in self.target.msg_pack_vars(self.target).iteritems():
+        for k, v in self.target.generate_substitutions(self.target).items():
             packvars[f"target_{k}"] = v
-        if self.entity:
-            for k, v in self.entity.msg_pack_vars(self.target).iteritems():
-                packvars[f"entity_{k}"] = v
-        if self.tool:
-            for k, v in self.entity.msg_pack_vars(self.target).iteritems():
-                packvars[f"tool_{k}"] = v
+        for k, v in self.extra_parameters.items():
+            for k1, v1 in v.generate_substitutions(self.target).items():
+                packvars[f"{k}_{k1}"] = v1
         preformatted = self.target_message
         if self.override_target_message:
             preformatted = self.override_target_message
@@ -204,22 +197,19 @@ class MsgPack(object):
         if self.override_target_message:
             preformatted = self.override_target_message
         if not preformatted.endswith('|n'):
-            preformatted += '|N'
+            preformatted += '|n'
         for other in self.others:
             packvars = dict()
             packvars.update(self.extra_parameters)
-            for k, v in other.msg_pack_vars(other).iteritems():
+            for k, v in other.generate_substitutions(other).items():
                 packvars[f"other_{k}"] = v
-            for k, v in self.source.msg_pack_vars(other).iteritems():
+            for k, v in self.source.generate_substitutions(other).items():
                 packvars[f"source_{k}"] = v
             if self.target:
-                for k, v in self.target.msg_pack_vars(other).iteritems():
+                for k, v in self.target.generate_substitutions(other).items():
                     packvars[f"target_{k}"] = v
-            if self.entity:
-                for k, v in self.entity.msg_pack_vars(other).iteritems():
-                    packvars[f"entity_{k}"] = v
-            if self.tool:
-                for k, v in self.entity.msg_pack_vars(other).iteritems():
-                    packvars[f"tool_{k}"] = v
+            for k, v in self.extra_parameters.items():
+                for k1, v1 in v.generate_substitutions(other).items():
+                    packvars[f"{k}_{k1}"] = v1
             formatted = preformatted.format(**packvars)
             other.msg(text=formatted, mode=self.mode)

@@ -9,4 +9,8 @@ def validate_color(value):
 
 
 class ModelMap(models.Model):
-    key = models.CharField(max_lenght=255, null=False, unique=True)
+    key = models.CharField(max_length=255, null=False, unique=True)
+
+
+class TypeclassMap(models.Model):
+    key = models.CharField(max_length=255, null=False, unique=True, blank=False)

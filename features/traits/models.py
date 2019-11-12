@@ -8,8 +8,10 @@ class TraitDefinitionDB(TypedObject):
     __applabel__ = "traits"
 
     db_parent = models.ForeignKey('self', related_name='children', null=True, on_delete=models.PROTECT)
-    db_child_default_typeclass = models.CharField(max_length=255, null=False, blank=False)
-    db_value_default_typeclass = models.CharField(max_length=255, null=False, blank=False)
+    db_child_default_typeclass = models.ForeignKey('core.TypeclassMap', null=True, related_name='+',
+                                                   on_delete=models.PROTECT)
+    db_value_default_typeclass = models.ForeignKey('core.TypeclassMap', null=True, related_name='+',
+                                                   on_delete=models.PROTECT)
     db_formal_name = models.CharField(max_length=255, null=False, blank=False)
     db_formal_name_plural = models.CharField(max_length=255, null=True, blank=False)
     db_global_identifier = models.CharField(max_length=255, null=True, unique=True)
@@ -30,13 +32,13 @@ class TraitValueDB(TypedObject):
     __applabel__ = "traits"
 
     db_model = models.ForeignKey('core.ModelMap', related_name='trait_values', on_delete=models.PROTECT)
-    db_model_id = models.IntegerField(null=False)
+    db_model_instance = models.IntegerField(null=False)
     db_trait = models.ForeignKey(TraitDefinitionDB, related_name='traits', on_delete=models.PROTECT)
     db_context = models.CharField(max_length=255, null=False, blank=True, default='')
     db_base_value = models.BigIntegerField(default=0, null=False, blank=False)
     db_damage_value = models.BigIntegerField(default=0, null=False, blank=False)
 
     class Meta:
-        unique_together = (('db_model', 'db_model_id', 'db_trait', 'db_key', 'db_context'),)
-        verbose_name = 'Trait'
-        verbose_name_plural = 'Traits'
+        unique_together = (('db_model', 'db_model_instance', 'db_trait', 'db_key', 'db_context'),)
+        verbose_name = 'TraitValue'
+        verbose_name_plural = 'TraitValues'

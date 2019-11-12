@@ -64,10 +64,10 @@ WEBSOCKET_ENABLED = True
 
 INLINEFUNC_ENABLED = True
 
-INSTALLED_APPS = INSTALLED_APPS + tuple(['features.core', 'features.factions', 'features.forum', 'features.staff', 'features.themes',
+INSTALLED_APPS = INSTALLED_APPS + ['features.core', 'features.factions', 'features.forum', 'features.staff', 'features.themes',
                                    'features.note', 'features.jobs', 'features.areas', 'features.mapper', 'features.rplogger',
                                    'features.mush_import', "features.effects", "features.gear", "features.market",
-                                   "features.quests", "features.traits"])
+                                   "features.quests", "features.traits"]
 
 ROOT_URLCONF = None
 
@@ -102,6 +102,8 @@ CHANNEL_COMMAND_CLASS = "evennia.comms.channelhandler.ChannelCommand"
 # Character Settings
 ######################################################################
 BASE_CHARACTER_TYPECLASS = "typeclasses.characters.PlayerCharacter"
+
+NAME_DUB_SYSTEM_ENABLED = False
 
 ######################################################################
 # Effect Settings
@@ -138,7 +140,7 @@ BASE_FACTION_MEMBERSHIP_TYPECLASS = 'typeclasses.factions.FactionMembership'
 # Forum Settings
 ######################################################################
 GLOBAL_SCRIPTS['forum'] = {
-    'typeclass': 'typeclasses.forum.ForumManager',
+    'typeclass': 'typeclasses.forum.ForumController',
     'repeats': -1, 'interval': 60, 'desc': 'Forum BBS API',
     'locks': "admin:perm(Admin)",
 }

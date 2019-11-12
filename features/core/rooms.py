@@ -2,15 +2,22 @@ from evennia.objects.objects import DefaultRoom
 from utils.events import EventEmitter
 from collections import defaultdict
 from evennia.utils import list_to_string
+from . submessage import SubMessageMixin
+from evennia.utils.utils import lazy_property
+from . handler import KeywordHandler
 
 HEADER_LINE = "O----------------------------------------------------------------------O"
 
 
-class AthanorRoom(DefaultRoom, EventEmitter):
+class AthanorRoom(DefaultRoom, EventEmitter, SubMessageMixin):
 
     def __init__(self, *args, **kwargs):
         DefaultRoom.__init__(self, *args, **kwargs)
         EventEmitter.__init__(self, *args, **kwargs)
+
+    @lazy_property
+    def keywords(self):
+        return KeywordHandler(self)
 
     def return_appearance_header(self, looker, **kwargs):
         color = self.db.color

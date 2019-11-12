@@ -2,10 +2,10 @@ from django.conf import settings
 from evennia.utils.utils import class_from_module
 from typeclasses.scripts import GlobalScript
 from utils.text import partial_match
-from typeclasses.forum import ForumCategory, ForumBoard
+from . forum import DefaultForumCategory, DefaultForumBoard
 
 
-class DefaultForumManager(GlobalScript):
+class DefaultForumController(GlobalScript):
     system_name = 'BBS'
     option_dict = {
         'category_locks': ('Default locks to use for new Board Categories?', 'Lock',
@@ -13,7 +13,7 @@ class DefaultForumManager(GlobalScript):
     }
 
     def categories(self):
-        return ForumCategory.objects.filter_family().order_by('db_key')
+        return DefaultForumCategory.objects.filter_family().order_by('db_key')
 
     def visible_categories(self, character):
         return [cat for cat in self.categories() if cat.access(character, 'see')]
@@ -94,7 +94,7 @@ class DefaultForumManager(GlobalScript):
         self.msg_target(announce, character)
 
     def boards(self):
-        return ForumBoard.objects.filter_family().order_by('db_category__db_key', 'db_order')
+        return DefaultForumBoard.objects.filter_family().order_by('db_category__db_key', 'db_order')
 
     def usable_boards(self, character, mode='read', check_admin=True):
         return [board for board in self.boards() if board.check_permission(character, mode=mode, checkadmin=check_admin)

@@ -1,5 +1,6 @@
 from features.core.models import ModelMap
 from evennia.utils.utils import to_str
+from evennia.typeclasses.tags import TagHandler
 from utils.events import EventEmitter
 
 
@@ -16,4 +17,8 @@ class AthanorFlexHandler(EventEmitter):
             self._model_map.save()
 
     def all(self):
-        return self.model_class.objects.filter(db_model=self._model_map, db_model_id=self._objid)
+        return self.model_class.objects.filter(db_model=self._model_map, db_model_instance=self._objid)
+
+
+class KeywordHandler(TagHandler):
+    _tagtype = 'keyword'
