@@ -10,7 +10,7 @@ class AthanorFlexHandler(EventEmitter):
         self.ent = obj.entity
 
     def all(self):
-        return self.model_class.objects.filter(db_entity=self.entity)
+        return self.model_class.objects.filter(db_entity=self.ent)
 
 
 class KeywordHandler(TagHandler):

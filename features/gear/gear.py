@@ -44,7 +44,8 @@ class DefaultInventoryHandler(AthanorFlexHandler):
             pass
         if not force and not self.can_add_item(item, slot):
             pass
-        if not force and
+        if not force and not item.can_enter_inventory(self):
+            pass
 
     def can_add_item(self, item, slot, force=False):
         pass
@@ -53,6 +54,7 @@ class DefaultInventoryHandler(AthanorFlexHandler):
         pass
 
     def can_remove_item(self, inventory, item, force=False):
+        pass
 
     def swap(self, inventory, from_slot, to_slot):
         pass

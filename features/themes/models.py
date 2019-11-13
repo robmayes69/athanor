@@ -21,11 +21,10 @@ class ThemeParticipantDB(TypedObject):
     __applabel__ = "theme"
 
     db_theme = models.ForeignKey(ThemeDB, related_name='participants', on_delete=models.CASCADE)
-    db_character = models.ForeignKey('objects.ObjectDB', related_name='theme_status', on_delete=models.PROTECT)
-    db_status = models.CharField(max_length=50, blank=False, null=False)
+    db_character = models.ForeignKey('objects.ObjectDB', related_name='themes', on_delete=models.PROTECT)
     db_list_type = models.CharField(max_length=50, blank=False, null=False)
 
     class Meta:
         unique_together = (('db_theme', 'db_character'),)
         verbose_name = 'ThemeParticipant'
-        verbose_name = 'ThemeParticipants'
+        verbose_name_plural = 'ThemeParticipants'

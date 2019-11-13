@@ -64,7 +64,7 @@ WEBSOCKET_ENABLED = True
 
 INLINEFUNC_ENABLED = True
 
-INSTALLED_APPS = INSTALLED_APPS + ('features.core', 'features.factions', 'features.forum', 'features.staff', 'features.themes',
+INSTALLED_APPS = tuple(INSTALLED_APPS) + ('features.core', 'features.factions', 'features.forum', 'features.staff', 'features.themes',
                                    'features.note', 'features.jobs', 'features.areas', 'features.mapper', 'features.rplogger',
                                    'features.mush_import', "features.effects", "features.gear", "features.market",
                                    "features.quests", "features.traits")
