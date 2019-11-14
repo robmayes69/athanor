@@ -2,29 +2,15 @@ from evennia.typeclasses.models import TypeclassBase
 from . models import ThemeDB, ThemeParticipantDB
 from features.core.base import AthanorTypeEntity
 from typeclasses.scripts import GlobalScript
-from utils.valid import simple_name
-from evennia.utils.utils import class_from_module
-from evennia.utils.logger import log_trace
 from utils.text import partial_match
 
 
 class DefaultTheme(ThemeDB, AthanorTypeEntity, metaclass=TypeclassBase):
+    entity_class_name = 'Theme'
 
     def __init__(self, *args, **kwargs):
         ThemeDB.__init__(self, *args, **kwargs)
         AthanorTypeEntity.__init__(self, *args, **kwargs)
-
-    @classmethod
-    def validate_key(cls, key_text, rename_target=None):
-        if not key_text:
-            raise ValueError("A Theme must have a name!")
-        key_text = simple_name(key_text, option_key="Theme")
-        query = cls.objects.filter(db_key__iexact=key_text)
-        if rename_target:
-            query = query.exclude(id=rename_target.id)
-        if query.count():
-            raise ValueError(f"A Theme named '{key_text}' already exists!")
-        return key_text
 
     @classmethod
     def create(cls, name, description):
@@ -36,8 +22,30 @@ class DefaultTheme(ThemeDB, AthanorTypeEntity, metaclass=TypeclassBase):
     def add_character(self, character):
         pass
 
+    def __str__(self):
+        return self.db_key
+
+    def change_participant_typeclass(self, typeclass_path):
+        self.set_typeclass_field('participant_typeclass', typeclass_path)
+
+    def get_participant_typeclass(self):
+        if self.ndb.participant_typeclass:
+            return self.ndb.participant_typeclass
+        from django.conf import settings
+        typeclass_path = settings.BASE_THEME_PARTICIPANT_TYPECLASS
+        if self.db_participant_typeclass:
+
+            typeclass_path = self.db_participant_typeclass
+        try:
+            typeclass = class_from_module(typeclass_path, defaultpaths=settings.TYPECLASS_PATHS)
+        except Exception:
+            log_trace()
+            typeclass = DefaultThemeParticipant
+        self.ndb.participant_typeclass = typeclass
+        return typeclass
 
 class DefaultThemeParticipant(ThemeParticipantDB, AthanorTypeEntity, metaclass=TypeclassBase):
+    entity_class_name = 'ThemeParticipant'
 
     def __init__(self, *args, **kwargs):
         ThemeParticipantDB.__init__(self, *args, **kwargs)
@@ -50,24 +58,30 @@ class DefaultThemeParticipant(ThemeParticipantDB, AthanorTypeEntity, metaclass=T
     def change_type(self, new_type):
         pass
 
+    def __str__(self):
+        return str(self.db_theme)
+
 
 class DefaultThemeController(GlobalScript):
     system_name = 'THEME'
+    option_dict = {
+
+    }
 
     def at_start(self):
         from django.conf import settings
         try:
-            self.theme_typeclass = class_from_module(settings.BASE_THEME_TYPECLASS,
+            self.ndb.theme_typeclass = class_from_module(settings.BASE_THEME_TYPECLASS,
                                                      defaultpaths=settings.TYPECLASS_PATHS)
         except Exception:
             log_trace()
-            self.theme_typeclass = DefaultTheme
+            self.ndb.theme_typeclass = DefaultTheme
 
     def themes(self):
         return DefaultTheme.objects.filter().order_by('db_key')
 
     def create_theme(self, session, theme_name, description):
-        return self.theme_typeclass.create(theme_name, description)
+        return self.ndb.theme_typeclass.create(theme_name, description)
 
     def find_theme(self, session, theme_name):
         if isinstance(theme_name, DefaultTheme):
@@ -115,7 +129,7 @@ class DefaultThemeController(GlobalScript):
             character.db.primary_theme = new_part
 
     def character_change_status(self, session, character, new_status):
-        pass
+        character.db.theme_status = new_status
 
     def participant_change_type(self, session, theme_name, character, new_type):
         theme = self.find_theme(session, theme_name)
@@ -125,4 +139,10 @@ class DefaultThemeController(GlobalScript):
         participant.change_type(new_type)
 
     def character_change_primary(self, session, character, theme_name):
-        pass
+        participating = character.themes.all()
+        if not participating:
+            raise ValueError("Character has no themes!")
+        theme_part = partial_match(theme_name, participating)
+        if not theme_part:
+            raise ValueError(f"Character has no Theme named {theme_name}!")
+        character.db.primary_theme = theme_part
