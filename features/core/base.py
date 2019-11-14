@@ -26,11 +26,30 @@ class AthanorEntity(EventEmitter):
             raise ValueError(f"A {cls.entity_class_name} named '{key_text}' already exists!")
         return key_text
 
-    def get_typeclass_field(self, field_name):
+    def get_typeclass_fallback(self, fallback):
+        try:
+            from django.conf import settings
+            typeclass = class_from_module(fallback, defaultpaths=settings.TYPECLASS_PATHS)
+        except Exception:
+            log_trace()
+            return None
+        return typeclass
+
+    def get_typeclass_field(self, field_name, cache_attr=None, fallback=None):
+        if cache_attr and self.nattributes.has(key=cache_attr):
+            return self.nattributes.get(key=cache_attr)
         results = getattr(self, field_name)
         if not results:
-            return None
-        return results.get_typeclass()
+            if fallback:
+                return self.get_typeclass_fallback(fallback)
+        typeclass = results.get_typeclass()
+        if typeclass:
+            if cache_attr:
+                self.nattributes.add(key=cache_attr, value=typeclass)
+            return typeclass
+        if fallback:
+            return self.get_typeclass_fallback(fallback)
+        return None
 
     def set_typeclass_field(self, field_name, typeclass_path):
         try:
@@ -40,6 +59,19 @@ class AthanorEntity(EventEmitter):
         if created:
             map.save()
         setattr(self, field_name, map)
+
+    def resolve_typeclass_fallback(self, typeclass_path):
+        from django.conf import settings
+        try:
+            typeclass = class_from_module(typeclass_path, defaultpaths=settings.TYPECLASS_PATHS)
+        except Exception:
+            log_trace()
+            try:
+                typeclass = class_from_module(self.__defaultclasspath__)
+            except Exception:
+                log_trace()
+                return None
+        return typeclass
 
     @property
     def model_str(self):

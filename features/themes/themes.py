@@ -31,18 +31,14 @@ class DefaultTheme(ThemeDB, AthanorTypeEntity, metaclass=TypeclassBase):
     def get_participant_typeclass(self):
         if self.ndb.participant_typeclass:
             return self.ndb.participant_typeclass
+        if self.participant_typeclass:
+            typeclass = self.participant_typeclass.get_typeclass()
+            if typeclass:
+                return typeclass
         from django.conf import settings
-        typeclass_path = settings.BASE_THEME_PARTICIPANT_TYPECLASS
-        if self.db_participant_typeclass:
+        resolve = self.resolve_typeclass_fallback(settings.BASE_THEME_PARTICIPANT_TYPECLASS)
+        return resolve
 
-            typeclass_path = self.db_participant_typeclass
-        try:
-            typeclass = class_from_module(typeclass_path, defaultpaths=settings.TYPECLASS_PATHS)
-        except Exception:
-            log_trace()
-            typeclass = DefaultThemeParticipant
-        self.ndb.participant_typeclass = typeclass
-        return typeclass
 
 class DefaultThemeParticipant(ThemeParticipantDB, AthanorTypeEntity, metaclass=TypeclassBase):
     entity_class_name = 'ThemeParticipant'
