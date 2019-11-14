@@ -20,6 +20,7 @@ class WalletDB(TypedObject):
 class AccountingLog(models.Model):
     owner_wallet = models.ForeignKey(WalletDB, related_name='activity_logs', on_delete=models.PROTECT)
     target_wallet = models.ForeignKey(WalletDB, related_name='other_activity', on_delete=models.PROTECT)
+    enactor = models.ForeignKey('core.EntityMap', related_name='wallet_logs', on_delete=models.PROTECT)
     date_created = models.DateTimeField(null=False)
     amount = models.BigIntegerField(default=0)
 
