@@ -21,10 +21,6 @@ def validate_typeclass(value):
         raise ValidationError(f"Cannot find Typeclass {value}!")
 
 
-class ModelMap(models.Model):
-    db_key = models.CharField(max_length=255, null=False, unique=True)
-
-
 class TypeclassMap(models.Model):
     db_key = models.CharField(max_length=255, null=False, unique=True, blank=False, validators=[validate_typeclass,])
 
@@ -43,7 +39,7 @@ class EntityMapDB(TypedObject):
     __defaultclasspath__ = "features.core.core.DefaultEntityMap"
     __applabel__ = "core"
 
-    db_model = models.ForeignKey(ModelMap, related_name='entities', on_delete=models.PROTECT)
+    db_model = models.CharField(max_length=255, null=False, blank=False)
     db_instance = models.IntegerField(null=False)
 
     class Meta:

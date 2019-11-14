@@ -1,6 +1,6 @@
 from utils.events import EventEmitter
 from evennia.utils.utils import lazy_property
-from features.core.models import ModelMap, TypeclassMap
+from features.core.models import TypeclassMap
 from features.core.core import EntityMap
 from evennia.utils.utils import to_str
 from utils.valid import simple_name
@@ -35,17 +35,20 @@ class AthanorEntity(EventEmitter):
             return None
         return typeclass
 
-    def get_typeclass_field(self, field_name, cache_attr=None, fallback=None):
-        if cache_attr and self.nattributes.has(key=cache_attr):
-            return self.nattributes.get(key=cache_attr)
+    def get_typeclass_field(self, field_name, fallback=None):
+        if self.nattributes.has(key=field_name):
+            cached = self.nattributes.get(key=field_name)
+            if cached:
+                return cached
         results = getattr(self, field_name)
+        if fallback is None and hasattr(self, '__defaultclasspath__'):
+            fallback = self.__defaultclasspath__
         if not results:
             if fallback:
                 return self.get_typeclass_fallback(fallback)
         typeclass = results.get_typeclass()
         if typeclass:
-            if cache_attr:
-                self.nattributes.add(key=cache_attr, value=typeclass)
+            self.nattributes.add(key=field_name, value=typeclass)
             return typeclass
         if fallback:
             return self.get_typeclass_fallback(fallback)
@@ -60,30 +63,14 @@ class AthanorEntity(EventEmitter):
             map.save()
         setattr(self, field_name, map)
 
-    def resolve_typeclass_fallback(self, typeclass_path):
-        from django.conf import settings
-        try:
-            typeclass = class_from_module(typeclass_path, defaultpaths=settings.TYPECLASS_PATHS)
-        except Exception:
-            log_trace()
-            try:
-                typeclass = class_from_module(self.__defaultclasspath__)
-            except Exception:
-                log_trace()
-                return None
-        return typeclass
-
     @property
     def model_str(self):
         return to_str(self.__dbclass__.__name__.lower())
 
     @lazy_property
     def entity(self):
-        modelmap, created = ModelMap.objects.get_or_create(db_key=self.model_str)
+        found, created = EntityMap.objects.get_or_create(db_model=self.model_str, db_instance=self.id)
         if created:
-            modelmap.save()
-        found, created2 = EntityMap.objects.get_or_create(db_model=modelmap, db_instance=self.id)
-        if created2:
             found.db.reference = self
             found.save()
         elif found.db.reference != self:
