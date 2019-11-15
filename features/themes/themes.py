@@ -3,6 +3,8 @@ from . models import ThemeDB, ThemeParticipantDB
 from features.core.base import AthanorTypeEntity
 from typeclasses.scripts import GlobalScript
 from utils.text import partial_match
+from evennia.utils.utils import class_from_module
+from evennia.utils.logger import log_trace
 
 
 class DefaultTheme(ThemeDB, AthanorTypeEntity, metaclass=TypeclassBase):
@@ -19,8 +21,12 @@ class DefaultTheme(ThemeDB, AthanorTypeEntity, metaclass=TypeclassBase):
         new_theme.save()
         return new_theme
 
-    def add_character(self, character):
-        pass
+    def add_character(self, character, list_type):
+        if self.participants.filter(db_theme=self, db_character=character).count():
+            raise ValueError(f"{character} is already a member of {self}!")
+        typeclass = self.get_participant_typeclass()
+        new_participant = typeclass.create(theme=self, character=character, list_type=list_type, skip_check=True)
+        return new_participant
 
     def __str__(self):
         return self.db_key
@@ -29,6 +35,7 @@ class DefaultTheme(ThemeDB, AthanorTypeEntity, metaclass=TypeclassBase):
         self.set_typeclass_field('participant_typeclass', typeclass_path)
 
     def get_participant_typeclass(self):
+        from django.conf import settings
         return self.get_typeclass_field('participant_typeclass', fallback=settings.BASE_THEME_TYPECLASS)
 
 
@@ -40,8 +47,13 @@ class DefaultThemeParticipant(ThemeParticipantDB, AthanorTypeEntity, metaclass=T
         AthanorTypeEntity.__init__(self, *args, **kwargs)
 
     @classmethod
-    def create(cls, name):
-        pass
+    def create(cls, theme, character, list_type, skip_check=False):
+        if not skip_check:
+            if cls.objects.filter(db_theme=theme, db_character=character).count():
+                raise ValueError(f"{character} is already a member of {theme}!")
+        new_participant = cls(db_theme=theme, db_character=character, db_key=character.key, db_list_type=list_type)
+        new_participant.save()
+        return new_participant
 
     def change_type(self, new_type):
         pass
