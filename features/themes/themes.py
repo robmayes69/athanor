@@ -22,11 +22,20 @@ class DefaultTheme(ThemeDB, AthanorTypeEntity, metaclass=TypeclassBase):
         return new_theme
 
     def add_character(self, character, list_type):
-        if self.participants.filter(db_theme=self, db_character=character).count():
-            raise ValueError(f"{character} is already a member of {self}!")
         typeclass = self.get_participant_typeclass()
-        new_participant = typeclass.create(theme=self, character=character, list_type=list_type, skip_check=True)
-        return new_participant
+        return typeclass.create(theme=self, character=character, list_type=list_type)
+
+    def remove_character(self, character):
+        located = self.participants.filter(db_character=character).first()
+        if located:
+            located.delete()
+            return True
+        return False
+
+    def change_participant_list_type(self, character, new_list_type):
+        located = self.participants.filter(db_character=character).first()
+        if not located:
+            raise ValueError(f"{character} is not a member of {self}!")
 
     def __str__(self):
         return self.db_key
@@ -47,10 +56,9 @@ class DefaultThemeParticipant(ThemeParticipantDB, AthanorTypeEntity, metaclass=T
         AthanorTypeEntity.__init__(self, *args, **kwargs)
 
     @classmethod
-    def create(cls, theme, character, list_type, skip_check=False):
-        if not skip_check:
-            if cls.objects.filter(db_theme=theme, db_character=character).count():
-                raise ValueError(f"{character} is already a member of {theme}!")
+    def create(cls, theme, character, list_type):
+        if cls.objects.filter(db_theme=theme, db_character=character).count():
+            raise ValueError(f"{character} is already a member of {theme}!")
         new_participant = cls(db_theme=theme, db_character=character, db_key=character.key, db_list_type=list_type)
         new_participant.save()
         return new_participant
