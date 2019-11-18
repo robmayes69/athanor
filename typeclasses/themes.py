@@ -1,4 +1,8 @@
-from features.themes.themes import DefaultTheme, DefaultThemeParticipant
+from features.themes.themes import DefaultTheme, DefaultThemeParticipant, DefaultThemeController
+
+
+class ThemeController(DefaultThemeController):
+    pass
 
 
 class Theme(DefaultTheme):

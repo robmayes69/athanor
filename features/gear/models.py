@@ -7,7 +7,7 @@ class WalletDB(TypedObject):
     __defaultclasspath__ = "features.gear.gear.DefaultWallet"
     __applabel__ = "gear"
 
-    db_entity = models.ForeignKey('core.EntityMap', related_name='wallets', on_delete=models.CASCADE)
+    db_entity = models.ForeignKey('core.EntityMapDB', related_name='wallets', on_delete=models.CASCADE)
     db_amount = models.BigIntegerField(default=0)
     db_log_activity = models.BooleanField(default=False)
 
@@ -20,7 +20,7 @@ class WalletDB(TypedObject):
 class AccountingLog(models.Model):
     owner_wallet = models.ForeignKey(WalletDB, related_name='activity_logs', on_delete=models.PROTECT)
     target_wallet = models.ForeignKey(WalletDB, related_name='other_activity', on_delete=models.PROTECT)
-    enactor = models.ForeignKey('core.EntityMap', related_name='wallet_logs', on_delete=models.PROTECT)
+    enactor = models.ForeignKey('core.EntityMapDB', related_name='wallet_logs', on_delete=models.PROTECT)
     date_created = models.DateTimeField(null=False)
     amount = models.BigIntegerField(default=0)
 

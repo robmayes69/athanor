@@ -2,7 +2,7 @@ from django.conf import settings
 from evennia.utils.utils import class_from_module
 from typeclasses.scripts import GlobalScript
 from utils.text import partial_match
-from . forum import DefaultForumCategory, DefaultForumBoard
+from . forum import DefaultForumCategory, DefaultForumBoard, DefaultForumThread, DefaultForumPost
 
 
 class DefaultForumController(GlobalScript):
@@ -23,7 +23,7 @@ class DefaultForumController(GlobalScript):
             abbr = ''
         if not self.access(account, 'admin'):
             raise ValueError("Permission denied!")
-        typeclass = class_from_module(settings.BASE_BOARDCATEGORY_TYPECLASS)
+        typeclass = class_from_module(settings.BASE_FORUM_CATEGORY_TYPECLASS)
         new_category = typeclass.create(key=name, abbr=abbr)
         announce = f"Created BBS Category: {abbr} - {name}"
         self.alert(announce, enactor=account)
@@ -105,6 +105,8 @@ class DefaultForumController(GlobalScript):
                 if character not in board.db_ignore_list.all() and board.category.access(character, 'see')]
 
     def find_board(self, character, find_name=None, visible_only=True):
+        if isinstance(find_name, DefaultForumBoard):
+            return find_name
         if not find_name:
             raise ValueError("No board entered to find!")
         if visible_only:
@@ -124,7 +126,7 @@ class DefaultForumController(GlobalScript):
         category = self.find_category(character, category)
         if not category.access(character, 'create'):
             raise ValueError("Permission denied!")
-        typeclass = class_from_module(settings.BASE_BOARD_TYPECLASS)
+        typeclass = class_from_module(settings.BASE_FORUM_BOARD_TYPECLASS)
         new_board = typeclass.create(key=name, order=order, category=category)
         announce = f"BBS Board Created: ({category}) - {new_board.prefix_order}: {new_board.key}"
         self.alert(announce, enactor=character)
@@ -171,17 +173,40 @@ class DefaultForumController(GlobalScript):
         self.alert(announce, enactor=character)
         self.msg_target(announce, character)
 
-    def create_post(self, character, board=None, subject=None, text=None, announce=True, date=None):
+    def create_thread(self, character, board=None, subject=None, text=None, announce=True, date=None, no_post=False):
         board = self.find_board(character, board)
-        typeclass = class_from_module(settings.BASE_POST_TYPECLASS)
-        new_post = typeclass.create(key=subject, text=text, owner=character.full_stub, board=board, date=date)
+        typeclass = class_from_module(settings.BASE_FORUM_THREAD_TYPECLASS)
+        new_thread = typeclass.create(key=subject, text=text, owner=character.full_stub, board=board, date=date)
+        if not no_post:
+            new_post = self.create_post(character, board=board, thread=new_thread, subject=subject, text=text,
+                                        announce=False, date=date)
+        if announce:
+            pass  # do something!
+        return new_thread
+
+    def rename_thread(self, character, board=None, thread=None, new_name=None):
+        pass
+
+    def delete_thread(self, character, board=None, thread=None, name_confirm=None):
+        pass
+
+    def create_post(self, character, board=None, thread=None, subject=None, text=None, announce=True, date=None):
+        if not isinstance(board, DefaultForumBoard):
+            board = self.find_board(character, board)
+        if not isinstance(thread, DefaultForumThread):
+            thread = board.parse_threadnums(character, thread)
+            if len(thread) > 1:
+                raise ValueError("Can only create posts on a single thread at a time!")
+            thread = thread[0]
+        typeclass = class_from_module(settings.BASE_FORUM_POST_TYPECLASS)
+        new_post = typeclass.create(key=subject, text=text, owner=character, thread=thread, date=date)
         if announce:
             pass  # do something!
         return new_post
 
     def edit_post(self, character, board=None, post=None, seek_text=None, replace_text=None):
         board = self.find_board(character, board)
-        posts = board.parse_postnums(character, post)
+        posts = board.parse_threadnums(character, post)
         if not posts:
             raise ValueError("Post not found!")
         if len(posts) > 1:
@@ -195,7 +220,7 @@ class DefaultForumController(GlobalScript):
 
     def delete_post(self, character, board=None, post=None):
         board = self.find_board(character, board)
-        posts = board.parse_postnums(character, post)
+        posts = board.parse_threadnums(character, post)
         if not posts:
             raise ValueError("Post not found!")
         errors = set()

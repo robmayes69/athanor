@@ -30,7 +30,7 @@ class AthanorGlobalScript(AthanorOptionScript):
 
     def alert(self, message, enactor=None):
         for acc in admin_accounts():
-            acc.msg(message, admin_alert=self.system_name, admin_enactor=enactor)
+            acc.system_msg(message, system_name=self.system_name, enactor=enactor)
 
     def msg_target(self, message, target):
         target.msg(message, system_alert=self.system_name)

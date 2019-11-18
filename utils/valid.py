@@ -1,6 +1,6 @@
 import re
 
-_RE_SIMPLE = re.compile(r"^[ a-zA-Z._-]+$")
+_RE_SIMPLE = re.compile(r"^[\w. -]+$")
 _bad_words = ('me', 'self', 'here', '.')
 
 

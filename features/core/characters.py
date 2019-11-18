@@ -15,6 +15,10 @@ class AthanorCharacter(DefaultCharacter, AthanorEntity, SubMessageMixinCharacter
     def get_gender(self, looker):
         return 'male'
 
+    def system_msg(self, *args, **kwargs):
+        if hasattr(self, 'account'):
+            self.account.system_msg(*args, **kwargs)
+
     @lazy_property
     def keywords(self):
         return KeywordHandler(self)

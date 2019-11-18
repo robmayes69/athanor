@@ -1,4 +1,6 @@
 from evennia.commands.default.muxcommand import MuxCommand
+from evennia.utils.search import object_search
+from typeclasses.characters import PlayerCharacter
 
 
 class AthanorCommand(MuxCommand):
@@ -15,3 +17,14 @@ class AthanorCommand(MuxCommand):
         except ValueError as err:
             self.msg(f"ERROR: {str(err)}")
             return
+
+    def search_characters(self, name, exact=False):
+        return object_search(name, exact=exact, candidates=PlayerCharacter.objects.filter_family())
+
+    def search_one_character(self, name, exact=False):
+        results = self.search_characters(name, exact)
+        if not results:
+            raise ValueError(f"Cannot locate character named {name}!")
+        if len(results) == 1:
+            return results[0]
+        raise ValueError(f"That matched: {results}")

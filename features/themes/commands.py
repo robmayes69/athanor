@@ -1,367 +1,116 @@
+from evennia import GLOBAL_SCRIPTS
+from features.core.command import AthanorCommand
 
 
-from athanor.core.command import AthCommand
-from athanor.core.config import GLOBAL_SETTINGS
-from athanor.fclist.models import FCList
-from athanor.utils.text import partial_match, tabular_table
-
-class CmdFCList(AthCommand):
+class CmdTheme(AthanorCommand):
     """
-    The FCList tracks played characters belonging to themes in this game.
+    The Theme System tracks played characters belonging to themes in this game.
 
-
+    Usage:
+        +theme
+            Display all themes.
+        +theme <theme name>
+            Display details of a given theme.
+        +theme <theme name>/<note name>
+            Display theme note contents.
     """
-    key = "+fclist"
-    aliases = ["+theme"]
+    key = "+theme"
+    aliases = ["+fclist", '+themes', '+cast']
     locks = "cmd:all()"
-    help_category = "Communications"
-    player_switches = ['note', 'powers', 'mail', 'cast']
-    admin_switches = ['create', 'rename', 'delete', 'assign', 'remove', 'describe', 'setinfo', 'clearinfo',
-                      'setpowers', 'clearpowers', 'status', 'type']
-    system_name = 'FCLIST'
+    help_category = "Characters"
+    player_switches = []
+    admin_switches = ['create', 'rename', 'delete', 'assign', 'remove', 'describe', 'status', 'type', 'note']
+    system_name = 'THEME'
 
 
     admin_help = """
     |cStaff Commands|n
+    
+    +theme/create <theme name>=<description>
+        Create a new theme.
+        
+    +theme/rename <theme name>=<new name>
+        Rename a theme.
+    
+    +theme/delete <theme name>=<same name>
+        Deletes a theme. Must provide the exact name twice to verify.
+    
+    +theme/assign <theme name>=<character>,<list type>
+        Adds a character to a theme. Characters may belong to more than one theme as different list types.
+        List types: FC, OC, OFC, etc. It'll take anything, but be consistent.
+    
+    +theme/status <character>=<new status>
+        Set a character's status, such as Open, Closing, Played, Dead, etc.
+    
+    +theme/type <theme>=<character>,<new list type>
+        Change a character's list type.
+    
+    +theme/note <theme>/<note>=<contents>
+        Add/replacing a theme note that players can read. Usually used for extra details attached to a theme
+        such as adaptation details. Not case sensitive. Remove a note by setting it to #DELETE.
     """
 
-    def func(self):
-        rhs = self.rhs
-        lhs = self.lhs
-        switches = self.final_switches
+    def switch_create(self):
+        GLOBAL_SCRIPTS.theme.create_theme(self.session, self.lhs, self.rhs)
 
-        if switches:
-            switch = switches[0]
-            getattr(self, 'switch_%s' % switch)(lhs, rhs)
-            return
-        if self.args:
-            self.switch_display(lhs, rhs)
-            return
-        else:
-            self.switch_list(lhs, rhs)
+    def switch_rename(self):
+        GLOBAL_SCRIPTS.theme.rename_theme(self.session, self.lhs, self.rhs)
 
-    def switch_create(self, lhs, rhs):
-        if not lhs:
-            self.error("No theme name entered.")
-            return
-        if FCList.objects.filter(key__iexact=lhs).count():
-            self.error("A theme by that name already exists.")
-            return
-        if not rhs:
-            self.error("No theme description entered.")
-            return
-        new_theme = FCList.objects.create(key=lhs, description=rhs)
-        new_theme.save()
-        self.sys_msg("Theme created.")
-        self.sys_report("Created a new theme entry: %s" % lhs)
+    def switch_delete(self):
+        GLOBAL_SCRIPTS.theme.delete_theme(self.session, self.lhs, self.rhs)
 
-    def switch_rename(self, lhs, rhs):
-        if not lhs:
-            self.error("No theme name entered.")
-            return
-        themes = FCList.objects.all()
-        if not themes:
-            self.error("There are no themes!")
-            return
-        found = partial_match(lhs, themes)
-        if not found:
-            self.error("Theme not found.")
-            return
-        if not rhs:
-            self.error("Must enter something to rename it to!")
-            return
-        if FCList.objects.filter(key__iexact=rhs).exclude(id=found.id).count():
-            self.error("That name conflicts with another theme.")
-            return
-        self.sys_msg("Theme renamed to: %s" % rhs)
-        self.sys_report("Renamed Theme '%s' to: %s" % (found, rhs))
-        found.key = rhs
-        found.save()
-
-    def switch_delete(self, lhs, rhs):
-        if not lhs:
-            self.error("No theme name entered.")
-            return
-        themes = FCList.objects.all()
-        if not themes:
-            self.error("There are no themes!")
-            return
-        found = partial_match(lhs, themes)
-        if not found:
-            self.error("Theme not found.")
-            return
-        if not self.verify('theme delete %s' % found.id):
-            self.sys_msg("|rWARNING|n: This will delete Theme: %s. Are you sure? Enter the same command again to verify." % found)
-            return
-        self.sys_msg("Theme deleted.")
-        self.sys_report("Deleted Theme '%s'!" % found)
-        found.delete()
-
-    def switch_list(self, lhs, rhs):
-        themes = FCList.objects.all().order_by('key')
+    def switch_main(self):
+        themes = GLOBAL_SCRIPTS.theme.themes()
         if not themes:
             self.error("No themes to display!")
             return
         message = list()
-        message.append(self.player.render.header('Theme Listing'))
-        theme_table = tabular_table(themes, field_width=37)
-        message.append(theme_table)
-        message.append(self.player.render.footer())
-        self.msg_lines(message)
+        if self.args:
+            return self.switch_display()
+        col_color = self.account.options.column_names_color
+        message.append(self.styled_header('Themes'))
+        message.append(f"|{col_color}{'Theme Name':<70} {'Con/Tot'}|n")
+        message.append(self.styled_separator())
+        for theme in themes:
+            members = [part.character for part in theme.participants.all()]
+            members_online = members
+            message.append(f"{str(theme):<70} {len(members_online):0>3}/{len(members):0>3}")
+        message.append(self.styled_footer())
+        self.msg('\n'.join(str(l) for l in message))
 
-    def switch_display(self, lhs, rhs):
-        if not lhs:
+    def switch_display(self):
+        theme = GLOBAL_SCRIPTS.theme.find_theme(self.session, self.lhs)
+        if not theme:
             self.error("No theme name entered.")
             return
-        themes = FCList.objects.all()
-        if not themes:
-            self.error("There are no themes!")
-            return
-        found = partial_match(lhs, themes)
-        if not found:
-            self.error("Theme not found.")
-            return
-        self.msg(found.display_list(viewer=self.character))
 
-    def switch_assign(self, lhs, rhs):
-        if not lhs:
-            self.error("No theme name entered.")
-            return
-        themes = FCList.objects.all()
-        if not themes:
-            self.error("There are no themes!")
-            return
-        found = partial_match(lhs, themes)
-        if not found:
-            self.error("Theme not found.")
-            return
-        try:
-            char = self.character.search_character(rhs)
-        except ValueError as err:
-            self.error(unicode(err))
-            return
-        found.cast.add(char)
-        self.sys_msg("You have been added to Theme: %s" % found, target=char)
-        self.sys_msg("Added '%s' to Theme: %s" % (char, found))
-        self.sys_report("Added '%s' to Theme: %s" % (char, found))
+    def switch_assign(self):
+        theme = GLOBAL_SCRIPTS.theme.find_theme(self.session, self.lhs)
+        if not len(self.rhslist) == 2:
+            raise ValueError("Usage: +theme/assign <theme>=<character>,<list type>")
+        char_name, list_type = self.rhslist
+        character = self.search_one_character(char_name)
+        GLOBAL_SCRIPTS.theme.theme_add_character(self.session, theme, character, list_type)
 
-    def switch_remove(self, lhs, rhs):
-        if not lhs:
-            self.error("No theme name entered.")
-            return
-        themes = FCList.objects.all()
-        if not themes:
-            self.error("There are no themes!")
-            return
-        found = partial_match(lhs, themes)
-        if not found:
-            self.error("Theme not found.")
-            return
-        try:
-            char = self.character.search_character(rhs)
-        except ValueError as err:
-            self.error(unicode(err))
-            return
-        if char in found.cast.all():
-            found.cast.remove(char)
-        else:
-            self.error("They are not in that theme.")
-            return
-        self.sys_msg("You have been removed from Theme: %s" % found, target=char)
-        self.sys_msg("Removed '%s' from Theme: %s" % (char, found))
-        self.sys_report("Removed '%s' from Theme: %s" % (char, found))
+    def switch_remove(self):
+        theme = GLOBAL_SCRIPTS.theme.find_theme(self.session, self.lhs)
+        character = self.search_one_character(self.rhs)
+        GLOBAL_SCRIPTS.theme.theme_add_character(self.session, theme, character)
 
-    def switch_type(self, lhs, rhs):
-        try:
-            char = self.character.search_character(lhs)
-        except ValueError as err:
-            self.error(unicode(err))
-            return
-        if not rhs:
-            self.error("No type entered to assign!")
-            return
-        chartypes = GLOBAL_SETTINGS['fclist_types']
-        found = partial_match(rhs, chartypes)
-        if not found:
-            self.error("No match for type! Options: %s" % ', '.join(chartypes))
-            return
-        char.config.model.character_type = found
-        char.config.model.save(update_fields=['character_type'])
-        self.sys_msg("You are now registered as a %s." % found, target=char)
-        self.sys_msg("%s is now registered as a %s." % (char, found))
-        self.sys_report("%s is now registered as a %s." % (char, found))
+    def switch_type(self):
+        theme = GLOBAL_SCRIPTS.theme.find_theme(self.session, self.lhs)
+        if not len(self.rhslist) == 2:
+            raise ValueError("Usage: +theme/type <theme>=<character>,<list type>")
+        char_name, list_type = self.rhslist
+        character = self.search_one_character(char_name)
+        GLOBAL_SCRIPTS.theme.participant_change_type(self.session, theme, character, list_type)
 
-    def switch_status(self, lhs, rhs):
-        try:
-            char = self.character.search_character(lhs)
-        except ValueError as err:
-            self.error(unicode(err))
-            return
-        if not rhs:
-            self.error("No status entered to assign!")
-            return
-        charstatus = GLOBAL_SETTINGS['fclist_status']
-        found = partial_match(rhs, charstatus)
-        if not found:
-            self.error("No match for status! Options: %s" % ', '.join(charstatus))
-            return
-        char.config.model.character_status = found
-        char.config.model.save(update_fields=['character_status'])
-        self.sys_msg("Your character status is now: %s." % found, target=char)
-        self.sys_msg("%s is now listed as %s." % (char, found))
-        self.sys_report("%s is now listed as %s." % (char, found))
+    def switch_status(self):
+        character = self.search_one_character(self.lhs)
+        GLOBAL_SCRIPTS.theme.character_change_status(self.session, character, self.rhs)
 
-    def switch_describe(self, lhs, rhs):
-        if not lhs:
-            self.error("No theme name entered.")
-            return
-        themes = FCList.objects.all()
-        if not themes:
-            self.error("There are no themes!")
-            return
-        found = partial_match(lhs, themes)
-        if not found:
-            self.error("Theme not found.")
-            return
-        if not rhs:
-            self.error("You must enter a description!")
-            return
-        found.description = rhs
-        found.save(update_fields=['description'])
-        self.sys_msg("Description for %s updated!" % found)
-        self.sys_report("Updated Description for Theme: %s" % found)
+    def switch_describe(self):
+        GLOBAL_SCRIPTS.theme.set_description(self.session, self.lhs, self.rhs)
 
-    def switch_setinfo(self, lhs, rhs):
-        if not lhs:
-            self.error("No theme name entered.")
-            return
-        themes = FCList.objects.all()
-        if not themes:
-            self.error("There are no themes!")
-            return
-        found = partial_match(lhs, themes)
-        if not found:
-            self.error("Theme not found.")
-            return
-        if not rhs:
-            self.error("You must enter a text field!")
-            return
-        found.info = rhs
-        found.save(update_fields=['note'])
-        self.sys_msg("Info for %s updated!" % found)
-        self.sys_report("Updated Info for Theme: %s" % found)
-
-    def switch_clearinfo(self, lhs, rhs):
-        if not lhs:
-            self.error("No theme name entered.")
-            return
-        themes = FCList.objects.all()
-        if not themes:
-            self.error("There are no themes!")
-            return
-        found = partial_match(lhs, themes)
-        if not found:
-            self.error("Theme not found.")
-            return
-        found.info = None
-        found.save(update_fields=['note'])
-        self.sys_msg("Info for %s cleared!" % found)
-        self.sys_report("Cleared Info for Theme: %s" % found)
-
-    def switch_setpowers(self, lhs, rhs):
-        if not lhs:
-            self.error("No theme name entered.")
-            return
-        themes = FCList.objects.all()
-        if not themes:
-            self.error("There are no themes!")
-            return
-        found = partial_match(lhs, themes)
-        if not found:
-            self.error("Theme not found.")
-            return
-        if not rhs:
-            self.error("You must enter a text field!")
-            return
-        found.powers = rhs
-        found.save(update_fields=['powers'])
-        self.sys_msg("Powers for %s updated!" % found)
-        self.sys_report("Updated Powers for Theme: %s" % found)
-
-    def switch_clearpowers(self, lhs, rhs):
-        if not lhs:
-            self.error("No theme name entered.")
-            return
-        themes = FCList.objects.all()
-        if not themes:
-            self.error("There are no themes!")
-            return
-        found = partial_match(lhs, themes)
-        if not found:
-            self.error("Theme not found.")
-            return
-        found.info = None
-        found.save(update_fields=['powers'])
-        self.sys_msg("Powers for %s cleared!" % found)
-        self.sys_report("Cleared Powers for Theme: %s" % found)
-
-    def switch_info(self, lhs, rhs):
-        if not lhs:
-            self.error("No theme name entered.")
-            return
-        themes = FCList.objects.all()
-        if not themes:
-            self.error("There are no themes!")
-            return
-        found = partial_match(lhs, themes)
-        if not found:
-            self.error("Theme not found.")
-            return
-        if not found.info:
-            self.error("Theme has no note.")
-            return
-        message = list()
-        message.append(self.player.render.header('Info for Theme: %s' % found))
-        message.append(found.info)
-        message.append(self.player.render.footer())
-        self.msg_lines(message)
-
-    def switch_powers(self, lhs, rhs):
-        if not lhs:
-            self.error("No theme name entered.")
-            return
-        themes = FCList.objects.all()
-        if not themes:
-            self.error("There are no themes!")
-            return
-        found = partial_match(lhs, themes)
-        if not found:
-            self.error("Theme not found.")
-            return
-        if not found.powers:
-            self.error("Theme has no powers.")
-            return
-        message = list()
-        message.append(self.player.render.header('Powers for Theme: %s' % found))
-        message.append(found.powers)
-        message.append(self.player.render.footer())
-        self.msg_lines(message)
-
-    def switch_mail(self, lhs, rhs):
+    def switch_note(self):
         pass
-
-    def switch_cast(self, lhs, rhs):
-        if not lhs:
-            self.error("No theme name entered.")
-            return
-        themes = FCList.objects.filter(key__icontains=lhs).exclude(cast=None).order_by('key')
-        if not themes:
-            self.error("No matching themes with cast.")
-            return
-        message = list()
-        message.append(self.player.render.header('Casts Matching: %s' % lhs))
-        for count, theme in enumerate(themes):
-            message.append(self.player.render.separator(theme))
-            message.append(theme.display_cast(viewer=self.character, header=not(count)))
-        message.append(self.player.render.footer())
-        self.msg_lines(message)

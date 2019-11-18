@@ -41,8 +41,10 @@ class EntityMapDB(TypedObject):
 
     db_model = models.CharField(max_length=255, null=False, blank=False)
     db_instance = models.IntegerField(null=False)
+    db_owner_date_created = models.DateTimeField(null=False)
+    db_deleted = models.BooleanField(default=False)
 
     class Meta:
-        unique_together = ('db_model', 'db_instance')
+        unique_together = ('db_model', 'db_instance', 'db_owner_date_created')
         verbose_name = 'EntityMap'
         verbose_name_plural = 'EntityMaps'

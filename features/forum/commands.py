@@ -1,6 +1,7 @@
 from django.conf import settings
 import evennia
 from evennia.utils.utils import class_from_module
+
 COMMAND_DEFAULT_CLASS = class_from_module(settings.COMMAND_DEFAULT_CLASS)
 
 
@@ -15,7 +16,7 @@ class BBCommand(COMMAND_DEFAULT_CLASS):
 
 class CmdBBList(BBCommand):
     """
-    The BBS is a global, multi-threaded board with a rich set of features that grew
+    The BBS is a global, multi-threaded forum with a rich set of features that grew
     from a rewrite of Myrddin's classical BBS. It shares almost identical command
     syntax and appearance.
 
@@ -28,7 +29,7 @@ class CmdBBList(BBCommand):
     key = '+bblist'
 
     def switch_main(self):
-        boards = evennia.GLOBAL_SCRIPTS.boards.visible_boards(self.caller, check_admin=True)
+        boards = evennia.GLOBAL_SCRIPTS.forum.visible_boards(self.caller, check_admin=True)
         message = list()
         col_color = self.account.options.column_names_color
         message.append(self.styled_header('BBS Boards'))
@@ -44,11 +45,11 @@ class CmdBBList(BBCommand):
         self.msg('\n'.join(str(l) for l in message))
 
     def switch_join(self):
-        board = evennia.GLOBAL_SCRIPTS.boards.find_board(self.caller, self.args, visible_only=False)
+        board = evennia.GLOBAL_SCRIPTS.forum.find_board(self.caller, self.args, visible_only=False)
         board.ignore_list.remove(self.caller)
 
     def switch_leave(self):
-        board = evennia.GLOBAL_SCRIPTS.boards.find_board(self.caller, self.args)
+        board = evennia.GLOBAL_SCRIPTS.forum.find_board(self.caller, self.args)
         if board.mandatory:
             raise ValueError("Cannot leave mandatory forum!")
         board.ignore_list.add(self.caller)
@@ -75,7 +76,7 @@ class CmdBBCat(BBCommand):
     switch_options = ('create', 'delete', 'rename', 'prefix', 'lock')
 
     def switch_main(self):
-        cats = evennia.GLOBAL_SCRIPTS.boards.visible_categories(self.caller)
+        cats = evennia.GLOBAL_SCRIPTS.forum.visible_categories(self.caller)
         message = list()
         message.append(self.styled_header('BBS Categories'))
         for cat in cats:
@@ -84,19 +85,19 @@ class CmdBBCat(BBCommand):
         self.msg('\n'.join(str(l) for l in message))
 
     def switch_create(self):
-        evennia.GLOBAL_SCRIPTS.boards.create_category(self.caller, self.lhs, self.rhs)
+        evennia.GLOBAL_SCRIPTS.forum.create_category(self.caller, self.lhs, self.rhs)
 
     def switch_delete(self):
-        evennia.GLOBAL_SCRIPTS.boards.delete_category(self.caller, self.lhs, self.rhs)
+        evennia.GLOBAL_SCRIPTS.forum.delete_category(self.caller, self.lhs, self.rhs)
 
     def switch_rename(self):
-        evennia.GLOBAL_SCRIPTS.boards.rename_category(self.caller, self.lhs, self.rhs)
+        evennia.GLOBAL_SCRIPTS.forum.rename_category(self.caller, self.lhs, self.rhs)
 
     def switch_prefix(self):
-        evennia.GLOBAL_SCRIPTS.boards.prefix_category(self.caller, self.lhs, self.rhs)
+        evennia.GLOBAL_SCRIPTS.forum.prefix_category(self.caller, self.lhs, self.rhs)
 
     def switch_lock(self):
-        evennia.GLOBAL_SCRIPTS.boards.lock_category(self.caller, self.lhs, self.rhs)
+        evennia.GLOBAL_SCRIPTS.forum.lock_category(self.caller, self.lhs, self.rhs)
 
 
 class CmdBBAdmin(BBCommand):
@@ -136,22 +137,22 @@ class CmdBBAdmin(BBCommand):
         if '/' not in self.rhs:
             raise ValueError("Usage: +bbadmin/create <category>=<board name>/<board order>")
         name, order = self.rhs.split('/', 1)
-        evennia.GLOBAL_SCRIPTS.boards.create_board(self.caller, category=self.lhs, name=name, order=order)
+        evennia.GLOBAL_SCRIPTS.forum.create_board(self.caller, category=self.lhs, name=name, order=order)
 
     def switch_delete(self):
-        evennia.GLOBAL_SCRIPTS.boards.delete_board(self.caller, name=self.lhs, verify=self.rhs)
+        evennia.GLOBAL_SCRIPTS.forum.delete_board(self.caller, name=self.lhs, verify=self.rhs)
 
     def switch_rename(self):
-        evennia.GLOBAL_SCRIPTS.boards.rename_board(self.caller, name=self.lhs, new_name=self.rhs)
+        evennia.GLOBAL_SCRIPTS.forum.rename_board(self.caller, name=self.lhs, new_name=self.rhs)
 
     def switch_mandatory(self):
-        evennia.GLOBAL_SCRIPTS.boards.mandatory_board(self.caller, name=self.lhs, new_name=self.rhs)
+        evennia.GLOBAL_SCRIPTS.forum.mandatory_board(self.caller, name=self.lhs, new_name=self.rhs)
 
     def switch_order(self):
-        evennia.GLOBAL_SCRIPTS.boards.order_board(self.caller, name=self.rhs, order=self.lhs)
+        evennia.GLOBAL_SCRIPTS.forum.order_board(self.caller, name=self.rhs, order=self.lhs)
 
     def switch_lock(self):
-        evennia.GLOBAL_SCRIPTS.boards.lock_board(self.caller, name=self.rhs, lock=self.lhs)
+        evennia.GLOBAL_SCRIPTS.forum.lock_board(self.caller, name=self.rhs, lock=self.lhs)
 
 
 class CmdBBPost(BBCommand):
@@ -176,27 +177,27 @@ class CmdBBPost(BBCommand):
         if '/' not in self.lhs:
             raise ValueError("Usage: +bbpost <board>/<subject>=<post text>")
         board, subject = self.lhs.split('/', 1)
-        evennia.GLOBAL_SCRIPTS.boards.create_post(self.caller, board=board, subject=subject, text=self.rhs)
+        evennia.GLOBAL_SCRIPTS.forum.create_post(self.caller, board=board, subject=subject, text=self.rhs)
 
     def switch_edit(self):
         if '/' not in self.lhs or '^^^' not in self.rhs:
             raise ValueError("Usage: +bbpost/edit <board>/<post>=<search>^^^<replace>")
         board, post = self.lhs.split('/', 1)
         search, replace = self.rhs.split('^^^', 1)
-        evennia.GLOBAL_SCRIPTS.boards.edit_post(self.caller, board=board, post=post, seek_text=search,
+        evennia.GLOBAL_SCRIPTS.forum.edit_post(self.caller, board=board, post=post, seek_text=search,
                                               replace_text=replace)
 
     def switch_move(self):
         if '/' not in self.lhs:
             raise ValueError("Usage: +bbpost/move <board>/<post>=<destination board>")
         board, post = self.lhs.split('/', 1)
-        evennia.GLOBAL_SCRIPTS.boards.move_post(self.caller, board=board, post=post, destination=self.rhs)
+        evennia.GLOBAL_SCRIPTS.forum.move_post(self.caller, board=board, post=post, destination=self.rhs)
 
     def switch_delete(self):
         if '/' not in self.lhs:
             raise ValueError("Usage: +bbpost/move <board>/<post>")
         board, post = self.lhs.split('/', 1)
-        evennia.GLOBAL_SCRIPTS.boards.delete_post(self.caller, board=board, post=post)
+        evennia.GLOBAL_SCRIPTS.forum.delete_post(self.caller, board=board, post=post)
 
 
 class CmdBBRead(BBCommand):
@@ -229,7 +230,7 @@ class CmdBBRead(BBCommand):
         return self.display_posts()
 
     def display_boards(self):
-        boards = evennia.GLOBAL_SCRIPTS.boards.visible_boards(self.caller, check_admin=True)
+        boards = evennia.GLOBAL_SCRIPTS.forum.visible_boards(self.caller, check_admin=True)
         message = list()
         col_color = self.account.options.column_names_color
         message.append(self.styled_header('BBS Boards'))
@@ -256,7 +257,7 @@ class CmdBBRead(BBCommand):
         self.msg('\n'.join(str(l) for l in message))
 
     def display_board(self):
-        board = evennia.GLOBAL_SCRIPTS.boards.find_board(self.caller, find_name=self.lhs)
+        board = evennia.GLOBAL_SCRIPTS.forum.find_board(self.caller, find_name=self.lhs)
         posts = board.posts.order_by('db_order')
         message = list()
         col_color = self.account.options.column_names_color
@@ -289,8 +290,8 @@ class CmdBBRead(BBCommand):
 
     def display_posts(self):
         board, posts = self.lhs.split('/', 1)
-        board = evennia.GLOBAL_SCRIPTS.boards.find_board(self.caller, find_name=board)
-        posts = board.parse_postnums(self.account, posts)
+        board = evennia.GLOBAL_SCRIPTS.forum.find_board(self.caller, find_name=board)
+        posts = board.parse_threadnums(self.account, posts)
         for post in posts:
             self.msg(self.render_post(post))
             post.update_read(self.account)
@@ -299,11 +300,11 @@ class CmdBBRead(BBCommand):
         if not self.args:
             raise ValueError("Usage: +bbcatchup <board or all>")
         if self.args.lower() == 'all':
-            boards = evennia.GLOBAL_SCRIPTS.boards.visible_boards(self.caller, check_admin=True)
+            boards = evennia.GLOBAL_SCRIPTS.forum.visible_boards(self.caller, check_admin=True)
         else:
             boards = list()
             for arg in self.lhslist:
-                found_board = evennia.GLOBAL_SCRIPTS.boards.find_board(self.caller, arg)
+                found_board = evennia.GLOBAL_SCRIPTS.forum.find_board(self.caller, arg)
                 if found_board not in boards:
                     boards.append(found_board)
         for board in boards:
@@ -316,7 +317,7 @@ class CmdBBRead(BBCommand):
             self.msg(f"Skipped {len(unread)} posts on Board '{board.prefix_order} - {board.key}'")
 
     def switch_scan(self):
-        boards = evennia.GLOBAL_SCRIPTS.boards.visible_boards(self.caller, check_admin=True)
+        boards = evennia.GLOBAL_SCRIPTS.forum.visible_boards(self.caller, check_admin=True)
         unread = dict()
         show_boards = list()
         for board in boards:
@@ -342,7 +343,7 @@ class CmdBBRead(BBCommand):
         return '\n'.join(str(l) for l in message)
 
     def switch_next(self):
-        boards = evennia.GLOBAL_SCRIPTS.boards.visible_boards(self.caller, check_admin=True)
+        boards = evennia.GLOBAL_SCRIPTS.forum.visible_boards(self.caller, check_admin=True)
         for board in boards:
             b_unread = board.unread_posts(self.account).first()
             if b_unread:

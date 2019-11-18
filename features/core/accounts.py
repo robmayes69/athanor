@@ -8,24 +8,11 @@ class AthanorAccount(DefaultAccount, AthanorEntity):
         DefaultAccount.__init__(self, *args, **kwargs)
         AthanorEntity.__init__(self, *args, **kwargs)
 
-    def msg(self, text=None, **kwargs):
-        if not text:
-            return
-
-        # Admin alert system.
-        admin_alert = kwargs.pop('admin_alert', None)
-        if admin_alert:
-            admin_enactor = kwargs.pop('admin_enactor', None)
-            text = f"|rAdmin Alert:|n |w[{admin_enactor.key}]|n {admin_alert.upper()}: {text}"
-
-        # System Msg System
-        system_alert = kwargs.pop('system_alert', None)
-        if system_alert:
-            sysmsg_border = self.options.sys_msg_border
-            sysmsg_text = self.options.sys_msg_text
-            text = f"|{sysmsg_border}-=<|n|{sysmsg_text}{system_alert.upper()}|n|{sysmsg_border}>=-|n {text}"
-
-        super(AthanorAccount, self).msg(text, **kwargs)
+    def system_msg(self, text=None, system_name=None, enactor=None):
+        sysmsg_border = self.options.sys_msg_border
+        sysmsg_text = self.options.sys_msg_text
+        formatted_text = f"|{sysmsg_border}-=<|n|{sysmsg_text}{system_name.upper()}|n|{sysmsg_border}>=-|n {text}"
+        self.msg(text=formatted_text, system_name=system_name, original_text=text)
 
     def display_time(self, time_disp=None, time_format=None, tz=None):
         if not time_format:

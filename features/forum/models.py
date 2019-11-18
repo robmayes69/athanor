@@ -35,9 +35,7 @@ class ForumThreadDB(TypedObject):
     __defaultclasspath__ = "features.forum.forum.DefaultForumThread"
     __applabel__ = "forum"
 
-    db_account = models.ForeignKey('accounts.AccountDB', related_name="+", null=True, on_delete=models.PROTECT)
-    db_character = models.ForeignKey('objects.ObjectDB', related_name='+', null=True, on_delete=models.PROTECT)
-    db_entity = models.ForeignKey('core.EntityMapDB', related_name='+', null=True, on_delete=models.PROTECT)
+    db_entity = models.ForeignKey('core.EntityMapDB', related_name='forum_threads', null=True, on_delete=models.PROTECT)
     db_date_created = models.DateTimeField('creation date', editable=True, auto_now_add=True)
     db_board = models.ForeignKey(ForumBoardDB, related_name='threads', on_delete=models.CASCADE)
     db_date_modified = models.DateTimeField(editable=True, auto_now_add=True)
@@ -50,7 +48,7 @@ class ForumThreadDB(TypedObject):
 
 
 class ForumThreadRead(models.Model):
-    account = models.ForeignKey('accounts.AccountDB', related_name='bbs_read', on_delete=models.CASCADE)
+    account = models.ForeignKey('accounts.AccountDB', related_name='forum_read', on_delete=models.CASCADE)
     thread = models.ForeignKey(ForumThreadDB, related_name='read', on_delete=models.CASCADE)
     date_read = models.DateTimeField(null=True)
 
@@ -63,9 +61,7 @@ class ForumPostDB(TypedObject):
     __defaultclasspath__ = "features.forum.forum.DefaultForumPost"
     __applabel__ = "forum"
 
-    db_account = models.ForeignKey('accounts.AccountDB', related_name="+", null=True, on_delete=models.PROTECT)
-    db_character = models.ForeignKey('objects.ObjectDB', related_name='+', null=True, on_delete=models.PROTECT)
-    db_entity = models.ForeignKey('core.EntityMapDB', related_name='+', null=True, on_delete=models.PROTECT)
+    db_entity = models.ForeignKey('core.EntityMapDB', related_name='forum_posts', null=True, on_delete=models.PROTECT)
     db_date_created = models.DateTimeField('creation date', editable=True, auto_now_add=True)
     db_thread = models.ForeignKey(ForumThreadDB, related_name='posts', on_delete=models.CASCADE)
     db_date_modified = models.DateTimeField(editable=True, auto_now_add=True)

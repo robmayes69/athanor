@@ -74,6 +74,9 @@ ROOT_URLCONF = None
 COMMAND_DEFAULT_CLASS = "commands.command.Command"
 
 
+SERVER_SESSION_CLASS = "typeclasses.sessions.Session"
+
+
 ######################################################################
 # Account Options
 ######################################################################
@@ -185,6 +188,17 @@ BASE_MARKET_LISTING_TYPECLASS = 'typeclasses.market.MarketListing'
 ######################################################################
 BASE_NOTE_CATEGORY_TYPECLASS = 'typeclasses.note.NoteCategory'
 BASE_NOTE_TYPECLASS = 'typeclasses.note.Note'
+
+######################################################################
+# Theme Settings
+######################################################################
+GLOBAL_SCRIPTS['theme'] = {
+    'typeclass': 'typeclasses.themes.ThemeController',
+    'repeats': -1, 'interval': 50, 'desc': 'Theme Controller for Theme System'
+}
+
+BASE_THEME_TYPECLASS = 'typeclasses.themes.Theme'
+BASE_THEME_PARTICIPANT_TYPECLASS = 'typeclasses.themes.ThemeParticipant'
 
 ######################################################################
 # Funcs Settings

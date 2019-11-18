@@ -1,24 +1,28 @@
+import re
 from utils.events import EventEmitter
 from evennia.utils.utils import lazy_property
 from features.core.models import TypeclassMap
+from features.core.submessage import SubMessageMixin
 from features.core.core import EntityMap
 from evennia.utils.utils import to_str
-from utils.valid import simple_name
 from evennia.utils.utils import class_from_module
 from evennia.utils.logger import log_trace
 
 
-class AthanorEntity(EventEmitter):
+class AthanorEntity(EventEmitter, SubMessageMixin):
     entity_class_name = 'Thing'
+    _re_key = re.compile(r"^[\w. -]+$")
 
     def __init__(self, *args, **kwargs):
         super().__init__(self, *args, **kwargs)
 
     @classmethod
     def validate_unique_key(cls, key_text, rename_target=None):
+        key_text = key_text.strip()
         if not key_text:
             raise ValueError(f"A {cls.entity_class_name} must have a name!")
-        key_text = simple_name(key_text, option_key="Theme")
+        if not cls._re_key.match(key_text):
+            raise ValueError(f"{cls.entity_class_name} names must match pattern: {cls._re_key}")
         query = cls.objects.filter(db_key__iexact=key_text)
         if rename_target:
             query = query.exclude(id=rename_target.id)
@@ -69,15 +73,19 @@ class AthanorEntity(EventEmitter):
 
     @lazy_property
     def entity(self):
-        found, created = EntityMap.objects.get_or_create(db_model=self.model_str, db_instance=self.id)
+        if self.db.entity:
+            return self.db.entity
+        found, created = EntityMap.objects.get_or_create(db_model=self.model_str, db_instance=self.id,
+                                                         db_owner_date_created=self.date_created)
         if created:
+            found.key = self.key
             found.db.reference = self
             found.save()
         elif found.db.reference != self:
             found.db.reference = self
             found.save()
+        self.db.entity = found
         return found
-
 
 class AthanorTypeEntity(AthanorEntity):
 

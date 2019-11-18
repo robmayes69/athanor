@@ -175,8 +175,8 @@ class DefaultForumBoard(ForumBoardDB, AthanorTypeEntity, metaclass=TypeclassBase
         return str(self.order)
 
     @property
-    def main_posts(self):
-        return self.posts.filter(parent=None)
+    def main_threads(self):
+        return self.threads.filter(parent=None)
 
     def character_join(self, character):
         self.ignore_list.remove(character)
@@ -184,9 +184,9 @@ class DefaultForumBoard(ForumBoardDB, AthanorTypeEntity, metaclass=TypeclassBase
     def character_leave(self, character):
         self.ignore_list.add(character)
 
-    def parse_postnums(self, account, check=None):
+    def parse_threadnums(self, account, check=None):
         if not check:
-            raise ValueError("No posts entered to check.")
+            raise ValueError("No threads entered to check.")
         fullnums = []
         for arg in check.split(','):
             arg = arg.strip()
@@ -201,10 +201,10 @@ class DefaultForumBoard(ForumBoardDB, AthanorTypeEntity, metaclass=TypeclassBase
                 fullnums.append(int(arg))
             if re.match(r"^U$", arg.upper()):
                 fullnums += self.unread_posts(account).values_list('db_order', flat=True)
-        posts = self.posts.filter_family(db_order__in=fullnums).order_by('db_order')
-        if not posts:
-            raise ValueError("Posts not found!")
-        return posts
+        threads = self.threads.filter_family(db_order__in=fullnums).order_by('db_order')
+        if not threads:
+            raise ValueError("Threads not found!")
+        return threads
 
     def check_permission(self, checker=None, mode="read", checkadmin=True):
         if checker.locks.check_lockstring(checker, 'dummy:perm(Admin)'):

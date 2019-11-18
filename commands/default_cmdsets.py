@@ -18,6 +18,7 @@ from evennia import default_cmds
 from features.forum.commands import ALL_COMMANDS as BBS_COMMANDS
 from features.jobs.commands import JOB_COMMANDS
 from features.core.exit_errors import ExitErrorCmdSet
+from features.themes.commands import CmdTheme
 
 
 class CharacterCmdSet(default_cmds.CharacterCmdSet):
@@ -61,7 +62,8 @@ class AccountCmdSet(default_cmds.AccountCmdSet):
         #
         for cmd in JOB_COMMANDS:
             self.add(cmd)
-        
+        self.add(CmdTheme)
+
 
 class UnloggedinCmdSet(default_cmds.UnloggedinCmdSet):
     """
