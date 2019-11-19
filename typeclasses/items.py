@@ -1,4 +1,4 @@
-from features.core.items import AthanorItem
+from features.items.items import AthanorItem
 
 
 class Item(AthanorItem):

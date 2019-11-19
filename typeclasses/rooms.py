@@ -4,7 +4,7 @@ Room
 Rooms are simple containers that has no location of their own.
 
 """
-from features.core.rooms import AthanorRoom
+from features.building.rooms import AthanorRoom
 
 
 class Room(AthanorRoom):

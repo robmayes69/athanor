@@ -32,7 +32,7 @@ class _CmdBase(COMMAND_DEFAULT_CLASS):
 
 
 class CmdFactions(_CmdBase):
-    key = '+factions'
+    key = '@factions'
     aliases = ('@fac',)
     locks = "cmd:all()"
     switch_options = ('select', 'tree')

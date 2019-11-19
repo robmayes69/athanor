@@ -38,6 +38,7 @@ class MarketListingDB(TypedObject):
     db_item = models.ForeignKey('objects.ObjectDB', related_name='market_sale_listings', on_delete=models.CASCADE, unique=True)
     db_owner = models.ForeignKey('core.EntityMapDB', related_name='market_sales', on_delete=models.PROTECT)
     db_price_per_unit = models.FloatField(default=0.0, null=False)
+    db_infinite = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = 'MarketListing'

@@ -65,7 +65,7 @@ WEBSOCKET_ENABLED = True
 INLINEFUNC_ENABLED = True
 
 INSTALLED_APPS = tuple(INSTALLED_APPS) + ('features.core', 'features.factions', 'features.forum', 'features.staff', 'features.themes',
-                                   'features.note', 'features.jobs', 'features.areas', 'features.mapper', 'features.rplogger',
+                                   'features.note', 'features.jobs', 'features.building', 'features.mapper', 'features.rplogger',
                                    'features.mush_import', "features.effects", "features.gear", "features.market",
                                    "features.quests", "features.traits")
 
@@ -89,11 +89,11 @@ OPTIONS_ACCOUNT_DEFAULT['sys_msg_text'] = ('For text in sys_msg', 'Color', 'w')
 # Area Settings
 ######################################################################
 GLOBAL_SCRIPTS['area'] = {
-    'typeclass': 'typeclasses.areas.AreaController',
+    'typeclass': 'typeclasses.building.AreaController',
     'repeats': -1, 'interval': 50, 'desc': 'Controller for Area System'
 }
 
-BASE_AREA_TYPECLASS = 'typeclasses.areas.Area'
+BASE_AREA_TYPECLASS = 'typeclasses.building.Area'
 
 ######################################################################
 # Channel Settings
@@ -203,7 +203,7 @@ BASE_THEME_PARTICIPANT_TYPECLASS = 'typeclasses.themes.ThemeParticipant'
 ######################################################################
 # Funcs Settings
 ######################################################################
-sections = ['areas', 'effects', 'factions', 'forum', 'gear', 'market',
+sections = ['building', 'effects', 'factions', 'forum', 'gear', 'market',
             'note', 'quests', 'rplogger']
 EXTRA_LOCK_FUNCS = tuple([f"features.{s}.locks" for s in sections])
 LOCK_FUNC_MODULES = LOCK_FUNC_MODULES + EXTRA_LOCK_FUNCS

@@ -2,9 +2,9 @@ from evennia.objects.objects import DefaultRoom
 from features.core.base import AthanorEntity
 from collections import defaultdict
 from evennia.utils import list_to_string
-from . submessage import SubMessageMixin
+from features.core.submessage import SubMessageMixin
 from evennia.utils.utils import lazy_property
-from . handler import KeywordHandler
+from features.core.handler import KeywordHandler
 
 HEADER_LINE = "O----------------------------------------------------------------------O"
 

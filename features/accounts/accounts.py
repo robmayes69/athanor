@@ -1,5 +1,6 @@
 from evennia.accounts.accounts import DefaultAccount, DefaultGuest
-from . base import AthanorEntity
+from features.core.base import AthanorEntity
+from typeclasses.scripts import GlobalScript
 
 
 class AthanorAccount(DefaultAccount, AthanorEntity):
@@ -31,3 +32,33 @@ class AthanorAccount(DefaultAccount, AthanorEntity):
 
 class AthanorGuest(DefaultGuest, AthanorAccount):
     pass
+
+
+class DefaultAccountController(GlobalScript):
+    system_name = 'ACCOUNTS'
+
+    def at_start(self):
+        pass
+
+    def create_account(self, session, username, email, password):
+        pass
+
+    def rename_account(self, session, account, new_name):
+        pass
+
+    def change_email(self, session, account, new_email):
+        pass
+
+    def find_account(self, search_text):
+        if isinstance(search_text, AthanorAccount):
+            return search_text
+
+    def disable_account(self, session, account):
+        pass
+
+    def enable_account(self, session, account):
+        pass
+
+    def ban_account(self, session, account, duration):
+        pass
+

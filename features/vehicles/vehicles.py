@@ -1,4 +1,4 @@
-from . objects import AthanorObject
+from features.core.objects import AthanorObject
 
 
 class AthanorVehicle(AthanorObject):

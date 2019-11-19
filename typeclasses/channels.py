@@ -12,7 +12,7 @@ to be modified.
 
 """
 
-from features.core.channels import AthanorChannel
+from features.channels.channels import AthanorChannel
 
 
 class Channel(AthanorChannel):

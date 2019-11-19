@@ -6,7 +6,7 @@ set and has a single command defined on itself with the same name as its key,
 for allowing Characters to traverse the exit to its destination.
 
 """
-from features.core.exits import AthanorExit
+from features.building.exits import AthanorExit
 
 
 class Exit(AthanorExit):

@@ -1,9 +1,10 @@
 from evennia.objects.objects import DefaultCharacter
 from evennia.utils.utils import lazy_property
 from features.core.base import AthanorEntity
-from . submessage import SubMessageMixinCharacter
-from . handler import KeywordHandler
+from features.core.submessage import SubMessageMixinCharacter
+from features.core.handler import KeywordHandler
 from handlers.gear import GearHandler, InventoryHandler
+from typeclasses.scripts import GlobalScript
 
 
 class AthanorCharacter(DefaultCharacter, AthanorEntity, SubMessageMixinCharacter):
@@ -36,5 +37,33 @@ class AthanorPlayerCharacter(AthanorCharacter):
     pass
 
 
+class AthanorShelvedCharacter(AthanorCharacter):
+    pass
+
+
 class AthanorMobileCharacter(AthanorCharacter):
     pass
+
+
+class DefaultCharacterController(GlobalScript):
+    system_name = 'CHARACTERS'
+
+    def at_start(self):
+        pass
+
+    def find_character(self, character):
+        if isinstance(character, AthanorPlayerCharacter):
+            return character
+        pass
+
+    def create_character(self):
+        pass
+
+    def delete_character(self):
+        pass
+
+    def shelf_character(self):
+        pass
+
+    def unshelf_character(self):
+        pass
