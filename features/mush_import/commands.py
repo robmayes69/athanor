@@ -8,21 +8,15 @@ import random
 
 from django.conf import settings
 from evennia.utils import create
+from evennia import GLOBAL_SCRIPTS
+from django.db.models import Q
 
-from athanor.bbs.models import BoardGroup
-from athanor.classes.characters import Character
-from athanor.classes.accounts import Account
-from athanor.core.command import AthCommand
-from athanor.fclist.models import FCList, CharacterStatus, CharacterType
-from athanor.rooms.models import District
-from athanor.groups.models import Group, GroupCategory
-from athanor.jobs.models import JobCategory
-from athanor.mushimport.convpenn import read_penn, process_penntext
-from athanor.mushimport.models import MushObject, cobj, pmatch, objmatch, MushAttributeName
-from athanor.radio.models import RadioFrequency
-from athanor.scene.models import Plot, Event, Runner, Source, Action
-from athanor.utils.text import partial_match, dramatic_capitalize, sanitize_string, penn_substitutions
-from athanor.utils.time import utcnow, duration_from_string
+from features.forum.models import ForumCategoryDB
+from . convpenn import read_penn, process_penntext
+from . models import MushObject, cobj, pmatch, objmatch, MushAttributeName
+from utils.text import partial_match, dramatic_capitalize, sanitize_string, penn_substitutions
+from utils.time import utcnow, duration_from_string
+from features.core.command import AthanorCommand
 
 
 def from_unixtimestring(secs):
@@ -32,6 +26,7 @@ def from_unixtimestring(secs):
         return None
     return convert
 
+
 def from_mushtimestring(timestring):
     try:
         convert = datetime.datetime.strptime(timestring, '%c').replace(tzinfo=pytz.utc)
@@ -39,27 +34,13 @@ def from_mushtimestring(timestring):
         return None
     return convert
 
-class CmdImport(AthCommand):
-    key = '+import'
+
+class CmdPennImport(AthanorCommand):
+    key = '@penn'
     system_name = 'IMPORT'
     locks = 'cmd:perm(Immortals)'
-    admin_switches = ['initialize', 'rooms', 'accounts', 'athanor-groups', 'athanor-forum', 'ex2', 'ex3', 'experience', 'fclist', 'radio',
+    admin_switches = ['initialize', 'areas', 'rooms', 'accounts', 'groups', 'bbs', 'ex2', 'ex3', 'experience', 'themes', 'radio',
                       'jobs', 'scenes']
-
-    def func(self):
-        if not self.final_switches:
-            self.error("This requires a switch. Choices are: %s" % ", ".join(self.admin_switches))
-            return
-        """
-        try:
-            exec "self.switch_%s()" % self.final_switches[0]
-        except AttributeError as err:
-            self.error(str(err))
-            self.error("Yeah that didn't work.")
-            return
-        """
-        exec "self.switch_%s()" % self.final_switches[0]
-
 
     def switch_initialize(self):
         try:
@@ -95,7 +76,7 @@ class CmdImport(AthCommand):
             if penn_data['owner'] in obj_dict:
                 entry.owner = obj_dict[penn_data['owner']]
 
-            if penn_data['type'] == 4: # For exits!
+            if penn_data['type'] == 4:  # For exits!
                 if penn_data['location'] in obj_dict:
                     entry.destination = obj_dict[penn_data['location']]
                 if penn_data['exits'] in obj_dict:
@@ -104,155 +85,129 @@ class CmdImport(AthCommand):
                 if penn_data['location'] in obj_dict:
                     entry.location = obj_dict[penn_data['location']]
             entry.save()
+
+            attr_dict = dict()
+
             for attr, value in penn_data['attributes'].items():
-                attr_name, created = MushAttributeName.objects.get_or_create(key=attr.upper())
+                attr_upper = attr.upper()
+                if attr_upper in attr_dict:
+                    attr_name = attr_dict[attr_upper]
+                else:
+                    attr_name, created = MushAttributeName.objects.get_or_create(key=attr_upper)
+                    if created:
+                        attr_name.save()
+                    attr_dict[attr_upper] = attr_name
                 attr_entry, created2 = entry.attrs.get_or_create(attr=attr_name, value=penn_substitutions(value))
                 if not created2:
                     attr_entry.save()
 
-        self.sys_msg("Import initialization complete.")
+        self.msg("Import initialization complete.")
 
+    def switch_area_recursive(self, district, parent=None):
+        area = district.area
+        if not area:
+            area = GLOBAL_SCRIPTS.area.create_area(self.session, district.name, parent=parent)
+            district.area = area
+            district.save()
+            for dist in district.children.filter(type=2):
+                self.switch_area_recursive(dist, area)
+
+    def switch_areas(self):
+        district_parent = cobj('district')
+        for district in district_parent.children.filter(type=2):
+            self.switch_area_recursive(district, parent=None)
+        self.msg("All done with Areas!")
 
     def switch_grid(self):
-        mush_rooms = MushObject.objects.filter(type=1)
-        if not mush_rooms:
-            self.error("No rooms to import.")
-            return
+        area_con = GLOBAL_SCRIPTS.area
+        mush_rooms = MushObject.objects.filter(type=1, obj=None).exclude(Q(parent=None) | Q(parent__area=None))
+
         for mush_room in mush_rooms:
-            if mush_room.obj:
-                new_room = self.update_room(mush_room)
-            else:
-                new_room = self.create_room(mush_room)
-                self.update_room(mush_room)
-        for mush_exit in MushObject.objects.filter(type=4, obj=None):
-            self.create_exit(mush_exit)
-        district_parent = cobj(abbr='district')
-        if not district_parent:
-            self.error("Could not find old District Parent.")
-            return
-        old_districts = sorted(district_parent.children.all(), key=lambda dist: int(dist.mushget('order') or 500))
-        for old_district in old_districts:
-            new_district, created = District.objects.get_or_create(key=old_district.name)
-            new_district.ic = bool(int(old_district.mushget('d`ic') or 0))
-            new_district.order = int(old_district.mushget('order') or 500)
-            rooms = old_district.children.all()
-            for room in rooms:
-                new_district.rooms.get_or_create(key=room.obj)
-            new_district.save()
+            new_room, errs = area_con.create_room(self.session, mush_room.parent.area, mush_room.name, self.account)
+            mush_room.obj = new_room
+            mush_room.obj.db.desc = mush_room.mushget('DESCRIBE')
+            mush_room.save()
 
-    def create_room(self, mush_room):
-        typeclass = settings.BASE_ROOM_TYPECLASS
-        lockstring = "control:id(%s) or perm(Immortals); delete:id(%s) or perm(Wizards); edit:id(%s) or perm(Wizards)"
-        lockstring = lockstring % (self.caller.id, self.caller.id, self.caller.id)
-        new_room = create.create_object(typeclass, key=mush_room.name)
-        new_room.locks.add(lockstring)
-        mush_room.obj = new_room
-        mush_room.save()
-        return new_room
+        for mush_exit in MushObject.objects.filter(type=4, obj=None).exclude(Q(location__parent__area=None) | Q(destination__parent__area=None) | Q(location__obj=None) | Q(destination__obj=None)):
+            aliases = None
+            alias_text = mush_exit.mushget('alias')
+            if alias_text:
+                aliases = alias_text.split(';')
 
-    def update_room(self, mush_room):
-        describe = mush_room.mushget('DESCRIBE')
-        if describe:
-            mush_room.obj.db.desc = describe
-        return
+            new_exit, errs = area_con.create_exit(self.session, mush_exit.location.parent.area, mush_exit.name,
+                                                  self.account, mush_exit.location.obj, mush_exit.destination.obj,
+                                                  aliases=aliases)
+            mush_exit.obj = new_exit
+            mush_exit.save()
 
-    def create_exit(self, mush_exit):
-        typeclass = settings.BASE_EXIT_TYPECLASS
-        lockstring = "control:id(%s) or perm(Immortals); delete:id(%s) or perm(Wizards); edit:id(%s) or perm(Wizards)"
-        lockstring = lockstring % (self.caller.id, self.caller.id, self.caller.id)
-        try:
-            dest = mush_exit.destination
-            dest = dest.obj
-        except:
-            dest = None
-        try:
-            loc = mush_exit.location
-            loc = loc.obj
-        except:
-            loc = None
-        alias = mush_exit.mushget('alias')
-        if alias:
-            alias = alias.split(';')
-        else:
-            alias = None
-
-        new_exit = create.create_object(typeclass, mush_exit.name, location=loc, aliases=alias, locks=lockstring,
-                                        destination=dest)
-        mush_exit.obj = new_exit
-        mush_exit.save()
-        return new_exit
+    def random_password(self):
+        password = "ABCDEFGHabcdefgh@+-" + str(random.randrange(5000000, 1000000000))
+        password_list = list(password)
+        random.shuffle(password_list)
+        password = ''.join(password_list)
+        return password
 
     def switch_accounts(self):
-        char_typeclass = settings.BASE_CHARACTER_TYPECLASS
-        accounts = cobj(abbr='accounts').children.all()
-        for acc_obj in accounts:
-            set_wizard = False
-            set_immortal = False
-            set_super = False
-            if acc_obj.account:
-                new_player = acc_obj.account
+        accounts_con = GLOBAL_SCRIPTS.accounts
+        mush_accounts = cobj(abbr='accounts').children.filter(account=None)
+        for mush_acc in mush_accounts:
+            new_account, errors = accounts_con.create_account(self.session, f"mush_acc_{mush_acc.dbref.strip('#')}",
+                                                              '', self.random_password())
+            mush_acc.account = new_account
+            mush_acc.save()
+            new_account.db._penn_import = True
+        self.msg(f"Imported {len(mush_accounts)} PennMUSH Accounts!")
+
+    def get_lost_and_found(self):
+        try:
+            lost_and_found = GLOBAL_SCRIPTS.accounts.find_account("LostAndFound")
+        except:
+            lost_and_found, errors = GLOBAL_SCRIPTS.accounts.create_account(self.session, "LostAndFound", 'dummy@dummy.com',
+                                                                            self.random_password())
+        return lost_and_found
+
+    def switch_characters(self):
+        lost_and_found = self.get_lost_and_found()
+        chars_con = GLOBAL_SCRIPTS.characters
+        mush_characters = MushObject.objects.filter(type=8, obj=None).exclude(powers__icontains='Guest')
+        for mush_char in mush_characters:
+            if mush_char.parent and  mush_char.parent.account:
+                acc = mush_char.parent.account
             else:
-                name = 'Imported - %s' % acc_obj.name
-                password = str(random.randrange(5000000, 1000000000))
-                email = acc_obj.mushget('email') or None
-                found = Account.objects.filter_family(username=name).first()
-                if found:
-                    new_player = found
-                else:
-                    new_player = create.create_account(name, email, password)
-                    acc_obj.account = new_player
-                    acc_obj.save(update_fields=['account'])
-                new_player.db._import_ready = True
-                new_player.db._reset_username = True
-                if new_player.email == 'dummy@dummy.com':
-                    new_player.db._reset_email = True
-            objids = acc_obj.mushget('characters').split(' ')
-            mush_chars = MushObject.objects.filter(objid__in=objids, obj=None)
-            for char in mush_chars:
-                new_char = create.create_object(typeclass=char_typeclass, key=char.name)
-                new_char.db.prelogout_location = char.location.obj
-                char.obj = new_char
-                char.save(update_fields=['obj'])
-                new_player.account.bind_character(new_char)
-                new_char.db._import_ready = True
-                flags = char.flags.split(' ')
-                if char.dbref == '#1':
+                acc = lost_and_found
+
+            new_char, errors = chars_con.create_character(self.session, acc, mush_char.name)
+            mush_char.obj = new_char
+
+            new_char.db._penn_import = True
+
+            for alias in mush_char.aliases():
+                new_char.aliases.add(alias)
+            new_char.db.desc = mush_char.mushget('DESCRIBE')
+
+            flags = mush_char.flags.split(' ')
+
+            set_super, set_developer, set_admin = False, False, False
+
+            if acc != lost_and_found:
+                if mush_char.dbref == '#1':
                     set_super = True
                 if 'WIZARD' in flags:
-                    set_immortal = True
+                    set_developer = True
                 if 'ROYALTY' in flags:
-                    set_wizard = True
-            if set_super:
-                new_player.is_superuser = True
-                new_player.save()
-                continue
-            if set_immortal:
-                new_player.permissions.add('Immortals')
-                continue
-            if set_wizard:
-                new_player.permissions.add('Wizards')
-                continue
-        unbound = MushObject.objects.filter(type=8, obj=None, recreated=False).exclude(powers__icontains='Guest')
-        if unbound:
-            name = 'Lost and Found'
-            password = str(random.randrange(5000000, 1000000000))
-            email = None
-            found = Account.objects.filter_family(username=name).first()
-            if found:
-                new_player = found
-            else:
-                new_player = create.create_account(name, email, password)
-            new_player.db._lost_and_found = True
-            new_player.config.model.enabled = False
-            new_player.config.model.save(update_fields=['enabled'])
-            for char in unbound:
-                new_char = create.create_object(typeclass=char_typeclass, key=char.name)
-                new_char.db.prelogout_location = char.location.obj
-                char.obj = new_char
-                char.save(update_fields=['obj'])
-                new_player.account.bind_character(new_char)
-                new_char.db._import_ready = True
-        self.sys_msg("Finished importing characters!")
+                    set_admin = True
+                if set_super:
+                    acc.is_superuser = True
+                    acc.save()
+                    set_developer = False
+                    set_admin = False
+                if set_developer:
+                    acc.permissions.add('Developer')
+                    set_admin = False
+                if set_admin:
+                    acc.permissions.add('Admin')
+
+        self.msg("Finished importing characters!")
 
     def switch_groups(self):
         minor, cr = GroupCategory.objects.get_or_create(key='Minor', description='Minor Groups', order=1)
@@ -307,7 +262,7 @@ class CmdImport(AthCommand):
                 self.convert_board(new_board)
 
     def switch_bbs(self):
-        penn_boards = cobj('athanor-forum').contents.all()
+        penn_boards = cobj('bbs').contents.all()
         board_group, created5 = BoardGroup.objects.get_or_create(main=1, group=None)
         for old_board in penn_boards:
             if not old_board.board:
@@ -348,7 +303,7 @@ class CmdImport(AthCommand):
                                    creation_date=old_data['creation_date'], timeout=old_data['timeout'],
                                    text=old_data['text'], order=num+1)
 
-    def switch_fclist(self):
+    def switch_themes(self):
         old_themes = cobj('themedb').children.all()
         for old_theme in old_themes:
             new_theme, created = FCList.objects.get_or_create(key=old_theme.name)

@@ -3,9 +3,9 @@ from evennia.typeclasses.models import TypedObject
 
 
 class WalletDB(TypedObject):
-    __settingclasspath__ = "features.gear.gear.DefaultWallet"
-    __defaultclasspath__ = "features.gear.gear.DefaultWallet"
-    __applabel__ = "gear"
+    __settingclasspath__ = "features.items.items.DefaultWallet"
+    __defaultclasspath__ = "features.items.items.DefaultWallet"
+    __applabel__ = "items"
 
     db_entity = models.ForeignKey('core.EntityMapDB', related_name='wallets', on_delete=models.CASCADE)
     db_amount = models.BigIntegerField(default=0)
@@ -26,9 +26,9 @@ class AccountingLog(models.Model):
 
 
 class InventoryDefinitionDB(TypedObject):
-    __settingclasspath__ = "features.gear.gear.DefaultInventoryDefinition"
-    __defaultclasspath__ = "features.gear.gear.DefaultInventoryDefinition"
-    __applabel__ = "gear"
+    __settingclasspath__ = "features.items.items.DefaultInventoryDefinition"
+    __defaultclasspath__ = "features.items.items.DefaultInventoryDefinition"
+    __applabel__ = "items"
 
     db_inventory_typeclass = models.ForeignKey('core.TypeclassMap', null=True, on_delete=models.PROTECT,
                                                related_name='+')
@@ -40,9 +40,9 @@ class InventoryDefinitionDB(TypedObject):
 
 
 class InventoryDB(TypedObject):
-    __settingclasspath__ = "features.gear.gear.DefaultInventory"
-    __defaultclasspath__ = "features.gear.gear.DefaultInventory"
-    __applabel__ = "gear"
+    __settingclasspath__ = "features.items.items.DefaultInventory"
+    __defaultclasspath__ = "features.items.items.DefaultInventory"
+    __applabel__ = "items"
 
     db_entity = models.ForeignKey('core.EntityMapDB', related_name='inventories', on_delete=models.PROTECT)
     db_definition = models.ForeignKey(InventoryDefinitionDB, related_name='inventories', on_delete=models.PROTECT)
@@ -54,9 +54,9 @@ class InventoryDB(TypedObject):
 
 
 class InventorySlotDB(TypedObject):
-    __settingclasspath__ = "features.gear.gear.DefaultInventorySlot"
-    __defaultclasspath__ = "features.gear.gear.DefaultInventorySlot"
-    __applabel__ = "gear"
+    __settingclasspath__ = "features.items.items.DefaultInventorySlot"
+    __defaultclasspath__ = "features.items.items.DefaultInventorySlot"
+    __applabel__ = "items"
 
     db_inventory = models.ForeignKey(InventoryDB, related_name='storage', on_delete=models.PROTECT)
     db_item = models.ForeignKey('objects.ObjectDB', related_name='inventory_slot', unique=True, on_delete=models.PROTECT)
@@ -70,9 +70,9 @@ class InventorySlotDB(TypedObject):
 
 
 class GearSetDefinitionDB(TypedObject):
-    __settingclasspath__ = "features.gear.gear.DefaultGearSetDefinition"
-    __defaultclasspath__ = "features.gear.gear.DefaultGearSetDefinition"
-    __applabel__ = "gear"
+    __settingclasspath__ = "features.items.items.DefaultGearSetDefinition"
+    __defaultclasspath__ = "features.items.items.DefaultGearSetDefinition"
+    __applabel__ = "items"
 
     db_slot_typeclass = models.ForeignKey('core.TypeclassMap', null=True, on_delete=models.PROTECT, related_name='+')
     db_gearset_typeclass = models.ForeignKey('core.TypeclassMap', null=True, on_delete=models.PROTECT, related_name='+')
@@ -83,9 +83,9 @@ class GearSetDefinitionDB(TypedObject):
 
 
 class GearSetDB(TypedObject):
-    __settingclasspath__ = "features.gear.gear.DefaultGearSet"
-    __defaultclasspath__ = "features.gear.gear.DefaultGearSet"
-    __applabel__ = "gear"
+    __settingclasspath__ = "features.items.items.DefaultGearSet"
+    __defaultclasspath__ = "features.items.items.DefaultGearSet"
+    __applabel__ = "items"
 
     db_entity = models.ForeignKey('core.EntityMapDB', related_name='gearslots', on_delete=models.PROTECT)
     db_gearset_definition = models.ForeignKey(GearSetDefinitionDB, related_name='users', on_delete=models.PROTECT)
@@ -97,9 +97,9 @@ class GearSetDB(TypedObject):
 
 
 class GearSlotDB(TypedObject):
-    __settingclasspath__ = "features.gear.gear.DefaultGearSlot"
-    __defaultclasspath__ = "features.gear.gear.DefaultGearSlot"
-    __applabel__ = "gear"
+    __settingclasspath__ = "features.items.items.DefaultGearSlot"
+    __defaultclasspath__ = "features.items.items.DefaultGearSlot"
+    __applabel__ = "items"
 
     db_gearset = models.ForeignKey(GearSetDB, related_name='users', on_delete=models.PROTECT)
     db_layer = models.PositiveIntegerField(default=0, null=False)

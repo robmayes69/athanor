@@ -22,7 +22,7 @@ several more options for customizing the Guest account system.
 
 """
 
-from features.accounts.accounts import AthanorAccount, AthanorGuest
+from features.accounts.accounts import AthanorAccount, AthanorGuest, DefaultAccountController
 
 
 class Account(AthanorAccount):
@@ -101,4 +101,8 @@ class Guest(AthanorGuest):
     This class is used for guest logins. Unlike Accounts, Guests and their
     characters are deleted after disconnection.
     """
+    pass
+
+
+class AccountController(DefaultAccountController):
     pass

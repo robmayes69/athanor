@@ -19,6 +19,7 @@ from features.forum.commands import ALL_COMMANDS as BBS_COMMANDS
 from features.jobs.commands import JOB_COMMANDS
 from features.core.exit_errors import ExitErrorCmdSet
 from features.themes.commands import CmdTheme
+from features.mush_import.commands import CmdPennImport
 
 
 class CharacterCmdSet(default_cmds.CharacterCmdSet):
@@ -41,6 +42,7 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
             self.add(cmd)
         if settings.EXIT_ERRORS:
             self.add(ExitErrorCmdSet)
+        self.add(CmdPennImport)
 
 
 class AccountCmdSet(default_cmds.AccountCmdSet):

@@ -1,5 +1,5 @@
 from evennia.typeclasses.models import TypeclassBase
-from . models import TraitDefinitionDB, TraitValueDB
+from . models import TraitDefinitionDB, TraitCollectionDB, TraitDB
 from features.core.base import AthanorTypeEntity
 
 
@@ -10,8 +10,15 @@ class DefaultTraitDefinition(TraitDefinitionDB, AthanorTypeEntity, metaclass=Typ
         AthanorTypeEntity.__init__(self, *args, **kwargs)
 
 
-class DefaultTraitValue(TraitValueDB, AthanorTypeEntity, metaclass=TypeclassBase):
+class DefaultTraitCollection(TraitCollectionDB, AthanorTypeEntity, metaclass=TypeclassBase):
 
     def __init__(self, *args, **kwargs):
-        TraitValueDB.__init__(self, *args, **kwargs)
+        TraitCollectionDB.__init__(self, *args, **kwargs)
+        AthanorTypeEntity.__init__(self, *args, **kwargs)
+
+
+class DefaultTrait(TraitDB, AthanorTypeEntity, metaclass=TypeclassBase):
+
+    def __init__(self, *args, **kwargs):
+        TraitDB.__init__(self, *args, **kwargs)
         AthanorTypeEntity.__init__(self, *args, **kwargs)

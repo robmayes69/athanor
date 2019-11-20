@@ -29,11 +29,14 @@ def re_pueblo(match):
 
     return match.group('text')
 
+
 def re_newlines(match):
     return '\n'
 
+
 def re_tabs(match):
     return '\t'
+
 
 def process_penntext(text):
     if not len(text):
@@ -53,6 +56,7 @@ class read_penn(object):
         self.outdb = codecs.open(file, 'r', 'iso-8859-1')
         self.mush_data = {}
         self.parse_file()
+        self.outdb.close()
 
     def parse_file(self):
         all_lines = self.outdb.readlines()

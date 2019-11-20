@@ -1,4 +1,4 @@
-from features.gear.gear import DefaultInventory, DefaultInventorySlot, DefaultGearSet, DefaultGearSlot
+from features.items.gear import DefaultInventory, DefaultInventorySlot, DefaultGearSet, DefaultGearSlot
 
 
 class Inventory(DefaultInventory):

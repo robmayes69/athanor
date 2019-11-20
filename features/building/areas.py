@@ -1,12 +1,14 @@
 from django.conf import settings
 from evennia.typeclasses.models import TypeclassBase
-from features.areas.models import AreaDB
+from . models import AreaDB
 from typeclasses.scripts import GlobalScript
 from features.core.base import AthanorTypeEntity
 from features.core.models import TypeclassMap
 from evennia.utils.utils import class_from_module
 from evennia.utils.logger import log_trace
 from utils.text import partial_match
+from typeclasses.rooms import Room
+from typeclasses.exits import Exit
 
 
 class DefaultArea(AreaDB, AthanorTypeEntity, metaclass=TypeclassBase):
@@ -61,6 +63,16 @@ class DefaultArea(AreaDB, AthanorTypeEntity, metaclass=TypeclassBase):
             current_par = current_par.parent
         return '/'.join([str(p) for p in reversed(ancestors)])
 
+    def create_exit(self, key, account, location, destination, aliases=None, gateway=None):
+        typeclass = self.get_exit_typeclass()
+        new_exit = typeclass.create(key, account, location, destination)
+        return new_exit
+
+    def create_room(self, key, account):
+        typeclass = self.get_room_typeclass()
+        new_room = typeclass.create(key, account)
+        return new_room
+
 
 class DefaultAreaController(GlobalScript):
     system_name = 'AREA'
@@ -77,6 +89,20 @@ class DefaultAreaController(GlobalScript):
         except Exception:
             log_trace()
             self.ndb.area_typeclass = DefaultArea
+
+        try:
+            self.ndb.room_typeclass = class_from_module(settings.BASE_ROOM_TYPECLASS,
+                                                         defaultpaths=settings.TYPECLASS_PATHS)
+        except Exception:
+            log_trace()
+            self.ndb.room_typeclass = Room
+
+        try:
+            self.ndb.exit_typeclass = class_from_module(settings.BASE_EXIT_TYPECLASS,
+                                                         defaultpaths=settings.TYPECLASS_PATHS)
+        except Exception:
+            log_trace()
+            self.ndb.exit_typeclass = Exit
 
     def areas(self, parent=None):
         return DefaultArea.objects.filter(parent=parent).order_by('db_key')
@@ -124,3 +150,18 @@ class DefaultAreaController(GlobalScript):
             new_area = None
         new_area = self.find_area(new_area)
         area.change_parent(new_area)
+
+    def create_exit(self, session, area, key, account, location, destination, aliases=None, gateway=None):
+        area = self.find_area(area)
+        new_exit, errors = area.create_exit(key, account, location, destination, aliases=aliases, gateway=gateway)
+        if aliases:
+            for alias in aliases:
+                new_exit.aliases.add(alias)
+        area.db_fixtures.add(new_exit)
+        return new_exit, errors
+
+    def create_room(self, session, area, key, account):
+        area = self.find_area(area)
+        new_room, errors = area.create_room(key, account)
+        area.db_fixtures.add(new_room)
+        return new_room, errors

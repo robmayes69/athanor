@@ -1,4 +1,4 @@
-from features.areas.areas import DefaultAreaController, DefaultArea
+from features.building.areas import DefaultAreaController, DefaultArea
 
 
 class AreaController(DefaultAreaController):

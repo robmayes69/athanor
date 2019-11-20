@@ -1,4 +1,4 @@
-from features.gear.gear import DefaultGearHandler, DefaultInventoryHandler
+from features.items.gear import DefaultGearHandler, DefaultInventoryHandler
 from typeclasses.gear import GearSlot, InventorySlot
 
 

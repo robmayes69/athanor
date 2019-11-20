@@ -10,6 +10,7 @@ class MushObject(models.Model):
     group = models.OneToOneField('factions.FactionDB', related_name='mush', null=True, on_delete=models.SET_NULL)
     board = models.OneToOneField('forum.ForumBoardDB', related_name='mush', null=True, on_delete=models.SET_NULL)
     fclist = models.OneToOneField('themes.ThemeDB', related_name='mush', null=True, on_delete=models.SET_NULL)
+    area = models.OneToOneField('building.AreaDB', related_name='mush', null=True, on_delete=models.SET_NULL)
     dbref = models.CharField(max_length=15, db_index=True)
     objid = models.CharField(max_length=30, unique=True, db_index=True)
     type = models.PositiveSmallIntegerField(db_index=True)
@@ -29,16 +30,22 @@ class MushObject(models.Model):
     def __repr__(self):
         return '<PennObj %s: %s>' % (self.dbref, self.name)
 
-    def mushget(self, attrname):
+    def aliases(self):
+        ali = self.mushget('alias', check_parent=False)
+        if ali:
+            return ali.split(';')
+        return []
+
+    def mushget(self, attrname, default='', check_parent=True):
         if not attrname:
             return False
         attr = self.attrs.filter(attr__key__iexact=attrname).first()
         if attr:
             return attr.value.replace('%r', '%R').replace('%t', '%T')
-        if self.parent:
-            return self.parent.mushget(attrname)
+        if check_parent and self.parent:
+            return self.parent.mushget(attrname, check_parent=check_parent)
         else:
-            return ""
+            return default
 
     def hasattr(self, attrname):
         if not attrname:
@@ -109,9 +116,9 @@ class MushObject(models.Model):
 def cobj(abbr=None):
     if not abbr:
         raise ValueError("No abbreviation entered!")
-    code_object = MushObject.objects.filter(name='Master Code Object <MCO>').first()
+    code_object = MushObject.objects.filter(name='Core Code Parent <CCP>').first()
     if not code_object:
-        raise ValueError("Master Code Object <MCO> not found!")
+        raise ValueError("Core Code Parent <CCP> not found!")
     search_name = 'COBJ`%s' % abbr.upper()
     found_attr = code_object.attrs.filter(attr__key=search_name).first()
     if not found_attr:

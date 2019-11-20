@@ -65,8 +65,8 @@ WEBSOCKET_ENABLED = True
 INLINEFUNC_ENABLED = True
 
 INSTALLED_APPS = tuple(INSTALLED_APPS) + ('features.core', 'features.factions', 'features.forum', 'features.staff', 'features.themes',
-                                   'features.note', 'features.jobs', 'features.building', 'features.mapper', 'features.rplogger',
-                                   'features.mush_import', "features.effects", "features.gear", "features.market",
+                                   'features.note', 'features.jobs', 'features.building',  'features.rplogger',
+                                   'features.mush_import', "features.effects", "features.items", "features.market",
                                    "features.quests", "features.traits")
 
 ROOT_URLCONF = None
@@ -82,6 +82,11 @@ SERVER_SESSION_CLASS = "typeclasses.sessions.Session"
 ######################################################################
 BASE_ACCOUNT_TYPECLASS = "typeclasses.accounts.Account"
 
+GLOBAL_SCRIPTS['accounts'] = {
+    'typeclass': 'typeclasses.accounts.AccountController',
+    'repeats': -1, 'interval': 50, 'desc': 'Controller for Account System'
+}
+
 OPTIONS_ACCOUNT_DEFAULT['sys_msg_border'] = ('For -=<>=-', 'Color', 'm')
 OPTIONS_ACCOUNT_DEFAULT['sys_msg_text'] = ('For text in sys_msg', 'Color', 'w')
 
@@ -89,11 +94,11 @@ OPTIONS_ACCOUNT_DEFAULT['sys_msg_text'] = ('For text in sys_msg', 'Color', 'w')
 # Area Settings
 ######################################################################
 GLOBAL_SCRIPTS['area'] = {
-    'typeclass': 'typeclasses.building.AreaController',
+    'typeclass': 'typeclasses.areas.AreaController',
     'repeats': -1, 'interval': 50, 'desc': 'Controller for Area System'
 }
 
-BASE_AREA_TYPECLASS = 'typeclasses.building.Area'
+BASE_AREA_TYPECLASS = 'typeclasses.areas.Area'
 
 ######################################################################
 # Channel Settings
@@ -106,7 +111,14 @@ CHANNEL_COMMAND_CLASS = "evennia.comms.channelhandler.ChannelCommand"
 ######################################################################
 BASE_CHARACTER_TYPECLASS = "typeclasses.characters.PlayerCharacter"
 
+GLOBAL_SCRIPTS['characters'] = {
+    'typeclass': 'typeclasses.characters.CharacterController',
+    'repeats': -1, 'interval': 50, 'desc': 'Controller for Character System'
+}
+
 NAME_DUB_SYSTEM_ENABLED = False
+
+MAX_NR_CHARACTERS = 10000
 
 ######################################################################
 # Effect Settings
@@ -156,11 +168,11 @@ BASE_FORUM_POST_TYPECLASS = 'typeclasses.forum.ForumPost'
 ######################################################################
 # Gear Settings
 ######################################################################
-BASE_INVENTORY_TYPECLASS = 'typeclasses.gear.Inventory'
-BASE_INVENTORY_SLOT_TYPECLASS = 'typeclasses.gear.InventorySlot'
+BASE_INVENTORY_TYPECLASS = 'typeclasses.items.Inventory'
+BASE_INVENTORY_SLOT_TYPECLASS = 'typeclasses.items.InventorySlot'
 
-BASE_GEAR_SET_TYPECLASS = 'typeclasses.gear.GearSet'
-BASE_GEAR_SLOT_TYPECLASS = 'typeclasses.gear.GearSLot'
+BASE_GEAR_SET_TYPECLASS = 'typeclasses.items.GearSet'
+BASE_GEAR_SLOT_TYPECLASS = 'typeclasses.items.GearSLot'
 
 ######################################################################
 # Gear Settings
@@ -203,7 +215,7 @@ BASE_THEME_PARTICIPANT_TYPECLASS = 'typeclasses.themes.ThemeParticipant'
 ######################################################################
 # Funcs Settings
 ######################################################################
-sections = ['building', 'effects', 'factions', 'forum', 'gear', 'market',
+sections = ['building', 'effects', 'factions', 'forum', 'items', 'market',
             'note', 'quests', 'rplogger']
 EXTRA_LOCK_FUNCS = tuple([f"features.{s}.locks" for s in sections])
 LOCK_FUNC_MODULES = LOCK_FUNC_MODULES + EXTRA_LOCK_FUNCS

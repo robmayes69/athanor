@@ -1,7 +1,14 @@
 from evennia.typeclasses.models import TypeclassBase
-from . models import InventoryDB, InventorySlotDB, GearSetDB, GearSlotDB
+from . models import InventoryDefinitionDB, InventoryDB, InventorySlotDB, GearSetDefinitionDB, GearSetDB, GearSlotDB
 from features.core.base import AthanorTypeEntity
 from features.core.handler import AthanorFlexHandler
+
+
+class DefaultInventoryDefinition(InventoryDefinitionDB, AthanorTypeEntity, metaclass=TypeclassBase):
+
+    def __init__(self, *args, **kwargs):
+        InventoryDefinitionDB.__init__(self, *args, **kwargs)
+        AthanorTypeEntity.__init__(self, *args, **kwargs)
 
 
 class DefaultInventory(InventoryDB, AthanorTypeEntity, metaclass=TypeclassBase):
@@ -15,6 +22,13 @@ class DefaultInventorySlot(InventorySlotDB, AthanorTypeEntity, metaclass=Typecla
 
     def __init__(self, *args, **kwargs):
         InventorySlotDB.__init__(self, *args, **kwargs)
+        AthanorTypeEntity.__init__(self, *args, **kwargs)
+
+
+class DefaultGearSetDefinition(GearSetDefinitionDB, AthanorTypeEntity, metaclass=TypeclassBase):
+
+    def __init__(self, *args, **kwargs):
+        GearSetDefinitionDB.__init__(self, *args, **kwargs)
         AthanorTypeEntity.__init__(self, *args, **kwargs)
 
 
