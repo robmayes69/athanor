@@ -13,7 +13,7 @@ from django.db.models import Q
 
 from features.forum.models import ForumCategoryDB
 from . convpenn import read_penn, process_penntext
-from . models import MushObject, cobj, pmatch, objmatch, MushAttributeName
+from . models import MushObject, cobj, pmatch, objmatch, MushAttributeName, MushAttribute
 from utils.text import partial_match, dramatic_capitalize, sanitize_string, penn_substitutions
 from utils.time import utcnow, duration_from_string
 from features.core.command import AthanorCommand
@@ -38,9 +38,22 @@ def from_mushtimestring(timestring):
 class CmdPennImport(AthanorCommand):
     key = '@penn'
     system_name = 'IMPORT'
-    locks = 'cmd:perm(Immortals)'
+    locks = 'cmd:perm(Developers)'
     admin_switches = ['initialize', 'areas', 'rooms', 'accounts', 'groups', 'bbs', 'ex2', 'ex3', 'experience', 'themes', 'radio',
                       'jobs', 'scenes']
+
+    def sql_cursor(self):
+        if self.cursor:
+            return self.cursor
+        sql_dict = settings.PENNMUSH_SQL_DICT
+        self.sql = MySQLdb.connect(host=sql_dict['site'], user=sql_dict['username'],
+                             passwd=sql_dict['password'], db=sql_dict['database'], cursorclass=cursors.DictCursor)
+        self.cursor = self.sql.cursor()
+        return self.cursor
+
+    def at_post_cmd(self):
+        if hasattr(self, 'sql'):
+            self.sql.close()
 
     def switch_initialize(self):
         try:
@@ -57,8 +70,11 @@ class CmdPennImport(AthanorCommand):
 
         obj_dict = dict()
 
-        for entity in sorted(penn_objects.keys(), key=lambda dbr: int(dbr.strip('#'))):
+        dbrefs = sorted(penn_objects.keys(), key=lambda dbr: int(dbr.strip('#')))
+        db_count = len(dbrefs)
+        for count, entity in enumerate(dbrefs, start=1):
             penn_data = penn_objects[entity]
+            self.sys_msg(f"Processing MushObject {count} of {db_count} - {penn_data['objid']}: {penn_data['name']}")
             entry, created = MushObject.objects.get_or_create(dbref=entity, objid=penn_data['objid'],
                                                               type=penn_data['type'], name=penn_data['name'],
                                                               flags=penn_data['flags'], powers=penn_data['powers'],
@@ -68,22 +84,21 @@ class CmdPennImport(AthanorCommand):
 
             obj_dict[entity] = entry
 
-        for entity in sorted(penn_objects.keys(), key=lambda dbr: int(dbr.strip('#'))):
+        def set_attr(penn_data, entry, attr):
+            if penn_data[attr] in obj_dict:
+                setattr(entry, attr, obj_dict[penn_data[attr]])
+
+        for entity in dbrefs:
             penn_data = penn_objects[entity]
             entry = obj_dict[entity]
-            if penn_data['parent'] in obj_dict:
-                entry.parent = obj_dict[penn_data['parent']]
-            if penn_data['owner'] in obj_dict:
-                entry.owner = obj_dict[penn_data['owner']]
+            for attr in ('parent', 'owner'):
+                set_attr(penn_data, entry, attr)
 
             if penn_data['type'] == 4:  # For exits!
-                if penn_data['location'] in obj_dict:
-                    entry.destination = obj_dict[penn_data['location']]
-                if penn_data['exits'] in obj_dict:
-                    entry.location = obj_dict[penn_data['exits']]
+                for attr in ('location', 'exits'):
+                    set_attr(penn_data, entry, attr)
             else:
-                if penn_data['location'] in obj_dict:
-                    entry.location = obj_dict[penn_data['location']]
+                set_attr(penn_data, entry, 'location')
             entry.save()
 
             attr_dict = dict()
@@ -101,7 +116,7 @@ class CmdPennImport(AthanorCommand):
                 if not created2:
                     attr_entry.save()
 
-        self.msg("Import initialization complete.")
+        self.sys_msg(f"Imported {db_count} MushObjects and {MushAttribute.objects.count()} MushAttributes into Django. Ready for additional operations.")
 
     def switch_area_recursive(self, district, parent=None):
         area = district.area
@@ -109,12 +124,13 @@ class CmdPennImport(AthanorCommand):
             area = GLOBAL_SCRIPTS.area.create_area(self.session, district.name, parent=parent)
             district.area = area
             district.save()
-            for dist in district.children.filter(type=2):
+            self.sys_msg(f"Created Area: {area.full_path()}")
+            for dist in district.children.filter(type=2).order('name'):
                 self.switch_area_recursive(dist, area)
 
     def switch_areas(self):
         district_parent = cobj('district')
-        for district in district_parent.children.filter(type=2):
+        for district in district_parent.children.filter(type=2).order('name'):
             self.switch_area_recursive(district, parent=None)
         self.msg("All done with Areas!")
 
@@ -122,13 +138,20 @@ class CmdPennImport(AthanorCommand):
         area_con = GLOBAL_SCRIPTS.area
         mush_rooms = MushObject.objects.filter(type=1, obj=None).exclude(Q(parent=None) | Q(parent__area=None))
 
-        for mush_room in mush_rooms:
+        mush_rooms_count = len(mush_rooms)
+
+        for counter, mush_room in enumerate(mush_rooms, start=1):
+            self.sys_msg(f"Processing Room {counter} of {mush_rooms_count} - {mush_room.objid}: {mush_room.name}")
             new_room, errs = area_con.create_room(self.session, mush_room.parent.area, mush_room.name, self.account)
             mush_room.obj = new_room
             mush_room.obj.db.desc = mush_room.mushget('DESCRIBE')
             mush_room.save()
 
-        for mush_exit in MushObject.objects.filter(type=4, obj=None).exclude(Q(location__parent__area=None) | Q(destination__parent__area=None) | Q(location__obj=None) | Q(destination__obj=None)):
+        mush_exits = MushObject.objects.filter(type=4, obj=None).exclude(Q(location__parent__area=None) | Q(destination__parent__area=None) | Q(location__obj=None) | Q(destination__obj=None))
+        mush_exits_count = len(mush_exits)
+
+        for counter, mush_exit in enumerate(mush_exits, start=1):
+            self.sys_msg(f"Processing Exit {counter} of {mush_exits_count} - {mush_exit.objid}: {mush_room.name} FROM {mush_exit.location.name} TO {mush_exit.destination.name}")
             aliases = None
             alias_text = mush_exit.mushget('alias')
             if alias_text:
@@ -150,13 +173,20 @@ class CmdPennImport(AthanorCommand):
     def switch_accounts(self):
         accounts_con = GLOBAL_SCRIPTS.accounts
         mush_accounts = cobj(abbr='accounts').children.filter(account=None)
-        for mush_acc in mush_accounts:
-            new_account, errors = accounts_con.create_account(self.session, f"mush_acc_{mush_acc.dbref.strip('#')}",
-                                                              '', self.random_password())
+        mush_accounts_count = len(mush_accounts)
+        for counter, mush_acc in enumerate(mush_accounts, start=1):
+            password = self.random_password()
+            username = f"mush_acc_{mush_acc.dbref.strip('#')}"
+            old_email = mush_acc.mushget('email')
+            email = f"{username}@ourgame.org"
+            self.sys_msg(f"Processing Account {counter} of {mush_accounts_count} - {mush_acc.objid}: {mush_acc.name} / {old_email}. New username: {username} - Password: {password}")
+            new_account, errors = accounts_con.create_account(self.session, username, email, password)
             mush_acc.account = new_account
             mush_acc.save()
             new_account.db._penn_import = True
-        self.msg(f"Imported {len(mush_accounts)} PennMUSH Accounts!")
+            new_account.db._penn_name = mush_acc.name
+            new_account.db._penn_email = old_email
+        self.msg(f"Imported {mush_accounts_count} PennMUSH Accounts!")
 
     def get_lost_and_found(self):
         try:
@@ -168,13 +198,19 @@ class CmdPennImport(AthanorCommand):
 
     def switch_characters(self):
         lost_and_found = self.get_lost_and_found()
+        self.sys_msg(f"Acquired Lost and Found Account: {lost_and_found.get_display_name()}")
         chars_con = GLOBAL_SCRIPTS.characters
         mush_characters = MushObject.objects.filter(type=8, obj=None).exclude(powers__icontains='Guest')
-        for mush_char in mush_characters:
+        mush_characters_count = len(mush_characters)
+
+        for counter, mush_char in enumerate(mush_characters, start=1):
+            self.sys_msg(f"Processing Character {counter} of {mush_characters_count} - {mush_char.objid}: {mush_char.name}")
             if mush_char.parent and  mush_char.parent.account:
                 acc = mush_char.parent.account
+                self.sys_msg(f"Account Found! Will assign to Account: {acc.get_display_name()}")
             else:
                 acc = lost_and_found
+                self.sys_msg("Character has no Account! Will assign to Lost and Found!")
 
             new_char, errors = chars_con.create_character(self.session, acc, mush_char.name)
             mush_char.obj = new_char
@@ -183,31 +219,32 @@ class CmdPennImport(AthanorCommand):
 
             for alias in mush_char.aliases():
                 new_char.aliases.add(alias)
-            new_char.db.desc = mush_char.mushget('DESCRIBE')
+            description = mush_char.mushget('DESCRIBE')
+            if description:
+                self.sys_msg(f"FOUND DESCRIPTION: {description}")
+                new_char.db.desc = description
 
             flags = mush_char.flags.split(' ')
 
-            set_super, set_developer, set_admin = False, False, False
-
             if acc != lost_and_found:
-                if mush_char.dbref == '#1':
-                    set_super = True
-                if 'WIZARD' in flags:
-                    set_developer = True
-                if 'ROYALTY' in flags:
-                    set_admin = True
+                set_super = mush_char.dbref == '#1'
+                set_developer = 'WIZARD' in flags
+                set_admin = 'ROYALTY' in flags or int(mush_char.mushget('V`ADMIN', default='0'))
                 if set_super:
                     acc.is_superuser = True
                     acc.save()
                     set_developer = False
                     set_admin = False
+                    self.sys_msg(f"Detected #1 GOD. {acc.get_display_name()} has been granted Superuser privileges.")
                 if set_developer:
                     acc.permissions.add('Developer')
                     set_admin = False
+                    self.sys_msg(f"Detected WIZARD flag. {acc.get_display_name()} has been granted Developer privileges.")
                 if set_admin:
                     acc.permissions.add('Admin')
+                    self.sys_msg(f"Detected ROYALTY flag or Admin Group Membership. {acc.get_display_name()} has been granted Admin privileges.")
 
-        self.msg("Finished importing characters!")
+        self.msg(f"Finished importing {mush_characters_count} characters!")
 
     def switch_groups(self):
         minor, cr = GroupCategory.objects.get_or_create(key='Minor', description='Minor Groups', order=1)
@@ -304,64 +341,30 @@ class CmdPennImport(AthanorCommand):
                                    text=old_data['text'], order=num+1)
 
     def switch_themes(self):
-        old_themes = cobj('themedb').children.all()
-        for old_theme in old_themes:
-            new_theme, created = FCList.objects.get_or_create(key=old_theme.name)
-            desc = old_theme.mushget('DESCRIBE')
-            if desc:
-                new_theme.description = desc
-            powers = old_theme.mushget('POWERS')
-            if powers:
-                new_theme.powers = powers
-            info = old_theme.mushget('INFO')
-            if info:
-                new_theme.info = info
-            old_characters = [objmatch(char) for char in old_theme.mushget('CAST').split(' ') if objmatch(char)]
-            for char in old_characters:
-                if not char.obj:
-                    continue
-                type_name = char.mushget('D`FINGER`TYPE')
-                if not type_name:
-                    type_name = 'N/A'
-                status_name = char.mushget('D`FINGER`STATUS')
-                if not status_name:
-                    status_name = 'N/A'
-                char_status, stcr = CharacterStatus.objects.get_or_create(key=status_name)
-                char_type, tycr = CharacterType.objects.get_or_create(key=type_name)
-                char.obj.config.model.character_type = char_type
-                char.obj.config.model.character_status = char_status
-                char.obj.config.model.save(update_fields=['character_type', 'character_status'])
-                new_theme.cast.add(char.obj)
-            new_theme.save()
+        theme_con = GLOBAL_SCRIPTS.themes
+        c = self.sql_cursor()
+        c.execute("""SELECT * FROM volv_theme """)
+        mush_themes = c.fetchall()
+        c.execute("""SELECT * FROM volv_theme_member""")
+        mush_theme_members = c.fetchall()
+
+        theme_map = dict()
+
+        for counter, mush_theme in enumerate(mush_themes, start=1):
+            theme = theme_con.create_theme(self.session, mush_theme['theme_name'], mush_theme['theme_description'])
+            theme_map[mush_theme['theme_id']] = theme
+
+        for counter, mush_theme_member in enumerate(mush_theme_members, start=1):
+            character = pmatch(mush_theme_member['character_objid'])
+            if not character.obj:
+                continue
+            theme = theme_map[mush_theme_member['theme_id']]
+            list_type = mush_theme_member['tmember_type']
+            theme.add_character(character.obj, list_type)
+            character.obj.db.theme_status = mush_theme_member['character_status']
 
     def switch_radio(self):
-        old_frequencies = cobj('radio').contents.all()
-        new_freq_dict = dict()
-        for old_freq in [freq for freq in old_frequencies if freq.name.startswith('FREQ:')]:
-            toss, freq_str = old_freq.name.split(' ', 1)
-            new_freq, created = RadioFrequency.objects.get_or_create(key=freq_str)
-            new_freq.setup()
-            new_freq_dict[freq_str] = new_freq
-
-        characters = [char for char in Character.objects.filter_family() if hasattr(char, 'mush')]
-        for char in characters:
-            for old_slot in char.mush.lattr('D`RADIO`*'):
-                old_freq = char.mush.mushget(old_slot)
-                old_name = char.mush.mushget(old_slot + '`NAME')
-                old_title = char.mush.mushget(old_slot + '`TITLE')
-                old_code = char.mush.mushget(old_slot + '`CODENAME')
-                if old_freq not in new_freq_dict:
-                    new_freq, created2 = RadioFrequency.objects.get_or_create(key=old_freq)
-                    new_freq.setup()
-                    new_freq_dict[old_freq] = new_freq
-                new_freq = new_freq_dict[old_freq]
-                new_slot, created3 = char.radio.get_or_create(key=old_name, frequency=new_freq)
-                if old_title:
-                    new_slot.title = old_title
-                if old_code:
-                    new_slot.codename = old_code
-                new_slot.save()
-                new_slot.frequency.channel.connect(char)
+        pass
 
     def switch_ex2(self):
         characters = [char for char in Ex2Character.objects.filter_family() if hasattr(char, 'mush')]

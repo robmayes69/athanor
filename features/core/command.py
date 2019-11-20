@@ -28,3 +28,11 @@ class AthanorCommand(MuxCommand):
         if len(results) == 1:
             return results[0]
         raise ValueError(f"That matched: {results}")
+
+    def sys_msg(self, msg, target=None):
+        if not target:
+            target = self.caller
+        target.system_msg(msg, system_name=self.system_name, enactor=self.caller)
+
+    def error(self, msg, target=None):
+        self.sys_msg(f"ERROR: {msg}", target=target)

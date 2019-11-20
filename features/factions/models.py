@@ -2,43 +2,19 @@ from django.db import models
 from evennia.typeclasses.models import TypedObject
 
 
-class AllianceDB(TypedObject):
-    __settingclasspath__ = "features.factions.factions.DefaultAlliance"
-    __defaultclasspath__ = "features.factions.factions.DefaultAlliance"
-    __applabel__ = "factions"
-
-    db_tier = models.PositiveIntegerField(default=0, null=False, blank=False)
-    db_abbreviation = models.CharField(max_length=20, null=True, blank=True, unique=True)
-    db_global_identifier = models.CharField(max_length=255, null=True, blank=False, unique=True)
-
-
-class AllianceLinkDB(TypedObject):
-    __settingclasspath__ = "features.factions.factions.DefaultAllianceLink"
-    __defaultclasspath__ = "features.factions.factions.DefaultAllianceLink"
-    __applabel__ = "factions"
-
-    db_alliance = models.ForeignKey(AllianceDB, null=False, on_delete=models.CASCADE, related_name='relationships')
-    db_entity = models.ForeignKey('core.EntityMapDB', on_delete=models.CASCADE, related_name='alliance_links')
-
-    class Meta:
-        verbose_name = 'AllianceLink'
-        verbose_name_plural = 'AllianceLinks'
-        unique_together = (('db_alliance', 'db_entity'),)
-
-
 class FactionDB(TypedObject):
     __settingclasspath__ = "features.factions.factions.DefaultFaction"
     __defaultclasspath__ = "features.factions.factions.DefaultFaction"
     __applabel__ = "factions"
 
-    db_alliance = models.ForeignKey(AllianceDB, null=True, on_delete=models.SET_NULL, related_name='factions')
-    db_administrators = models.ManyToManyField('objects.ObjectDB', related_name='faction_admin')
     db_tier = models.PositiveIntegerField(default=0, null=False, blank=False)
     db_abbreviation = models.CharField(max_length=20, null=True, blank=True, unique=True)
     db_global_identifier = models.CharField(max_length=255, null=True, blank=False, unique=True)
-    db_membership_typeclass = models.CharField(max_length=255, null=True)
-    db_privilege_typeclass = models.CharField(max_length=255, null=True)
-    db_role_typeclass = models.CharField(max_length=255, null=True)
+    db_child_typeclass = models.ForeignKey('core.TypeclassMap', null=True, related_name='+', on_delete=models.PROTECT)
+    db_link_typeclass = models.ForeignKey('core.TypeclassMap', null=True, related_name='+', on_delete=models.PROTECT)
+    db_privilege_typeclass = models.ForeignKey('core.TypeclassMap', null=True, related_name='+', on_delete=models.PROTECT)
+    db_role_typeclass = models.ForeignKey('core.TypeclassMap', null=True, related_name='+', on_delete=models.PROTECT)
+    db_role_link_typeclass = models.ForeignKey('core.TypeclassMap', null=True, related_name='+', on_delete=models.PROTECT)
 
     class Meta:
         verbose_name = 'Faction'
@@ -70,7 +46,6 @@ class FactionRoleDB(TypedObject):
     db_faction = models.ForeignKey(FactionDB, null=False, on_delete=models.CASCADE, related_name='roles')
     db_description = models.TextField(null=True, blank=True)
     db_privileges = models.ManyToManyField(FactionPrivilegeDB, related_name='roles')
-    db_rank = models.PositiveIntegerField(default=0, null=False, blank=False)
 
     class Meta:
         unique_together = (('db_faction', 'db_key'),)
@@ -88,9 +63,7 @@ class FactionLinkDB(TypedObject):
 
     db_faction = models.ForeignKey(FactionDB, null=False, on_delete=models.CASCADE, related_name='memberships')
     db_entity = models.ForeignKey('core.EntityMapDB', null=False, on_delete=models.CASCADE, related_name='faction_links')
-    db_membership = models.BooleanField(default=False)
-    db_primary_role = models.ForeignKey(FactionRoleDB, related_name='primaries', null=True, on_delete=models.CASCADE)
-    db_roles = models.ManyToManyField(FactionRoleDB, related_name='links')
+    db_member = models.PositiveSmallIntegerField(default=0)  # set this 1 for member, 2 for superuser of Faction.
 
     class Meta:
         verbose_name = 'FactionLink'
@@ -98,23 +71,19 @@ class FactionLinkDB(TypedObject):
         unique_together = (('db_faction', 'db_entity'),)
 
 
-class DivisionDB(TypedObject):
-    __settingclasspath__ = "features.factions.factions.DefaultDivision"
-    __defaultclasspath__ = "features.factions.factions.DefaultDivision"
+class FactionRoleLinkDB(TypedObject):
+    __settingclasspath__ = "features.factions.factions.DefaultFactionRoleLink"
+    __defaultclasspath__ = "features.factions.factions.DefaultFactionRoleLink"
     __applabel__ = "factions"
 
-    db_faction = models.ForeignKey(FactionDB, on_delete=models.PROTECT, related_name='divisons')
-    db_description = models.TextField(blank=True, null=True)
-    db_administrators = models.ManyToManyField('objects.ObjectDB', related_name='division_admin')
-    db_tier = models.PositiveIntegerField(default=0, null=False, blank=False)
-    db_abbreviation = models.CharField(max_length=20, null=True, blank=True, unique=True)
-    db_global_identifier = models.CharField(max_length=255, null=True, blank=False, unique=True)
-    db_membership_typeclass = models.CharField(max_length=255, null=True)
-    db_privilege_typeclass = models.CharField(max_length=255, null=True)
-    db_role_typeclass = models.CharField(max_length=255, null=True)
+    db_link = models.ForeignKey(FactionLinkDB, null=False, on_delete=models.CASCADE, related_name='role_links')
+    db_role = models.ForeignKey(FactionLinkDB, null=False, on_delete=models.CASCADE, related_name='role_links')
+    db_grantable = models.BooleanField(default=False)
 
     class Meta:
-        unique_together = (('db_faction', 'db_key'),)
+        verbose_name = 'FactionLink'
+        verbose_name_plural = 'FactionLinks'
+        unique_together = (('db_link', 'db_role', 'db_grantable'),)
 
 
 
