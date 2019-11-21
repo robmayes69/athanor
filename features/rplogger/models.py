@@ -22,12 +22,11 @@ class PlotRunnerDB(TypedObject):
     __applabel__ = "rplogger"
 
     db_plot = models.ForeignKey(PlotDB, related_name='runners', on_delete=models.CASCADE)
-    db_account = models.ForeignKey('accounts.AccountDB', related_name='plots', on_delete=models.PROTECT)
-    db_character = models.ForeignKey('objects.ObjectDB', related_name='plots', on_delete=models.PROTECT)
+    db_entity = models.ForeignKey('core.EntityMap', related_name='plots', on_delete=models.PROTECT)
     db_runner_type = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
-        unique_together = (('db_plot', 'db_account', 'db_character'),)
+        unique_together = (('db_plot', 'db_entity'),)
         verbose_name = 'PlotRunner'
         verbose_name_plural = ' PlotRunners'
 
@@ -56,14 +55,13 @@ class EventParticipantDB(TypedObject):
     __defaultclasspath__ = "features.rplogger.rplogger.DefaultEventParticipant"
     __applabel__ = "rplogger"
 
-    db_account = models.ForeignKey('accounts.AccountDB', related_name='logs', on_delete=models.PROTECT)
-    db_character = models.ForeignKey('objects.ObjectDB', related_name='logs', on_delete=models.PROTECT)
+    db_entity = models.ForeignKey('core.EntityMap', related_name='logs', on_delete=models.PROTECT)
     db_event = models.ForeignKey(EventDB, related_name='participants', on_delete=models.CASCADE)
     db_participant_type = models.PositiveSmallIntegerField(default=0)
     db_action_count = models.PositiveIntegerField(default=0)
 
     class Meta:
-        unique_together = (("db_account", "db_character", "db_event"),)
+        unique_together = (("db_entity", "db_event"),)
         verbose_name = 'EventParticipant'
         verbose_name_plural = 'EventParticipants'
 
@@ -75,7 +73,7 @@ class EventSourceDB(TypedObject):
 
     db_event = models.ForeignKey(EventDB, related_name='event_sources', on_delete=models.CASCADE)
     db_source_type = models.PositiveIntegerField(default=0)
-    # source type: 0 = 'Location Pose'. 1 = Public Channel. 2 = room-based OOC
+    # source type: 0 = 'Location Pose'. 1 = Channel. 2 = room-based OOC
 
     class Meta:
         unique_together = (('db_event', 'db_source_type', 'db_key'),)
@@ -88,10 +86,10 @@ class EventCodenameDB(TypedObject):
     __defaultclasspath__ = "features.rplogger.rplogger.DefaultEventAction"
     __applabel__ = "rplogger"
 
-    db_owner = models.ForeignKey(EventParticipantDB, related_name='codenames', on_delete=models.PROTECT)
+    db_participant = models.ForeignKey(EventParticipantDB, related_name='codenames', on_delete=models.PROTECT)
 
     class Meta:
-        unique_together = (('db_owner', 'db_key'),)
+        unique_together = (('db_participant', 'db_key'),)
         verbose_name = 'EventCodeName'
         verbose_name_plural = 'EventCodeNames'
 
@@ -102,9 +100,10 @@ class EventActionDB(TypedObject):
     __applabel__ = "rplogger"
 
     db_event = models.ForeignKey(EventDB, related_name='actions', on_delete=models.CASCADE)
-    db_owner = models.ForeignKey(EventParticipantDB, related_name='actions', on_delete=models.CASCADE)
+    db_participant = models.ForeignKey(EventParticipantDB, related_name='actions', on_delete=models.CASCADE)
     db_source = models.ForeignKey(EventSourceDB, related_name='actions', on_delete=models.PROTECT)
     db_ignore = models.BooleanField(default=False, db_index=True)
+    db_sort_order = models.PositiveIntegerField(default=0)
     db_text = models.TextField(blank=True)
     db_codename = models.ForeignKey(EventCodenameDB, related_name='actions', null=True, on_delete=models.PROTECT)
 

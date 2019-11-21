@@ -7,6 +7,7 @@ class FactionDB(TypedObject):
     __defaultclasspath__ = "features.factions.factions.DefaultFaction"
     __applabel__ = "factions"
 
+    db_parent = models.ForeignKey('self', null=True, related_name='children', on_delete=models.PROTECT)
     db_tier = models.PositiveIntegerField(default=0, null=False, blank=False)
     db_abbreviation = models.CharField(max_length=20, null=True, blank=True, unique=True)
     db_global_identifier = models.CharField(max_length=255, null=True, blank=False, unique=True)
@@ -17,6 +18,7 @@ class FactionDB(TypedObject):
     db_role_link_typeclass = models.ForeignKey('core.TypeclassMap', null=True, related_name='+', on_delete=models.PROTECT)
 
     class Meta:
+        unique_together = (('db_parent', 'db_key'),)
         verbose_name = 'Faction'
         verbose_name_plural = 'Factions'
 
@@ -27,7 +29,6 @@ class FactionPrivilegeDB(TypedObject):
     __applabel__ = "factions"
 
     db_faction = models.ForeignKey(FactionDB, null=False, on_delete=models.CASCADE, related_name='privileges')
-    db_description = models.TextField(blank=True, null=True)
 
     class Meta:
         unique_together = (('db_faction', 'db_key'),)
@@ -64,11 +65,13 @@ class FactionLinkDB(TypedObject):
     db_faction = models.ForeignKey(FactionDB, null=False, on_delete=models.CASCADE, related_name='memberships')
     db_entity = models.ForeignKey('core.EntityMapDB', null=False, on_delete=models.CASCADE, related_name='faction_links')
     db_member = models.PositiveSmallIntegerField(default=0)  # set this 1 for member, 2 for superuser of Faction.
+    db_sort_order = models.IntegerField(default=0)
 
     class Meta:
         verbose_name = 'FactionLink'
         verbose_name_plural = 'FactionLinks'
         unique_together = (('db_faction', 'db_entity'),)
+        index_together = (('db_faction', 'db_member', 'db_sort_order'),)
 
 
 class FactionRoleLinkDB(TypedObject):
@@ -77,13 +80,10 @@ class FactionRoleLinkDB(TypedObject):
     __applabel__ = "factions"
 
     db_link = models.ForeignKey(FactionLinkDB, null=False, on_delete=models.CASCADE, related_name='role_links')
-    db_role = models.ForeignKey(FactionLinkDB, null=False, on_delete=models.CASCADE, related_name='role_links')
+    db_role = models.ForeignKey(FactionRoleDB, null=False, on_delete=models.CASCADE, related_name='role_links')
     db_grantable = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = 'FactionLink'
         verbose_name_plural = 'FactionLinks'
         unique_together = (('db_link', 'db_role', 'db_grantable'),)
-
-
-
