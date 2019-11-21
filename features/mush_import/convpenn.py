@@ -1,5 +1,13 @@
 import codecs, re
 
+RE_COLOR_CODES = re.compile(r'(?P<fg>.+?)(?:!(?P<bg>.+?))?')
+
+RE_PUEBLO_XCH = re.compile(r'(?is)(?P<pre>send \\"(?P<com>.+?)\\)"')
+
+RE_PUEBLO_SEND = re.compile(r'(?is)(?P<pre>a XCH_CMD=\\"(?P<com>.+?)\\)"')
+
+
+
 def mxp(text="", command="", hints=""):
     if text:
         return "|lc%s|lt%s|le" % (command, text)
@@ -13,18 +21,18 @@ def re_color(match):
     if not len(codes_text):
         return text
 
-    codes = re.match(r'(?P<fg>.+?)(?:!(?P<bg>.+?))?',codes_text)
+    codes = RE_COLOR_CODES.match(codes_text)
 
     if '<' in codes.group('fg'):
         pass
 
 def re_pueblo(match):
     if match.group('command').startswith('send'):
-        find = re.match(r'(?is)(?P<pre>send \\"(?P<com>.+?)\\)"', match.group('command'))
+        find = RE_PUEBLO_XCH(match.group('command'))
         return mxp(text=match.group('text'), command=find.group('com'))
 
     if match.group('command').startswith('a'):
-        find = re.match(r'(?is)(?P<pre>a XCH_CMD=\\"(?P<com>.+?)\\)"', match.group('command'))
+        find = RE_PUEBLO_SEND(match.group('command'))
         return mxp(text=match.group('text'), command=find.group('com'))
 
     return match.group('text')
@@ -37,22 +45,30 @@ def re_newlines(match):
 def re_tabs(match):
     return '\t'
 
+RE_PROCESS_PENN_1 = re.compile(r'(?s)(?P<start>\002p(?P<command>.+?)\003)(?P<text>.+?)(?P<end>\002p\/\003)')
+RE_PROCESS_PENN_2 = re.compile(r'(?s)(?P<start>\002c(?P<codes>.+?)\003)(?P<text>.+?)(?P<end>\002c\/\003)')
+RE_PROCESS_PENN_3 = re.compile(r'(?is)(?P<find>%r)')
+RE_PROCESS_PENN_4 = re.compile(r'(?is)(?P<find>%t)')
 
 def process_penntext(text):
     if not len(text):
         return text
-    text = re.sub(r'(?s)(?P<start>\002p(?P<command>.+?)\003)(?P<text>.+?)(?P<end>\002p\/\003)',re_pueblo,text)
-    text = re.sub(r'(?s)(?P<start>\002c(?P<codes>.+?)\003)(?P<text>.+?)(?P<end>\002c\/\003)',re_color,text)
-    text = re.sub(r'(?is)(?P<find>%r)',re_newlines,text)
-    text = re.sub(r'(?is)(?P<find>%t)', re_tabs, text)
+    text = RE_PROCESS_PENN_1.sub(re_pueblo,text)
+    text = RE_PROCESS_PENN_2.sub(re_color,text)
+    text = RE_PROCESS_PENN_3.sub(re_newlines,text)
+    text = RE_PROCESS_PENN_4.sub( re_tabs, text)
     return text
 
+RE_DBREF = re.compile(r'\!\d+$')
 
-class read_penn(object):
 
-    __slots__ = ['outdb', 'mush_data']
+class PennParser(object):
 
-    def __init__(self, file):
+    def __init__(self, file, callback=None):
+        if callback:
+            self.message_callback = callback
+        else:
+            self.message_callback = print
         self.outdb = codecs.open(file, 'r', 'iso-8859-1')
         self.mush_data = {}
         self.parse_file()
@@ -60,13 +76,14 @@ class read_penn(object):
 
     def parse_file(self):
         all_lines = self.outdb.readlines()
+        self.message_callback(f"Discovered PennMUSH Outdb with {len(all_lines)} lines.")
         del all_lines[-1]
         all_lines = [line.strip(u'\n') for line in all_lines]
         start_index = all_lines.index('!0')
         all_lines = all_lines[start_index:]
         all_dblines = list()
         for line_num, line_text in enumerate(all_lines):
-            if re.match(r'\!\d+$', line_text):
+            if RE_DBREF.match(line_text):
                 all_dblines.append(line_num)
         all_dblines = sorted(all_dblines)
 
@@ -84,8 +101,10 @@ class read_penn(object):
             object_dict[dbref] = all_lines[start_line:end_line]
 
         dbref_sort = sorted(object_dict.keys(), key=lambda dbref: int(dbref.strip('#')))
+        self.message_callback(f"Discovered {len(dbref_sort)} DBRefs to import.")
 
         for dbref in dbref_sort:
+            self.message_callback(f"Beginning parsing for: {dbref}")
             self.parse_object(dbref, object_dict[dbref])
 
 
@@ -136,7 +155,9 @@ class read_penn(object):
             if subject == u'powers':
                 object_powers = entry
 
+        self.message_callback(f"Beginning Attribute Parsing for: {dbref}. Parsing {len(attribute_lines)} lines!")
         attributes = self.parse_attributes(attribute_lines)
+        self.message_callback(f"Finishing Attribute Parsing for: {dbref}. Parsed {len(attribute_lines)} lines!")
 
         self.mush_data[object_dbref] = {u'name': object_name, u'type': object_type, u'location': object_location,
                                       u'parent': object_parent, u'objid': object_objid, u'created': object_created,

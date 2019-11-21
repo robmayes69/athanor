@@ -11,7 +11,7 @@ import features.themes.messages as messages
 
 class DefaultTheme(ThemeDB, AthanorTypeEntity, metaclass=TypeclassBase):
     entity_class_name = 'Theme'
-    _re_key = re.compile(r"^[\w. -]+$")
+    _re_key = re.compile(r"^[\w. ()-]+$")
 
     def __init__(self, *args, **kwargs):
         ThemeDB.__init__(self, *args, **kwargs)

@@ -43,7 +43,11 @@ class MushObject(models.Model):
         if attr:
             return attr.value.replace('%r', '%R').replace('%t', '%T')
         if check_parent and self.parent:
-            return self.parent.mushget(attrname, check_parent=check_parent)
+            parent_attr = self.parent.mushget(attrname, check_parent=check_parent)
+            if parent_attr:
+                return parent_attr
+            else:
+                return default
         else:
             return default
 
