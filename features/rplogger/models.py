@@ -22,7 +22,7 @@ class PlotRunnerDB(TypedObject):
     __applabel__ = "rplogger"
 
     db_plot = models.ForeignKey(PlotDB, related_name='runners', on_delete=models.CASCADE)
-    db_entity = models.ForeignKey('core.EntityMap', related_name='plots', on_delete=models.PROTECT)
+    db_entity = models.ForeignKey('core.EntityMapDB', related_name='plots', on_delete=models.PROTECT)
     db_runner_type = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
@@ -55,7 +55,7 @@ class EventParticipantDB(TypedObject):
     __defaultclasspath__ = "features.rplogger.rplogger.DefaultEventParticipant"
     __applabel__ = "rplogger"
 
-    db_entity = models.ForeignKey('core.EntityMap', related_name='logs', on_delete=models.PROTECT)
+    db_entity = models.ForeignKey('core.EntityMapDB', related_name='logs', on_delete=models.PROTECT)
     db_event = models.ForeignKey(EventDB, related_name='participants', on_delete=models.CASCADE)
     db_participant_type = models.PositiveSmallIntegerField(default=0)
     db_action_count = models.PositiveIntegerField(default=0)

@@ -1,9 +1,11 @@
 from evennia.typeclasses.models import TypeclassBase
 from . models import PlotDB, PlotRunnerDB, EventDB, EventParticipantDB, EventCodenameDB, EventSourceDB, EventActionDB
 from features.core.base import AthanorTypeEntity
+from evennia.typeclasses.managers import TypeclassManager
 
 
 class DefaultPlot(PlotDB, AthanorTypeEntity, metaclass=TypeclassBase):
+    objects = TypeclassManager()
 
     def __init__(self, *args, **kwargs):
         PlotDB.__init__(self, *args, **kwargs)
@@ -49,6 +51,7 @@ class DefaultPlot(PlotDB, AthanorTypeEntity, metaclass=TypeclassBase):
 
 
 class DefaultPlotRunner(PlotRunnerDB, AthanorTypeEntity, metaclass=TypeclassBase):
+    objects = TypeclassManager()
 
     def __init__(self, *args, **kwargs):
         PlotRunnerDB.__init__(self, *args, **kwargs)
@@ -56,6 +59,7 @@ class DefaultPlotRunner(PlotRunnerDB, AthanorTypeEntity, metaclass=TypeclassBase
 
 
 class DefaultEvent(EventDB, AthanorTypeEntity, metaclass=TypeclassBase):
+    objects = TypeclassManager()
 
     def __init__(self, *args, **kwargs):
         EventDB.__init__(self, *args, **kwargs)
@@ -99,6 +103,7 @@ class DefaultEvent(EventDB, AthanorTypeEntity, metaclass=TypeclassBase):
 
 
 class DefaultEventParticipant(EventParticipantDB, AthanorTypeEntity, metaclass=TypeclassBase):
+    objects = TypeclassManager()
 
     def __init__(self, *args, **kwargs):
         EventParticipantDB.__init__(self, *args, **kwargs)
@@ -106,6 +111,7 @@ class DefaultEventParticipant(EventParticipantDB, AthanorTypeEntity, metaclass=T
 
 
 class DefaultEventCodename(EventCodenameDB, AthanorTypeEntity, metaclass=TypeclassBase):
+    objects = TypeclassManager()
 
     def __init__(self, *args, **kwargs):
         EventCodenameDB.__init__(self, *args, **kwargs)
@@ -113,6 +119,7 @@ class DefaultEventCodename(EventCodenameDB, AthanorTypeEntity, metaclass=Typecla
 
 
 class DefaultEventSource(EventSourceDB, AthanorTypeEntity, metaclass=TypeclassBase):
+    objects = TypeclassManager()
 
     def __init__(self, *args, **kwargs):
         EventSourceDB.__init__(self, *args, **kwargs)
@@ -120,6 +127,7 @@ class DefaultEventSource(EventSourceDB, AthanorTypeEntity, metaclass=TypeclassBa
 
 
 class DefaultEventAction(EventActionDB, AthanorTypeEntity, metaclass=TypeclassBase):
+    objects = TypeclassManager()
 
     def __init__(self, *args, **kwargs):
         EventActionDB.__init__(self, *args, **kwargs)

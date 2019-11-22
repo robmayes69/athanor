@@ -7,11 +7,13 @@ from utils.text import partial_match
 from evennia.utils.utils import class_from_module
 from evennia.utils.logger import log_trace
 import features.themes.messages as messages
+from evennia.typeclasses.managers import TypeclassManager
 
 
 class DefaultTheme(ThemeDB, AthanorTypeEntity, metaclass=TypeclassBase):
     entity_class_name = 'Theme'
     _re_key = re.compile(r"^[\w. ()-]+$")
+    objects = TypeclassManager()
 
     def __init__(self, *args, **kwargs):
         ThemeDB.__init__(self, *args, **kwargs)
@@ -44,6 +46,7 @@ class DefaultTheme(ThemeDB, AthanorTypeEntity, metaclass=TypeclassBase):
 
 class DefaultThemeParticipant(ThemeParticipantDB, AthanorTypeEntity, metaclass=TypeclassBase):
     entity_class_name = 'ThemeParticipant'
+    objects = TypeclassManager()
 
     def __init__(self, *args, **kwargs):
         ThemeParticipantDB.__init__(self, *args, **kwargs)

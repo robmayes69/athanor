@@ -148,7 +148,8 @@ GLOBAL_SCRIPTS['faction'] = {
 BASE_FACTION_TYPECLASS = 'typeclasses.factions.Faction'
 BASE_FACTION_PRIVILEGE_TYPECLASS = 'typeclasses.factions.FactionPrivilege'
 BASE_FACTION_ROLE_TYPECLASS = 'typeclasses.factions.FactionRole'
-BASE_FACTION_MEMBERSHIP_TYPECLASS = 'typeclasses.factions.FactionMembership'
+BASE_FACTION_LINK_TYPECLASS = 'typeclasses.factions.FactionLink'
+BASE_FACTION_ROLE_LINK_TYPECLASS = 'typeclasses.factions.FactionRoleLink'
 
 
 ######################################################################

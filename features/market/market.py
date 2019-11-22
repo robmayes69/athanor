@@ -1,14 +1,15 @@
 from evennia.typeclasses.models import TypeclassBase
 from . models import MarketDB, MarketBranchDB, MarketListingDB
+from evennia.typeclasses.managers import TypeclassManager
 
 
 class DefaultMarket(MarketDB, metaclass=TypeclassBase):
-    pass
+    objects = TypeclassManager()
 
 
 class DefaultMarketBranch(MarketBranchDB, metaclass=TypeclassBase):
-    pass
+    objects = TypeclassManager()
 
 
 class DefaultMarketListing(MarketListingDB, metaclass=TypeclassBase):
-    pass
+    objects = TypeclassManager()

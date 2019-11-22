@@ -7,7 +7,7 @@ is setup to be the "default" character type created by the default
 creation commands.
 
 """
-from features.characters.characters import AthanorCharacter, AthanorPlayerCharacter, AthanorMobileCharacter, DefaultCharacterController
+from features.characters.characters import AthanorCharacter, AthanorPlayerCharacter, AthanorMobileCharacter, AthanorShelvedCharacter, DefaultCharacterController
 
 
 class Character(AthanorCharacter):
@@ -41,6 +41,10 @@ class MobileCharacter(AthanorMobileCharacter):
     """
     This is used for all NPCs.
     """
+    pass
+
+
+class ShelvedCharacter(AthanorShelvedCharacter):
     pass
 
 

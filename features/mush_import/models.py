@@ -2,6 +2,7 @@ import hashlib
 from django.db import models
 from django.db.models import Q
 from utils.text import partial_match
+from evennia.utils.utils import lazy_property
 
 
 class MushObject(models.Model):
@@ -115,6 +116,14 @@ class MushObject(models.Model):
             check.update('%s%s' % (salt, password))
             return check.hexdigest() == hash_against
 
+    @lazy_property
+    def entity(self):
+        from .. core.base import EntityMap
+        found, created = EntityMap.objects.get_or_create(db_model='mushdb', db_instance=self.id,
+                                                         db_owner_date_created=self.created, db_key=self.name)
+        if created:
+            found.save()
+        return found
 
 
 def cobj(abbr=None):

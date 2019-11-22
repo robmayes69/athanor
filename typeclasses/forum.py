@@ -1,9 +1,5 @@
 from features.forum.forum import DefaultForumCategory, DefaultForumBoard, DefaultForumThread, DefaultForumPost
-from features.forum.global_scripts import DefaultForumController
-
-
-class ForumController(DefaultForumController):
-    pass
+from features.forum.forum import DefaultForumController
 
 
 class ForumCategory(DefaultForumCategory):
@@ -18,5 +14,9 @@ class ForumThread(DefaultForumThread):
     pass
 
 
-class Post(DefaultForumPost):
+class ForumPost(DefaultForumPost):
+    pass
+
+
+class ForumController(DefaultForumController):
     pass

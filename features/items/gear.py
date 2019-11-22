@@ -2,9 +2,11 @@ from evennia.typeclasses.models import TypeclassBase
 from . models import InventoryDefinitionDB, InventoryDB, InventorySlotDB, GearSetDefinitionDB, GearSetDB, GearSlotDB
 from features.core.base import AthanorTypeEntity
 from features.core.handler import AthanorFlexHandler
+from evennia.typeclasses.managers import TypeclassManager
 
 
 class DefaultInventoryDefinition(InventoryDefinitionDB, AthanorTypeEntity, metaclass=TypeclassBase):
+    objects = TypeclassManager()
 
     def __init__(self, *args, **kwargs):
         InventoryDefinitionDB.__init__(self, *args, **kwargs)
@@ -12,6 +14,7 @@ class DefaultInventoryDefinition(InventoryDefinitionDB, AthanorTypeEntity, metac
 
 
 class DefaultInventory(InventoryDB, AthanorTypeEntity, metaclass=TypeclassBase):
+    objects = TypeclassManager()
 
     def __init__(self, *args, **kwargs):
         InventoryDB.__init__(self, *args, **kwargs)
@@ -19,6 +22,7 @@ class DefaultInventory(InventoryDB, AthanorTypeEntity, metaclass=TypeclassBase):
 
 
 class DefaultInventorySlot(InventorySlotDB, AthanorTypeEntity, metaclass=TypeclassBase):
+    objects = TypeclassManager()
 
     def __init__(self, *args, **kwargs):
         InventorySlotDB.__init__(self, *args, **kwargs)
@@ -26,6 +30,7 @@ class DefaultInventorySlot(InventorySlotDB, AthanorTypeEntity, metaclass=Typecla
 
 
 class DefaultGearSetDefinition(GearSetDefinitionDB, AthanorTypeEntity, metaclass=TypeclassBase):
+    objects = TypeclassManager()
 
     def __init__(self, *args, **kwargs):
         GearSetDefinitionDB.__init__(self, *args, **kwargs)
@@ -33,6 +38,7 @@ class DefaultGearSetDefinition(GearSetDefinitionDB, AthanorTypeEntity, metaclass
 
 
 class DefaultGearSet(GearSetDB, AthanorTypeEntity, metaclass=TypeclassBase):
+    objects = TypeclassManager()
 
     def __init__(self, *args, **kwargs):
         GearSetDB.__init__(self, *args, **kwargs)
@@ -40,6 +46,7 @@ class DefaultGearSet(GearSetDB, AthanorTypeEntity, metaclass=TypeclassBase):
 
 
 class DefaultGearSlot(GearSlotDB, AthanorTypeEntity, metaclass=TypeclassBase):
+    objects = TypeclassManager()
 
     def __init__(self, *args, **kwargs):
         GearSlotDB.__init__(self, *args, **kwargs)

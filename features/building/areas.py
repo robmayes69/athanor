@@ -9,9 +9,11 @@ from evennia.utils.logger import log_trace
 from utils.text import partial_match
 from typeclasses.rooms import Room
 from typeclasses.exits import Exit
+from evennia.typeclasses.managers import TypeclassManager
 
 
 class DefaultArea(AreaDB, AthanorTypeEntity, metaclass=TypeclassBase):
+    objects = TypeclassManager()
 
     def __init__(self, *args, **kwargs):
         AreaDB.__init__(self, *args, **kwargs)

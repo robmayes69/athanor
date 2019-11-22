@@ -1,10 +1,13 @@
+from django.conf import settings
 from evennia.typeclasses.models import TypeclassBase
-from features.factions.models import FactionDB, FactionLinkDB, FactionRoleDB, FactionPrivilegeDB
+from features.factions.models import FactionDB, FactionLinkDB, FactionRoleDB, FactionPrivilegeDB, FactionRoleLinkDB
 from utils.valid import simple_name
 from features.core.base import AthanorTypeEntity
+from evennia.typeclasses.managers import TypeclassManager
 
 
 class DefaultFaction(FactionDB, AthanorTypeEntity, metaclass=TypeclassBase):
+    objects = TypeclassManager()
 
     def __init__(self, *args, **kwargs):
         FactionDB.__init__(self, *args, **kwargs)
@@ -98,26 +101,24 @@ class DefaultFaction(FactionDB, AthanorTypeEntity, metaclass=TypeclassBase):
             pass
         found_role.delete()
 
-    def grant_privilege_to_member(self, privilege, member):
-        pass
+    def get_child_typeclass(self):
+        return self.get_typeclass_field('child_typeclass', settings.BASE_FACTION_TYPECLASS)
 
-    def revoke_privilege_from_member(self, privilege, member):
-        pass
+    def get_link_typeclass(self):
+        return self.get_typeclass_field('link_typeclass', settings.BASE_FACTION_LINK_TYPECLASS)
 
-    def grant_privilege_to_role(self, privilege, role):
-        pass
+    def get_privilege_typeclass(self):
+        return self.get_typeclass_field('privilege_typeclass', settings.BASE_FACTION_PRIVILEGE_TYPECLASS)
 
-    def revoke_privilege_from_role(self, privilege, role):
-        pass
+    def get_role_typeclass(self):
+        return self.get_typeclass_field('role_typeclass', settings.BASE_FACTION_ROLE_TYPECLASS)
 
-    def grant_role_to_member(self, role, member):
-        pass
-
-    def revoke_role_from_remember(self, role, member):
-        pass
+    def get_role_link_typeclass(self):
+        return self.get_typeclass_field('role_link_typeclass', settings.BASE_FACTION_ROLE_LINK_TYPECLASS)
 
 
 class DefaultFactionLink(FactionLinkDB, AthanorTypeEntity, metaclass=TypeclassBase):
+    objects = TypeclassManager()
 
     def __init__(self, *args, **kwargs):
         FactionLinkDB.__init__(self, *args, **kwargs)
@@ -141,6 +142,7 @@ class DefaultFactionLink(FactionLinkDB, AthanorTypeEntity, metaclass=TypeclassBa
 
 
 class DefaultFactionRole(FactionRoleDB, AthanorTypeEntity, metaclass=TypeclassBase):
+    objects = TypeclassManager()
 
     def __init__(self, *args, **kwargs):
         FactionRoleDB.__init__(self, *args, **kwargs)
@@ -148,7 +150,16 @@ class DefaultFactionRole(FactionRoleDB, AthanorTypeEntity, metaclass=TypeclassBa
 
 
 class DefaultFactionPrivilege(FactionPrivilegeDB, AthanorTypeEntity, metaclass=TypeclassBase):
+    objects = TypeclassManager()
 
     def __init__(self, *args, **kwargs):
         FactionPrivilegeDB.__init__(self, *args, **kwargs)
+        AthanorTypeEntity.__init__(self, *args, **kwargs)
+
+
+class DefaultFactionRoleLink(FactionRoleLinkDB, AthanorTypeEntity, metaclass=TypeclassBase):
+    objects = TypeclassManager()
+
+    def __init__(self, *args, **kwargs):
+        FactionRoleLinkDB.__init__(self, *args, **kwargs)
         AthanorTypeEntity.__init__(self, *args, **kwargs)

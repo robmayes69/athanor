@@ -66,7 +66,6 @@ class ForumPostDB(TypedObject):
     db_thread = models.ForeignKey(ForumThreadDB, related_name='posts', on_delete=models.CASCADE)
     db_date_modified = models.DateTimeField(editable=True, auto_now_add=True)
     db_order = models.PositiveIntegerField(null=True)
-    db_title = models.TextField(null=True, blank=True)
     db_body = models.TextField(null=True, blank=True)
 
     class Meta:

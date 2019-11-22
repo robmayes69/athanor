@@ -46,6 +46,7 @@ class FactionRoleDB(TypedObject):
 
     db_faction = models.ForeignKey(FactionDB, null=False, on_delete=models.CASCADE, related_name='roles')
     db_description = models.TextField(null=True, blank=True)
+    db_sort_order = models.IntegerField(default=0)
     db_privileges = models.ManyToManyField(FactionPrivilegeDB, related_name='roles')
 
     class Meta:
@@ -66,6 +67,7 @@ class FactionLinkDB(TypedObject):
     db_entity = models.ForeignKey('core.EntityMapDB', null=False, on_delete=models.CASCADE, related_name='faction_links')
     db_member = models.PositiveSmallIntegerField(default=0)  # set this 1 for member, 2 for superuser of Faction.
     db_sort_order = models.IntegerField(default=0)
+    db_is_superuser = models.BooleanField(default=False, null=False)
 
     class Meta:
         verbose_name = 'FactionLink'

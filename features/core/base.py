@@ -87,7 +87,9 @@ class AthanorEntity(EventEmitter, SubMessageMixin):
         self.db.entity = found
         return found
 
+
 class AthanorTypeEntity(AthanorEntity):
 
     def at_first_save(self):
         pass
+

@@ -3,6 +3,9 @@ from django.conf import settings
 from typeclasses.scripts import GlobalScript
 from evennia.utils.validatorfuncs import positive_integer
 from utils.valid import simple_name
+from evennia.utils.utils import class_from_module
+from evennia.utils.logger import log_trace
+from . factions import DefaultFaction
 
 _PERM_RE = re.compile(r"^[a-zA-Z]+$")
 
@@ -11,6 +14,15 @@ class DefaultFactionController(GlobalScript):
     system_name = 'FACTION'
     option_dict = {
     }
+
+    def at_start(self):
+        from django.conf import settings
+        try:
+            self.ndb.faction_typeclass = class_from_module(settings.BASE_FACTION_TYPECLASS,
+                                                         defaultpaths=settings.TYPECLASS_PATHS)
+        except Exception:
+            log_trace()
+            self.ndb.theme_typeclass = DefaultFaction
 
     def add_main_member(self, enactor, character, rank_int):
         """
@@ -350,9 +362,6 @@ class DefaultFactionController(GlobalScript):
             return None
         return self.db.main_members[character]['rank']
 
-    def at_start(self):
-        pass
-        #self.recalculate_basic_membership()
 
     def at_server_reload(self):
         pass

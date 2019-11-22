@@ -11,6 +11,7 @@ from evennia.utils import create
 from evennia import GLOBAL_SCRIPTS
 from django.db.models import Q
 
+from typeclasses.characters import ShelvedCharacter
 from features.forum.models import ForumCategoryDB
 from . convpenn import PennParser, process_penntext
 from . models import MushObject, cobj, pmatch, objmatch, MushAttributeName, MushAttribute
@@ -39,12 +40,11 @@ class CmdPennImport(AthanorCommand):
     key = '@penn'
     system_name = 'IMPORT'
     locks = 'cmd:perm(Developers)'
-    admin_switches = ['initialize', 'areas', 'grid', 'accounts', 'groups', 'bbs', 'ex2', 'ex3', 'experience', 'themes', 'radio',
-                      'jobs', 'scenes']
+    admin_switches = ['initialize', 'areas', 'grid', 'accounts', 'groups', 'bbs', 'themes', 'radio', 'jobs', 'scenes']
     
     def report_status(self, message):
         print(message)
-        self.sys_msg(message)
+        # self.sys_msg(message)
     
     def sql_cursor(self):
         if hasattr(self, 'cursor'):
@@ -267,27 +267,88 @@ class CmdPennImport(AthanorCommand):
 
         c.execute("""SELECT * FROM volv_group ORDER BY group_parent ASC""")
         mush_groups = c.fetchall()
-        faction_map = dict()
+        faction_map = {None: None}
 
-        for mush_group in mush_groups:
-            new_faction = faction_typeclass.create()
+        mush_groups_count = len(mush_groups)
+
+        for counter, mush_group in enumerate(mush_groups, start=1):
+            mush_object = objmatch(mush_group['group_objid'])
+            if not mush_object:
+                continue
+            self.report_status(f"Processing MushGroup {counter} of {mush_groups_count} - {mush_group}")
+            abbr = mush_group['group_abbr'] if mush_group['group_abbr'] else None
+            new_faction = faction_typeclass(db_key=mush_group['group_name'], db_tier=mush_group['group_tier'],
+                                            db_abbreviation=abbr,
+                                            db_parent=faction_map[mush_group['group_parent']])
+            new_faction.save()
+            new_faction.db.private = mush_group['group_is_private']
             faction_map[mush_group['group_id']] = new_faction
+            mush_object.group = new_faction
+            mush_object.save()
 
         c.execute("""SELECT * FROM volv_group_rank""")
         mush_groups_ranks = c.fetchall()
+        role_map = dict()
 
-        for mush_group_rank in mush_groups_ranks:
-            pass
+        mush_groups_ranks_count = len(mush_groups_ranks)
+
+        for counter, mush_group_rank in enumerate(mush_groups_ranks, start=1):
+            if mush_group_rank['group_id'] not in faction_map:
+                continue
+            self.report_status(f"Processing MushGroupRank {counter} of {mush_groups_ranks_count} - {mush_group_rank}")
+            faction = faction_map[mush_group_rank['group_id']]
+            role_typeclass = faction.get_role_typeclass()
+            rank_name = process_penntext(mush_group_rank['group_rank_title'])
+
+            new_role, created = role_typeclass.objects.get_or_create(db_key=rank_name, db_faction=faction)
+            if not new_role.sort_order:
+                new_role.sort_order = mush_group_rank['group_rank_number']
+            if created:
+                new_role.save()
+            role_map[mush_group_rank['group_rank_id']] = new_role
 
         c.execute("""SELECT * FROM volv_group_member""")
         mush_groups_members = c.fetchall()
 
-        for mush_group_member in mush_groups_members:
-            pass
+        mush_groups_members_count = len(mush_groups_members)
+
+        for counter, mush_group_member in enumerate(mush_groups_members, start=1):
+            if mush_group_member['group_id'] not in faction_map:
+                continue
+            self.report_status(f"Processing MushGroupMembership {counter} of {mush_groups_members_count} - {mush_group_member}")
+            character = pmatch(mush_group_member['character_objid'])
+            if not character:
+                continue
+            faction = faction_map[mush_group_member['group_id']]
+            link_typeclass = faction.get_link_typeclass()
+            role = role_map[mush_group_member['group_rank_id']]
+            super_user = role.sort_order < 3
+            group_title = process_penntext(mush_group_member['group_member_title']) if mush_group_member['group_member_title'] else None
+            new_link = link_typeclass(db_entity=character.entity, db_faction=faction, db_member=True,
+                                      db_is_superuser=super_user, db_key=character.key)
+            new_link.save()
+            new_link.db.title = group_title
+            role_link_typeclass = faction.get_role_link_typeclass()
+            new_role_link = role_link_typeclass(db_link=new_link, db_role=role, db_grantable=False, db_key=role.key)
+            new_role_link.save()
+
+    def ghost_character(self, objid, name):
+        character = pmatch(objid)
+        if character:
+            return character
+        dbref, timestamp = objid.split(':',1)
+        ghost, created = MushObject.objects.get_or_create(dbref=dbref, objid=objid, name=name, created=from_unixtimestring(timestamp), recreated=True,
+                           type=8)
+        if created:
+            ghost.save()
+        return ghost
 
     def switch_bbs(self):
         forum_con = GLOBAL_SCRIPTS.forum
         category_typeclass = forum_con.ndb.category_typeclass
+        board_typeclass = forum_con.ndb.board_typeclass
+        thread_typeclass = forum_con.ndb.thread_typeclass
+        post_typeclass = forum_con.ndb.post_typeclass
         c = self.sql_cursor()
 
         c.execute("""SELECT * FROM volv_board ORDER BY group_id ASC,board_number DESC""")
@@ -297,14 +358,25 @@ class CmdPennImport(AthanorCommand):
 
         mush_boards_count = len(mush_boards)
 
+        factions = {obj.objid: obj.group for obj in MushObject.objects.exclude(group=None) if not obj.group.parent}
+        factions[None] = None
+
+        new_category = category_typeclass(db_key="Public Boards", db_abbr='')
+        new_category.save()
+        forum_category_map[None] = new_category
+
         for counter, mush_board in enumerate(mush_boards, start=1):
-            forum_category = forum_category_map.get(None)
-            if not forum_category:
-                new_category = category_typeclass.create()
-                forum_category = new_category
-                forum_category_map[None] = forum_category
-            forum_board = forum_category.create_board()
-            forum_board_map[mush_board['board_id']] = forum_board
+            self.report_status(f"Processing MushBoard {counter} of {mush_boards_count} - {mush_board}")
+            faction = factions[mush_board['group_objid']]
+            if faction not in forum_category_map:
+                new_category = category_typeclass(db_key=faction.key, db_abbr=faction.abbreviation)
+                new_category.save()
+                forum_category_map[faction] = new_category
+            forum_category = forum_category_map[faction]
+            new_board = board_typeclass(db_category=forum_category, db_order=mush_board['board_number'],
+                                        db_mandatory=mush_board['board_mandatory'], db_key=mush_board['board_name'])
+            new_board.save()
+            forum_board_map[mush_board['board_id']] = new_board
 
         forum_thread_map = dict()
         forum_post_map = dict()
@@ -315,22 +387,40 @@ class CmdPennImport(AthanorCommand):
         mush_posts_count = len(mush_posts)
 
         for counter, mush_post in enumerate(mush_posts, start=1):
+            self.report_status(f"Processing MushPost {counter} of {mush_posts_count} - {mush_post}")
+            entity = self.ghost_character(mush_post['entity_objid'], mush_post['entity_name']).entity
             board = forum_board_map[mush_post['board_id']]
-            thread_typeclass = board.get_thread_typeclass()
-            new_thread = thread_typeclass.create()
+            created = mush_post['post_date_created']
+            modified = mush_post['post_date_modified']
+            title = process_penntext(mush_post['post_title'])
+            new_thread = thread_typeclass(db_key=title, db_entity=entity,
+                                          db_board=board, db_date_created=created, db_date_modified=modified,
+                                          db_order=mush_post['post_display_num'])
+            new_thread.save()
             forum_thread_map[mush_post['post_id']] = new_thread
-            post_typeclass = new_thread.get_post_typeclass()
-            new_post = post_typeclass.create()
+            new_post = post_typeclass(db_entity=entity, db_date_created=created, db_date_modified=modified,
+                                      db_thread=new_thread, db_order=1, db_key=title,
+                                      db_body=process_penntext(mush_post['post_text']))
+            new_post.save()
 
         c.execute("""SELECT * FROM volv_bbcomment ORDER BY comment_display_num ASC""")
         mush_comments = c.fetchall()
 
+        from django.db.models import Max
         mush_comments_count = len(mush_comments)
 
         for counter, mush_comment in enumerate(mush_comments, start=1):
+            self.report_status(f"Processing MushPostComment {counter} of {mush_comments_count} - {mush_comment}")
+            entity = self.ghost_character(mush_comment['entity_objid'], mush_comment['entity_name']).entity
             thread = forum_thread_map[mush_comment['post_id']]
-            post_typeclass = new_thread.get_post_typeclass()
-            new_post = post_typeclass.create()
+            created = mush_comment['comment_date_created']
+            modified = mush_comment['comment_date_modified']
+            stats = thread.posts.aggregate(Max('db_order'))
+            order = stats['db_order__max'] + 1
+            new_post = post_typeclass(db_entity=entity, db_date_created=created, db_date_modified=modified,
+                                      db_order=order, db_key='Imported MUSH Comment',
+                                      db_body=process_penntext(mush_comment['comment_text']), db_thread=thread)
+            new_post.save()
 
     def switch_themes(self):
         theme_con = GLOBAL_SCRIPTS.theme
