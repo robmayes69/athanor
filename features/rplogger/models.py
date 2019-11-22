@@ -7,7 +7,9 @@ class PlotDB(TypedObject):
     __defaultclasspath__ = "features.rplogger.rplogger.DefaultPlot"
     __applabel__ = "rplogger"
 
-    db_description = models.TextField(blank=True)
+    db_pitch = models.TextField(blank=True, null=True)
+    db_summary = models.TextField(blank=True, null=True)
+    db_outcome = models.TextField(blank=True, null=True)
     db_date_start = models.DateTimeField(null=True)
     db_date_end = models.DateTimeField(null=True)
 
@@ -38,15 +40,14 @@ class EventDB(TypedObject):
 
     db_pitch = models.TextField(blank=True, null=True, default=None)
     db_outcome = models.TextField(blank=True, null=True, default=None)
+    db_location = models.TextField(blank=True, null=True, default=None)
     db_date_scheduled = models.DateTimeField(null=True)
     db_date_started = models.DateTimeField(null=True)
     db_date_finished = models.DateTimeField(null=True)
-    db_plot = models.ForeignKey(PlotDB, null=True, related_name='scene', on_delete=models.PROTECT)
+    plots = models.ManyToManyField(PlotDB, related_name='scenes')
     db_thread = models.OneToOneField('forum.ForumThreadDB', related_name='event', null=True, on_delete=models.SET_NULL)
     db_public = models.BooleanField(default=True)
     db_status = models.PositiveSmallIntegerField(default=0, db_index=True)
-    db_last_action_sort = models.PositiveIntegerField(default=0)
-    db_channels = models.ManyToManyField('comms.ChannelDB', related_name='active_events')
     # Status: 0 = Active. 1 = Paused. 2 = ???. 3 = Finished. 4 = Scheduled. 5 = Canceled.
 
 

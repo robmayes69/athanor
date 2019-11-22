@@ -459,6 +459,13 @@ class CmdPennImport(AthanorCommand):
 
     def switch_scenes(self):
         rplog_con = GLOBAL_SCRIPTS.rplogger
+        plot_typeclass = rplog_con.ndb.plot_typeclass
+        runner_typeclass = rplog_con.ndb.runner_typeclass
+        event_typeclass = rplog_con.ndb.event_typeclass
+        participant_typeclass = rplog_con.ndb.participant_typeclass
+        source_typeclass = rplog_con.ndb.source_typeclass
+        codename_typeclass = rplog_con.ndb.codename_typeclass
+        action_typeclass = rplog_con.ndb.action_typeclass
         c = self.sql_cursor()
 
         c.execute("""SELECT * FROM volv_plot""")
@@ -467,14 +474,22 @@ class CmdPennImport(AthanorCommand):
         mush_plots_count = len(mush_plots)
 
         for counter, mush_plot in enumerate(mush_plots, start=1):
-            pass
+            new_plot = plot_typeclass(db_key=mush_plot['plot_title'], db_pitch=process_penntext(mush_plot['plot_pitch']),
+                                      db_summary=process_penntext(mush_plot['plot_summary']),
+                                      db_outcome=process_penntext(mush_plot['plot_outcome']),
+                                      db_date_start=mush_plot['plot_date_start'], db_date_end=mush_plot['plot_date_end'])
+            new_plot.save()
+            plots_map[mush_plot['plot_id']] = new_plot
 
         c.execute("""SELECT * FROM volv_runner""")
         mush_runners = c.fetchall()
         mush_runners_count = len(mush_runners)
 
         for counter, mush_runner in enumerate(mush_runners, start=1):
-            pass
+            entity = self.ghost_character(mush_runner['character_objid'], mush_runner['character_name']).entity
+            plot = plots_map[mush_runner['plot_id']]
+            new_runner = runner_typeclass(db_plot=plot, db_entity=entity, db_runner_tpe=mush_runner['runner_type'])
+            new_runner.save()
 
         c.execute("""SELECT * FROM volv_scene""")
         mush_scenes = c.fetchall()
@@ -482,7 +497,37 @@ class CmdPennImport(AthanorCommand):
         mush_scenes_count = len(mush_scenes)
 
         for counter, mush_scene in enumerate(mush_scenes, start=1):
-            pass
+            pitch = process_penntext(mush_scene['scene_pitch'])
+            outcome = process_penntext(mush_scene['scene_outcome'])
+            new_event = event_typeclass(db_key=mush_scene['scene_title'], db_pitch=pitch, db_outcome=outcome,
+                                        db_date_scheduled=mush_scene['scene_date_scheduled'],
+                                        db_date_created=mush_scene['scene_date_created'],
+                                        db_date_started=mush_scene['scene_date_started'],
+                                        db_date_finished=mush_scene['scene_date_finished'],
+                                        db_status=mush_scene['scene_status'])
+            new_event.save()
+            events_map[mush_scene['scene_id']] = new_event
+
+        c.execute("""SELECT * FROM vol_plotlink""")
+        plot_links = c.fetchall()
+        plot_links_count = len(plot_links)
+
+        for counter, plot_link in enumerate(plot_links, start=1):
+            plot = plots_map[plot_link['plot_id']]
+            event = events_map[plot_link['scene_id']]
+            event.plots.add(plot)
+
+        c.execute("""SELECT * FROM vol_action_source""")
+        action_sources = c.fetchall()
+        action_sources_count = len(plot_links)
+        event_source_map = dict()
+
+        for counter, action_source in enumerate(action_sources, start=1):
+            event = events_map[action_source['scene_id']]
+            new_source = source_typeclass(db_key=action_source['source_name'], db_event=event,
+                                          db_source_type=action_source['source_type'])
+            new_source.save()
+            event_source_map[action_source['source_id']] = new_source
 
         c.execute("""SELECT * FROM volv_actor""")
         mush_actors = c.fetchall()
@@ -490,7 +535,11 @@ class CmdPennImport(AthanorCommand):
         mush_actors_count = len(mush_actors)
 
         for counter, mush_actor in enumerate(mush_actors, start=1):
-            pass
+            event = events_map[mush_actor['scene_id']]
+            entity = self.ghost_character(mush_actor['character_objid'], mush_actor['character_name']).entity
+            new_participant = participant_typeclass(db_key=entity.key, db_event=event, db_entity=entity,
+                                                    db_participant_type=mush_actor['actor_type'],
+                                                    db_action_count=mush_actor['action_count'])
 
         c.execute("""SELECT * FROM volv_action""")
         mush_actions = c.fetchall()
