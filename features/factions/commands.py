@@ -8,20 +8,6 @@ COMMAND_DEFAULT_CLASS = class_from_module(settings.COMMAND_DEFAULT_CLASS)
 class _CmdBase(COMMAND_DEFAULT_CLASS):
     help_category = 'Factions'
 
-    def func(self):
-        try:
-            if self.switches:
-                if len(self.switches) > 1:
-                    self.msg(f"{self.key} only supports one switch at a time!")
-                    return
-                switch = self.switches[0]
-                return getattr(self, f"switch_{switch}")()
-
-            self.switch_main()
-        except ValueError as err:
-            self.msg(f"ERROR: {err}")
-            return
-
     def target_faction(self, search):
         if not search:
             raise ValueError("No faction name entered to search for!")
@@ -33,9 +19,10 @@ class _CmdBase(COMMAND_DEFAULT_CLASS):
 
 class CmdFactions(_CmdBase):
     key = '@factions'
-    aliases = ('@fac',)
+    aliases = ('@faction', '+groups', '@fac', '+group', '+guilds')
     locks = "cmd:all()"
-    switch_options = ('select', 'tree')
+    switch_options = ('select', 'config', 'describe', 'create', 'disband', 'rename', 'move', 'category',
+                      'abbreviation', 'lock')
 
     def print_faction_line(self, faction, viewer):
         fname = faction.get_display_name(viewer)
@@ -105,15 +92,6 @@ class CmdFactions(_CmdBase):
         self.caller.db.faction_select = faction
         self.msg(f"You are now targeting the '{faction}' for faction commands!")
 
-
-class CmdFacAdmin(_CmdBase):
-    key = '+fadmin'
-    locks = "cmd:perm(Admin) or perm(Faction_Admin)"
-    switch_options = ('config', 'describe', 'create', 'disband', 'rename', 'move', 'category', 'abbreviation', 'lock')
-
-    def switch_main(self):
-        pass
-
     def switch_create(self):
         results = evennia.GLOBAL_SCRIPTS.faction.create_faction(name=self.lhs, creator=self.caller, tree=self.rhs)
         self.msg(f"Created the Faction: {results.path_name(self.caller)}")
@@ -144,7 +122,7 @@ class CmdFacAdmin(_CmdBase):
 
 
 class CmdFacRank(_CmdBase):
-    key = '+frank'
+    key = '@facrank'
     locks = "cmd:all()"
     switch_options = ('create', 'rename', 'delete', 'permissions')
 
@@ -162,7 +140,7 @@ class CmdFacRank(_CmdBase):
 
 
 class CmdFacMember(_CmdBase):
-    key = '+fmember'
+    key = '@facmember'
     locks = 'cmd:all()'
     switch_options = ('add', 'invite', 'join', 'kick', 'leave', 'rank', 'uninvite', 'title', 'permissions')
 
@@ -194,8 +172,8 @@ class CmdFacMember(_CmdBase):
         pass
 
 
-class CmdFacPerm(_CmdBase):
-    key = '+fperm'
+class CmdFacPriv(_CmdBase):
+    key = '@facpriv'
     locks = 'cmd:all()'
     switch_options = ('create', 'delete', 'basic', 'member')
 
@@ -210,3 +188,9 @@ class CmdFacPerm(_CmdBase):
 
     def switch_member(self):
         pass
+
+
+class CmdFacRole(_CmdBase):
+    key = '@facrole'
+    locks = 'cmd:all()'
+    switch_options = ('create', 'delete', 'addpriv', 'rempriv')
