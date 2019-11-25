@@ -66,7 +66,7 @@ INLINEFUNC_ENABLED = True
 
 INSTALLED_APPS = tuple(INSTALLED_APPS) + ('features.core', 'features.factions', 'features.forum', 'features.staff', 'features.themes',
                                    'features.note', 'features.jobs', 'features.building',  'features.rplogger',
-                                   'features.mush_import', "features.effects", "features.items", "features.market",
+                                   'features.mush_import', "features.effects", "features.items",
                                    "features.quests", "features.traits")
 
 ROOT_URLCONF = None
@@ -89,6 +89,10 @@ GLOBAL_SCRIPTS['accounts'] = {
 
 OPTIONS_ACCOUNT_DEFAULT['sys_msg_border'] = ('For -=<>=-', 'Color', 'm')
 OPTIONS_ACCOUNT_DEFAULT['sys_msg_text'] = ('For text in sys_msg', 'Color', 'w')
+OPTIONS_ACCOUNT_DEFAULT['border_color'] = ("Headers, footers, table borders, etc.", "Color", "M")
+OPTIONS_ACCOUNT_DEFAULT['header_star_color'] = ("* inside Header lines.", "Color", "m")
+OPTIONS_ACCOUNT_DEFAULT['column_names_color'] = ("Table column header text.", "Color", "G")
+
 
 ######################################################################
 # Area Settings
@@ -190,13 +194,6 @@ GLOBAL_SCRIPTS['jobs'] = {
 }
 
 ######################################################################
-# Market Settings
-######################################################################
-BASE_MARKET_TYPECLASS = 'typeclasses.market.Market'
-BASE_MARKET_BRANCH_TYPECLASS = 'typeclasses.market.MarketBranch'
-BASE_MARKET_LISTING_TYPECLASS = 'typeclasses.market.MarketListing'
-
-######################################################################
 # Note Settings
 ######################################################################
 BASE_NOTE_CATEGORY_TYPECLASS = 'typeclasses.note.NoteCategory'
@@ -214,9 +211,25 @@ BASE_THEME_TYPECLASS = 'typeclasses.themes.Theme'
 BASE_THEME_PARTICIPANT_TYPECLASS = 'typeclasses.themes.ThemeParticipant'
 
 ######################################################################
+# RP Logger Settings
+######################################################################
+GLOBAL_SCRIPTS['events'] = {
+    'typeclass': 'typeclasses.rplogger.EventController',
+    'repeats': -1, 'interval': 50, 'desc': 'Event Controller for RP Logger System'
+}
+
+BASE_PLOT_TYPECLASS = 'typeclasses.rplogger.Plot'
+BASE_PLOT_RUNNER_TYPECLASS = 'typeclasses.rplogger.PlotRunner'
+BASE_EVENT_TYPECLASS = 'typeclasses.rplogger.Event'
+BASE_EVENT_PARTICIPANT_TYPECLASS = 'typeclasses.rplogger.EventParticipant'
+BASE_EVENT_SOURCE_TYPECLASS = 'typeclasses.rplogger.EventSource'
+BASE_EVENT_CODENAME_TYPECLASS = 'typeclasses.rplogger.EventCodename'
+BASE_EVENT_ACTION_TYPECLASS = 'typeclasses.rplogger.EventAction'
+
+######################################################################
 # Funcs Settings
 ######################################################################
-sections = ['building', 'effects', 'factions', 'forum', 'items', 'market',
+sections = ['building', 'effects', 'factions', 'forum', 'items',
             'note', 'quests', 'rplogger']
 EXTRA_LOCK_FUNCS = tuple([f"features.{s}.locks" for s in sections])
 LOCK_FUNC_MODULES = LOCK_FUNC_MODULES + EXTRA_LOCK_FUNCS

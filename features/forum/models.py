@@ -19,9 +19,9 @@ class ForumBoardDB(TypedObject):
     __defaultclasspath__ = "features.forum.forum.DefaultForumBoard"
     __applabel__ = "forum"
 
-    db_category = models.ForeignKey(ForumCategoryDB, related_name='forum', null=False, on_delete=models.CASCADE)
+    db_category = models.ForeignKey(ForumCategoryDB, related_name='boards', null=False, on_delete=models.CASCADE)
     db_order = models.PositiveIntegerField(default=0)
-    db_ignore_list = models.ManyToManyField('objects.ObjectDB')
+    ignore_list = models.ManyToManyField('accounts.AccountDB')
     db_mandatory = models.BooleanField(default=False)
 
     class Meta:
@@ -36,9 +36,9 @@ class ForumThreadDB(TypedObject):
     __applabel__ = "forum"
 
     db_entity = models.ForeignKey('core.EntityMapDB', related_name='forum_threads', null=True, on_delete=models.PROTECT)
-    db_date_created = models.DateTimeField('creation date', editable=True, auto_now_add=True)
+    db_date_created = models.DateTimeField(null=False)
     db_board = models.ForeignKey(ForumBoardDB, related_name='threads', on_delete=models.CASCADE)
-    db_date_modified = models.DateTimeField(editable=True, auto_now_add=True)
+    db_date_modified = models.DateTimeField(null=False)
     db_order = models.PositiveIntegerField(null=True)
 
     class Meta:
@@ -62,9 +62,9 @@ class ForumPostDB(TypedObject):
     __applabel__ = "forum"
 
     db_entity = models.ForeignKey('core.EntityMapDB', related_name='forum_posts', null=True, on_delete=models.PROTECT)
-    db_date_created = models.DateTimeField('creation date', editable=True, auto_now_add=True)
+    db_date_created = models.DateTimeField(null=False)
     db_thread = models.ForeignKey(ForumThreadDB, related_name='posts', on_delete=models.CASCADE)
-    db_date_modified = models.DateTimeField(editable=True, auto_now_add=True)
+    db_date_modified = models.DateTimeField(null=False)
     db_order = models.PositiveIntegerField(null=True)
     db_body = models.TextField(null=True, blank=True)
 

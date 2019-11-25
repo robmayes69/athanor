@@ -209,7 +209,7 @@ class DefaultForumBoard(ForumBoardDB, AthanorTypeEntity, metaclass=TypeclassBase
                 fullnums.append(int(arg))
             if re.match(r"^U$", arg.upper()):
                 fullnums += self.unread_posts(account).values_list('db_order', flat=True)
-        threads = self.threads.filter_family(db_order__in=fullnums).order_by('db_order')
+        threads = self.threads.filter(db_order__in=fullnums).order_by('db_order')
         if not threads:
             raise ValueError("Threads not found!")
         return threads
@@ -224,8 +224,8 @@ class DefaultForumBoard(ForumBoardDB, AthanorTypeEntity, metaclass=TypeclassBase
         else:
             return False
 
-    def unread_posts(self, account):
-        return self.posts.exclude(read__account=account, db_date_modified__lte=F('read__date_read')).order_by('db_order')
+    def unread_threads(self, account):
+        return self.threads.exclude(read__account=account, db_date_modified__lte=F('read__date_read')).order_by('db_order')
 
     def display_permissions(self, looker=None):
         if not looker:
@@ -487,7 +487,7 @@ class DefaultForumController(GlobalScript):
 
     def visible_boards(self, character, check_admin=True):
         return [board for board in self.usable_boards(character, mode='read', check_admin=check_admin)
-                if character not in board.db_ignore_list.all() and board.category.access(character, 'see')]
+                if board.category.access(character, 'see')]
 
     def find_board(self, character, find_name=None, visible_only=True):
         if isinstance(find_name, DefaultForumBoard):

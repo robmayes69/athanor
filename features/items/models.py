@@ -2,6 +2,18 @@ from django.db import models
 from evennia.typeclasses.models import TypedObject
 
 
+class MarketDB(TypedObject):
+    __settingclasspath__ = "features.market.market.DefaultMarket"
+    __defaultclasspath__ = "features.market.market.DefaultMarket"
+    __applabel__ = "market"
+
+    db_description = models.TextField(null=True)
+
+    class Meta:
+        verbose_name = 'Market'
+        verbose_name_plural = 'Market'
+
+
 class ItemDefinitionDB(TypedObject):
     __settingclasspath__ = "features.items.items.DefaultItemDefinition"
     __defaultclasspath__ = "features.items.items.DefaultItemDefinition"
@@ -16,7 +28,7 @@ class ItemDefinitionDB(TypedObject):
 
     class Meta:
         verbose_name = 'ItemDefinition'
-        verbose_name_pural = 'ItemDefinitions'
+        verbose_name_plural = 'ItemDefinitions'
 
 
 class InventoryDB(TypedObject):
@@ -24,6 +36,7 @@ class InventoryDB(TypedObject):
     __defaultclasspath__ = "features.items.items.DefaultInventory"
     __applabel__ = "items"
 
+    db_market = models.ForeignKey(MarketDB, related_name='inventories', on_delete=models.CASCADE, null=True)
     db_entity = models.ForeignKey('core.EntityMapDB', related_name='inventories', on_delete=models.CASCADE)
 
     class Meta:
@@ -43,8 +56,10 @@ class ItemDB(TypedObject):
     db_location = models.ForeignKey(InventoryDB, related_name='storage', on_delete=models.CASCADE)
     db_slot = models.CharField(max_length=255, blank=False, null=True)
     db_layer = models.PositiveIntegerField(null=True)
+    db_price = models.PositiveIntegerField(null=True)
+    db_owner = models.ForeignKey('core.EntityMapDB', related_name='owned_items', null=True, on_delete=models.SET_NULL)
 
     class Meta:
         unique_together = (('db_location', 'db_slot', 'db_layer'),)
         verbose_name = 'Item'
-        verbose_name_pural = 'Items'
+        verbose_name_plural = 'Items'

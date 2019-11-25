@@ -4,6 +4,7 @@ from typeclasses.scripts import GlobalScript
 from evennia.utils.utils import class_from_module
 from evennia.utils.logger import log_trace
 from evennia.utils.search import search_account
+import datetime
 
 class AthanorAccount(DefaultAccount, AthanorEntity):
 
@@ -17,16 +18,12 @@ class AthanorAccount(DefaultAccount, AthanorEntity):
         formatted_text = f"|{sysmsg_border}-=<|n|{sysmsg_text}{system_name.upper()}|n|{sysmsg_border}>=-|n {text}"
         self.msg(text=formatted_text, system_name=system_name, original_text=text)
 
-    def display_time(self, time_disp=None, time_format=None, tz=None):
-        if not time_format:
-            time_format = '%b %d %I:%M%p %Z'
-        if not time_disp:
-            import datetime
-            time_disp = datetime.datetime.utcnow()
+    def localize_timestring(self, time_data=None, time_format='%b %d %I:%M%p %Z', tz=None):
+        if not time_data:
+            time_data = datetime.datetime.utcnow()
         if not tz:
             tz = self.options.timezone
-        time = time_disp.astimezone(tz)
-        return time.strftime(time_format)
+        return time_data.astimezone(tz).strftime(time_format)
 
     def __str__(self):
         return self.key

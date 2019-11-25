@@ -33,6 +33,13 @@ class DefaultTheme(ThemeDB, AthanorTypeEntity, metaclass=TypeclassBase):
         new_participant = typeclass.create(theme=self, character=character, list_type=list_type)
         return new_participant
 
+    def remove_character(self, character):
+        participant = self.participants.filter(db_character=character).first()
+        if participant:
+            if character.db._primary_theme == participant:
+                del character.db._primary_theme
+            participant.delete()
+
     def __str__(self):
         return self.db_key
 
@@ -86,7 +93,7 @@ class DefaultThemeController(GlobalScript):
             self.ndb.theme_typeclass = DefaultTheme
 
     def themes(self):
-        return DefaultTheme.objects.filter().order_by('db_key')
+        return DefaultTheme.objects.filter_family().order_by('db_key')
 
     def create_theme(self, session, theme_name, description):
         enactor = session.get_puppet_or_account()
@@ -147,8 +154,8 @@ class DefaultThemeController(GlobalScript):
         new_part = theme.add_character(character, list_type)
         messages.ThemeAssignedMessage(enactor, target=character, theme=theme, list_type=list_type).send()
         if primary:
-            character.db.primary_theme = new_part
-            messages.ThemeChangePrimaryMessage(enactor, target=character, theme_name=theme.key).send()
+            character.db._primary_theme = new_part
+            messages.ThemeSetPrimaryMessage(enactor, target=character, theme_name=theme.key, list_type=list_type).send()
 
     def theme_remove_character(self, session, theme_name, character):
         enactor = session.get_puppet_or_account()
@@ -158,16 +165,14 @@ class DefaultThemeController(GlobalScript):
             raise ValueError(f"{character} is not a member of {theme}!")
         list_type = participating.list_type
         theme.remove_character(character)
-        if character.db.primary_theme == theme:
-            del character.db.primary_theme
         messages.ThemeRemovedMessage(enactor, target=character, theme=theme, list_type=list_type).send()
 
     def character_change_status(self, session, character, new_status):
         enactor = session.get_puppet_or_account()
-        old_status = character.db.theme_status
-        character.db.theme_status = new_status
+        old_status = character.db._theme_status
+        character.db._theme_status = new_status
         messages.ThemeStatusMessage(enactor, target=character, status=new_status,
-                                    theme=character.db.primary_theme).send()
+                                    theme=character.db._primary_theme.theme).send()
 
 
     def participant_change_type(self, session, theme_name, character, new_type):
@@ -186,8 +191,18 @@ class DefaultThemeController(GlobalScript):
         participating = character.themes.all()
         if not participating:
             raise ValueError("Character has no themes!")
+        old_primary = character.db._primary_theme
+        if old_primary:
+            old_list_type = old_primary.list_type
+        else:
+            old_list_type = None
         theme_part = partial_match(theme_name, participating)
         if not theme_part:
             raise ValueError(f"Character has no Theme named {theme_name}!")
-        character.db.primary_theme = theme_part
-        messages.ThemeChangePrimaryMessage(enactor, target=character, theme_name=theme_part.theme.key).send()
+        character.db._primary_theme = theme_part
+        if old_primary:
+            messages.ThemeChangePrimaryMessage(enactor, target=character, old_theme_name=old_primary.theme.key,
+                                               old_list_type=old_list_type, theme=theme_part.theme, list_type=theme_part.list_type).send()
+        else:
+            messages.ThemeSetPrimaryMessage(enactor, target=character, theme_name=theme_part.theme.key,
+                                            list_type=theme_part.list_type)

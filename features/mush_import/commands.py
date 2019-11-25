@@ -1,5 +1,3 @@
-
-
 import MySQLdb
 import MySQLdb.cursors as cursors
 import datetime
@@ -7,16 +5,12 @@ import pytz
 import random
 
 from django.conf import settings
-from evennia.utils import create
 from evennia import GLOBAL_SCRIPTS
 from django.db.models import Q
 
-from typeclasses.characters import ShelvedCharacter
-from features.forum.models import ForumCategoryDB
 from . convpenn import PennParser, process_penntext
 from . models import MushObject, cobj, pmatch, objmatch, MushAttributeName, MushAttribute
-from utils.text import partial_match, dramatic_capitalize, sanitize_string, penn_substitutions
-from utils.time import utcnow, duration_from_string
+from utils.text import penn_substitutions
 from features.core.command import AthanorCommand
 
 
@@ -40,7 +34,7 @@ class CmdPennImport(AthanorCommand):
     key = '@penn'
     system_name = 'IMPORT'
     locks = 'cmd:perm(Developers)'
-    admin_switches = ['initialize', 'areas', 'grid', 'accounts', 'groups', 'bbs', 'themes', 'radio', 'jobs', 'scenes']
+    admin_switches = ['initialize', 'areas', 'grid', 'accounts', 'characters', 'groups', 'bbs', 'themes', 'radio', 'jobs', 'scenes']
     
     def report_status(self, message):
         print(message)
@@ -233,6 +227,9 @@ class CmdPennImport(AthanorCommand):
             if description:
                 self.report_status(f"FOUND DESCRIPTION: {description}")
                 new_char.db.desc = description
+            last_logout = mush_char.mushget('LASTLOGOUT')
+            if last_logout:
+                new_char.db._last_logout = from_mushtimestring(last_logout)
 
             flags = mush_char.flags.split(' ')
 
@@ -332,6 +329,20 @@ class CmdPennImport(AthanorCommand):
             new_role_link = role_link_typeclass(db_link=new_link, db_role=role, db_grantable=False, db_key=role.key)
             new_role_link.save()
 
+        from typeclasses.characters import PlayerCharacter
+        for counter, character in enumerate(PlayerCharacter.objects.filter_family()):
+            if not hasattr(character, 'mush'):
+                continue
+            tiers = character.mush.mushget('V`TIERS')
+            if not tiers:
+                continue
+            tiers = tiers.split(' ')[0]
+            group = objmatch(tiers)
+            if not group:
+                continue
+            character.db._primary_faction = group.group
+
+
     def ghost_character(self, objid, name):
         character = pmatch(objid)
         if character:
@@ -422,6 +433,8 @@ class CmdPennImport(AthanorCommand):
                                       db_body=process_penntext(mush_comment['comment_text']), db_thread=thread)
             new_post.save()
 
+        self.report_status("ALl done importing BBS!")
+
     def switch_themes(self):
         theme_con = GLOBAL_SCRIPTS.theme
         c = self.sql_cursor()
@@ -451,6 +464,8 @@ class CmdPennImport(AthanorCommand):
             theme.add_character(character, list_type)
             character.db.theme_status = mush_theme_member['character_status']
 
+        self.report_status("All done importing Themes!")
+
     def switch_radio(self):
         pass
 
@@ -458,7 +473,7 @@ class CmdPennImport(AthanorCommand):
         pass
 
     def switch_scenes(self):
-        rplog_con = GLOBAL_SCRIPTS.rplogger
+        rplog_con = GLOBAL_SCRIPTS.events
         plot_typeclass = rplog_con.ndb.plot_typeclass
         runner_typeclass = rplog_con.ndb.runner_typeclass
         event_typeclass = rplog_con.ndb.event_typeclass
@@ -474,6 +489,7 @@ class CmdPennImport(AthanorCommand):
         mush_plots_count = len(mush_plots)
 
         for counter, mush_plot in enumerate(mush_plots, start=1):
+            self.report_status(f"Processing MushPlot {counter} of {mush_plots_count} - {mush_plot}")
             new_plot = plot_typeclass(db_key=mush_plot['plot_title'], db_pitch=process_penntext(mush_plot['plot_pitch']),
                                       db_summary=process_penntext(mush_plot['plot_summary']),
                                       db_outcome=process_penntext(mush_plot['plot_outcome']),
@@ -486,9 +502,10 @@ class CmdPennImport(AthanorCommand):
         mush_runners_count = len(mush_runners)
 
         for counter, mush_runner in enumerate(mush_runners, start=1):
+            self.report_status(f"Processing MushPlotRunners {counter} of {mush_runners_count} - {mush_runner}")
             entity = self.ghost_character(mush_runner['character_objid'], mush_runner['character_name']).entity
             plot = plots_map[mush_runner['plot_id']]
-            new_runner = runner_typeclass(db_plot=plot, db_entity=entity, db_runner_tpe=mush_runner['runner_type'])
+            new_runner = runner_typeclass(db_plot=plot, db_entity=entity, db_runner_type=mush_runner['runner_type'])
             new_runner.save()
 
         c.execute("""SELECT * FROM volv_scene""")
@@ -497,6 +514,7 @@ class CmdPennImport(AthanorCommand):
         mush_scenes_count = len(mush_scenes)
 
         for counter, mush_scene in enumerate(mush_scenes, start=1):
+            self.report_status(f"Processing MushScene {counter} of {mush_scenes_count} - {mush_scene}")
             pitch = process_penntext(mush_scene['scene_pitch'])
             outcome = process_penntext(mush_scene['scene_outcome'])
             new_event = event_typeclass(db_key=mush_scene['scene_title'], db_pitch=pitch, db_outcome=outcome,
@@ -513,20 +531,23 @@ class CmdPennImport(AthanorCommand):
         plot_links_count = len(plot_links)
 
         for counter, plot_link in enumerate(plot_links, start=1):
+            self.report_status(f"Processing MushPlotLink {counter} of {plot_links_count} - {plot_link}")
             plot = plots_map[plot_link['plot_id']]
             event = events_map[plot_link['scene_id']]
             event.plots.add(plot)
 
         c.execute("""SELECT * FROM vol_action_source""")
         action_sources = c.fetchall()
-        action_sources_count = len(plot_links)
+        action_sources_count = len(action_sources)
         event_source_map = dict()
 
         for counter, action_source in enumerate(action_sources, start=1):
+            self.report_status(f"Processing MushActionSource {counter} of {action_sources_count} - {action_source}")
             event = events_map[action_source['scene_id']]
-            new_source = source_typeclass(db_key=action_source['source_name'], db_event=event,
+            new_source, created = source_typeclass.objects.get_or_create(db_key=action_source['source_name'], db_event=event,
                                           db_source_type=action_source['source_type'])
-            new_source.save()
+            if created:
+                new_source.save()
             event_source_map[action_source['source_id']] = new_source
 
         c.execute("""SELECT * FROM volv_actor""")
@@ -535,16 +556,34 @@ class CmdPennImport(AthanorCommand):
         mush_actors_count = len(mush_actors)
 
         for counter, mush_actor in enumerate(mush_actors, start=1):
+            self.report_status(f"Processing MushActor {counter} of {mush_actors_count} - {mush_actor}")
             event = events_map[mush_actor['scene_id']]
             entity = self.ghost_character(mush_actor['character_objid'], mush_actor['character_name']).entity
             new_participant = participant_typeclass(db_key=entity.key, db_event=event, db_entity=entity,
                                                     db_participant_type=mush_actor['actor_type'],
                                                     db_action_count=mush_actor['action_count'])
+            new_participant.save()
+            participant_map[mush_actor['actor_id']] = new_participant
 
-        c.execute("""SELECT * FROM volv_action""")
+
+        c.execute("""SELECT * FROM volv_action ORDER BY scene_id ASC,action_date_created ASC""")
         mush_actions = c.fetchall()
         action_map = dict()
         mush_actions_count = len(mush_actions)
-
+        cur_scene = None
+        order_counter = 0
         for counter, mush_action in enumerate(mush_actions, start=1):
-            pass
+            self.report_status(f"Processing MushAction {counter} of {mush_actions_count} - {mush_action}")
+            scene_id = mush_action['scene_id']
+            event = events_map[scene_id]
+            if scene_id != cur_scene:
+                order_counter = 0
+                cur_scene = scene_id
+            participant = participant_map[mush_action['actor_id']]
+            source = event_source_map[mush_action['source_id']]
+            new_action = action_typeclass(db_event=event, db_participant=participant, db_source=source,
+                                          db_ignore=mush_action['action_is_deleted'], db_sort_order=order_counter,
+                                          db_text=process_penntext(mush_action['action_text']))
+            new_action.save()
+
+        self.report_status("All done importing Rp Logs!")

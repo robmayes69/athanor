@@ -1,4 +1,5 @@
 from features.rplogger.rplogger import DefaultPlot, DefaultPlotRunner, DefaultEvent, DefaultEventParticipant, DefaultEventCodename, DefaultEventAction, DefaultEventSource
+from features.rplogger.rplogger import DefaultEventController
 
 
 class Plot(DefaultPlot):
@@ -26,4 +27,8 @@ class EventCodename(DefaultEventCodename):
 
 
 class EventAction(DefaultEventAction):
+    pass
+
+
+class EventController(DefaultEventController):
     pass

@@ -2,6 +2,9 @@ from evennia.typeclasses.models import TypeclassBase
 from . models import PlotDB, PlotRunnerDB, EventDB, EventParticipantDB, EventCodenameDB, EventSourceDB, EventActionDB
 from features.core.base import AthanorTypeEntity
 from evennia.typeclasses.managers import TypeclassManager
+from typeclasses.scripts import GlobalScript
+from evennia.utils.utils import class_from_module
+from evennia.utils.logger import log_trace
 
 
 class DefaultPlot(PlotDB, AthanorTypeEntity, metaclass=TypeclassBase):
@@ -139,3 +142,59 @@ class DefaultEventAction(EventActionDB, AthanorTypeEntity, metaclass=TypeclassBa
                                                                    viewer.time.display(date=self.date_made))))
         message.append(self.text)
         return "\n".join([str(line) for line in message])
+
+
+class DefaultEventController(GlobalScript):
+    system_name = 'RPLOGGER'
+
+    def at_start(self):
+        from django.conf import settings
+
+        try:
+            self.ndb.plot_typeclass = class_from_module(settings.BASE_PLOT_TYPECLASS,
+                                                            defaultpaths=settings.TYPECLASS_PATHS)
+        except Exception:
+            log_trace()
+            self.ndb.plot_typeclass = DefaultPlot
+
+        try:
+            self.ndb.runner_typeclass = class_from_module(settings.BASE_PLOT_RUNNER_TYPECLASS,
+                                                         defaultpaths=settings.TYPECLASS_PATHS)
+        except Exception:
+            log_trace()
+            self.ndb.runner_typeclass = DefaultPlotRunner
+
+        try:
+            self.ndb.event_typeclass = class_from_module(settings.BASE_EVENT_TYPECLASS,
+                                                          defaultpaths=settings.TYPECLASS_PATHS)
+        except Exception:
+            log_trace()
+            self.ndb.event_typeclass = DefaultEvent
+
+        try:
+            self.ndb.participant_typeclass = class_from_module(settings.BASE_EVENT_PARTICIPANT_TYPECLASS,
+                                                        defaultpaths=settings.TYPECLASS_PATHS)
+        except Exception:
+            log_trace()
+            self.ndb.participant_typeclass = DefaultEventParticipant
+
+        try:
+            self.ndb.source_typeclass = class_from_module(settings.BASE_EVENT_SOURCE_TYPECLASS,
+                                                        defaultpaths=settings.TYPECLASS_PATHS)
+        except Exception:
+            log_trace()
+            self.ndb.source_typeclass = DefaultEventParticipant
+
+        try:
+            self.ndb.codename_typeclass = class_from_module(settings.BASE_EVENT_CODENAME_TYPECLASS,
+                                                        defaultpaths=settings.TYPECLASS_PATHS)
+        except Exception:
+            log_trace()
+            self.ndb.codename_typeclass = DefaultEventParticipant
+
+        try:
+            self.ndb.action_typeclass = class_from_module(settings.BASE_EVENT_ACTION_TYPECLASS,
+                                                        defaultpaths=settings.TYPECLASS_PATHS)
+        except Exception:
+            log_trace()
+            self.ndb.action_typeclass = DefaultEventParticipant

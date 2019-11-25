@@ -1,87 +1,83 @@
 from django.conf import settings
 import evennia
 from evennia.utils.utils import class_from_module
+from commands.command import Command
 
-COMMAND_DEFAULT_CLASS = class_from_module(settings.COMMAND_DEFAULT_CLASS)
 
-
-class BBCommand(COMMAND_DEFAULT_CLASS):
+class ForumCommand(Command):
     """
     Class for the Board System commands.
     """
-    help_category = "Bulletin Board System (BBS)"
-    system_name = "BBS"
-    locks = 'cmd:perm(Player)'
+    help_category = "Communications"
+    system_name = "FORUM"
+    locks = 'cmd:all()'
 
+    def switch_main_board_columns(self):
+        return self.styled_columns(f"{'ID':<6}{'Name':<31}{'Mem':<4}{'#Mess':>6}{'#Unrd':>6} Perm")
 
-class CmdBBList(BBCommand):
-    """
-    The BBS is a global, multi-threaded forum with a rich set of features that grew
-    from a rewrite of Myrddin's classical BBS. It shares almost identical command
-    syntax and appearance.
+    def display_board_row(self, account, board):
+        if board.mandatory:
+            member = 'MND'
+        else:
+            member = 'No' if account in board.ignore_list.all() else 'Yes'
+        return f"{board.prefix_order:<6}{board.key:<31}{member:<4} {board.threads.count():>5} {board.unread_threads(account).count():>5} {str(board.locks)}"
 
-    Board Membership
-        +bblist - Shows all visible forum.
-        +bblist/join <alias> - Join a board.
-        +bblist/leave <alias> - Leave a board.
-
-    """
-    key = '+bblist'
-
-    def switch_main(self):
+    def switch_main_read(self):
         boards = evennia.GLOBAL_SCRIPTS.forum.visible_boards(self.caller, check_admin=True)
         message = list()
-        col_color = self.account.options.column_names_color
-        message.append(self.styled_header('BBS Boards'))
-        message.append(f"|{col_color}Alias Name                           Member       #Mess #Unrd Perm|n")
-        message.append(self.styled_separator())
+        message.append(self.styled_header('Forum Boards'))
+        message.append(self.switch_main_board_columns())
+        message.append(self._blank_separator)
         this_cat = None
         for board in boards:
             if this_cat != board.category:
                 message.append(self.styled_separator(board.category.key))
                 this_cat = board.category
-            message.append(board.key)
-        message.append(self.styled_footer())
+            message.append(self.display_board_row(self.account, board))
+        message.append(self._blank_footer)
         self.msg('\n'.join(str(l) for l in message))
 
-    def switch_join(self):
-        board = evennia.GLOBAL_SCRIPTS.forum.find_board(self.caller, self.args, visible_only=False)
-        board.ignore_list.remove(self.caller)
 
-    def switch_leave(self):
-        board = evennia.GLOBAL_SCRIPTS.forum.find_board(self.caller, self.args)
-        if board.mandatory:
-            raise ValueError("Cannot leave mandatory forum!")
-        board.ignore_list.add(self.caller)
-
-
-class CmdBBCat(BBCommand):
+class CmdForumCategory(ForumCommand):
     """
     All BBS Boards exist under BBS Categories, which consist of a unique name and
     maximum 3-letter prefix.
 
     Commands:
-        +bbcat - List all Categories.
-        +bbcat/create <category>=<prefix> - Create a new Category.
-        +bbcat/rename <category>=<new name> - Renames a category.
-        +bbcat/prefix <category=<new prefix> - Change a category prefix.
-        +bbcat/lock <category>=<lock string>
+        @fcategory
+            List all Categories.
+        @fcategory/create <category>=<prefix>
+            Create a new Category.
+        @fcategory/rename <category>=<new name>
+            Renames a category.
+        @fcategory/prefix <category=<new prefix>
+            Change a category prefix.
+        @fcategory/lock <category>=<lock string>
+            Standard Evennia locks. See access types below.
 
     Locks:
-        see - Who can see this category. This blocks all Board-specific locks
-            for child forum.
+        see
+            Who can see this category. This supersedes all Board-specific locks for child boards.
+        manage
+            Who has authority over this Category. Can create/delete/rename/modify boards within.
     """
-    key = '+bbcat'
-    locks = 'cmd:perm(Admin) or perm(BBS_Admin)'
+    key = "@fcategory"
+    aliases = ['+bbcat']
+    locks = 'cmd:perm(Admin) or perm(forum_admin)'
     switch_options = ('create', 'delete', 'rename', 'prefix', 'lock')
+
+    def display_category_row(self, category):
+        return f"{category.abbr:<7}{category.key[:26]:<27}{category.boards.count():<7}{str(category.locks):<30}"
 
     def switch_main(self):
         cats = evennia.GLOBAL_SCRIPTS.forum.visible_categories(self.caller)
         message = list()
-        message.append(self.styled_header('BBS Categories'))
+        message.append(self.styled_header('Forum Categories'))
+        message.append(self.styled_columns(f"{'Prefix':<7}{'Name':<27}{'Boards':<7}{'Locks':<30}"))
+        message.append(self._blank_separator)
         for cat in cats:
-            message.append(f"{cat.abbr} - {cat.key}")
-        message.append(self.styled_footer())
+            message.append(self.display_category_row(cat))
+        message.append(self._blank_footer)
         self.msg('\n'.join(str(l) for l in message))
 
     def switch_create(self):
@@ -100,24 +96,23 @@ class CmdBBCat(BBCommand):
         evennia.GLOBAL_SCRIPTS.forum.lock_category(self.caller, self.lhs, self.rhs)
 
 
-class CmdBBAdmin(BBCommand):
+class CmdForumAdmin(ForumCommand):
     """
     The BBS is a global, multi-threaded board with a rich set of features that grew
     from a rewrite of Myrddin's classical BBS. It shares almost identical command
     syntax and appearance.
 
-    Managing Boards - Staff Only
-        +bbadmin - Show all forum and locks.
-        +bbadmin/create <category>=<boardname/<order> - Creates a new board.
-        +bbadmin/delete <board>=<full name> - Deletes a board.
-        +bbadmin/rename <board>=<new name> - Renames a board.
-        +bbadmin/order <board>=<new order> - Change a board's order.
-        +bbadmin/lock <board>=<lock string> - Lock a board.
-        +bbadmin/mandatory <board>=<boolean> - Change whether a board is
-            mandatory or not. mandatory forum insistently announce that
-            connected accounts must read them and cannot be skipped with
-            +bbread/catchup
-
+    Managing Boards - Requires Permissions
+        @fboard - Show all forum and locks.
+        @fboard/create <category>=<boardname/<order> - Creates a new board.
+        @fboard/delete <board>=<full name> - Deletes a board.
+        @fboard/rename <board>=<new name> - Renames a board.
+        @fboard/order <board>=<new order> - Change a board's order.
+        @fboard/lock <board>=<lock string> - Lock a board.
+        @fboard/mandatory <board>=<1 or 0> - Change whether a board is
+            mandatory or not. mandatory forums with unread content
+            insistently announce that connected accounts must read them
+            and cannot be skipped with @fread/catchup.
 
     Securing Boards
         The default lock for a board is:
@@ -126,12 +121,17 @@ class CmdBBAdmin(BBCommand):
         Example lockstring for a staff announcement board:
             read:all();write:perm(Admin);admin:perm(Admin) or perm(BBS_Admin)
 
+    Board Membership
+        @fboard/join <alias> - Join a board.
+        @fboard/leave <alias> - Leave a board.
     """
 
-    key = "+bbadmin"
-    player_switches = ['create', 'delete', 'rename', 'order', 'lock', 'unlock', 'mandatory']
+    key = "@fboard"
 
-    locks = "cmd:perm(Admin) or perm(BBS_Admin)"
+    player_switches = ['create', 'delete', 'rename', 'order', 'lock', 'unlock', 'mandatory', 'join', 'leave']
+
+    def switch_main(self):
+        return self.switch_main_read()
 
     def switch_create(self):
         if '/' not in self.rhs:
@@ -154,24 +154,30 @@ class CmdBBAdmin(BBCommand):
     def switch_lock(self):
         evennia.GLOBAL_SCRIPTS.forum.lock_board(self.caller, name=self.rhs, lock=self.lhs)
 
+    def switch_join(self):
+        board = evennia.GLOBAL_SCRIPTS.forum.find_board(self.caller, self.args, visible_only=False)
+        board.ignore_list.remove(self.caller)
 
-class CmdBBPost(BBCommand):
+    def switch_leave(self):
+        board = evennia.GLOBAL_SCRIPTS.forum.find_board(self.caller, self.args)
+        if board.mandatory:
+            raise ValueError("Cannot leave mandatory forum!")
+        board.ignore_list.add(self.caller)
+
+
+class CmdForumThread(ForumCommand):
     """
     The BBS is a global, multi-threaded board with a rich set of features that grew
-    from a rewrite of Myrddin's classical BBS. It shares almost identical command
-    syntax and appearance.
+    from a rewrite of Myrddin's classical BBS.
 
     Writing Posts
-        +bbpost <board>/<title>=<text> - Post text to a board.
-        +bbpost/edit <board>/<post>=<search>^^^<replace> - Edits text on a board.
-            You must have the appropriate permissions.
-        +bbpost/move <board>/<posts>=<destination> - Relocate posts if you have
-            permission.
-        +bbpost/delete <board>/<posts> - Remove one or more posts. You must have
-            the appropriate permissions.
+        @fthread <board>/<title>=<text> - Creates a new Thread on <board> called <title> with a starting post containing <text>.
+        @fthread/rename <board>/<thread>=<new title> - Changes the title/subject of a thread.
+        @fthread/move <board>/<thread>=<destination board> - Relocate a thread if you have permission.
+        @fthread/delete <board>/<thread> - Remove an ENTIRE thread and all posts under it. Requires permissions.
     """
-    key = "+bbpost"
-    switch_options = ('edit', 'move', 'delete')
+    key = '@fthread'
+    switch_options = ('rename', 'move', 'delete')
 
     def switch_main(self):
         if '/' not in self.lhs:
@@ -179,7 +185,7 @@ class CmdBBPost(BBCommand):
         board, subject = self.lhs.split('/', 1)
         evennia.GLOBAL_SCRIPTS.forum.create_post(self.caller, board=board, subject=subject, text=self.rhs)
 
-    def switch_edit(self):
+    def switch_rename(self):
         if '/' not in self.lhs or '^^^' not in self.rhs:
             raise ValueError("Usage: +bbpost/edit <board>/<post>=<search>^^^<replace>")
         board, post = self.lhs.split('/', 1)
@@ -200,101 +206,80 @@ class CmdBBPost(BBCommand):
         evennia.GLOBAL_SCRIPTS.forum.delete_post(self.caller, board=board, post=post)
 
 
-class CmdBBRead(BBCommand):
+class CmdForumRead(ForumCommand):
     """
     The BBS is a global, multi-threaded board with a rich set of features that grew
-    from a rewrite of Myrddin's classical BBS. It shares almost identical command
-    syntax and appearance.
+    from a rewrite of Myrddin's classical BBS.
 
     Reading Posts
-        +bbread - Show all message forum.
-        +bbread <board> - Shows a board's messages. <board> can be its name
-            (supports partial matches) or number.
-        +bbread <board>/<list> - Read a message. <list> is comma-seperated.
-            Entries can be single numbers, number ranges (ie. 1-6), and u (for 'all
+        @fread - Show all message boards and brief information.
+        @fread <board> - Shows a board's messages. <board> must be the ID such as AB1 or 3, not name.
+        @fread <board>/<threads> - Read a message. <list> is comma-seperated.
+            Entries can be single numbers, number ranges (ie. 1-6), or u (for 'all
             unread'), in any combination or order - duplicates will not be shown.
-        +bbread/next - shows first available unread message.
-        +bbread/new - Same as +bbnext.
-        +bbread/catchup <board> - Mark all messages on a board read. use /catchup all to
-            mark all forum as read.
-        +bbread/scan - Lists unread messages in compact form.
+        @fread/next - shows first available unread message.
+        @fread/new - Same as /next.
+        @fread/catchup <board> - Mark all threads on a board as read. use /catchup all to
+            mark the entire forum as read.
+        @fread/scan - Lists unread messages in compact form.
     """
-    key = '+bbread'
+    key = '@fread'
+    aliases = ['+bbread']
     switch_options = ('catchup', 'scan', 'next', 'new')
 
     def switch_main(self):
+        if not self.args:
+            return self.switch_main_read()
         if not self.lhs:
-            return self.display_boards()
+            return self.error("Usage: @fread <board>/<thread>")
         if '/' not in self.lhs:
             return self.display_board()
         return self.display_posts()
 
-    def display_boards(self):
-        boards = evennia.GLOBAL_SCRIPTS.forum.visible_boards(self.caller, check_admin=True)
-        message = list()
-        col_color = self.account.options.column_names_color
-        message.append(self.styled_header('BBS Boards'))
-        message.append(f"|{col_color}Alias Name                           Last Post    #Mess #Unrd Perm|n")
-        message.append(self.styled_separator())
-        this_cat = None
-        for board in boards:
-            if this_cat != board.category:
-                message.append(self.styled_separator(board.category.key))
-                this_cat = board.category
-            alias = board.prefix_order[:5].ljust(5)
-            bname = board.key[:30].ljust(30)
-            last_post = board.last_post()
-            if last_post:
-                last_post = self.account.display_time(last_post.date_created, time_format='%b %d %Y')
-            else:
-                last_post = 'N/A'
-            last_post = last_post[:12].ljust(12)
-            mess = str(board.posts.count())[:5].ljust(5)
-            unrd = str(board.unread_posts(self.account).count())[:5].ljust(5)
-            perms = board.display_permissions(looker=self.caller)
-            message.append(f"{alias} {bname} {last_post} {mess} {unrd} {perms}")
-        message.append(self.styled_footer())
-        self.msg('\n'.join(str(l) for l in message))
-
     def display_board(self):
         board = evennia.GLOBAL_SCRIPTS.forum.find_board(self.caller, find_name=self.lhs)
-        posts = board.posts.order_by('db_order')
+        threads = board.threads.order_by('db_order')
         message = list()
-        col_color = self.account.options.column_names_color
-        message.append(self.styled_header(f'BBS - {board.key}'))
-        message.append(f"|{col_color}ID        Rd Title                              PostDate    Author            |n")
-        message.append(self.styled_separator())
-        unread = board.unread_posts(self.account)
-        for post in posts:
-            id = f"{post.board.prefix_order}/{post.order}".ljust(9)
-            rd = 'U ' if post in unread else '  '.ljust(2)
-            subject = post.key[:34].ljust(34)
-            post_date = self.account.display_time(post.date_created, time_format='%b %d %Y').ljust(11)
-            author = post.owner
-            message.append(f"{id} {rd} {subject} {post_date} {author}")
-        message.append(self.styled_footer())
+        message.append(self.styled_header(f'Forum Threads on {board.prefix_order}: {board.key}'))
+        message.append(self.styled_columns(f"{'ID':<10}Rd {'Title':<35}{'PostDate':<12}Author"))
+        message.append(self._blank_separator)
+        unread = board.unread_threads(self.account)
+        for thread in threads:
+            id = f"{thread.board.prefix_order}/{thread.order}"
+            rd = 'U ' if thread in unread else ''
+            subject = thread.key[:34].ljust(34)
+            post_date = self.account.localize_timestring(thread.date_created, time_format='%b %d %Y')
+            author = thread.entity
+            message.append(f"{id:<10}{rd:<3}{subject:<35}{post_date:<12}{author}")
+        message.append(self._blank_footer)
         self.msg('\n'.join(str(l) for l in message))
 
     def render_post(self, post):
         message = list()
-        message.append(self.styled_header(f'BBS - {post.board.key}'))
-        msg = f"{post.board.prefix_order}/{post.order}"[:25].ljust(25)
-        message.append(f"Message: {msg} Posted        Author")
-        subj = post.key[:34].ljust(34)
-        disp_time = self.account.display_time(post.date_created, time_format='%b %d %Y').ljust(13)
-        message.append(f"{subj} {disp_time} {post.owner}")
-        message.append(self.styled_header())
-        message.append(post.text)
-        message.append(self.styled_separator())
+        message.append(self.styled_separator(f"|w{post.entity}|n posted on {post.date_created}:"))
+        message.append(post.body)
+        return message
+
+    def render_thread(self, thread):
+        message = list()
+        message.append(self.styled_header(f'Forum Thread - {thread.board.key}'))
+        msg = f"{thread.board.prefix_order}/{thread.order}"[:25].ljust(25)
+        message.append(f"Message: {msg} Created       Author")
+        subj = thread.key[:34].ljust(34)
+        disp_time = self.account.localize_timestring(thread.date_created, time_format='%b %d %Y').ljust(13)
+        message.append(f"{subj} {disp_time} {thread.entity}")
+        for post in thread.posts.all().order_by('db_order'):
+            message += self.render_post(post)
+        message.append(self._blank_separator)
         return '\n'.join(str(l) for l in message)
 
     def display_posts(self):
-        board, posts = self.lhs.split('/', 1)
+        board, threads = self.lhs.split('/', 1)
         board = evennia.GLOBAL_SCRIPTS.forum.find_board(self.caller, find_name=board)
-        posts = board.parse_threadnums(self.account, posts)
-        for post in posts:
-            self.msg(self.render_post(post))
-            post.update_read(self.account)
+        threads = board.parse_threadnums(self.account, threads)
+        for thread in threads:
+            self.msg(self.render_thread(thread))
+            thread.update_read(self.account)
 
     def switch_catchup(self):
         if not self.args:
@@ -356,4 +341,4 @@ class CmdBBRead(BBCommand):
         self.switch_next()
 
 
-ALL_COMMANDS = [CmdBBAdmin, CmdBBCat, CmdBBList, CmdBBPost, CmdBBRead]
+ALL_COMMANDS = [CmdForumCategory, CmdForumAdmin, CmdForumThread, CmdForumRead]

@@ -45,13 +45,15 @@ def re_newlines(match):
 def re_tabs(match):
     return '\t'
 
+
 RE_PROCESS_PENN_1 = re.compile(r'(?s)(?P<start>\002p(?P<command>.+?)\003)(?P<text>.+?)(?P<end>\002p\/\003)')
 RE_PROCESS_PENN_2 = re.compile(r'(?s)(?P<start>\002c(?P<codes>.+?)\003)(?P<text>.+?)(?P<end>\002c\/\003)')
 RE_PROCESS_PENN_3 = re.compile(r'(?is)(?P<find>%r)')
 RE_PROCESS_PENN_4 = re.compile(r'(?is)(?P<find>%t)')
 
+
 def process_penntext(text):
-    if not len(text):
+    if not text:
         return text
     text = RE_PROCESS_PENN_1.sub(re_pueblo,text)
     text = RE_PROCESS_PENN_2.sub(re_color,text)

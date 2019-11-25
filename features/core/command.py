@@ -1,9 +1,27 @@
 from evennia.commands.default.muxcommand import MuxCommand
 from evennia.utils.search import object_search
 from typeclasses.characters import PlayerCharacter
+from evennia.utils.utils import lazy_property
 
 
 class AthanorCommand(MuxCommand):
+
+    @lazy_property
+    def _column_color(self):
+        if not hasattr(self, 'account'):
+            return 'n'
+        return self.account.options.column_names_color
+
+    @lazy_property
+    def _blank_separator(self):
+        return self.styled_separator()
+
+    @lazy_property
+    def _blank_footer(self):
+        return self.styled_footer()
+
+    def styled_columns(self, text):
+        return f"|{self._column_color}{text}|n"
 
     def func(self):
         try:
