@@ -1,20 +1,14 @@
-import evennia
+from evennia import GLOBAL_SCRIPTS
 from django.conf import settings
 from evennia.utils.utils import class_from_module
+from commands.command import Command
 
-COMMAND_DEFAULT_CLASS = class_from_module(settings.COMMAND_DEFAULT_CLASS)
 
-
-class _CmdBase(COMMAND_DEFAULT_CLASS):
+class _CmdBase(Command):
     help_category = 'Factions'
 
     def target_faction(self, search):
-        if not search:
-            raise ValueError("No faction name entered to search for!")
-        faction = evennia.GLOBAL_SCRIPTS.faction.search(search, viewer=self.caller)
-        if not faction:
-            raise ValueError(f"Faction '{search}' not found!")
-        return faction
+        return GLOBAL_SCRIPTS.faction.find_faction(self.caller, search)
 
 
 class CmdFactions(_CmdBase):
@@ -24,36 +18,37 @@ class CmdFactions(_CmdBase):
     switch_options = ('select', 'config', 'describe', 'create', 'disband', 'rename', 'move', 'category',
                       'abbreviation', 'lock')
 
-    def print_faction_line(self, faction, viewer):
-        fname = faction.get_display_name(viewer)
-        first = faction.get_members_rank(1)
-        if first:
-            first = first[0]
-        else:
-            first = ''
-        second = faction.get_members_rank(2)
-        if second:
-            second = second[0]
-        else:
-            second = ''
-        main_members = [char for char in faction.db.main_members.keys() if char]
-        online_members = [char for char in main_members if char.has_account]
-        return f"{fname.ljust(29)}{str(first).ljust(20)}{str(second).ljust(20)}{len(online_members)}/{len(main_members)}"
-
-    def print_factions(self):
+    def display_faction_line(self, faction, depth=0):
+        fname = faction.get_display_name(self.caller)
+        main_members = [member.db.reference for member in faction.members() if member.entity.db.reference]
+        online_members = [char for char in main_members if char]
         message = list()
-        message.append(self.style_header('Factions'))
-        cats = evennia.GLOBAL_SCRIPTS.faction.gather_categories(self.caller)
-        for cat in sorted(cats.keys(), key=lambda c: str(c)):
-            message.append(self.style_separator(cat))
-            for fac in sorted(cats[cat], key=lambda c: str(c)):
-                message.append(self.print_faction_line(fac, self.caller))
-        message.append(self.style_footer(f'Selected: {self.caller.db.faction_select}'))
+        if not depth:
+            message.append(f"{fname:<60}{len(online_members):0>3}/{len(main_members):0>3}")
+        else:
+            blank = ' ' * depth + '- '
+            message.append(f"{blank}{fname:<{60 - len(blank)}}{len(online_members):0>3}/{len(main_members):0>3}")
+        depth += 2
+        for child in faction.children.all().order_by('db_key'):
+            message += self.display_faction_line(child, depth)
+        return message
+
+    def display_factions(self):
+        message = list()
+        message.append(self.styled_header('Factions'))
+        factions = GLOBAL_SCRIPTS.faction.factions()
+        tier = None
+        for faction in factions:
+            if tier != faction.tier:
+                tier = faction.tier
+                message.append(self.styled_header(f"Tier {tier} Factions"))
+            message += self.display_faction_line(faction)
+        message.append(self.styled_footer(f'Selected: {self.caller.db.faction_select}'))
         self.msg('\n'.join(str(l) for l in message))
 
     def switch_main(self):
         if not self.args:
-            self.print_factions()
+            self.display_factions()
             return
 
         faction = self.target_faction(self.args)
@@ -62,27 +57,27 @@ class CmdFactions(_CmdBase):
             return
 
         message = list()
-        message.append(self.style_header(f"Faction: {faction.path_name(self.caller)}"))
+        message.append(self.styled_header(f"Faction: {faction.path_name(self.caller)}"))
         desc = faction.db.desc
         if desc:
             message.append(faction.db.desc)
-            message.append(self.style_separator())
+            message.append(self.styled_separator())
         message.append('Member breakdown here')
         cats = faction.gather_categories(viewer=self.caller)
         if cats:
-            message.append(self.style_header('Sub-Factions'))
+            message.append(self.styled_header('Sub-Factions'))
             for cat in sorted(cats.keys(), key=lambda c: str(c)):
-                message.append(self.style_separator(cat))
+                message.append(self.styled_separator(cat))
                 for child in sorted(cats[cat], key=lambda c: str(c)):
                     message.append(self.print_faction_line(child, self.caller))
-        message.append(self.style_footer())
+        message.append(self._blank_footer)
         self.msg('\n'.join(str(l) for l in message))
 
     def switch_tree(self):
         message = list()
-        message.append(self.style_header('Faction Tree'))
+        message.append(self.styled_header('Faction Tree'))
         message.append(evennia.GLOBAL_SCRIPTS.faction.print_tree(self.caller))
-        message.append(self.style_footer())
+        message.append(self._blank_footer)
         self.msg('\n'.join(str(l) for l in message))
 
     def switch_select(self):
@@ -194,3 +189,6 @@ class CmdFacRole(_CmdBase):
     key = '@facrole'
     locks = 'cmd:all()'
     switch_options = ('create', 'delete', 'addpriv', 'rempriv')
+
+
+FACTION_COMMANDS = [CmdFactions, CmdFacPriv, CmdFacRank, CmdFacRank, CmdFacRole]

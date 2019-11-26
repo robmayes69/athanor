@@ -9,6 +9,7 @@ from evennia.utils.validatorfuncs import positive_integer
 from utils.valid import simple_name
 from evennia.utils.utils import class_from_module
 from evennia.utils.logger import log_trace
+from utils.text import partial_match
 
 _PERM_RE = re.compile(r"^[a-zA-Z_0-9]+$")
 
@@ -123,6 +124,9 @@ class DefaultFaction(FactionDB, AthanorTypeEntity, metaclass=TypeclassBase):
     def get_role_link_typeclass(self):
         return self.get_typeclass_field('role_link_typeclass', settings.BASE_FACTION_ROLE_LINK_TYPECLASS)
 
+    def members(self):
+        return self.memberships.filter(db_member=True)
+
 
 class DefaultFactionLink(FactionLinkDB, AthanorTypeEntity, metaclass=TypeclassBase):
     objects = TypeclassManager()
@@ -185,6 +189,22 @@ class DefaultFactionController(GlobalScript):
         except Exception:
             log_trace()
             self.ndb.theme_typeclass = DefaultFaction
+
+
+
+    def factions(self, parent=None):
+        return DefaultFaction.objects.filter_family(db_parent=parent).order_by('-db_tier', 'db_key')
+
+    def find_faction(self, enactor, search_text):
+        search_tree = [text.strip() for text in search_text.split('/')] if '/' in search_text else [search_text]
+        found = None
+        for srch in search_tree:
+            found = partial_match(srch, self.factions(found))
+            if not found:
+                raise ValueError(f"Faction {srch} not found!")
+        return found
+
+
 
     def add_main_member(self, enactor, character, rank_int):
         """

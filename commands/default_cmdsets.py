@@ -20,6 +20,7 @@ from features.jobs.commands import JOB_COMMANDS
 from features.core.exit_errors import ExitErrorCmdSet
 from features.themes.commands import CmdTheme
 from features.mush_import.commands import CmdPennImport
+from features.factions.commands import FACTION_COMMANDS
 
 
 class CharacterCmdSet(default_cmds.CharacterCmdSet):
@@ -42,6 +43,8 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
             self.add(cmd)
         if settings.EXIT_ERRORS:
             self.add(ExitErrorCmdSet)
+        for cmd in FACTION_COMMANDS:
+            self.add(cmd)
         self.add(CmdPennImport)
 
 
