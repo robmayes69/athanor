@@ -6,17 +6,17 @@ from commands.command import Command
 
 class _CmdBase(Command):
     help_category = 'Factions'
+    locks = "cmd:all();admin:perm(Admin)"
 
     def target_faction(self, search):
         return GLOBAL_SCRIPTS.faction.find_faction(self.caller, search)
 
 
 class CmdFactions(_CmdBase):
-    key = '@factions'
-    aliases = ('@faction', '+groups', '@fac', '+group', '+guilds')
-    locks = "cmd:all()"
+    key = '@faction'
+    aliases = ('@factions', '+groups', '@fac', '+group', '+guilds')
     switch_options = ('select', 'config', 'describe', 'create', 'disband', 'rename', 'move', 'category',
-                      'abbreviation', 'lock')
+                      'abbreviation', 'lock', 'tier')
 
     def display_faction_line(self, faction, depth=0):
         fname = faction.get_display_name(self.caller)
@@ -55,41 +55,40 @@ class CmdFactions(_CmdBase):
         if not faction:
             self.msg("Faction not found.")
             return
+        self.display_faction(faction)
 
+    def display_faction(self, faction):
         message = list()
-        message.append(self.styled_header(f"Faction: {faction.path_name(self.caller)}"))
+        message.append(self.styled_header(f"Faction: {faction.full_path()}"))
         desc = faction.db.desc
         if desc:
             message.append(faction.db.desc)
-            message.append(self.styled_separator())
-        message.append('Member breakdown here')
-        cats = faction.gather_categories(viewer=self.caller)
-        if cats:
-            message.append(self.styled_header('Sub-Factions'))
-            for cat in sorted(cats.keys(), key=lambda c: str(c)):
-                message.append(self.styled_separator(cat))
-                for child in sorted(cats[cat], key=lambda c: str(c)):
-                    message.append(self.print_faction_line(child, self.caller))
-        message.append(self._blank_footer)
-        self.msg('\n'.join(str(l) for l in message))
-
-    def switch_tree(self):
-        message = list()
-        message.append(self.styled_header('Faction Tree'))
-        message.append(evennia.GLOBAL_SCRIPTS.faction.print_tree(self.caller))
+            message.append(self._blank_separator)
+        children = faction.children.all().order_by('db_key')
+        if children:
+            message.append(self.styled_separator('Sub-Factions'))
+            for child in children:
+                message += self.display_faction_line(child)
         message.append(self._blank_footer)
         self.msg('\n'.join(str(l) for l in message))
 
     def switch_select(self):
         faction = self.target_faction(self.args)
-        if not faction.is_member(self.caller):
+        if not (faction.is_member(self.caller.entity) or self.access(self.caller, 'admin')):
             raise ValueError("Cannot select a faction you have no place in!")
         self.caller.db.faction_select = faction
-        self.msg(f"You are now targeting the '{faction}' for faction commands!")
+        self.sys_msg(f"You are now targeting the '{faction}' for faction commands!")
 
     def switch_create(self):
-        results = evennia.GLOBAL_SCRIPTS.faction.create_faction(name=self.lhs, creator=self.caller, tree=self.rhs)
-        self.msg(f"Created the Faction: {results.path_name(self.caller)}")
+        results = GLOBAL_SCRIPTS.faction.create_faction(self.caller, self.lhs, self.rhs)
+        self.msg(f"Created the Faction: {results.full_path()}")
+
+    def switch_subcreate(self):
+        if not self.caller.db.faction_select:
+            raise ValueError("Must be targeting a faction!")
+        results = GLOBAL_SCRIPTS.faction.create_faction(self.caller, self.lhs, self.rhs,
+                                                        parent=self.caller.db.faction_select)
+        self.msg(f"Created the Sub-Faction: {results.full_path()}")
 
     def switch_config(self):
         pass
@@ -116,10 +115,33 @@ class CmdFactions(_CmdBase):
         pass
 
 
-class CmdFacRank(_CmdBase):
-    key = '@facrank'
-    locks = "cmd:all()"
-    switch_options = ('create', 'rename', 'delete', 'permissions')
+class CmdFacPriv(_CmdBase):
+    key = '@facpriv'
+    locks = 'cmd:all()'
+    switch_options = ('create', 'delete', 'describe', 'rename', 'assign', 'revoke')
+
+    def switch_create(self):
+        pass
+
+    def switch_delete(self):
+        pass
+
+    def switch_rename(self):
+        pass
+
+    def switch_describe(self):
+        pass
+
+    def switch_assign(self):
+        pass
+
+    def switch_revoke(self):
+        pass
+
+
+class CmdFacRole(_CmdBase):
+    key = '@facrole'
+    switch_options = ('create', 'rename', 'delete', 'assign', 'revoke', 'describe')
 
     def switch_create(self):
         pass
@@ -127,17 +149,22 @@ class CmdFacRank(_CmdBase):
     def switch_rename(self):
         pass
 
+    def switch_describe(self):
+        pass
+
     def switch_delete(self):
         pass
 
-    def switch_permissions(self):
+    def switch_assign(self):
+        pass
+
+    def switch_revoke(self):
         pass
 
 
 class CmdFacMember(_CmdBase):
     key = '@facmember'
-    locks = 'cmd:all()'
-    switch_options = ('add', 'invite', 'join', 'kick', 'leave', 'rank', 'uninvite', 'title', 'permissions')
+    switch_options = ('add', 'invite', 'join', 'kick', 'leave', 'rank', 'uninvite', 'title')
 
     def switch_add(self):
         pass
@@ -163,32 +190,5 @@ class CmdFacMember(_CmdBase):
     def switch_title(self):
         pass
 
-    def switch_permissions(self):
-        pass
 
-
-class CmdFacPriv(_CmdBase):
-    key = '@facpriv'
-    locks = 'cmd:all()'
-    switch_options = ('create', 'delete', 'basic', 'member')
-
-    def switch_create(self):
-        pass
-
-    def switch_delete(self):
-        pass
-
-    def switch_basic(self):
-        pass
-
-    def switch_member(self):
-        pass
-
-
-class CmdFacRole(_CmdBase):
-    key = '@facrole'
-    locks = 'cmd:all()'
-    switch_options = ('create', 'delete', 'addpriv', 'rempriv')
-
-
-FACTION_COMMANDS = [CmdFactions, CmdFacPriv, CmdFacRank, CmdFacRank, CmdFacRole]
+FACTION_COMMANDS = [CmdFactions, CmdFacPriv, CmdFacRole, CmdFacMember]
