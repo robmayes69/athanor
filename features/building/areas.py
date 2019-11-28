@@ -2,7 +2,7 @@ from django.conf import settings
 from evennia.typeclasses.models import TypeclassBase
 from . models import AreaDB
 from typeclasses.scripts import GlobalScript
-from features.core.base import AthanorTypeEntity
+from features.core.base import AthanorTypeEntity, AthanorTreeEntity
 from features.core.models import TypeclassMap
 from evennia.utils.utils import class_from_module
 from evennia.utils.logger import log_trace
@@ -12,7 +12,7 @@ from typeclasses.exits import Exit
 from evennia.typeclasses.managers import TypeclassManager
 
 
-class DefaultArea(AreaDB, AthanorTypeEntity, metaclass=TypeclassBase):
+class DefaultArea(AreaDB, AthanorTypeEntity, AthanorTreeEntity, metaclass=TypeclassBase):
     objects = TypeclassManager()
 
     def __init__(self, *args, **kwargs):
@@ -54,16 +54,6 @@ class DefaultArea(AreaDB, AthanorTypeEntity, metaclass=TypeclassBase):
         if DefaultArea.objects.filter(db_parent=self.parent, db_key__iexact=new_name).exclude(id=self.id).count():
             raise ValueError("That would conflict with an existing Area!")
         self.key = new_name
-
-    def full_path(self):
-        if not self.parent:
-            return str(self)
-        ancestors = list()
-        current_par = self
-        while current_par is not None:
-            ancestors.append(current_par)
-            current_par = current_par.parent
-        return '/'.join([str(p) for p in reversed(ancestors)])
 
     def create_exit(self, key, account, location, destination, aliases=None, gateway=None):
         typeclass = self.get_exit_typeclass()
@@ -148,7 +138,7 @@ class DefaultAreaController(GlobalScript):
 
     def change_parent(self, session, area, new_area):
         area = self.find_area(area)
-        if new_area.upper() in ('/', '#ROOT', 'None'):
+        if new_area.upper() in ('/', '#ROOT', 'NONE'):
             new_area = None
         new_area = self.find_area(new_area)
         area.change_parent(new_area)
