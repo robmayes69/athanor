@@ -5,6 +5,7 @@ from evennia.utils.utils import lazy_property
 
 
 class AthanorCommand(MuxCommand):
+    locks = 'cmd:all();admin:perm(Admin)'
 
     @lazy_property
     def _column_color(self):

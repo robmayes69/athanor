@@ -1,12 +1,9 @@
 from evennia import GLOBAL_SCRIPTS
-from django.conf import settings
-from evennia.utils.utils import class_from_module
 from commands.command import Command
 
 
 class _CmdBase(Command):
     help_category = 'Factions'
-    locks = "cmd:all();admin:perm(Admin)"
 
     def target_faction(self, search):
         return GLOBAL_SCRIPTS.faction.find_faction(self.caller, search)
@@ -50,7 +47,6 @@ class CmdFactions(_CmdBase):
         if not self.args:
             self.display_factions()
             return
-
         faction = self.target_faction(self.args)
         if not faction:
             self.msg("Faction not found.")
@@ -80,63 +76,86 @@ class CmdFactions(_CmdBase):
         self.sys_msg(f"You are now targeting the '{faction}' for faction commands!")
 
     def switch_create(self):
-        results = GLOBAL_SCRIPTS.faction.create_faction(self.caller, self.lhs, self.rhs)
-        self.msg(f"Created the Faction: {results.full_path()}")
+        faction = GLOBAL_SCRIPTS.faction.create_faction(self.caller, self.lhs, self.rhs)
+        self.caller.db.faction_select = faction
+        self.sys_msg(f"You are now targeting the '{faction}' for faction commands!")
 
     def switch_subcreate(self):
         if not self.caller.db.faction_select:
             raise ValueError("Must be targeting a faction!")
-        results = GLOBAL_SCRIPTS.faction.create_faction(self.caller, self.lhs, self.rhs,
-                                                        parent=self.caller.db.faction_select)
-        self.msg(f"Created the Sub-Faction: {results.full_path()}")
+        faction = GLOBAL_SCRIPTS.faction.create_faction(self.caller, self.lhs, self.rhs, parent=self.caller.db.faction_select)
+        self.caller.db.faction_select = faction
+        self.sys_msg(f"You are now targeting the '{faction}' for faction commands!")
 
     def switch_config(self):
-        pass
+        faction = self.caller.db.faction_select
+        GLOBAL_SCRIPTS.faction.config_faction(self.session, faction, self.lhs, self.rhs)
 
     def switch_disband(self):
-        pass
+        faction = self.target_faction(self.lhs)
+        GLOBAL_SCRIPTS.faction.delete_faction(self.session, faction, self.rhs)
 
     def switch_describe(self):
-        pass
-
-    def switch_category(self):
-        pass
+        faction = self.target_faction(self.lhs)
+        GLOBAL_SCRIPTS.faction.describe_faction(self.session, faction, self.rhs)
 
     def switch_abbreviation(self):
-        pass
+        faction = self.target_faction(self.lhs)
+        GLOBAL_SCRIPTS.faction.set_abbreviation(self.session, faction, self.rhs)
 
     def switch_lock(self):
-        pass
+        faction = self.target_faction(self.lhs)
+        GLOBAL_SCRIPTS.faction.set_lock(self.session, faction, self.rhs)
 
     def switch_move(self):
-        pass
+        faction = self.target_faction(self.rhs)
+        if self.lhs.upper() == '#ROOT':
+            new_parent = None
+        else:
+            new_parent = self.target_faction(self.lhs)
+        GLOBAL_SCRIPTS.faction.move_faction(self.session, faction, new_parent)
 
     def switch_rename(self):
-        pass
+        faction = self.target_faction(self.lhs)
+        GLOBAL_SCRIPTS.faction.rename_faction(self.session, faction, self.rhs)
+
+    def switch_tier(self):
+        if '=' in self.args:
+            faction = self.target_faction(self.lhs)
+            tier = self.rhs
+        else:
+            faction = self.caller.db.faction_select
+            tier = self.args
+        GLOBAL_SCRIPTS.faction.set_tier(self.session, faction, tier)
 
 
 class CmdFacPriv(_CmdBase):
     key = '@facpriv'
-    locks = 'cmd:all()'
     switch_options = ('create', 'delete', 'describe', 'rename', 'assign', 'revoke')
 
     def switch_create(self):
-        pass
+        faction = self.caller.db.faction_select
+        GLOBAL_SCRIPTS.faction.create_privilege(self.session, faction, self.lhs, self.rhs)
 
     def switch_delete(self):
-        pass
+        faction = self.caller.db.faction_select
+        GLOBAL_SCRIPTS.faction.delete_privilege(self.session, faction, self.lhs, self.rhs)
 
     def switch_rename(self):
-        pass
+        faction = self.caller.db.faction_select
+        GLOBAL_SCRIPTS.faction.rename_privilege(self.session, faction, self.lhs, self.rhs)
 
     def switch_describe(self):
-        pass
+        faction = self.caller.db.faction_select
+        GLOBAL_SCRIPTS.faction.describe_privilege(self.session, faction, self.lhs, self.rhs)
 
     def switch_assign(self):
-        pass
+        faction = self.caller.db.faction_select
+        GLOBAL_SCRIPTS.faction.assign_privilege(self.session, faction, self.lhs, self.rhs)
 
     def switch_revoke(self):
-        pass
+        faction = self.caller.db.faction_select
+        GLOBAL_SCRIPTS.faction.revoke_privilege(self.session, faction, self.lhs, self.rhs)
 
 
 class CmdFacRole(_CmdBase):
@@ -144,51 +163,51 @@ class CmdFacRole(_CmdBase):
     switch_options = ('create', 'rename', 'delete', 'assign', 'revoke', 'describe')
 
     def switch_create(self):
-        pass
+        faction = self.caller.db.faction_select
 
     def switch_rename(self):
-        pass
+        faction = self.caller.db.faction_select
 
     def switch_describe(self):
-        pass
+        faction = self.caller.db.faction_select
 
     def switch_delete(self):
-        pass
+        faction = self.caller.db.faction_select
 
     def switch_assign(self):
-        pass
+        faction = self.caller.db.faction_select
 
     def switch_revoke(self):
-        pass
+        faction = self.caller.db.faction_select
 
 
 class CmdFacMember(_CmdBase):
     key = '@facmember'
-    switch_options = ('add', 'invite', 'join', 'kick', 'leave', 'rank', 'uninvite', 'title')
+    switch_options = ('add', 'invite', 'join', 'kick', 'leave', 'rank', 'uninvite', 'title', 'apply', 'accept')
 
     def switch_add(self):
-        pass
+        faction = self.caller.db.faction_select
 
     def switch_invite(self):
-        pass
+        faction = self.caller.db.faction_select
 
     def switch_join(self):
-        pass
+        faction = self.caller.db.faction_select
 
     def switch_kick(self):
-        pass
+        faction = self.caller.db.faction_select
 
     def switch_leave(self):
-        pass
+        faction = self.caller.db.faction_select
 
     def switch_rank(self):
-        pass
+        faction = self.caller.db.faction_select
 
     def switch_uninvite(self):
-        pass
+        faction = self.caller.db.faction_select
 
     def switch_title(self):
-        pass
+        faction = self.caller.db.faction_select
 
 
 FACTION_COMMANDS = [CmdFactions, CmdFacPriv, CmdFacRole, CmdFacMember]

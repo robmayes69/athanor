@@ -6,7 +6,6 @@ from features.factions.models import FactionDB, FactionLinkDB, FactionRoleDB, Fa
 from features.core.base import AthanorTypeEntity
 from evennia.typeclasses.managers import TypeclassManager
 from typeclasses.scripts import GlobalScript
-from evennia.utils.validatorfuncs import positive_integer
 from utils.valid import simple_name
 from evennia.utils.utils import class_from_module
 from evennia.utils.logger import log_trace
@@ -103,33 +102,61 @@ class DefaultFaction(FactionDB, AthanorTypeEntity, metaclass=TypeclassBase):
     def delete_membership(self, entity):
         pass
 
+    def find_privilege(self, privilege_name):
+        if isinstance(privilege_name, DefaultFactionPrivilege) and privilege_name.faction == self:
+            return privilege_name
+        found = self.privileges.filter(db_key__iexact=privilege_name).first()
+        if found:
+            return found
+        raise ValueError("Privilege not found!")
+
+    def partial_privilege(self, privilege_name):
+        choices = self.privileges.all()
+        if not choices:
+            raise ValueError("No Privileges to choose from!")
+        found = partial_match(privilege_name, choices)
+        if found:
+            return found
+        raise ValueError("Privilege not found!")
+
     def create_privilege(self, privilege_name):
-        if self.privileges.filter(key__iexact=privilege_name).count():
-            pass
-        new_privilege, created = self.privileges.get_or_create(key=privilege_name)
-        if created:
-            new_privilege.save()
-        return new_privilege
+        privilege_typeclass = self.get_privilege_typeclass()
+        return privilege_typeclass.create(faction=self, key=privilege_name)
 
     def delete_privilege(self, privilege_name):
-        found_privilege = self.privileges.filter(key__iexact=privilege_name).first()
-        if not found_privilege:
-            pass
+        found_privilege = self.find_privilege(privilege_name)
         found_privilege.delete()
 
+    def find_role(self, role_name):
+        if isinstance(role_name, DefaultFactionRole) and role_name.faction == self:
+            return role_name
+        found = self.roles.filter(db_key__iexact=role_name).first()
+        if found:
+            return found
+        raise ValueError("Role not found!")
+
+    def partial_role(self, role_name):
+        choices = self.roles.all()
+        if not choices:
+            raise ValueError("No Roles to choose from!")
+        found = partial_match(role_name, choices)
+        if found:
+            return found
+        raise ValueError("Role not found!")
+
     def create_role(self, role_name):
-        if self.roles.filter(key__iexact=role_name).count():
-            pass
-        new_role, created = self.roles.get_or_create(key=role_name)
-        if created:
-            new_role.save()
-        return new_role
+        role_typeclass = self.get_role_typeclass()
+        return role_typeclass.create(faction=self, key=role_name)
 
     def delete_role(self, role_name):
-        found_role = self.roles.filter(key__iexact=role_name).first()
-        if not found_role:
-            pass
+        found_role = self.find_role(role_name)
         found_role.delete()
+
+    def assign_role(self, role_name, entity):
+        found_role = self.find_role(role_name)
+
+    def revoke_role(self, role_name, entity):
+        found_role = self.find_role(role_name)
 
     def get_child_typeclass(self):
         return self.get_typeclass_field('child_typeclass', settings.BASE_FACTION_TYPECLASS)
@@ -174,12 +201,6 @@ class DefaultFactionLink(FactionLinkDB, AthanorTypeEntity, metaclass=TypeclassBa
     def remove_role(self, role):
         pass
 
-    def add_privilege(self, privilege):
-        pass
-
-    def remove_privilege(self, privilege):
-        pass
-
 
 class DefaultFactionRole(FactionRoleDB, AthanorTypeEntity, metaclass=TypeclassBase):
     objects = TypeclassManager()
@@ -187,6 +208,12 @@ class DefaultFactionRole(FactionRoleDB, AthanorTypeEntity, metaclass=TypeclassBa
     def __init__(self, *args, **kwargs):
         FactionRoleDB.__init__(self, *args, **kwargs)
         AthanorTypeEntity.__init__(self, *args, **kwargs)
+
+    def add_privilege(self, privilege):
+        pass
+
+    def remove_privilege(self, privilege):
+        pass
 
 
 class DefaultFactionPrivilege(FactionPrivilegeDB, AthanorTypeEntity, metaclass=TypeclassBase):
@@ -243,61 +270,98 @@ class DefaultFactionController(GlobalScript):
         faction = self.find_faction(faction)
         if not faction.key.lower() == verify_name.lower():
             raise ValueError("Name of the faction must match the one provided to verify deletion.")
-        # do delete here.
+        if faction.children.all().count():
+            raise ValueError("Cannot disband a faction that has sub-factions! Either delete them or relocate them first.")
+        faction.delete()
 
-    def create_privilege(self, session, faction, privilege, description):
-        pass
-
-    def delete_privilege(self, session, faction, privilege, verify_name):
-        pass
-
-    def rename_privilege(self, session, faction, privilege, new_name):
-        pass
-
-    def create_role(self, session, faction, role, description):
-        pass
-
-    def delete_role(self, session, faction, role, verify_name):
-        pass
-
-    def rename_role(self, session, faction, role, new_name):
-        pass
-
-    def assign_privilege(self, session, faction, role, privilege):
-        pass
-
-    def remove_privilege(self, session, faction, role, privilege):
-        pass
-
-    def assign_role(self, session, faction, entity, role):
-        pass
-
-    def remove_role(self, session, faction, entity, role):
-        pass
-
-    def set_superuser(self, session, faction, entity, new_status):
-        pass
+    def rename_faction(self, session, faction, new_name):
+        enactor = session.get_puppet_or_account()
+        faction = self.find_faction(faction)
 
     def describe_faction(self, session, faction, new_description):
-        pass
+        enactor = session.get_puppet_or_account()
+        faction = self.find_faction(faction)
 
     def set_tier(self, session, faction, new_tier):
-        pass
+        enactor = session.get_puppet_or_account()
+        faction = self.find_faction(faction)
 
     def move_faction(self, session, faction, new_root=None):
-        pass
+        enactor = session.get_puppet_or_account()
+        faction = self.find_faction(faction)
 
     def set_abbreviation(self, session, faction, new_abbr):
-        pass
+        enactor = session.get_puppet_or_account()
+        faction = self.find_faction(faction)
 
     def set_lock(self, session, faction, new_lock):
-        pass
+        enactor = session.get_puppet_or_account()
+        faction = self.find_faction(faction)
 
     def config_faction(self, session, faction, new_config):
-        pass
+        enactor = session.get_puppet_or_account()
+        faction = self.find_faction(faction)
+
+    def create_privilege(self, session, faction, privilege, description):
+        enactor = session.get_puppet_or_account()
+        faction = self.find_faction(faction)
+
+    def delete_privilege(self, session, faction, privilege, verify_name):
+        enactor = session.get_puppet_or_account()
+        faction = self.find_faction(faction)
+
+    def rename_privilege(self, session, faction, privilege, new_name):
+        enactor = session.get_puppet_or_account()
+        faction = self.find_faction(faction)
+
+    def describe_privilege(self, session, faction, privilege, new_name):
+        enactor = session.get_puppet_or_account()
+        faction = self.find_faction(faction)
+
+    def assign_privilege(self, session, faction, role, privilege):
+        enactor = session.get_puppet_or_account()
+        faction = self.find_faction(faction)
+
+    def revoke_privilege(self, session, faction, role, privilege):
+        enactor = session.get_puppet_or_account()
+        faction = self.find_faction(faction)
+
+    def create_role(self, session, faction, role, description):
+        enactor = session.get_puppet_or_account()
+        faction = self.find_faction(faction)
+
+    def delete_role(self, session, faction, role, verify_name):
+        enactor = session.get_puppet_or_account()
+        faction = self.find_faction(faction)
+
+    def rename_role(self, session, faction, role, new_name):
+        enactor = session.get_puppet_or_account()
+        faction = self.find_faction(faction)
+
+    def describe_role(self, session, faction, role, new_name):
+        enactor = session.get_puppet_or_account()
+        faction = self.find_faction(faction)
+
+    def assign_role(self, session, faction, entity, role):
+        enactor = session.get_puppet_or_account()
+        faction = self.find_faction(faction)
+
+    def revoke_role(self, session, faction, entity, role):
+        enactor = session.get_puppet_or_account()
+        faction = self.find_faction(faction)
 
     def add_member(self, session, faction, entity):
-        pass
+        enactor = session.get_puppet_or_account()
+        faction = self.find_faction(faction)
 
-    def remove_member(self, session, factory, entity):
-        pass
+    def remove_member(self, session, faction, entity):
+        enactor = session.get_puppet_or_account()
+        faction = self.find_faction(faction)
+
+    def title_member(self, session, faction, entity, new_title):
+        enactor = session.get_puppet_or_account()
+        faction = self.find_faction(faction)
+
+    def set_superuser(self, session, faction, entity, new_status):
+        enactor = session.get_puppet_or_account()
+        faction = self.find_faction(faction)
