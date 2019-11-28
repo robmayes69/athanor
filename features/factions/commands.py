@@ -109,7 +109,7 @@ class CmdFactions(_CmdBase):
 
     def switch_move(self):
         faction = self.target_faction(self.rhs)
-        if self.lhs.upper() == '#ROOT':
+        if self.lhs.upper() in ('#ROOT', 'NONE', '/'):
             new_parent = None
         else:
             new_parent = self.target_faction(self.lhs)
@@ -132,6 +132,29 @@ class CmdFactions(_CmdBase):
 class CmdFacPriv(_CmdBase):
     key = '@facpriv'
     switch_options = ('create', 'delete', 'describe', 'rename', 'assign', 'revoke')
+
+    def display_privilege(self, priv):
+        pass
+
+    def display_privileges(self, faction):
+        privileges = faction.privileges.all()
+        message = list()
+        message.append(self.styled_header(f"{faction} Privileges"))
+        message.append(self.styled_columns(""))
+        message.append(self._blank_separator)
+        for priv in privileges:
+            message.append(priv)
+        message.append(self._blank_footer)
+        self.msg("\n".join(str(line) for line in message))
+
+    def switch_main(self):
+        faction = self.caller.db.faction_select
+        if not faction:
+            raise ValueError("No faction selected! Pick one with @faction/select")
+        if self.args:
+            found_priv = faction.find_privilege(self.args)
+            return self.display_privilege(found_priv)
+        self.display_privileges(faction)
 
     def switch_create(self):
         faction = self.caller.db.faction_select

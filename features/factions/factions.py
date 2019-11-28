@@ -244,26 +244,35 @@ class DefaultFactionController(GlobalScript):
     def rename_faction(self, session, faction, new_name):
         enactor = session.get_puppet_or_account()
         faction = self.find_faction(faction)
+        faction.rename(new_name)
 
     def describe_faction(self, session, faction, new_description):
         enactor = session.get_puppet_or_account()
         faction = self.find_faction(faction)
+        if not new_description:
+            raise ValueError("No description entered!")
+        faction.db.desc = new_description
 
     def set_tier(self, session, faction, new_tier):
         enactor = session.get_puppet_or_account()
         faction = self.find_faction(faction)
+        faction.tier = new_tier
 
     def move_faction(self, session, faction, new_root=None):
         enactor = session.get_puppet_or_account()
         faction = self.find_faction(faction)
+        faction.change_parent(new_root)
 
     def set_abbreviation(self, session, faction, new_abbr):
         enactor = session.get_puppet_or_account()
         faction = self.find_faction(faction)
+        faction.abbreviation = new_abbr
 
     def set_lock(self, session, faction, new_lock):
         enactor = session.get_puppet_or_account()
         faction = self.find_faction(faction)
+        if not new_lock:
+            raise ValueError("New Lock string is empty!")
 
     def config_faction(self, session, faction, new_config):
         enactor = session.get_puppet_or_account()
@@ -273,62 +282,111 @@ class DefaultFactionController(GlobalScript):
         enactor = session.get_puppet_or_account()
         faction = self.find_faction(faction)
 
+        priv = faction.create_privilege(privilege)
+        priv.db.desc = description
+
     def delete_privilege(self, session, faction, privilege, verify_name):
         enactor = session.get_puppet_or_account()
         faction = self.find_faction(faction)
+        priv = faction.find_privilege(privilege)
+        if not priv.key.lower() == verify_name.lower():
+            raise ValueError("Privilege name and input must match!")
+        faction.delete_privilege(priv)
 
     def rename_privilege(self, session, faction, privilege, new_name):
         enactor = session.get_puppet_or_account()
         faction = self.find_faction(faction)
+        priv = faction.find_privilege(privilege)
+        old_name = priv.key
+        priv.rename(new_name)
 
-    def describe_privilege(self, session, faction, privilege, new_name):
+    def describe_privilege(self, session, faction, privilege, new_description):
         enactor = session.get_puppet_or_account()
         faction = self.find_faction(faction)
+        priv = faction.find_privilege(privilege)
+        priv.db.desc = new_description
 
-    def assign_privilege(self, session, faction, role, privilege):
+    def assign_privilege(self, session, faction, role, privileges):
         enactor = session.get_puppet_or_account()
         faction = self.find_faction(faction)
+        role = faction.find_role(role)
+        privileges = [faction.find_privilege(priv) for priv in privileges]
+        for priv in privileges:
+            role.add_privilege(priv)
 
     def revoke_privilege(self, session, faction, role, privilege):
         enactor = session.get_puppet_or_account()
         faction = self.find_faction(faction)
+        role = faction.find_role(role)
+        privileges = [faction.find_privilege(priv) for priv in privileges]
+        for priv in privileges:
+            role.remove_privilege(priv)
 
     def create_role(self, session, faction, role, description):
         enactor = session.get_puppet_or_account()
         faction = self.find_faction(faction)
+        role = faction.create_role(role)
+        role.db.desc = description
 
     def delete_role(self, session, faction, role, verify_name):
         enactor = session.get_puppet_or_account()
         faction = self.find_faction(faction)
+        role = faction.find_role(role)
+        if not role.key.lower() == verify_name.lower():
+            raise ValueError("Role name and input must match!")
+        faction.delete_role(role)
 
     def rename_role(self, session, faction, role, new_name):
         enactor = session.get_puppet_or_account()
         faction = self.find_faction(faction)
+        role = faction.find_role(role)
+        old_name = role.key
+        role.rename(new_name)
 
-    def describe_role(self, session, faction, role, new_name):
+    def describe_role(self, session, faction, role, new_description):
         enactor = session.get_puppet_or_account()
         faction = self.find_faction(faction)
-
-    def assign_role(self, session, faction, entity, role):
-        enactor = session.get_puppet_or_account()
-        faction = self.find_faction(faction)
-
-    def revoke_role(self, session, faction, entity, role):
-        enactor = session.get_puppet_or_account()
-        faction = self.find_faction(faction)
+        role = faction.find_role(role)
+        role.db.desc = new_description
 
     def add_member(self, session, faction, entity):
         enactor = session.get_puppet_or_account()
         faction = self.find_faction(faction)
+        link = faction.link(entity)
+        link.member = True
 
     def remove_member(self, session, faction, entity):
         enactor = session.get_puppet_or_account()
         faction = self.find_faction(faction)
+        link = faction.link(entity)
+        link.member = False
+        link.roles.all().delete()
+        del link.db.title
+        if not link.db.reputation:
+            link.delete()
+
+    def assign_role(self, session, faction, entity, role):
+        enactor = session.get_puppet_or_account()
+        faction = self.find_faction(faction)
+        link = faction.link(entity)
+        role = faction.find_role(role)
+        link.add_role(role)
+
+    def revoke_role(self, session, faction, entity, role):
+        enactor = session.get_puppet_or_account()
+        faction = self.find_faction(faction)
+        link = faction.link(entity)
+        role = faction.find_role(role)
+        link.remove_role(role)
 
     def title_member(self, session, faction, entity, new_title):
         enactor = session.get_puppet_or_account()
         faction = self.find_faction(faction)
+        link = faction.link(entity)
+        link.db.title = new_title
 
     def set_superuser(self, session, faction, entity, new_status):
         enactor = session.get_puppet_or_account()
         faction = self.find_faction(faction)
+        link = faction.link(entity)
+        link.is_superuser = new_status
