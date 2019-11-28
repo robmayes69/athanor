@@ -93,3 +93,53 @@ class AthanorTypeEntity(AthanorEntity):
     def at_first_save(self):
         pass
 
+
+class AthanorTreeEntity(object):
+
+    def recalculate_ancestors(self):
+        if not self.parent:
+            self.db.ancestors = []
+            return
+        ancestors = list()
+        current_par = self
+        while current_par is not None:
+            ancestors.append(current_par)
+            current_par = current_par.parent
+        self.db.ancestors = ancestors
+
+    @property
+    def ancestors(self):
+        return self.db.ancestors
+
+    def recalculate_descendants(self):
+        children_list = list()
+        for child in self.children.all():
+            children_list += child.recalculate_descendants()
+        self.db.descendants = children_list
+        return children_list
+
+    @property
+    def descendants(self):
+        return self.db.descendants
+
+    def full_path(self):
+        if not self.parent:
+            return str(self)
+        return '/'.join([str(p) for p in reversed(self.db.ancestors)])
+
+    def recalculate_hierarchy(self):
+        all_instances = self.__dbclass__.objects.all()
+        root_instances = all_instances.filter(db_parent=None)
+        for inst in all_instances:
+            inst.recalculate_ancestors()
+        for inst in root_instances:
+            inst.recalculate_descendants()
+
+    def change_parent(self, parent):
+        old_parent = None
+        self.parent = parent
+        self.recalculate_hierarchy()
+        self.at_post_change_parent(old_parent)
+
+    def at_post_change_parent(self, old_parent=None):
+        pass

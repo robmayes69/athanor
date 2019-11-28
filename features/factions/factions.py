@@ -10,50 +10,17 @@ from utils.valid import simple_name
 from evennia.utils.utils import class_from_module
 from evennia.utils.logger import log_trace
 from utils.text import partial_match
+from features.core.base import AthanorTreeEntity
 
 _PERM_RE = re.compile(r"^[a-zA-Z_0-9]+$")
 
 
-class DefaultFaction(FactionDB, AthanorTypeEntity, metaclass=TypeclassBase):
+class DefaultFaction(FactionDB, AthanorTypeEntity, AthanorTreeEntity, metaclass=TypeclassBase):
     objects = TypeclassManager()
 
     def __init__(self, *args, **kwargs):
         FactionDB.__init__(self, *args, **kwargs)
         AthanorTypeEntity.__init__(self, *args, **kwargs)
-
-    def at_first_save(self, *args, **kwargs):
-        pass
-
-    def full_path(self):
-        if not self.parent:
-            return str(self)
-        return '/'.join([str(p) for p in reversed(self.db.ancestors)])
-
-    def recalculate_ancestors(self):
-        if not self.parent:
-            self.db.ancestors = []
-            return
-        ancestors = list()
-        current_par = self
-        while current_par is not None:
-            ancestors.append(current_par)
-            current_par = current_par.parent
-        self.db.ancestors = ancestors
-
-    @property
-    def ancestors(self):
-        return self.db.ancestors
-
-    def recalculate_descendants(self):
-        children_list = list()
-        for child in self.children.all():
-            children_list += child.recalculate_descendants()
-        self.db.descendants = children_list
-        return children_list
-
-    @property
-    def descendants(self):
-        return self.db.descendants
 
     @classmethod
     def validate_key(cls, key_text, rename_from=None, parent=None):
