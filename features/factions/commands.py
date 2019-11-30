@@ -4,15 +4,16 @@ from commands.command import Command
 
 class _CmdBase(Command):
     help_category = 'Factions'
+    system_name = 'FACTION'
 
     def target_faction(self, search):
-        return GLOBAL_SCRIPTS.faction.find_faction(self.caller, search)
+        return GLOBAL_SCRIPTS.faction.find_faction(search)
 
 
 class CmdFactions(_CmdBase):
     key = '@faction'
     aliases = ('@factions', '+groups', '@fac', '+group', '+guilds')
-    switch_options = ('select', 'config', 'describe', 'create', 'disband', 'rename', 'move', 'category',
+    switch_options = ('select', 'config', 'describe', 'create', 'subcreate', 'disband', 'rename', 'move', 'category',
                       'abbreviation', 'lock', 'tier')
 
     def display_faction_line(self, faction, depth=0):
@@ -44,6 +45,7 @@ class CmdFactions(_CmdBase):
         self.msg('\n'.join(str(l) for l in message))
 
     def switch_main(self):
+        self.msg(self.args)
         if not self.args:
             self.display_factions()
             return
@@ -75,17 +77,17 @@ class CmdFactions(_CmdBase):
         self.caller.db.faction_select = faction
         self.sys_msg(f"You are now targeting the '{faction}' for faction commands!")
 
-    def switch_create(self):
-        faction = GLOBAL_SCRIPTS.faction.create_faction(self.caller, self.lhs, self.rhs)
-        self.caller.db.faction_select = faction
-        self.sys_msg(f"You are now targeting the '{faction}' for faction commands!")
+    def switch_create(self, parent=None):
+        faction = GLOBAL_SCRIPTS.faction.create_faction(self.session, self.lhs, self.rhs, parent=parent)
+        if not parent:
+            self.caller.db.faction_select = faction
+            self.sys_msg(f"You are now targeting the '{faction}' for faction commands!")
 
     def switch_subcreate(self):
-        if not self.caller.db.faction_select:
+        faction = self.caller.db.faction_select
+        if not faction:
             raise ValueError("Must be targeting a faction!")
-        faction = GLOBAL_SCRIPTS.faction.create_faction(self.caller, self.lhs, self.rhs, parent=self.caller.db.faction_select)
-        self.caller.db.faction_select = faction
-        self.sys_msg(f"You are now targeting the '{faction}' for faction commands!")
+        self.switch_create(parent=faction)
 
     def switch_config(self):
         faction = self.caller.db.faction_select
@@ -140,10 +142,10 @@ class CmdFacPriv(_CmdBase):
         privileges = faction.privileges.all()
         message = list()
         message.append(self.styled_header(f"{faction} Privileges"))
-        message.append(self.styled_columns(""))
+        message.append(self.styled_columns(f"{'Name':<25}{'Roles'}"))
         message.append(self._blank_separator)
         for priv in privileges:
-            message.append(priv)
+            message.append(f"{priv.key[:24]:<25}{', '.join(priv.roles.all())}")
         message.append(self._blank_footer)
         self.msg("\n".join(str(line) for line in message))
 
@@ -185,8 +187,31 @@ class CmdFacRole(_CmdBase):
     key = '@facrole'
     switch_options = ('create', 'rename', 'delete', 'assign', 'revoke', 'describe')
 
-    def switch_create(self):
+    def display_role(self, role):
+        pass
+
+    def display_roles(self, faction):
+        roles = faction.roles.all()
+        message = list()
+        message.append(self.styled_header(f"{faction} Roles"))
+        message.append(self.styled_columns(f"{'Name':<25}Sort Privileges"))
+        message.append(self._blank_separator)
+        for role in roles:
+            message.append(f"{role.key[:24]:<25}{str(role.sort_order).zfill(2):>4}{', '.join(role.privileges.all())}")
+        message.append(self._blank_footer)
+        self.msg("\n".join(str(line) for line in message))
+
+    def switch_main(self):
         faction = self.caller.db.faction_select
+        if not faction:
+            raise ValueError("No faction selected! Pick one with @faction/select")
+        if self.args:
+            found_role = faction.find_role(self.args)
+            return self.display_role(found_role)
+        self.display_roles(faction)
+
+    def switch_create(self):
+        faction = GLOBAL_SCRIPTS.faction.create_faction(self.session, self.lhs, self.rhs)
 
     def switch_rename(self):
         faction = self.caller.db.faction_select

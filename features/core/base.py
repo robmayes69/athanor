@@ -123,7 +123,7 @@ class AthanorTreeEntity(object):
         return self.db.descendants
 
     def full_path(self):
-        if not self.parent:
+        if not self.parent or not self.db.ancestors:
             return str(self)
         return '/'.join([str(p) for p in reversed(self.db.ancestors)])
 

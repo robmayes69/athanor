@@ -78,7 +78,7 @@ class DefaultThemeController(GlobalScript):
     system_name = 'THEME'
     option_dict = {
         'system_locks': ('Locks governing Theme System.', 'Lock',
-                         "create:perm(Admin);delete:perm(Admin);"),
+                         "create:perm(Admin);delete:perm(Admin)"),
         'theme_locks': ('Default/Fallback locks for all Themes.', 'Lock',
                         "see:all();control:perm(Admin)")
     }
