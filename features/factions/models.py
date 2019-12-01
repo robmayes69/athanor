@@ -67,9 +67,10 @@ class FactionLinkDB(TypedObject):
     db_entity = models.ForeignKey('core.EntityMapDB', null=False, on_delete=models.CASCADE, related_name='faction_links')
     db_member = models.PositiveSmallIntegerField(default=0)  # set this 1 for member, 2 for superuser of Faction.
     db_sort_order = models.IntegerField(default=0)
-    db_is_superuser = models.BooleanField(default=False, null=False)
+    db_is_supermember = models.BooleanField(default=False, null=False)
     db_reputation = models.IntegerField(default=0, null=False)
     db_points = models.IntegerField(default=0, null=False)
+    db_is_applying = models.BooleanField(default=False, null=False)
 
     class Meta:
         verbose_name = 'FactionLink'

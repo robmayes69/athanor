@@ -119,9 +119,9 @@ class RoleDeleteMessage(FactionMessage):
 
 
 class RoleRenameMessage(FactionMessage):
-    source_message = "Successfully renamed Faction: |w{faction_fullpath}|n Role |w{old_name}|n to |w{new_name}|n"
-    admin_message = "|w{source_name}|n renamed Faction: |w{faction_fullpath}|n Role |w{old_name}|n to |w{new_name}|n"
-    faction_message = "|w{source_name}|n renamed Faction: |w{faction_fullpath}|n Role |w{old_name}|n to |w{new_name}|n"
+    source_message = "Successfully renamed Faction: |w{faction_fullpath}|n Role |w{old_name}|n to |w{role}|n"
+    admin_message = "|w{source_name}|n renamed Faction: |w{faction_fullpath}|n Role |w{old_name}|n to |w{role}|n"
+    faction_message = "|w{source_name}|n renamed Faction: |w{faction_fullpath}|n Role |w{old_name}|n to |w{role}|n"
 
 
 class RoleAssignPrivileges(FactionMessage):
