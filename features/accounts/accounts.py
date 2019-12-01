@@ -6,11 +6,8 @@ from evennia.utils.logger import log_trace
 from evennia.utils.search import search_account
 import datetime
 
-class AthanorAccount(DefaultAccount, AthanorEntity):
 
-    def __init__(self, *args, **kwargs):
-        DefaultAccount.__init__(self, *args, **kwargs)
-        AthanorEntity.__init__(self, *args, **kwargs)
+class AccountMixin(object):
 
     def system_msg(self, text=None, system_name=None, enactor=None):
         sysmsg_border = self.options.sys_msg_border
@@ -25,12 +22,22 @@ class AthanorAccount(DefaultAccount, AthanorEntity):
             tz = self.options.timezone
         return time_data.astimezone(tz).strftime(time_format)
 
+
+class AthanorAccount(DefaultAccount, AccountMixin, AthanorEntity):
+
+    def __init__(self, *args, **kwargs):
+        DefaultAccount.__init__(self, *args, **kwargs)
+        AthanorEntity.__init__(self, *args, **kwargs)
+
     def __str__(self):
         return self.key
 
 
-class AthanorGuest(DefaultGuest, AthanorAccount):
-    pass
+class AthanorGuest(DefaultGuest, AccountMixin, AthanorEntity):
+
+    def __init__(self, *args, **kwargs):
+        DefaultGuest.__init__(self, *args, **kwargs)
+        AthanorEntity.__init__(self, *args, **kwargs)
 
 
 class DefaultAccountController(GlobalScript):
