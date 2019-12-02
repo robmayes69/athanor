@@ -1,6 +1,7 @@
+from commands.command import Command
 
 
-class CmdAccount(object):
+class CmdAccount(Command):
 
     key = '@account'
     help_category = "Administration"
