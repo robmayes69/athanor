@@ -1,13 +1,15 @@
 from commands.command import Command
+from features.core.menu import AthanorMenu
 
 
 class CmdAccount(Command):
 
     key = '@account'
     help_category = "Administration"
+    switch_options = ('list', 'create', 'disable', 'enable', 'rename', 'ban', 'password', 'email', 'addperm', 'delperm')
 
     def switch_main(self):
-        pass
+        AthanorMenu(self.caller, 'features.accounts.menu', startnode='test_node', session=self.session, menu_name='Account Editor')
 
     def switch_list(self):
         pass

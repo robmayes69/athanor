@@ -11,7 +11,7 @@ class DefaultChannelCategory(ChannelCategoryDB, AthanorTypeEntity, metaclass=Typ
         AthanorTypeEntity.__init__(self, *args, **kwargs)
 
 
-class DefaultChannel(ChannelDB, AthanorTypeEntity, metaclass=TypeclassBase):
+class DefaultAthChannel(ChannelDB, AthanorTypeEntity, metaclass=TypeclassBase):
 
     def __init__(self, *args, **kwargs):
         ChannelDB.__init__(self, *args, **kwargs)

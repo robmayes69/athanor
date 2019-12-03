@@ -67,7 +67,7 @@ INLINEFUNC_ENABLED = True
 INSTALLED_APPS = tuple(INSTALLED_APPS) + ('features.core', 'features.factions', 'features.forum', 'features.staff', 'features.themes',
                                    'features.note', 'features.jobs', 'features.building',  'features.rplogger',
                                    'features.mush_import', "features.effects", "features.items",
-                                   "features.quests", "features.traits")
+                                   "features.quests", "features.traits", 'features.channels')
 
 ROOT_URLCONF = None
 
