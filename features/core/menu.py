@@ -13,7 +13,7 @@ _RE_ARGS = re.compile(r"(?s)(?i)^(?P<prefix>[@+?$&%-]+)?(?P<cmd>\w+)(?P<switches
 
 
 class AthanorMenu(EvMenu):
-    globals = GLOBAL_SCRIPTS
+    global_scripts = GLOBAL_SCRIPTS
 
     def __init__(self, *args, **kwargs):
         self.menu_name = kwargs.pop('menu_name', 'Unknown')
@@ -21,20 +21,24 @@ class AthanorMenu(EvMenu):
         self.session = self._session if self._session else None
         self.db = self.caller.db if self.caller.db else None
         self.ndb = self._session.ndb if self.session else self.caller.ndb
+        self.account = self.session.get_account() if self.session else None
+        self.character = self.session.get_puppet() if self.session else None
+
+    def msg(self, *args, **kwargs):
+        return self.caller.msg(*args, **kwargs)
 
     def parse_input(self, raw_string):
         match_dict = _RE_ARGS.match(raw_string.strip()).groupdict()
-        if match_dict.get('switches', None):
-            switches = [swi.strip() for swi in match_dict.get('switches').split('/') if swi.strip()]
-            match_dict['switches'] = switches
-        lhs = match_dict.get('lhs', None)
-        lhslist = [lh.strip() for lh in lhs.split(',') if lh.strip()] if lhs and ',' in lhs else []
-        match_dict['lhslist'] = lhslist
-        rhs = match_dict.get('rhs', None)
-        rhslist = [rh.strip() for rh in rhs.split(',') if rh.strip()] if rhs and ',' in rhs else []
-        match_dict['rhslist'] = rhslist
-        self.node_args = match_dict
-        return EvMenu.parse_input(self, match_dict.get('cmd'))
+        self.cmd = match_dict.get('cmd', '')
+        self.prefix = match_dict.get('prefix', '')
+        switches = match_dict.get('switches', '')
+        self.args = match_dict.get('args', '')
+        self.switches = [swi.strip() for swi in match_dict.get('switches').split('/') if swi.strip()] if switches else list()
+        self.lhs = match_dict.get('lhs', '')
+        self.lhslist = [lh.strip() for lh in self.lhs.split(',') if lh.strip()] if self.lhs else list()
+        self.rhs = match_dict.get('rhs', '')
+        self.rhslist = [rh.strip() for rh in self.rhs.split(',') if rh.strip()] if self.rhs else list()
+        return EvMenu.parse_input(self, self.cmd)
 
     def client_width(self):
         """
@@ -218,7 +222,10 @@ class AthanorMenu(EvMenu):
         message.append(nodetext)
         message.append(self.styled_separator('Options'))
         message.append(optionstext)
-        message.append(self.styled_footer())
+        if self.auto_quit:
+            message.append(self.styled_footer(f"|nType |wquit|n to exit menu", color_header=False))
+        else:
+            message.append(self.styled_footer())
         return '\n'.join([str(l) for l in message])
 
     def options_formatter(self, optionlist):
@@ -234,10 +241,9 @@ class AthanorMenu(EvMenu):
             options (str): The formatted option display.
 
         """
-        self.caller.msg(optionlist)
         table = self.styled_table('Cmd', 'Desc', width=self.client_width())
         for op in optionlist:
-            cmd = op[2] if op[2] else op[0]
+            cmd = op[2].get('syntax', op[0])
             table.add_row(f"|w{cmd}|n", f"{op[1]}")
         return str(table)
 

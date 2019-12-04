@@ -52,13 +52,13 @@ class DefaultAccountController(GlobalScript):
             log_trace()
             self.ndb.account_typeclass = AthanorAccount
 
-    def create_account(self, session, username, email, password):
+    def create_account(self, session, username, email, password, show_password=False):
         new_account, errors = self.ndb.account_typeclass.create(username=username, email=email, password=password)
         if errors:
             raise ValueError(f"Error Creating {username} - {email}: {str(errors)}")
         if not isinstance(new_account.db._playable_characters, list):
             new_account.db._playable_characters = list()
-        return new_account, errors
+        return new_account
 
     def rename_account(self, session, account, new_name):
         pass
