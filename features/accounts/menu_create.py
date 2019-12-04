@@ -26,9 +26,9 @@ def _set_general(menu, raw_string, **kwargs):
 
 def _finish_account(menu, raw_string, **kwargs):
     try:
-        account = menu.global_scripts.accounts.create_account(menu.session, menu.account_data['username'],
-                                                            menu.account_data['email'], menu.account_data['password'],
-                                                              show_password=True)
+        data = menu.account_data
+        account = menu.global_scripts.accounts.create_account(menu.session, data['username'], data['email'],
+                                                              data['password'], show_password=True)
         menu.account_data = _gen_default_account()
     except Exception as e:
         menu.msg(f"ERROR: {e}")
@@ -38,9 +38,7 @@ def _finish_account(menu, raw_string, **kwargs):
 
 def node_main(menu, raw_string, **kwargs):
     if not hasattr(menu, 'account_data'):
-        menu.account_data = {'username': None,
-                             'email': None,
-                             'password': _gen_rand_password()}
+        menu.account_data = _gen_default_account()
     data = menu.account_data
 
     display = f"|wUSERNAME:|n {data['username']}\n|wEMAIL:|n {data['email']}\n|wPASSWORD:|n {data['password']}"
@@ -52,8 +50,7 @@ def node_main(menu, raw_string, **kwargs):
         {'key': 'email',
          'desc': 'Set Email address.',
          'goto': (_set_general, {'key': 'email', 'error': "Must enter a valid email address!"}),
-         'syntax': 'email <email address>'
-        },
+         'syntax': 'email <email address>'},
         {'key': 'password',
          'desc': 'Set Account Password',
          'goto': (_set_general, {'key': 'password', 'error': "Must enter a password!"}),
@@ -65,7 +62,7 @@ def node_main(menu, raw_string, **kwargs):
     ]
     if data['username'] and data['email'] and data['password']:
         options.append({'key': 'finish',
-         'desc': 'Use information and attempt Account creation.',
+         'desc': 'Use entered information to attempt Account creation.',
          'goto': _finish_account})
 
     return display, options
