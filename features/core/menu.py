@@ -68,7 +68,7 @@ class AthanorMenu(EvMenu):
                 or incomplete and ready for use with `.add_row` or `.add_collumn`.
 
         """
-        account = self._session.get_account()
+        account = self.account
         border_color = account.options.get("border_color") if account else 'n'
         column_color = account.options.get("column_names_color") if account else 'n'
 
@@ -128,7 +128,7 @@ class AthanorMenu(EvMenu):
 
         """
         colors = dict()
-        account = self._session.get_account()
+        account = self.account
         colors["border"] = account.options.get("border_color") if account else 'n'
         colors["headertext"] = account.options.get("%s_text_color" % mode) if account else 'n'
         colors["headerstar"] = account.options.get("%s_star_color" % mode) if account else 'n'
