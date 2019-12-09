@@ -43,7 +43,7 @@ class JobLinkDB(TypedObject):
     __applabel__ = "jobs"
 
     db_account = models.ForeignKey('accounts.AccountDB', related_name='job_handling', on_delete=models.PROTECT)
-    db_character = models.ForeignKey('objects.ObjectDB', related_name='job_handling', on_delete=models.PROTECT)
+    db_character = models.ForeignKey('characters.ObjectDB', related_name='job_handling', on_delete=models.PROTECT)
     db_job = models.ForeignKey(JobDB, related_name='links', on_delete=models.CASCADE)
     db_link_type = models.PositiveSmallIntegerField(default=0)
     db_date_checked = models.DateTimeField(null=True)

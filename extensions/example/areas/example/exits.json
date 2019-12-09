@@ -1,0 +1,9 @@
+{
+  "north_to_northern": {
+    "prototypes": ["North"]
+  },
+  "south_to_example": {
+    "prototypes": ["South"],
+    "pair": "north_to_northern"
+  }
+}

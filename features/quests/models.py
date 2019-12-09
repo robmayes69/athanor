@@ -7,7 +7,7 @@ class QuestCategoryDB(TypedObject):
     __defaultclasspath__ = "features.quests.quests.DefaultQuestCategory"
     __applabel__ = "quests"
 
-    db_owner = models.ForeignKey('objects.ObjectDB', related_name='quest_categories', on_delete=models.CASCADE)
+    db_owner = models.ForeignKey('characters.ObjectDB', related_name='quest_categories', on_delete=models.CASCADE)
 
     class Meta:
         unique_together = (('db_owner', 'db_key'),)

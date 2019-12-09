@@ -69,7 +69,7 @@ INSTALLED_APPS = tuple(INSTALLED_APPS) + ('features.core', 'features.factions', 
                                    'features.mush_import', "features.effects", "features.items",
                                    "features.quests", "features.traits", 'features.channels')
 
-ROOT_URLCONF = None
+#ROOT_URLCONF = None
 
 COMMAND_DEFAULT_CLASS = "commands.command.Command"
 
@@ -114,6 +114,7 @@ CHANNEL_COMMAND_CLASS = "evennia.comms.channelhandler.ChannelCommand"
 # Character Settings
 ######################################################################
 BASE_CHARACTER_TYPECLASS = "typeclasses.characters.PlayerCharacter"
+BASE_OWNERSHIP_TYPECLASS = "typeclasses.characters.CharacterOwnership"
 
 GLOBAL_SCRIPTS['characters'] = {
     'typeclass': 'typeclasses.characters.CharacterController',

@@ -21,7 +21,7 @@ class ThemeParticipantDB(TypedObject):
     __applabel__ = "theme"
 
     db_theme = models.ForeignKey(ThemeDB, related_name='participants', on_delete=models.CASCADE)
-    db_character = models.ForeignKey('objects.ObjectDB', related_name='themes', on_delete=models.PROTECT)
+    db_character = models.ForeignKey('characters.ObjectDB', related_name='themes', on_delete=models.PROTECT)
     db_list_type = models.CharField(max_length=50, blank=False, null=False)
 
     class Meta:

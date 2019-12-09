@@ -16,13 +16,18 @@ class AthanorMenu(EvMenu):
     global_scripts = GLOBAL_SCRIPTS
 
     def __init__(self, *args, **kwargs):
+        self.args = kwargs.pop('args', None)
         self.menu_name = kwargs.pop('menu_name', 'Unknown')
-        EvMenu.__init__(self, *args, **kwargs)
-        self.session = self._session if self._session else None
+        self.session = kwargs.pop('session', None)
+        self.caller = args[0]
         self.db = self.caller.db if self.caller.db else None
-        self.ndb = self._session.ndb if self.session else self.caller.ndb
+        self.ndb = self.session.ndb if self.session else self.caller.ndb
         self.account = self.session.get_account() if self.session else None
         self.character = self.session.get_puppet() if self.session else None
+        EvMenu.__init__(self, *args, **kwargs)
+
+    def error(self, *args, **kwargs):
+        self.msg(f"|rERROR:|n {args[0]}", *args[1:], **kwargs)
 
     def msg(self, *args, **kwargs):
         return self.caller.msg(*args, **kwargs)

@@ -18,9 +18,9 @@ class Object(AthanorObject):
     This is the root typeclass object, implementing an in-game Evennia
     game object, such as having a location, being able to be
     manipulated or looked at, etc. If you create a new typeclass, it
-    must always inherit from this object (or any of the other objects
+    must always inherit from this object (or any of the other characters
     in this file, since they all actually inherit from BaseObject, as
-    seen in src.object.objects).
+    seen in src.object.characters).
 
     The BaseObject class implements several hooks tying into the game
     engine. By re-implementing these hooks you can control the
@@ -51,7 +51,7 @@ class Object(AthanorObject):
      sessions (list of Sessions, read-only) - returns all sessions connected
                        to this object
      has_account (bool, read-only)- will only return *connected* accounts
-     contents (list of Objects, read-only) - returns all objects inside this
+     contents (list of Objects, read-only) - returns all characters inside this
                        object (including exits)
      exits (list of Objects, read-only) - returns all exits from this
                        object, if any
@@ -71,7 +71,7 @@ class Object(AthanorObject):
      sessions - sessions-handler. Get Sessions connected to this
                 object with sessions.get()
 
-    * Helper methods (see src.objects.objects.py for full headers)
+    * Helper methods (see src.characters.characters.py for full headers)
 
      search(ostring, global_search=False, attribute_name=None,
              use_nicks=False, location=None, ignore_errors=False, account=False)
@@ -96,7 +96,7 @@ class Object(AthanorObject):
      at_object_creation() - only called once, when object is first created.
                             Object customizations go here.
      at_object_delete() - called just before deleting an object. If returning
-                            False, deletion is aborted. Note that all objects
+                            False, deletion is aborted. Note that all characters
                             inside a deleted object are automatically moved
                             to their <home>, they don't need to be removed here.
 
@@ -106,13 +106,13 @@ class Object(AthanorObject):
                             requests a cmdset from this object. The kwargs are
                             not normally used unless the cmdset is created
                             dynamically (see e.g. Exits).
-     at_pre_puppet(account)- (account-controlled objects only) called just
+     at_pre_puppet(account)- (account-controlled characters only) called just
                             before puppeting
-     at_post_puppet()     - (account-controlled objects only) called just
+     at_post_puppet()     - (account-controlled characters only) called just
                             after completing connection account<->object
-     at_pre_unpuppet()    - (account-controlled objects only) called just
+     at_pre_unpuppet()    - (account-controlled characters only) called just
                             before un-puppeting
-     at_post_unpuppet(account) - (account-controlled objects only) called just
+     at_post_unpuppet(account) - (account-controlled characters only) called just
                             after disconnecting account<->object link
      at_server_reload()   - called before server is reloaded
      at_server_shutdown() - called just before server is fully shut down
@@ -134,19 +134,19 @@ class Object(AthanorObject):
      at_object_receive(obj, source_location) - called when this object receives
                         another object
 
-     at_traverse(traversing_object, source_loc) - (exit-objects only)
+     at_traverse(traversing_object, source_loc) - (exit-characters only)
                               handles all moving across the exit, including
                               calling the other exit hooks. Use super() to retain
                               the default functionality.
-     at_after_traverse(traversing_object, source_location) - (exit-objects only)
+     at_after_traverse(traversing_object, source_location) - (exit-characters only)
                               called just after a traversal has happened.
-     at_failed_traverse(traversing_object)      - (exit-objects only) called if
+     at_failed_traverse(traversing_object)      - (exit-characters only) called if
                        traversal fails and property err_traverse is not defined.
 
      at_msg_receive(self, msg, from_obj=None, **kwargs) - called when a message
                              (via self.msg()) is sent to this obj.
                              If returns false, aborts send.
-     at_msg_send(self, msg, to_obj=None, **kwargs) - called when this objects
+     at_msg_send(self, msg, to_obj=None, **kwargs) - called when this characters
                              sends a message to someone via self.msg().
 
      return_appearance(looker) - describes this object. Used by "look"

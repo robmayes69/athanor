@@ -13,8 +13,8 @@ class AreaDB(TypedObject):
                                           on_delete=models.PROTECT)
     db_exit_typeclass = models.ForeignKey('core.TypeclassMap', null=True, related_name='exits',
                                           on_delete=models.PROTECT)
-    db_fixtures = models.ManyToManyField('objects.ObjectDB', related_name='areas')
-    db_transient = models.ManyToManyField('objects.ObjectDB', related_name='current_areas')
+    db_fixtures = models.ManyToManyField('characters.ObjectDB', related_name='areas')
+    db_transient = models.ManyToManyField('characters.ObjectDB', related_name='current_areas')
 
     class Meta:
         unique_together = (('db_parent', 'db_key'), )
@@ -27,8 +27,8 @@ class CoordinateDB(TypedObject):
     __defaultclasspath__ = "features.space.space.DefaultCoordinate"
     __applabel__ = "building"
 
-    db_entity = models.OneToOneField('objects.ObjectDB', related_name='coordinates', on_delete=models.CASCADE)
-    db_sector = models.ForeignKey('objects.ObjectDB', related_name='space_coordinates', on_delete=models.CASCADE)
+    db_entity = models.OneToOneField('characters.ObjectDB', related_name='coordinates', on_delete=models.CASCADE)
+    db_sector = models.ForeignKey('characters.ObjectDB', related_name='space_coordinates', on_delete=models.CASCADE)
 
     db_x = models.FloatField(default=0.0, null=False)
     db_y = models.FloatField(default=0.0, null=False)
@@ -119,7 +119,7 @@ class MapPointDB(TypedObject, HasXYZ):
 
     Two Rooms may not inhabit the same coordinates.
     """
-    db_room = models.OneToOneField('objects.ObjectDB', related_name='map_point', on_delete=models.CASCADE)
+    db_room = models.OneToOneField('characters.ObjectDB', related_name='map_point', on_delete=models.CASCADE)
     db_map = models.ForeignKey(MapDB, related_name='points', on_delete=models.CASCADE)
 
     class Meta:

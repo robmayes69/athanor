@@ -1,42 +1,24 @@
 from commands.command import Command
-from features.core.menu import AthanorMenu
 
 
 class CmdAccount(Command):
 
     key = '@account'
     help_category = "Administration"
-    switch_options = ('list', 'create', 'disable', 'enable', 'rename', 'ban', 'password', 'email', 'addperm', 'delperm')
+    locks = "cmd:perm(Admin)"
+    switch_options = ('list', 'create', 'edit', 'characters')
 
     def switch_main(self):
-        AthanorMenu(self.caller, 'features.accounts.menu_create', startnode='node_main', session=self.session, menu_name='Account Editor')
+        self.msg("Unimplemented!")
 
     def switch_list(self):
-        pass
+        self.global_scripts.accounts.menu_search(self.session, self.caller)
 
     def switch_create(self):
-        pass
+        self.global_scripts.accounts.menu_create(self.session, self.caller)
 
-    def switch_disable(self):
-        pass
+    def switch_edit(self):
+        self.global_scripts.accounts.menu_edit(self.session, self.caller, self.args)
 
-    def switch_enable(self):
-        pass
-
-    def switch_rename(self):
-        pass
-
-    def switch_ban(self):
-        pass
-
-    def switch_password(self):
-        pass
-
-    def switch_email(self):
-        pass
-
-    def switch_addperm(self):
-        pass
-
-    def switch_delperm(self):
-        pass
+    def switch_characters(self):
+        self.global_scripts.accounts.menu_characters(self.session, self.caller, self.args)

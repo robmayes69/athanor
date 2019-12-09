@@ -10,7 +10,7 @@ class StaffCategory(models.Model):
 
 
 class StaffEntry(models.Model):
-    character = models.OneToOneField('objects.ObjectDB', related_name='+', on_delete=models.CASCADE)
+    character = models.OneToOneField('characters.ObjectDB', related_name='+', on_delete=models.CASCADE)
     category = models.ForeignKey(StaffCategory, related_name='staffers', on_delete=models.CASCADE)
     order = models.PositiveSmallIntegerField(default=0)
     position = models.CharField(max_length=255, null=True, blank=True)

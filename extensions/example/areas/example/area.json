@@ -1,0 +1,6 @@
+{
+  "name": "Example Area",
+  "description": "Just an example Area for Athanor!",
+  "authors": ["Volund"],
+  "prototypes": ["basic_area"]
+}

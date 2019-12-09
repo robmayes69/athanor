@@ -6,7 +6,7 @@ from evennia.utils.utils import lazy_property
 
 
 class MushObject(models.Model):
-    obj = models.OneToOneField('objects.ObjectDB', related_name='mush', null=True, on_delete=models.SET_NULL)
+    obj = models.OneToOneField('characters.ObjectDB', related_name='mush', null=True, on_delete=models.SET_NULL)
     account = models.OneToOneField('accounts.AccountDB', related_name='mush', null=True, on_delete=models.SET_NULL)
     group = models.OneToOneField('factions.FactionDB', related_name='mush', null=True, on_delete=models.SET_NULL)
     board = models.OneToOneField('forum.ForumBoardDB', related_name='mush', null=True, on_delete=models.SET_NULL)

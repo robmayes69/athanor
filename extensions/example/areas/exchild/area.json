@@ -1,0 +1,5 @@
+{
+  "name": "Child Area",
+  "description": "This Area inherits from Example Area.",
+  "parent": "example"
+}

@@ -1,3 +1,4 @@
+from evennia import GLOBAL_SCRIPTS
 from evennia.commands.default.muxcommand import MuxCommand
 from evennia.utils.search import object_search
 from typeclasses.characters import PlayerCharacter
@@ -6,6 +7,7 @@ from evennia.utils.utils import lazy_property
 
 class AthanorCommand(MuxCommand):
     locks = 'cmd:all();admin:perm(Admin)'
+    global_scripts = GLOBAL_SCRIPTS
 
     @lazy_property
     def _column_color(self):

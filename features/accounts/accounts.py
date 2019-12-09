@@ -5,6 +5,7 @@ from evennia.utils.utils import class_from_module
 from evennia.utils.logger import log_trace
 from evennia.utils.search import search_account
 import datetime
+from features.core.menu import AthanorMenu
 
 
 class AccountMixin(object):
@@ -21,6 +22,12 @@ class AccountMixin(object):
         if not tz:
             tz = self.options.timezone
         return time_data.astimezone(tz).strftime(time_format)
+
+    def is_banned(self):
+        return False
+
+    def is_disabled(self):
+        return False
 
 
 class AthanorAccount(DefaultAccount, AccountMixin, AthanorEntity):
@@ -51,6 +58,15 @@ class DefaultAccountController(GlobalScript):
         except Exception:
             log_trace()
             self.ndb.account_typeclass = AthanorAccount
+
+    def all(self):
+        return DefaultAccount.objects.filter_family()
+
+    def search_name(self, name):
+        return self.all().filter(username__istartswith=name)
+
+    def search_email(self, email):
+        return self.all().filter(email__istartswith=email)
 
     def create_account(self, session, username, email, password, show_password=False):
         new_account, errors = self.ndb.account_typeclass.create(username=username, email=email, password=password)
@@ -90,3 +106,23 @@ class DefaultAccountController(GlobalScript):
     def ban_account(self, session, account, duration):
         pass
 
+    def add_permission(self, session, account, permission):
+        pass
+
+    def rem_permission(self, session, account, permission):
+        pass
+
+    def toggle_superuser(self, session, account):
+        pass
+
+    def menu_create(self, session, caller):
+        AthanorMenu(caller, 'features.accounts.menu_admin', startnode='node_main', session=session,
+                    menu_name='Account System')
+
+    def menu_edit(self, session, caller, start_target=None):
+        AthanorMenu(caller, 'features.accounts.menu_admin', startnode='node_edit', session=session, menu_name='Account System', start_target=start_target)
+
+
+    def menu_search(self, session, caller):
+        AthanorMenu(caller, 'features.accounts.menu_admin', startnode='node_search', session=session,
+                    menu_name='Account System')

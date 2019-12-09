@@ -1,4 +1,4 @@
-from evennia.objects.objects import DefaultExit
+from evennia.characters.characters import DefaultExit
 from features.core.base import AthanorEntity
 
 

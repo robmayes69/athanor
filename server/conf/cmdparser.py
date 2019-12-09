@@ -3,7 +3,7 @@ Changing the default command parser
 
 The cmdparser is responsible for parsing the raw text inserted by the
 user, identifying which command/commands match and return one or more
-matching command objects. It is called by Evennia's cmdhandler and
+matching command characters. It is called by Evennia's cmdhandler and
 must accept input and return results on the same form. The default
 handler is very generic so you usually don't need to overload this
 unless you have very exotic parsing needs; advanced parsing is best

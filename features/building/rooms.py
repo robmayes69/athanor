@@ -1,4 +1,4 @@
-from evennia.objects.objects import DefaultRoom
+from evennia.characters.characters import DefaultRoom
 from features.core.base import AthanorEntity
 from collections import defaultdict
 from evennia.utils import list_to_string
@@ -62,7 +62,7 @@ class AthanorRoom(DefaultRoom, AthanorEntity, SubMessageMixin):
         """
         if not looker:
             return ""
-        # get and identify all objects
+        # get and identify all characters
         visible = (con for con in self.contents if con != looker and
                    con.access(looker, "view"))
         exits, users, things = [], [], defaultdict(list)

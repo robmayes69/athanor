@@ -1,0 +1,8 @@
+{
+  "example_room": {
+    "description": "This is merely an example room! Kinda boring, really."
+  },
+  "northern_room": {
+    "description": "Just to the north of the example room! Still boring."
+  }
+}

@@ -1,6 +1,6 @@
-from evennia.objects.objects import DefaultCharacter
+from evennia.characters.characters import DefaultCharacter
 from evennia.utils.utils import lazy_property
-from features.core.base import AthanorEntity
+from features.core.base import AthanorEntity, AthanorTypeEntity
 from features.core.submessage import SubMessageMixinCharacter
 from features.core.handler import KeywordHandler
 from typeclasses.scripts import GlobalScript
@@ -9,7 +9,9 @@ from evennia.utils.logger import log_trace
 from utils.color import green_yellow_red, red_yellow_green
 from evennia.utils.utils import time_format
 from evennia.utils.ansi import ANSIString
+from features.characters.models import CharacterOwnershipDB
 import datetime
+from evennia.typeclasses.models import TypeclassBase
 
 
 class AthanorCharacter(DefaultCharacter, AthanorEntity, SubMessageMixinCharacter):
@@ -90,6 +92,19 @@ class AthanorMobileCharacter(AthanorCharacter):
     pass
 
 
+class DefaultCharacterOwnership(CharacterOwnershipDB, AthanorTypeEntity, metaclass=TypeclassBase):
+
+    def __init__(self, *args, **kwargs):
+        CharacterOwnershipDB.__init__(self, *args, **kwargs)
+        AthanorTypeEntity.__init__(self, *args, **kwargs)
+
+    @classmethod
+    def create(cls, account, character):
+        ownership = cls(db_account=account, db_character=character)
+        ownership.save()
+        return ownership
+
+
 class DefaultCharacterController(GlobalScript):
     system_name = 'CHARACTERS'
 
@@ -102,6 +117,13 @@ class DefaultCharacterController(GlobalScript):
             log_trace()
             self.ndb.character_typeclass = AthanorPlayerCharacter
 
+        try:
+            self.ndb.ownership_typeclass = class_from_module(settings.BASE_OWNERSHIP_TYPECLASS,
+                                                           defaultpaths=settings.TYPECLASS_PATHS)
+        except Exception:
+            log_trace()
+            self.ndb.ownership_typeclass = DefaultCharacterOwnership
+
     def find_character(self, character):
         if isinstance(character, AthanorPlayerCharacter):
             return character
@@ -111,14 +133,11 @@ class DefaultCharacterController(GlobalScript):
         new_character, errors = self.ndb.character_typeclass.create(character_name, account)
         if errors:
             raise ValueError(f"Error Creating {account} - {character_name}: {str(errors)}")
-        new_character.db.account = account
-        return new_character, errors
+        ownership = self.ndb.ownership_typeclass.create(account=account, character=new_character)
+        return new_character
 
-    def delete_character(self):
+    def delete_character(self, session, character, verify=None):
         pass
 
-    def shelf_character(self):
-        pass
-
-    def unshelf_character(self):
+    def rename_character(self, session, character, new_name):
         pass
