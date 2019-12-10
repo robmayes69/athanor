@@ -1,5 +1,6 @@
 {
   "name": "Child Area",
-  "description": "This Area inherits from Example Area.",
-  "parent": "example"
+  "description": "This Area is a Child of Example Area.",
+  "parent": "example",
+  "prototypes": ["basic_area"]
 }
