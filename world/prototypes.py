@@ -2,7 +2,7 @@
 Prototypes
 
 A prototype is a simple way to create individualized instances of a
-given `Typeclass`. For example, you might have a Sword typeclass that
+given `Typeclass`. For limbo, you might have a Sword typeclass that
 implements everything a Sword would need to do. The only difference
 between different individual Swords would be their key, description
 and some Attributes. The Prototype system allows to create a range of
@@ -12,10 +12,10 @@ Sabres and all Broadswords some common properties). Note that bigger
 variations, such as custom commands or functionality belong in a
 hierarchy of typeclasses instead.
 
-Example prototypes are read by the `@spawn` command but is also easily
+Example abstracts are read by the `@spawn` command but is also easily
 available to use from code via `evennia.spawn` or `evennia.utils.spawner`.
 Each prototype should be a dictionary. Use the same name as the
-variable to refer to other prototypes.
+variable to refer to other abstracts.
 
 Possible keywords are:
     prototype - string pointing to parent prototype of this structure.
@@ -39,7 +39,7 @@ See the `@spawn` command and `evennia.utils.spawner` for more note.
 Prototypes
 
 A prototype is a simple way to create individualized instances of a
-given `Typeclass`. For example, you might have a Sword typeclass that
+given `Typeclass`. For limbo, you might have a Sword typeclass that
 implements everything a Sword would need to do. The only difference
 between different individual Swords would be their key, description
 and some Attributes. The Prototype system allows to create a range of
@@ -49,10 +49,10 @@ Sabres and all Broadswords some common properties). Note that bigger
 variations, such as custom commands or functionality belong in a
 hierarchy of typeclasses instead.
 
-Example prototypes are read by the `@spawn` command but is also easily
+Example abstracts are read by the `@spawn` command but is also easily
 available to use from code via `evennia.spawn` or `evennia.utils.spawner`.
 Each prototype should be a dictionary. Use the same name as the
-variable to refer to other prototypes.
+variable to refer to other abstracts.
 
 Possible keywords are:
     prototype - string pointing to parent prototype of this structure.

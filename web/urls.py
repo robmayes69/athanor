@@ -11,7 +11,7 @@ from evennia.web.urls import urlpatterns
 
 # eventual custom patterns
 custom_patterns = [
-    # url(r'/desired/url/', view, name='example'),
+    # url(r'/desired/url/', view, name='limbo'),
 ]
 
 # this is required by Django.

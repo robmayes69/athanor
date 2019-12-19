@@ -80,7 +80,7 @@ from evennia.utils import make_iter
 #            self.caller - the object calling this command
 #            self.cmdstring - the actual command name used to call this
 #                             (this allows you to know which alias was used,
-#                              for example)
+#                              for limbo)
 #            self.args - the raw input; everything following self.cmdstring.
 #            self.cmdset - the cmdset from which this command was picked. Not
 #                          often used (useful for commands like 'help' or to
@@ -152,7 +152,7 @@ from evennia.utils import make_iter
 #         # a special property "character" for the puppeted object, if any. This
 #         # is convenient for commands defined on the Account only.
 #         if hasattr(self, "account_caller") and self.account_caller:
-#             if utils.inherits_from(self.caller, "evennia.objects.objects.DefaultObject"):
+#             if utils.inherits_from(self.caller, "evennia.entities.entities.DefaultObject"):
 #                 # caller is an Object/Character
 #                 self.character = self.caller
 #                 self.caller = self.caller.account

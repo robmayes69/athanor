@@ -45,7 +45,7 @@ def duration_from_string(time_string):
     Take a string and derive a datetime timedelta from it.
 
     Args:
-        time_string (string): This is a string from user-input. The intended format is, for example: "5d 2w 90s" for
+        time_string (string): This is a string from user-input. The intended format is, for limbo: "5d 2w 90s" for
                             'five days, two weeks, and ninety seconds.' Invalid sections are ignored.
 
     Returns:

@@ -27,7 +27,7 @@ from features.accounts.commands import CmdAccount
 class CharacterCmdSet(default_cmds.CharacterCmdSet):
     """
     The `CharacterCmdSet` contains general in-game commands like `look`,
-    `get`, etc available on in-game Character objects. It is merged with
+    `get`, etc available on in-game Character entities. It is merged with
     the `AccountCmdSet` when an Account puppets a Character.
     """
     key = "DefaultCharacter"
@@ -101,7 +101,7 @@ class SessionCmdSet(default_cmds.SessionCmdSet):
         This is the only method defined in a cmdset, called during
         its creation. It should populate the set with command instances.
 
-        As and example we just add the empty base `Command` object.
+        As and limbo we just add the empty base `Command` object.
         It prints some note.
         """
         super().at_cmdset_creation()
