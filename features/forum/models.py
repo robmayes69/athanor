@@ -1,12 +1,8 @@
 from django.db import models
-from evennia.typeclasses.models import TypedObject
+from evennia.typeclasses.models import SharedMemoryModel
 
 
-class ForumCategoryDB(TypedObject):
-    __settingclasspath__ = "features.forum.forum.DefaultForumCategory"
-    __defaultclasspath__ = "features.forum.forum.DefaultForumCategory"
-    __applabel__ = "forum"
-
+class ForumCategory(SharedMemoryModel):
     db_abbr = models.CharField(max_length=5, unique=True, blank=True, null=False)
 
     class Meta:
@@ -14,12 +10,8 @@ class ForumCategoryDB(TypedObject):
         verbose_name_plural = 'ForumCategories'
 
 
-class ForumBoardDB(TypedObject):
-    __settingclasspath__ = "features.forum.forum.DefaultForumBoard"
-    __defaultclasspath__ = "features.forum.forum.DefaultForumBoard"
-    __applabel__ = "forum"
-
-    db_category = models.ForeignKey(ForumCategoryDB, related_name='boards', null=False, on_delete=models.CASCADE)
+class ForumBoard(SharedMemoryModel):
+    db_category = models.ForeignKey(ForumCategory, related_name='boards', null=False, on_delete=models.CASCADE)
     db_order = models.PositiveIntegerField(default=0)
     ignore_list = models.ManyToManyField('accounts.AccountDB')
     db_mandatory = models.BooleanField(default=False)
@@ -30,14 +22,12 @@ class ForumBoardDB(TypedObject):
         unique_together = (('db_category', 'db_order'), ('db_category', 'db_key'))
 
 
-class ForumThreadDB(TypedObject):
-    __settingclasspath__ = "features.forum.forum.DefaultForumThread"
-    __defaultclasspath__ = "features.forum.forum.DefaultForumThread"
-    __applabel__ = "forum"
-
-    db_entity = models.ForeignKey('core.EntityMapDB', related_name='forum_threads', null=True, on_delete=models.PROTECT)
+class ForumThread(SharedMemoryModel):
+    db_account = models.ForeignKey('accounts.AccountDB', related_name='forum_threads', null=True,
+                                   on_delete=models.PROTECT)
+    db_object = models.ForeignKey('objects.ObjectDB', related_name='forum_threads', null=True, on_delete=models.PROTECT)
     db_date_created = models.DateTimeField(null=False)
-    db_board = models.ForeignKey(ForumBoardDB, related_name='threads', on_delete=models.CASCADE)
+    db_board = models.ForeignKey(ForumBoard, related_name='threads', on_delete=models.CASCADE)
     db_date_modified = models.DateTimeField(null=False)
     db_order = models.PositiveIntegerField(null=True)
 
@@ -49,21 +39,18 @@ class ForumThreadDB(TypedObject):
 
 class ForumThreadRead(models.Model):
     account = models.ForeignKey('accounts.AccountDB', related_name='forum_read', on_delete=models.CASCADE)
-    thread = models.ForeignKey(ForumThreadDB, related_name='read', on_delete=models.CASCADE)
+    thread = models.ForeignKey(ForumThread, related_name='read', on_delete=models.CASCADE)
     date_read = models.DateTimeField(null=True)
 
     class Meta:
         unique_together = (('account', 'thread'),)
 
 
-class ForumPostDB(TypedObject):
-    __settingclasspath__ = "features.forum.forum.DefaultForumPost"
-    __defaultclasspath__ = "features.forum.forum.DefaultForumPost"
-    __applabel__ = "forum"
-
-    db_entity = models.ForeignKey('core.EntityMapDB', related_name='forum_posts', null=True, on_delete=models.PROTECT)
+class ForumPost(SharedMemoryModel):
+    db_account = models.ForeignKey('accounts.AccountDB', related_name='forum_posts', null=True, on_delete=models.PROTECT)
+    db_object = models.ForeignKey('objects.ObjectDB', related_name='forum_posts', null=True, on_delete=models.PROTECT)
     db_date_created = models.DateTimeField(null=False)
-    db_thread = models.ForeignKey(ForumThreadDB, related_name='posts', on_delete=models.CASCADE)
+    db_thread = models.ForeignKey(ForumThread, related_name='posts', on_delete=models.CASCADE)
     db_date_modified = models.DateTimeField(null=False)
     db_order = models.PositiveIntegerField(null=True)
     db_body = models.TextField(null=True, blank=True)
@@ -72,5 +59,3 @@ class ForumPostDB(TypedObject):
         verbose_name = 'Post'
         verbose_name_plural = 'Posts'
         unique_together = (('db_thread', 'db_order'), )
-
-
