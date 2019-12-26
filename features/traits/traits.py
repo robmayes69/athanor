@@ -1,7 +1,7 @@
-from evennia.typeclasses.models import TypeclassBase
+from evennia.abstracts.entity_base import TypeclassBase
 from . models import TraitDefinitionDB, TraitCollectionDB, TraitDB
 from features.core.base import AthanorTypeEntity
-from evennia.typeclasses.managers import TypeclassManager
+from evennia.typeclasses import TypeclassManager
 
 
 class DefaultTraitDefinition(TraitDefinitionDB, AthanorTypeEntity, metaclass=TypeclassBase):

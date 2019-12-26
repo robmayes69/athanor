@@ -1,8 +1,8 @@
-from evennia.typeclasses.models import TypeclassBase
+from evennia.abstracts.entity_base import TypeclassBase
 from . models import EffectDefinitionDB, EffectDB
 from features.core.base import AthanorTypeEntity
 from features.core.handler import AthanorFlexHandler
-from evennia.typeclasses.managers import TypeclassManager
+from evennia.typeclasses import TypeclassManager
 
 
 class DefaultEffectDefinition(EffectDefinitionDB, AthanorTypeEntity, metaclass=TypeclassBase):

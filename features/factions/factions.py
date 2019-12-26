@@ -1,10 +1,10 @@
 import re
 from django.conf import settings
 from django.db.models import Q
-from evennia.typeclasses.models import TypeclassBase
+from evennia.abstracts.entity_base import TypeclassBase
 from features.factions.models import FactionDB, FactionLinkDB, FactionRoleDB, FactionPrivilegeDB, FactionRoleLinkDB
 from features.core.base import AthanorTypeEntity
-from evennia.typeclasses.managers import TypeclassManager
+from evennia.typeclasses import TypeclassManager
 from typeclasses.scripts import GlobalScript
 from utils.valid import simple_name
 from evennia.utils.utils import class_from_module

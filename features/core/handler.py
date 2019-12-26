@@ -1,4 +1,4 @@
-from evennia.typeclasses.tags import TagHandler
+from evennia.abstracts.tags import TagHandler
 from utils.events import EventEmitter
 
 

@@ -1,5 +1,5 @@
 from django.db import models
-from evennia.typeclasses.models import TypedObject
+from evennia.abstracts.entity_base import TypedObject
 
 
 class ChannelCategoryDB(TypedObject):
@@ -35,7 +35,7 @@ class SubscriptionDB(TypedObject):
     __defaultclasspath__ = "features.channels.channels.DefaultSubscription"
     __applabel__ = "athcomms"
 
-    db_character = models.ForeignKey('objects.ObjectDB', related_name='channel_subs', null=False, on_delete=models.CASCADE)
+    db_character = models.ForeignKey('actors.ObjectDB', related_name='channel_subs', null=False, on_delete=models.CASCADE)
     db_channel = models.ForeignKey(ChannelDB, related_name='subscriptions', null=False, on_delete=models.CASCADE)
     db_voice = models.CharField(max_length=255, null=True, blank=True)
     db_codename = models.CharField(max_length=255, null=True, blank=True)

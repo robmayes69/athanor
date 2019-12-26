@@ -1,7 +1,7 @@
 from django.db import models
 from django.core.exceptions import ValidationError
 from evennia.utils.ansi import ANSIString
-from evennia.typeclasses.models import TypedObject
+from evennia.abstracts.entity_base import TypedObject
 from evennia.utils.utils import class_from_module
 from evennia.utils.logger import log_trace
 

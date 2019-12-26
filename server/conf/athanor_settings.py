@@ -108,7 +108,7 @@ BASE_AREA_TYPECLASS = 'typeclasses.areas.Area'
 # Channel Settings
 ######################################################################
 BASE_CHANNEL_TYPECLASS = "typeclasses.channels.Channel"
-CHANNEL_COMMAND_CLASS = "evennia.comms.channelhandler.ChannelCommand"
+CHANNEL_COMMAND_CLASS = "evennia.channels.channelhandler.ChannelCommand"
 
 ######################################################################
 # Character Settings

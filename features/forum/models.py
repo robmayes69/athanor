@@ -1,5 +1,5 @@
 from django.db import models
-from evennia.typeclasses.models import TypedObject
+from evennia.abstracts.entity_base import TypedObject
 
 
 class ForumCategoryDB(TypedObject):

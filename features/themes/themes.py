@@ -1,5 +1,5 @@
 import re
-from evennia.typeclasses.models import TypeclassBase
+from evennia.abstracts.entity_base import TypeclassBase
 from . models import ThemeDB, ThemeParticipantDB
 from features.core.base import AthanorTypeEntity
 from typeclasses.scripts import GlobalScript
@@ -7,7 +7,7 @@ from utils.text import partial_match
 from evennia.utils.utils import class_from_module
 from evennia.utils.logger import log_trace
 import features.themes.messages as messages
-from evennia.typeclasses.managers import TypeclassManager
+from evennia.typeclasses import TypeclassManager
 
 
 class DefaultTheme(ThemeDB, AthanorTypeEntity, metaclass=TypeclassBase):

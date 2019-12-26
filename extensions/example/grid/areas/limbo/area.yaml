@@ -1,6 +1,6 @@
 {
   "name": "Example Area",
-  "description": "Just an example Area for Athanor!",
+  "description": "Just an limbo Area for Athanor!",
   "authors": ["Volund"],
   "prototypes": ["basic_area"]
 }

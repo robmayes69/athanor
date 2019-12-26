@@ -1,5 +1,5 @@
 from django.db import models
-from evennia.typeclasses.models import TypedObject
+from evennia.abstracts.entity_base import TypedObject
 
 
 class NoteCategoryDB(TypedObject):
@@ -19,7 +19,7 @@ class NoteDB(TypedObject):
     __defaultclasspath__ = "features.note.note.DefaultNoteCategory"
     __applabel__ = "notes"
 
-    db_category = models.ForeignKey(NoteCategoryDB, related_name='entities', on_delete=models.CASCADE)
+    db_category = models.ForeignKey(NoteCategoryDB, related_name='actors', on_delete=models.CASCADE)
     db_entity = models.ForeignKey('core.EntityMapDB', related_name="notes", on_delete=models.CASCADE)
     db_contents = models.TextField(blank=False, null=False)
     db_date_modified = models.DateTimeField(null=False)

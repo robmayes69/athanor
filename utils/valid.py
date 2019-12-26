@@ -7,7 +7,7 @@ _bad_words = ('me', 'self', 'here', '.')
 def simple_name(entry, option_key="Database Entity", **kwargs):
     """
     Takes an entry and ensures that it is a sane name for use in
-    the database and commands.
+    the gamedb and commands.
 
     Simple names are comprised of alphanumeric characters,
     underscores (_), spaces, hyphens, and periods.

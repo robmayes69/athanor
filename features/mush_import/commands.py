@@ -45,7 +45,7 @@ class CmdPennImport(AthanorCommand):
             return self.cursor
         sql_dict = settings.PENNMUSH_SQL_DICT
         self.sql = MySQLdb.connect(host=sql_dict['site'], user=sql_dict['username'],
-                             passwd=sql_dict['password'], db=sql_dict['database'], cursorclass=cursors.DictCursor)
+                             passwd=sql_dict['password'], db=sql_dict['gamedb'], cursorclass=cursors.DictCursor)
         self.cursor = self.sql.cursor()
         return self.cursor
 

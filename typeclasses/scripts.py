@@ -25,14 +25,14 @@ class Script(AthanorScript):
      key (string) - name of object
      name (string)- same as key
      aliases (list of strings) - aliases to the object. Will be saved
-              to database as AliasDB entries but returned as strings.
+              to gamedb as AliasDB entries but returned as strings.
      dbref (int, read-only) - unique #id-number. Also "id" can be used.
      date_created (string) - time stamp of object creation
      permissions (list of strings) - list of permission strings
 
      desc (string)      - optional description of script, shown in listings
      obj (Object)       - optional object that this script is connected to
-                          and acts on (set automatically by obj.scripts.add())
+                          and acts on (set automatically by obj.timers.add())
      interval (int)     - how often script should run, in seconds. <0 turns
                           off ticker
      start_delay (bool) - if the script should start repeating right away or
@@ -45,10 +45,10 @@ class Script(AthanorScript):
     * Handlers
 
      locks - lock-handler: use locks.add() to add new lock strings
-     db - attribute-handler: store/retrieve database attributes on this
+     db - attribute-handler: store/retrieve gamedb attributes on this
                         self.db.myattr=val, val=self.db.myattr
      ndb - non-persistent attribute handler: same as db but does not
-                        create a database entry when storing data
+                        create a gamedb entry when storing data
 
     * Helper methods
 
@@ -73,7 +73,7 @@ class Script(AthanorScript):
                   traits at regular intervals is only valid to run while there is
                   actual combat going on).
       at_start() - Called every time the script is started, which for persistent
-                  scripts is at least once every server start. Note that this is
+                  timers is at least once every server start. Note that this is
                   unaffected by self.delay_start, which only delays the first
                   call to at_repeat().
       at_repeat() - Called every self.interval seconds. It will be called

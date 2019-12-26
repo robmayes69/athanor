@@ -12,7 +12,7 @@ to be modified.
 
 """
 
-from evennia.comms.comms import DefaultChannel
+from evennia.abstracts.channels import DefaultChannel
 
 
 class Channel(DefaultChannel):

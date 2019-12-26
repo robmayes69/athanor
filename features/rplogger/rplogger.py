@@ -1,7 +1,7 @@
-from evennia.typeclasses.models import TypeclassBase
+from evennia.abstracts.entity_base import TypeclassBase
 from . models import PlotDB, PlotRunnerDB, EventDB, EventParticipantDB, EventCodenameDB, EventSourceDB, EventActionDB
 from features.core.base import AthanorTypeEntity
-from evennia.typeclasses.managers import TypeclassManager
+from evennia.typeclasses import TypeclassManager
 from typeclasses.scripts import GlobalScript
 from evennia.utils.utils import class_from_module
 from evennia.utils.logger import log_trace

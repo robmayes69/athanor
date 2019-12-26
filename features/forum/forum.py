@@ -1,6 +1,6 @@
 import re
 from django.db.models import F
-from evennia.typeclasses.models import TypeclassBase
+from evennia.abstracts.entity_base import TypeclassBase
 from evennia.utils.utils import lazy_property
 from evennia.utils.optionhandler import OptionHandler
 from evennia.locks.lockhandler import LockException
@@ -8,14 +8,14 @@ from evennia.utils.validatorfuncs import lock as validate_lock
 from utils.time import utcnow
 from utils.online import puppets as online_puppets
 from utils.valid import simple_name
-from . models import ForumCategoryDB, ForumBoardDB, ForumThreadDB, ForumPostDB, ForumThreadRead
+from . models import ForumCategoryDB, ForumBoardDB, ForumThreadDB, ForumPostDB
 from features.core.base import AthanorTypeEntity
 from django.conf import settings
 from evennia.utils.utils import class_from_module
 from typeclasses.scripts import GlobalScript
 from utils.text import partial_match
 from evennia.utils.logger import log_trace
-from evennia.typeclasses.managers import TypeclassManager
+from evennia.typeclasses import TypeclassManager
 
 
 class DefaultForumCategory(ForumCategoryDB, AthanorTypeEntity, metaclass=TypeclassBase):

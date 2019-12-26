@@ -1,4 +1,4 @@
-from evennia.typeclasses.models import TypeclassBase
+from evennia.abstracts.entity_base import TypeclassBase
 from . models import EntityMapDB
 from utils.events import EventEmitter
 

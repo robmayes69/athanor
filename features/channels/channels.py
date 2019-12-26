@@ -1,6 +1,6 @@
 from . models import ChannelCategoryDB, ChannelDB, SubscriptionDB
 from features.core.base import AthanorTypeEntity
-from evennia.typeclasses.models import TypeclassBase
+from evennia.abstracts.entity_base import TypeclassBase
 from typeclasses.scripts import GlobalScript
 
 

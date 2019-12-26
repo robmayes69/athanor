@@ -1,4 +1,4 @@
-from evennia.accounts.accounts import DefaultAccount, DefaultGuest
+from evennia.abstracts.accounts import DefaultAccount, DefaultGuest
 from features.core.base import AthanorEntity
 from typeclasses.scripts import GlobalScript
 from evennia.utils.utils import class_from_module

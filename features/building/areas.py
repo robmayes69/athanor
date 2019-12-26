@@ -1,5 +1,5 @@
 from django.conf import settings
-from evennia.typeclasses.models import TypeclassBase
+from evennia.abstracts.entity_base import TypeclassBase
 from . models import AreaDB
 from typeclasses.scripts import GlobalScript
 from features.core.base import AthanorTypeEntity, AthanorTreeEntity
@@ -9,7 +9,7 @@ from evennia.utils.logger import log_trace
 from utils.text import partial_match
 from typeclasses.rooms import Room
 from typeclasses.exits import Exit
-from evennia.typeclasses.managers import TypeclassManager
+from evennia.typeclasses import TypeclassManager
 
 
 class DefaultArea(AreaDB, AthanorTypeEntity, AthanorTreeEntity, metaclass=TypeclassBase):
