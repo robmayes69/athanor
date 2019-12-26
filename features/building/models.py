@@ -1,57 +1,37 @@
 from django.db import models
-from evennia.typeclasses.models import TypedObject
+from evennia.typeclasses.models import SharedMemoryModel
 
 
-class AreaDB(TypedObject):
-    __settingclasspath__ = "features.building.building.DefaultArea"
-    __defaultclasspath__ = "features.building.building.DefaultArea"
-    __applabel__ = "building"
-
+class AreaDB(SharedMemoryModel):
+    db_name = models.CharField(max_length=255, null=False, blank=False)
+    db_iname = models.CharField(max_length=255, null=False, blank=False)
+    db_object = models.OneToOneField('objects.ObjectDB', related_name='area_data', on_delete=models.CASCADE)
     db_parent = models.ForeignKey('self', null=True, on_delete=models.PROTECT, related_name='children')
-    db_owner = models.ForeignKey('core.EntityMapDB', related_name='territory', null=True, on_delete=models.SET_NULL)
+    db_owner = models.ForeignKey('objects.ObjectDB', related_name='territory', null=True, on_delete=models.SET_NULL)
     db_room_typeclass = models.ForeignKey('core.TypeclassMap', null=True, related_name='building',
                                           on_delete=models.PROTECT)
     db_exit_typeclass = models.ForeignKey('core.TypeclassMap', null=True, related_name='exits',
                                           on_delete=models.PROTECT)
-    db_fixtures = models.ManyToManyField('objects.ObjectDB', related_name='areas')
-    db_transient = models.ManyToManyField('objects.ObjectDB', related_name='current_areas')
+    db_system_identifier = models.CharField(max_length=255, null=True, blank=False, unique=True)
 
     class Meta:
-        unique_together = (('db_parent', 'db_key'), )
+        unique_together = (('db_parent', 'db_iname'), )
         verbose_name = 'Area'
         verbose_name_plural = 'Areas'
 
 
-class CoordinateDB(TypedObject):
-    __settingclasspath__ = "features.space.space.DefaultCoordinate"
-    __defaultclasspath__ = "features.space.space.DefaultCoordinate"
-    __applabel__ = "building"
-
+class CoordinateDB(SharedMemoryModel):
     db_entity = models.OneToOneField('objects.ObjectDB', related_name='coordinates', on_delete=models.CASCADE)
-    db_sector = models.ForeignKey('objects.ObjectDB', related_name='space_coordinates', on_delete=models.CASCADE)
-
     db_x = models.FloatField(default=0.0, null=False)
     db_y = models.FloatField(default=0.0, null=False)
     db_z = models.FloatField(default=0.0, null=False)
-
-    db_x_velocity = models.FloatField(default=0.0, null=False)
-    db_y_velocity = models.FloatField(default=0.0, null=False)
-    db_z_velocity = models.FloatField(default=0.0, null=False)
-
-    db_pitch = models.FloatField(default=0.0, null=False)
-    db_yaw = models.FloatField(default=0.0, null=False)
-    db_roll = models.FloatField(default=0.0, null=False)
-
-    db_pitch_transform = models.FloatField(default=0.0, null=False)
-    db_yaw_transform = models.FloatField(default=0.0, null=False)
-    db_roll_transform = models.FloatField(default=0.0, null=False)
 
     class Meta:
         verbose_name = 'SectorLocation'
         verbose_name_plural = 'SectorLocations'
 
 
-class MapDB(TypedObject):
+class MapDB(SharedMemoryModel):
     """
     Maps are just names to organize rooms within the same 3-dimensional grouping.
     This is used for the Automapper.
@@ -113,7 +93,7 @@ class HasXYZ(models.Model):
         abstract = True
 
 
-class MapPointDB(TypedObject, HasXYZ):
+class MapPointDB(SharedMemoryModel, HasXYZ):
     """
     Each Room can be a member of a single Map.
 
@@ -124,15 +104,3 @@ class MapPointDB(TypedObject, HasXYZ):
 
     class Meta:
         unique_together = (('db_map', 'db_x_coordinate', 'db_y_coordinate', 'db_z_coordinate'), )
-
-
-class GatewayDB(TypedObject):
-    """
-    Bwargh!
-    """
-    db_area = models.ForeignKey(AreaDB, related_name='gateways', on_delete=models.PROTECT)
-
-    class Meta:
-        unique_together = (('db_area', 'db_key'),)
-        verbose_name = 'Gateway'
-        verbose_name_plural = 'Gateways'

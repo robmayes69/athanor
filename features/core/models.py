@@ -1,7 +1,7 @@
 from django.db import models
 from django.core.exceptions import ValidationError
 from evennia.utils.ansi import ANSIString
-from evennia.typeclasses.models import TypedObject
+from evennia.typeclasses.models import SharedMemoryModel
 from evennia.utils.utils import class_from_module
 from evennia.utils.logger import log_trace
 
@@ -21,7 +21,7 @@ def validate_typeclass(value):
         raise ValidationError(f"Cannot find Typeclass {value}!")
 
 
-class TypeclassMap(models.Model):
+class TypeclassMap(SharedMemoryModel):
     db_key = models.CharField(max_length=255, null=False, unique=True, blank=False, validators=[validate_typeclass,])
 
     def get_typeclass(self):
@@ -34,17 +34,11 @@ class TypeclassMap(models.Model):
         return typeclass
 
 
-class EntityMapDB(TypedObject):
-    __settingclasspath__ = "features.core.core.DefaultEntityMap"
-    __defaultclasspath__ = "features.core.core.DefaultEntityMap"
-    __applabel__ = "core"
+class RelationshipDB(SharedMemoryModel):
+    db_holder = models.ForeignKey('objects.ObjectDB', related_name='relationships', on_delete=models.CASCADE)
+    db_kind = models.CharField(max_length=255, null=False, blank=False)
+    db_object = models.ForeignKey('objects.ObjectDB', related_name='links', on_delete=models.CASCADE)
 
-    db_model = models.CharField(max_length=255, null=False, blank=False)
-    db_instance = models.IntegerField(null=False)
-    db_owner_date_created = models.DateTimeField(null=False)
-    db_deleted = models.BooleanField(default=False)
 
     class Meta:
-        unique_together = ('db_model', 'db_instance', 'db_owner_date_created')
-        verbose_name = 'EntityMap'
-        verbose_name_plural = 'EntityMaps'
+        unique_together = (('db_holder', 'db_kind', 'db_object'),)
