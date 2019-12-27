@@ -8,7 +8,6 @@ class AreaDB(SharedMemoryModel):
     db_name = models.CharField(max_length=255, null=False, blank=False)
     db_iname = models.CharField(max_length=255, null=False, blank=False)
     db_object = models.OneToOneField('objects.ObjectDB', related_name='area_data', on_delete=models.CASCADE)
-    db_owner = models.ForeignKey('objects.ObjectDB', related_name='territory', null=True, on_delete=models.SET_NULL)
     db_room_typeclass = models.ForeignKey('core.TypeclassMap', null=True, related_name='building',
                                           on_delete=models.PROTECT)
     db_exit_typeclass = models.ForeignKey('core.TypeclassMap', null=True, related_name='exits',

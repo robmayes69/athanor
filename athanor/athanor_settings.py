@@ -9,7 +9,7 @@ evennia/settings_default.py
 Remember:
 
 This is for settings that Athanor assumes. For your own server's
-settings, adjust settings.py. See the instructions there for more
+settings, adjust old_settings.py. See the instructions there for more
 information.
 
 """
