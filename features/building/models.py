@@ -3,25 +3,25 @@ from evennia.typeclasses.models import SharedMemoryModel
 
 
 class AreaDB(SharedMemoryModel):
+    db_parent = models.ForeignKey('self', related_name='children', on_delete=models.PROTECT)
+    db_system_identifier = models.CharField(max_length=255, null=True, blank=False, unique=True)
     db_name = models.CharField(max_length=255, null=False, blank=False)
     db_iname = models.CharField(max_length=255, null=False, blank=False)
     db_object = models.OneToOneField('objects.ObjectDB', related_name='area_data', on_delete=models.CASCADE)
-    db_parent = models.ForeignKey('self', null=True, on_delete=models.PROTECT, related_name='children')
     db_owner = models.ForeignKey('objects.ObjectDB', related_name='territory', null=True, on_delete=models.SET_NULL)
     db_room_typeclass = models.ForeignKey('core.TypeclassMap', null=True, related_name='building',
                                           on_delete=models.PROTECT)
     db_exit_typeclass = models.ForeignKey('core.TypeclassMap', null=True, related_name='exits',
                                           on_delete=models.PROTECT)
-    db_system_identifier = models.CharField(max_length=255, null=True, blank=False, unique=True)
 
     class Meta:
-        unique_together = (('db_parent', 'db_iname'), )
+        unique_together = (('db_parent', 'db_system_identifier'), ('db_instance', 'db_iname'))
         verbose_name = 'Area'
         verbose_name_plural = 'Areas'
 
 
 class CoordinateDB(SharedMemoryModel):
-    db_entity = models.OneToOneField('objects.ObjectDB', related_name='coordinates', on_delete=models.CASCADE)
+    db_entity = models.OneToOneField('objects.ObjectDB', related_name='coordinate_data', on_delete=models.CASCADE)
     db_x = models.FloatField(default=0.0, null=False)
     db_y = models.FloatField(default=0.0, null=False)
     db_z = models.FloatField(default=0.0, null=False)
@@ -36,8 +36,7 @@ class MapDB(SharedMemoryModel):
     Maps are just names to organize rooms within the same 3-dimensional grouping.
     This is used for the Automapper.
     """
-    db_key = models.CharField(max_length=255, blank=False, null=False)
-    db_description = models.TextField(null=True)
+    db_system_identifier = models.CharField(max_length=255, null=False, blank=False, unique=True)
 
     def scan_x(self, x_start, y_start, z_start, x_distance):
         """
@@ -48,7 +47,6 @@ class MapDB(SharedMemoryModel):
             y_start (int): The upper-most point on the map to begin the scan.
             z_start (int): The z-plane we'll be showing.
             x_distance (int): How many map squares (including the start) to the right to show.
-            y_distance (int): How many map squares down (including start) should be shown.
 
         Returns:
             XArray (list): A List of Rooms and Nones depending on coordinates given.
@@ -93,14 +91,32 @@ class HasXYZ(models.Model):
         abstract = True
 
 
-class MapPointDB(SharedMemoryModel, HasXYZ):
+class RoomDB(SharedMemoryModel, HasXYZ):
     """
-    Each Room can be a member of a single Map.
 
-    Two Rooms may not inhabit the same coordinates.
     """
-    db_room = models.OneToOneField('objects.ObjectDB', related_name='map_point', on_delete=models.CASCADE)
-    db_map = models.ForeignKey(MapDB, related_name='points', on_delete=models.CASCADE)
+    db_object = models.OneToOneField('objects.ObjectDB', related_name='room_data', primary_key=True,
+                                     on_delete=models.CASCADE)
+    db_area = models.ForeignKey(AreaDB, related_name='rooms', on_delete=models.PROTECT)
+    db_map = models.ForeignKey(MapDB, related_name='points', on_delete=models.PROTECT)
+    db_system_identifier = models.CharField(max_length=255, null=True, blank=False)
 
     class Meta:
-        unique_together = (('db_map', 'db_x_coordinate', 'db_y_coordinate', 'db_z_coordinate'), )
+        unique_together = (('db_map', 'db_x_coordinate', 'db_y_coordinate', 'db_z_coordinate'),
+                           ('db_area', 'db_system_identifier'))
+
+
+class InstanceDB(MapDB):
+    db_system_identifier = models.CharField(max_length=255, null=False, blank=False, unique=True)
+    db_object = models.OneToOneField('objects.ObjectDB', related_name='instance_data', on_delete=models.CASCADE)
+
+
+class InstanceRoomDB(RoomDB):
+    db_object = models.OneToOneField('objects.ObjectDB', related_name='instance_room_data', primary_key=True,
+                                     on_delete=models.CASCADE)
+    db_instance = models.ForeignKey(InstanceDB, related_name='rooms', on_delete=models.PROTECT)
+    db_system_identifier = models.CharField(max_length=255, null=True, blank=False)
+
+    class Meta:
+        unique_together = (('db_instance', 'db_x_coordinate', 'db_y_coordinate', 'db_z_coordinate'),
+                           ('db_instance', 'db_system_identifier'))
