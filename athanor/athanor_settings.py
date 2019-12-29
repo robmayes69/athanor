@@ -242,11 +242,3 @@ del sections
 # Definitely want these OFF in Production.
 DEBUG = True
 IN_GAME_ERRORS = True
-
-######################################################################
-# Settings given in secret_settings.py override those in this file.
-######################################################################
-try:
-    from server.conf.secret_settings import *
-except ImportError:
-    print("secret_settings.py file not found or failed to import.")

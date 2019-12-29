@@ -39,6 +39,15 @@ class RelationshipDB(SharedMemoryModel):
     db_kind = models.CharField(max_length=255, null=False, blank=False)
     db_object = models.ForeignKey('objects.ObjectDB', related_name='links', on_delete=models.CASCADE)
 
-
     class Meta:
         unique_together = (('db_holder', 'db_kind', 'db_object'),)
+
+
+class MastersDB(SharedMemoryModel):
+    db_extension = models.CharField(max_length=255, null=False, blank=False)
+    db_kind = models.CharField(max_length=255, null=False, blank=False)
+    db_key = models.CharField(max_length=255, null=False, blank=False)
+    db_used = models.ManyToManyField('objects.ObjectDB', related_name='masters')
+
+    class Meta:
+        unique_together = (('db_extension', 'db_kind', 'db_key'),)

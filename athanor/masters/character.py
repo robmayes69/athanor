@@ -1,0 +1,2 @@
+class CharacterMasterMixin(object):
+    pass
