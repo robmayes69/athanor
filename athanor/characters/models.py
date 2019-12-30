@@ -7,7 +7,8 @@ class CharacterDB(SharedMemoryModel):
                                      on_delete=models.CASCADE)
     db_name = models.CharField(max_length=255, null=False, blank=False)
     db_iname = models.CharField(max_length=255, null=False, blank=False, unique=True)
-    db_account = models.ForeignKey('accounts.AccountDB', related_name='characters', on_delete=models.SET_NULL, null=True)
+    db_account = models.ForeignKey('accounts.AccountDB', related_name='characters', on_delete=models.SET_NULL,
+                                   null=True)
 
 
     class Meta:

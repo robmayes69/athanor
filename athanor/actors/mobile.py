@@ -1,2 +1,0 @@
-class MobileActorMixin(object):
-    pass

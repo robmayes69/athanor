@@ -1,2 +1,0 @@
-class StructureMasterMixin(object):
-    pass

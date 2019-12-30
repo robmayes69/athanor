@@ -57,33 +57,31 @@ IDLE_TIMEOUT = -1
 MULTISESSION_MODE = 3
 
 USE_TZ = True
-MAX_NR_CHARACTERS = 3
 TELNET_OOB_ENABLED = True
 
 WEBSOCKET_ENABLED = True
 
 INLINEFUNC_ENABLED = True
 
-INSTALLED_APPS = tuple(INSTALLED_APPS) + ('features.core', 'features.factions', 'features.forum', 'features.staff', 'features.themes',
-                                   'features.note', 'features.jobs', 'features.building',  'features.rplogger',
-                                   'features.mush_import', "features.effects", "features.items",
-                                   "features.quests", "features.traits", 'features.channels')
+INSTALLED_APPS = tuple(INSTALLED_APPS) + ('athanor.core', 'athanor.factions', 'athanor.forum', 'athanor.staff', 'athanor.themes',
+                                   'athanor.note', 'athanor.jobs', 'athanor.building',  'athanor.rplogger',
+                                   'athanor.mush_import', "athanor.items", "athanor.traits", 'athanor.channels')
 
-ROOT_URLCONF = None
+#ROOT_URLCONF = None
 
-COMMAND_DEFAULT_CLASS = "commands.command.Command"
+#COMMAND_DEFAULT_CLASS = "commands.command.Command"
 
 
-SERVER_SESSION_CLASS = "typeclasses.sessions.Session"
+#SERVER_SESSION_CLASS = "typeclasses.sessions.Session"
 
 
 ######################################################################
 # Account Options
 ######################################################################
-BASE_ACCOUNT_TYPECLASS = "typeclasses.accounts.Account"
+BASE_ACCOUNT_TYPECLASS = "athanor.typeclasses.accounts.Account"
 
 GLOBAL_SCRIPTS['accounts'] = {
-    'typeclass': 'typeclasses.accounts.AccountController',
+    'typeclass': 'athanor.typeclasses.accounts.AccountController',
     'repeats': -1, 'interval': 50, 'desc': 'Controller for Account System'
 }
 
@@ -98,11 +96,10 @@ OPTIONS_ACCOUNT_DEFAULT['column_names_color'] = ("Table column header text.", "C
 # Area Settings
 ######################################################################
 GLOBAL_SCRIPTS['area'] = {
-    'typeclass': 'typeclasses.areas.AreaController',
+    'typeclass': 'athanor.typeclasses.areas.AreaController',
     'repeats': -1, 'interval': 50, 'desc': 'Controller for Area System'
 }
 
-BASE_AREA_TYPECLASS = 'typeclasses.areas.Area'
 
 ######################################################################
 # Channel Settings
@@ -113,10 +110,10 @@ CHANNEL_COMMAND_CLASS = "evennia.comms.channelhandler.ChannelCommand"
 ######################################################################
 # Character Settings
 ######################################################################
-BASE_CHARACTER_TYPECLASS = "typeclasses.characters.PlayerCharacter"
+BASE_CHARACTER_TYPECLASS = "athanor.typeclasses.characters.PlayerCharacter"
 
 GLOBAL_SCRIPTS['characters'] = {
-    'typeclass': 'typeclasses.characters.CharacterController',
+    'typeclass': 'athanor.typeclasses.characters.CharacterController',
     'repeats': -1, 'interval': 50, 'desc': 'Controller for Character System'
 }
 
@@ -124,15 +121,57 @@ NAME_DUB_SYSTEM_ENABLED = False
 
 MAX_NR_CHARACTERS = 10000
 
-######################################################################
-# Effect Settings
-######################################################################
-BASE_EFFECT_TYPECLASS = 'typeclasses.effects.Effect'
+GENDER_SUBSTITUTIONS = {
+        'male': {
+            'gender': 'male',
+            'child': 'boy',
+            'young': 'young man',
+            'adult': 'man',
+            'elder': 'old man',
+            'prefix': 'Mr. ',
+            'prefix_married': 'Mr.',
+            'polite': 'sir',
+            'subjective': 'he',
+            'objective': 'him',
+            'possessive': 'his',
+        },
+        'female': {
+            'gender': 'female',
+            'child': 'girl',
+            'young': 'young woman',
+            'adult': 'woman',
+            'elder': 'old woman',
+            'prefix': 'Ms. ',
+            'prefix_married': 'Mrs.',
+            'polite': 'miss',
+            'subjective': 'she',
+            'objective': 'her',
+            'possessive': 'hers',
+        },
+        None: {
+            'gender': 'neuter',
+            'child': 'being',
+            'young': 'young being',
+            'adult': 'being',
+            'elder': 'old being',
+            'prefix': 'Mr. ',
+            'prefix_married': 'Mr.',
+            'polite': 'sir',
+            'subjective': 'it',
+            'objective': 'it',
+            'possessive': 'its',
+        },
+        'self': {
+            'subjective': 'you',
+            'objective': 'you',
+            'possessive': 'your',
+        }
+}
 
 ######################################################################
 # Exit Settings
 ######################################################################
-BASE_EXIT_TYPECLASS = "typeclasses.exits.Exit"
+BASE_EXIT_TYPECLASS = "athanor.typeclasses.exits.Exit"
 EXIT_ERRORS = True
 
 ######################################################################
@@ -144,94 +183,56 @@ EXIT_ERRORS = True
 #   just under your own rank.
 # titleself: can set your own title.
 
+
 GLOBAL_SCRIPTS['faction'] = {
-    'typeclass': 'typeclasses.factions.FactionController',
+    'typeclass': 'athanor.typeclasses.factions.FactionController',
     'repeats': -1, 'interval': 50, 'desc': 'Faction Manager for Faction System'
 }
-
-BASE_FACTION_TYPECLASS = 'typeclasses.factions.Faction'
-BASE_FACTION_PRIVILEGE_TYPECLASS = 'typeclasses.factions.FactionPrivilege'
-BASE_FACTION_ROLE_TYPECLASS = 'typeclasses.factions.FactionRole'
-BASE_FACTION_LINK_TYPECLASS = 'typeclasses.factions.FactionLink'
-BASE_FACTION_ROLE_LINK_TYPECLASS = 'typeclasses.factions.FactionRoleLink'
 
 
 ######################################################################
 # Forum Settings
 ######################################################################
 GLOBAL_SCRIPTS['forum'] = {
-    'typeclass': 'typeclasses.forum.ForumController',
+    'typeclass': 'athanor.typeclasses.forum.ForumController',
     'repeats': -1, 'interval': 60, 'desc': 'Forum BBS API',
     'locks': "admin:perm(Admin)",
 }
 
-BASE_FORUM_CATEGORY_TYPECLASS = 'typeclasses.forum.ForumCategory'
-BASE_FORUM_BOARD_TYPECLASS = 'typeclasses.forum.ForumBoard'
-BASE_FORUM_THREAD_TYPECLASS = "typeclasses.forum.ForumThread"
-BASE_FORUM_POST_TYPECLASS = 'typeclasses.forum.ForumPost'
-
-######################################################################
-# Gear Settings
-######################################################################
-BASE_INVENTORY_TYPECLASS = 'typeclasses.items.Inventory'
-BASE_INVENTORY_SLOT_TYPECLASS = 'typeclasses.items.InventorySlot'
-
-BASE_GEAR_SET_TYPECLASS = 'typeclasses.items.GearSet'
-BASE_GEAR_SLOT_TYPECLASS = 'typeclasses.items.GearSLot'
-
-######################################################################
-# Gear Settings
-######################################################################
-BASE_ITEM_TYPECLASS = 'typeclasses.items.Item'
 
 ######################################################################
 # Job Settings
 ######################################################################
 GLOBAL_SCRIPTS['jobs'] = {
-    'typeclass': 'features.jobs.global_scripts.JobManager',
+    'typeclass': 'athanor.jobs.global_scripts.JobManager',
     'repeats': -1, 'interval': 60, 'desc': 'Job API for Job System',
     'locks': "admin:perm(Admin)",
 }
 
-######################################################################
-# Note Settings
-######################################################################
-BASE_NOTE_CATEGORY_TYPECLASS = 'typeclasses.note.NoteCategory'
-BASE_NOTE_TYPECLASS = 'typeclasses.note.Note'
 
 ######################################################################
 # Theme Settings
 ######################################################################
 GLOBAL_SCRIPTS['theme'] = {
-    'typeclass': 'typeclasses.themes.ThemeController',
+    'typeclass': 'athanor.typeclasses.themes.ThemeController',
     'repeats': -1, 'interval': 50, 'desc': 'Theme Controller for Theme System'
 }
 
-BASE_THEME_TYPECLASS = 'typeclasses.themes.Theme'
-BASE_THEME_PARTICIPANT_TYPECLASS = 'typeclasses.themes.ThemeParticipant'
-
 ######################################################################
-# RP Logger Settings
+# RP Event Settings
 ######################################################################
 GLOBAL_SCRIPTS['events'] = {
-    'typeclass': 'typeclasses.rplogger.EventController',
+    'typeclass': 'athanor.typeclasses.rplogger.EventController',
     'repeats': -1, 'interval': 50, 'desc': 'Event Controller for RP Logger System'
 }
 
-BASE_PLOT_TYPECLASS = 'typeclasses.rplogger.Plot'
-BASE_PLOT_RUNNER_TYPECLASS = 'typeclasses.rplogger.PlotRunner'
-BASE_EVENT_TYPECLASS = 'typeclasses.rplogger.Event'
-BASE_EVENT_PARTICIPANT_TYPECLASS = 'typeclasses.rplogger.EventParticipant'
-BASE_EVENT_SOURCE_TYPECLASS = 'typeclasses.rplogger.EventSource'
-BASE_EVENT_CODENAME_TYPECLASS = 'typeclasses.rplogger.EventCodename'
-BASE_EVENT_ACTION_TYPECLASS = 'typeclasses.rplogger.EventAction'
 
 ######################################################################
 # Funcs Settings
 ######################################################################
 sections = ['building', 'effects', 'factions', 'forum', 'items',
             'note', 'quests', 'rplogger']
-EXTRA_LOCK_FUNCS = tuple([f"features.{s}.locks" for s in sections])
+EXTRA_LOCK_FUNCS = tuple([f"athanor.{s}.locks" for s in sections])
 LOCK_FUNC_MODULES = LOCK_FUNC_MODULES + EXTRA_LOCK_FUNCS
 del EXTRA_LOCK_FUNCS
 del sections

@@ -1,2 +1,0 @@
-class MobileMasterMixin(object):
-    pass

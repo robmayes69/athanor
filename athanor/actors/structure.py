@@ -1,3 +1,0 @@
-class StructureActorMixin(object):
-    pass
-

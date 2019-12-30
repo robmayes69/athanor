@@ -1,4 +1,4 @@
-class BaseInventory(object):
+class Inventory(object):
 
     def __init__(self, handler):
         self.handler = handler
@@ -17,14 +17,10 @@ class BaseInventory(object):
         return self.contents
 
 
-class PersistentInventory(BaseInventory):
-    pass
-
-
 class InventoryHandler(object):
 
-    def __init__(self, actor):
-        self.actor = actor
+    def __init__(self, owner):
+        self.owner = owner
         self.inventories = dict()
 
     def all_items(self):
@@ -32,3 +28,11 @@ class InventoryHandler(object):
         for inventory in self.inventories.values():
             all_items += inventory.all()
         return all_items
+
+
+class GearHandler(object):
+
+    def __init__(self, owner):
+        self.owner = owner
+        self.gearsets = dict()
+

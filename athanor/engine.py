@@ -1,6 +1,6 @@
 from django.conf import settings
 from evennia.utils.utils import class_from_module
-from os import path, scandir
+from os import path, scandir, getcwd
 import yaml
 from evennia.utils.utils import mod_import
 
@@ -98,13 +98,13 @@ class World(object):
     def load(self):
         self.load_extensions()
         self.load_abstracts()
-        self.load_grid()
         self.load_masters()
-        self.load_instances()
+        self.load_grid()
 
     def load_extensions(self):
         extension_class = class_from_module(settings.WORLD_EXTENSION_CLASS)
-        for ex in settings.EXTENSION_MODULES:
+        ex_path = path.join(getcwd(), 'extensions')
+        for ex in [ex for ex in scandir(ex_path) if ex.is_dir()]:
             if ex not in self.extensions:
                 found_module = mod_import(f"extensions.{ex}")
                 self.extensions[ex] = extension_class(ex, self, found_module)

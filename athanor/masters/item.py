@@ -1,2 +1,0 @@
-class ItemMasterMixin(object):
-    pass

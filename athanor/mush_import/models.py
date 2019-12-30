@@ -1,7 +1,7 @@
 import hashlib
 from django.db import models
 from django.db.models import Q
-from utils.text import partial_match
+from athanor.utils.text import partial_match
 from evennia.utils.utils import lazy_property
 
 
@@ -9,9 +9,9 @@ class MushObject(models.Model):
     obj = models.OneToOneField('objects.ObjectDB', related_name='mush', null=True, on_delete=models.SET_NULL)
     account = models.OneToOneField('accounts.AccountDB', related_name='mush', null=True, on_delete=models.SET_NULL)
     group = models.OneToOneField('factions.FactionDB', related_name='mush', null=True, on_delete=models.SET_NULL)
-    board = models.OneToOneField('forum.ForumBoardDB', related_name='mush', null=True, on_delete=models.SET_NULL)
-    fclist = models.OneToOneField('themes.ThemeDB', related_name='mush', null=True, on_delete=models.SET_NULL)
-    area = models.OneToOneField('building.AreaDB', related_name='mush', null=True, on_delete=models.SET_NULL)
+    board = models.OneToOneField('forum.ForumBoard', related_name='mush', null=True, on_delete=models.SET_NULL)
+    fclist = models.OneToOneField('themes.Theme', related_name='mush', null=True, on_delete=models.SET_NULL)
+    area = models.OneToOneField('building.StructureDB', related_name='mush', null=True, on_delete=models.SET_NULL)
     dbref = models.CharField(max_length=15, db_index=True)
     objid = models.CharField(max_length=30, unique=True, db_index=True)
     type = models.PositiveSmallIntegerField(db_index=True)
@@ -118,7 +118,7 @@ class MushObject(models.Model):
 
     @lazy_property
     def entity(self):
-        from .. core.base import EntityMap
+        from .. core.gameentity import EntityMap
         found, created = EntityMap.objects.get_or_create(db_model='mushdb', db_instance=self.id,
                                                          db_owner_date_created=self.created, db_key=self.name)
         if created:

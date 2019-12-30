@@ -1,12 +1,9 @@
 from django.db import models
-from evennia.typeclasses.models import TypedObject
+from evennia.typeclasses.models import SharedMemoryModel
 
 
-class Mail(TypedObject):
-    __settingclasspath__ = "features.mail.mail.DefaultMail"
-    __defaultclasspath__ = "features.mail.mail.DefaultMail"
-    __applabel__ = "mail"
-
+class Mail(SharedMemoryModel):
+    db_subject = models.TextField(null=False, blank=False)
     db_body = models.TextField(null=False, blank=False)
 
     class Meta:
@@ -14,13 +11,9 @@ class Mail(TypedObject):
         verbose_name_plural = 'Mail'
 
 
-class MailLink(TypedObject):
-    __settingclasspath__ = "features.mail.mail.DefaultMailLink"
-    __defaultclasspath__ = "features.mail.mail.DefaultMailLink"
-    __applabel__ = "mail"
-
+class MailLink(SharedMemoryModel):
     db_mail = models.ForeignKey('mail.Mail', related_name='mail_links', on_delete=models.CASCADE)
-    db_owner = models.ForeignKey('core.EntityMap', related_name='mail_links', on_delete=models.CASCADE)
+    db_owner = models.ForeignKey('objects.ObjectDB', related_name='mail_links', on_delete=models.CASCADE)
     db_link_type = models.PositiveSmallIntegerField(default=0)
     db_link_active = models.BooleanField(default=True)
     db_date_read = models.DateTimeField(null=True)

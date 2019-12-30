@@ -4,13 +4,13 @@ from setuptools import setup, find_packages
 
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
-VERSION_PATH = os.path.join("evennia", "VERSION.txt")
+VERSION_PATH = os.path.join("athanor", "VERSION.txt")
 OS_WINDOWS = os.name == "nt"
 
 
 def get_requirements():
     """
-    To update the requirements for Evennia, edit the requirements.txt file.
+    To update the requirements for Athanor, edit the requirements.txt file.
     """
     with open("requirements.txt", "r") as f:
         req_lines = f.readlines()
@@ -53,36 +53,38 @@ def package_data():
     Make sure we get everything.
     """
     file_set = []
-    for root, dirs, files in os.walk("evennia"):
+    for root, dirs, files in os.walk("athanor"):
         for f in files:
             if ".git" in f.split(os.path.normpath(os.path.join(root, f))):
                 # Prevent the repo from being added.
                 continue
-            file_name = os.path.relpath(os.path.join(root, f), "evennia")
+            file_name = os.path.relpath(os.path.join(root, f), "athanor")
             file_set.append(file_name)
     return file_set
 
 
 # setup the package
 setup(
-    name="evennia",
+    name="athanor",
     version=get_version(),
-    author="The Evennia community",
-    maintainer="Griatch",
-    url="http://www.evennia.com",
-    description="A full-featured toolkit and server for text-based multiplayer games (MUDs, MU*).",
+    author="Volund",
+    maintainer="Volund",
+    url="https://github.com/volundmush/athanor",
+    description="A library that builds on Evennia to provide popular and useful features for text-based multiplayer games (MUDs, MU*).",
     license="BSD",
     long_description="""
-    _Evennia_ is an open-source library and toolkit for building multi-player
-    online text games (MUD, MUX, MUSH, MUCK and other MU*). You easily design
-    your entire game using normal Python modules, letting Evennia handle the
-    boring stuff all multiplayer games need. Apart from supporting traditional
-    MUD clients, Evennia comes with both a HTML5 game web-client and a
-    web-server out of the box.
+    Athanor is an open-source library and toolkit built atop of Evennia for
+    the purpose of easing the process of building all sorts of multi-player
+    online text games (MUD, MUX, MUSH, MUCK and other MU*). Modules are provided
+    that make the experience much more similar to traditional MUDs and MUSHes than
+    the tools Evennia provides out of the box, from communication tools to common
+    RPG design patterns such as Equipment slots and Inventory control. Athanor gets
+    its name after the alchemist's furnace, as it hopes to refine the things that
+    Evennia is already great into something even grander.
     """,
     long_description_content_type="text/markdown",
     packages=find_packages(),
-    scripts=get_scripts(),
+    # scripts=get_scripts(),
     install_requires=get_requirements(),
     package_data={"": package_data()},
     zip_safe=False,
@@ -113,11 +115,12 @@ setup(
     ],
     python_requires=">=3.7",
     project_urls={
-        "Source": "https://github.com/evennia/evennia",
+        "Source": "https://github.com/volundmush/athanor",
+        "For": "https://github.com/evennia/evennia",
         "Issue tracker": "https://github.com/evennia/evennia/issues",
         "Chat": "http://www.evennia.com/chat-redirect-3",
         "Forum": "https://groups.google.com/forum/#%21forum/evennia",
         "Dev Blog": "http://evennia.blogspot.com/",
-        "Patreon": "https://www.patreon.com/griatch",
+        "Patreon": "https://www.patreon.com/volund",
     },
 )

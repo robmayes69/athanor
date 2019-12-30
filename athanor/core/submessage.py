@@ -1,135 +1,22 @@
-from utils.online import admin_chars
+from athanor.utils.online import admin_chars
+from django.conf import settings
 
 
 class SubMessageMixin(object):
+    gender_pack = settings.GENDER_SUBSTITUTIONS
 
     def generate_substitutions(self, viewer):
         response = dict()
         name = self.get_display_name(looker=viewer)
         response['name'] = name
-        response['NAME'] = name.upper()
-        response['Name'] = name.capitalize()
-        return response
-
-
-class SubMessageMixinCharacter(SubMessageMixin):
-    gender_pack = {
-        'male': {
-            'gender': 'male',
-            'Gender': 'Male',
-            'GENDER': 'MALE',
-            'child': 'boy',
-            'Child': 'Boy',
-            'CHILD': 'BOY',
-            'young': 'young man',
-            'Young': "Young man",
-            'YOUNG': 'YOUNG MAN',
-            'adult': 'man',
-            'Adult': 'Man',
-            'ADULT': 'MAN',
-            'elder': 'old man',
-            'Elder': 'Old man',
-            'ELDER': 'OLD MAN',
-            'prefix': 'Mr. ',
-            'prefix_married': 'Mr.',
-            'polite': 'sir',
-            'Polite': 'Sir',
-            'POLITE': 'SIR',
-            'subjective': 'he',
-            'Subjective': 'He',
-            'SUBJECTIVE': 'HE',
-            'objective': 'him',
-            'Objective': 'Him',
-            'OBJECTIVE': 'HIM',
-            'possessive': 'his',
-            'Possessive': 'His',
-            'POSSESSIVE': 'HIS',
-        },
-        'female': {
-            'gender': 'female',
-            'Gender': 'Female',
-            'GENDER': 'FEMALE',
-            'child': 'girl',
-            'Child': 'Girl',
-            'CHILD': 'GIRL',
-            'young': 'young woman',
-            'Young': "Young woman",
-            'YOUNG': 'YOUNG WOMAN',
-            'adult': 'woman',
-            'Adult': 'Woman',
-            'ADULT': 'WOMAN',
-            'elder': 'old woman',
-            'Elder': 'Old woman',
-            'ELDER': 'OLD WOMAN',
-            'prefix': 'Ms. ',
-            'prefix_married': 'Mrs.',
-            'polite': 'miss',
-            'Polite': 'Miss',
-            'POLITE': 'MISS',
-            'subjective': 'she',
-            'Subjective': 'She',
-            'SUBJECTIVE': 'SHE',
-            'objective': 'her',
-            'Objective': 'Her',
-            'OBJECTIVE': 'HER',
-            'possessive': 'hers',
-            'Possessive': 'Hers',
-            'POSSESSIVE': 'HERS',
-        },
-        None: {
-            'gender': 'neuter',
-            'Gender': 'Neuter',
-            'GENDER': 'NEUTER',
-            'child': 'being',
-            'Child': 'Being',
-            'CHILD': 'BEING',
-            'young': 'young being',
-            'Young': "Young being",
-            'YOUNG': 'YOUNG BEING',
-            'adult': 'being',
-            'Adult': 'Being',
-            'ADULT': 'BEING',
-            'elder': 'old being',
-            'Elder': 'Old being',
-            'ELDER': 'OLD BEING',
-            'prefix': 'Mr. ',
-            'prefix_married': 'Mr.',
-            'polite': 'sir',
-            'Polite': 'Sir',
-            'POLITE': 'SIR',
-            'subjective': 'it',
-            'Subjective': 'It',
-            'SUBJECTIVE': 'IT',
-            'objective': 'it',
-            'Objective': 'It',
-            'OBJECTIVE': 'IT',
-            'possessive': 'its',
-            'Possessive': 'Its',
-            'POSSESSIVE': 'ITS',
-        },
-        'self': {
-            'subjective': 'you',
-            'Subjective': 'You',
-            'SUBJECTIVE': 'YOU',
-            'objective': 'you',
-            'Objective': 'You',
-            'OBJECTIVE': 'YOU',
-            'possessive': 'your',
-            'Possessive': 'Your',
-            'POSSESSIVE': 'YOUR',
-        }
-    }
-
-    def generate_substitutions(self, viewer):
-        response = dict()
-        name = self.get_display_name(looker=viewer)
-        response['name'] = name
-        response['NAME'] = name.upper()
-        response['Name'] = name.capitalize()
         gender = self.get_gender(looker=viewer)
         response.update(self.gender_pack[gender])
         if viewer == self:
             response.update(self.gender_pack['self'])
+        capitalized_response = {k.capitalize(): v.capitalize() for k, v in response.items()}
+        upper_response = {k.upper(): v.upper() for k, v in response.items()}
+        response.update(capitalized_response)
+        response.update(upper_response)
         return response
 
 
