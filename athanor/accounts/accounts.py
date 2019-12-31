@@ -1,6 +1,6 @@
 from evennia.accounts.accounts import DefaultAccount, DefaultGuest
-from features.core.base import AthanorEntity
-from typeclasses.scripts import GlobalScript
+from athanor.core.base import AthanorEntity
+from athanor.typeclasses.scripts import GlobalScript
 from evennia.utils.utils import class_from_module
 from evennia.utils.logger import log_trace
 from evennia.utils.search import search_account
@@ -89,4 +89,3 @@ class DefaultAccountController(GlobalScript):
 
     def ban_account(self, session, account, duration):
         pass
-

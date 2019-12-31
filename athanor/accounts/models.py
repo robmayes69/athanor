@@ -1,4 +1,11 @@
 from django.db import models
+from evennia.typeclasses.models import SharedMemoryModel
+
+
+class AccountBridge(SharedMemoryModel):
+    db_account = models.OneToOneField('accounts.AccountDB', related_name='account_bridge', primary_key=True,
+                                      on_delete=models.CASCADE)
+    db_object = models.OneToOneField('objects.ObjectDB', related_name='account_bridge', on_delete=models.CASCADE)
 
 
 class Site(models.Model):

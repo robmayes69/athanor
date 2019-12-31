@@ -3,10 +3,10 @@ from evennia.typeclasses.models import SharedMemoryModel
 
 
 class Theme(SharedMemoryModel):
+    db_script = models.OneToOneField('scripts.ScriptDB', related_name='theme_data', primary_key=True,
+                                     on_delete=models.CASCADE)
     db_name = models.CharField(max_length=255, null=False, blank=False)
     db_iname = models.CharField(max_length=255, null=False, blank=False, unique=True)
-    db_description = models.TextField(blank=False, null=False)
-    db_system_identifier = models.CharField(max_length=255, null=True, blank=False, unique=True)
 
     class Meta:
         verbose_name = 'Theme'
@@ -15,10 +15,10 @@ class Theme(SharedMemoryModel):
 
 class ThemeParticipant(SharedMemoryModel):
     db_theme = models.ForeignKey(Theme, related_name='participants', on_delete=models.CASCADE)
-    db_character = models.ForeignKey('objects.ObjectDB', related_name='themes', on_delete=models.PROTECT)
+    db_object = models.ForeignKey('objects.ObjectDB', related_name='themes', on_delete=models.CASCADE)
     db_list_type = models.CharField(max_length=50, blank=False, null=False)
 
     class Meta:
-        unique_together = (('db_theme', 'db_character'),)
+        unique_together = (('db_theme', 'db_object'),)
         verbose_name = 'ThemeParticipant'
         verbose_name_plural = 'ThemeParticipants'

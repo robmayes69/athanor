@@ -2,7 +2,7 @@ from django.db import models
 from evennia.typeclasses.models import SharedMemoryModel
 
 
-class NoteDB(SharedMemoryModel):
+class Note(SharedMemoryModel):
     db_object = models.ForeignKey('objects.ObjectDB', related_name='notes', on_delete=models.CASCADE)
     db_category = models.CharField(max_length=255, null=False, blank=False)
     db_name = models.CharField(max_length=255, null=False, blank=False)
