@@ -34,7 +34,7 @@ class TypeclassMap(SharedMemoryModel):
         return typeclass
 
 
-class RelationshipDB(SharedMemoryModel):
+class Relationship(SharedMemoryModel):
     db_holder = models.ForeignKey('objects.ObjectDB', related_name='relationships', on_delete=models.CASCADE)
     db_kind = models.CharField(max_length=255, null=False, blank=False)
     db_object = models.ForeignKey('objects.ObjectDB', related_name='links', on_delete=models.CASCADE)
@@ -43,11 +43,7 @@ class RelationshipDB(SharedMemoryModel):
         unique_together = (('db_holder', 'db_kind', 'db_object'),)
 
 
-class MastersDB(SharedMemoryModel):
-    db_extension = models.CharField(max_length=255, null=False, blank=False)
-    db_kind = models.CharField(max_length=255, null=False, blank=False)
-    db_key = models.CharField(max_length=255, null=False, blank=False)
-    db_used = models.ManyToManyField('objects.ObjectDB', related_name='masters')
-
-    class Meta:
-        unique_together = (('db_extension', 'db_kind', 'db_key'),)
+class AccountBridge(SharedMemoryModel):
+    db_account = models.OneToOneField('accounts.AccountDB', related_name='account_bridge', primary_key=True,
+                                      on_delete=models.CASCADE)
+    db_object = models.OneToOneField('objects.ObjectDB', related_name='account_bridge', on_delete=models.CASCADE)
