@@ -2,6 +2,18 @@ from django.db import models
 from evennia.typeclasses.models import SharedMemoryModel
 
 
+class SectorDB(SharedMemoryModel):
+    db_system_identifier = models.CharField(max_length=255, null=True, blank=False, unique=True)
+    db_object = models.OneToOneField('objects.ObjectDB', related_name='sector_data', on_delete=models.CASCADE)
+
+
+class CoordinateDB(SharedMemoryModel):
+    db_object = models.OneToOneField('objects.ObjectDB', related_name='spatial_coordinates', on_delete=models.CASCADE)
+    db_x = models.FloatField(default=0.0, blank=False, null=False)
+    db_y = models.FloatField(default=0.0, blank=False, null=False)
+    db_z = models.FloatField(default=0.0, blank=False, null=False)
+
+
 class StructureDB(SharedMemoryModel):
     db_parent = models.ForeignKey('self', related_name='children', on_delete=models.PROTECT)
     db_system_identifier = models.CharField(max_length=255, null=True, blank=False, unique=True)
@@ -72,6 +84,10 @@ class AreaDB(SharedMemoryModel):
     db_object = models.OneToOneField('objects.ObjectDB', related_name='area_data', primary_key=True,
                                      on_delete=models.CASCADE)
     db_structure = models.ForeignKey('objects.ObjectDB', related_name='areas', on_delete=models.CASCADE)
+    db_room_typeclass = models.ForeignKey('core.TypeclassMap', null=True, related_name='+',
+                                          on_delete=models.PROTECT)
+    db_exit_typeclass = models.ForeignKey('core.TypeclassMap', null=True, related_name='+',
+                                          on_delete=models.PROTECT)
     db_system_identifier = models.CharField(max_length=255, null=True, blank=False)
 
     class Meta:

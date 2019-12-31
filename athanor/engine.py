@@ -74,12 +74,8 @@ class World(object):
     def __init__(self):
         self.next_actor_id = 0
         self.actors = dict()
-        self.instances = dict()
-        self.instance_masters = dict()
         self.extensions = dict()
         self.abstracts = dict()
-        self.areas_raw = dict()
-        self.areas = dict()
         self.rooms = dict()
         self.exits = dict()
         self.gateways = dict()
