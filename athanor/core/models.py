@@ -36,12 +36,12 @@ class TypeclassMap(SharedMemoryModel):
 
 
 class Relationship(SharedMemoryModel):
-    db_holder = models.ForeignKey('objects.ObjectDB', related_name='relationships', on_delete=models.CASCADE)
+    db_object = models.ForeignKey('objects.ObjectDB', related_name='relationships', on_delete=models.CASCADE)
     db_kind = models.CharField(max_length=255, null=False, blank=False)
-    db_object = models.ForeignKey('objects.ObjectDB', related_name='links', on_delete=models.CASCADE)
+    db_subject = models.ForeignKey('objects.ObjectDB', related_name='relationships_to', on_delete=models.CASCADE)
 
     class Meta:
-        unique_together = (('db_holder', 'db_kind', 'db_object'),)
+        unique_together = (('db_object', 'db_kind', 'db_subject'),)
 
 
 class Privilege(SharedMemoryModel):

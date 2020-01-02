@@ -1,3 +1,5 @@
+import re
+
 from evennia.objects.objects import DefaultCharacter
 from evennia.utils.utils import class_from_module
 from evennia.utils.logger import log_trace
@@ -15,6 +17,7 @@ class AthanorCharacter(DefaultCharacter, AthanorGameEntity, SubMessageMixin):
 
 
 class AthanorPlayerCharacter(AthanorCharacter):
+    re_name = re.compile(r"(?i)^([A-Z]|[0-9]|\.|-|')+( ([A-Z]|[0-9]|\.|-|')+)*$")
 
     def create_bridge(self, account, key, clean_key):
         if hasattr(self, 'character_bridge'):
@@ -31,6 +34,8 @@ class AthanorPlayerCharacter(AthanorCharacter):
         clean_key = str(key.clean())
         if '|' in clean_key:
             raise ValueError("Malformed ANSI in Character Name.")
+        if not cls.re_name.match(clean_key):
+            raise ValueError("Character name does not meet standards. Avoid double spaces and special characters.")
         if CharacterBridge.objects.filter(db_iname=clean_key.lower()).count():
             raise ValueError("Name conflicts with another Character.")
         character, errors = cls.create(key, account, **kwargs)
@@ -46,6 +51,8 @@ class AthanorPlayerCharacter(AthanorCharacter):
         clean_key = str(key.clean())
         if '|' in clean_key:
             raise ValueError("Malformed ANSI in Character Name.")
+        if not self.re_name.match(clean_key):
+            raise ValueError("Character name does not meet standards. Avoid double spaces and special characters.")
         bridge = self.character_bridge
         if CharacterBridge.objects.filter(db_iname=clean_key.lower()).exclude(id=bridge).count():
             raise ValueError("Name conflicts with another Character.")

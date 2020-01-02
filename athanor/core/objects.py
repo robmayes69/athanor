@@ -5,3 +5,4 @@ from . submessage import SubMessageMixin
 
 class AthanorObject(DefaultObject, AthanorGameEntity, SubMessageMixin):
     pass
+

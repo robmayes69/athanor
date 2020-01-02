@@ -1,3 +1,5 @@
+import re
+
 from django.conf import settings
 from django.db.models import Q
 
@@ -15,6 +17,16 @@ from . import messages
 
 
 class AthanorFaction(AthanorObject):
+    system_privileges = ('manage', 'invite', 'discipline')
+    setup_ranks = {
+        1: {'name': "Leader", "privileges": ('manage', 'invite', 'discipline')},
+        2: {'name': 'Second', "privileges": ('manage', 'invite', 'discipline')},
+        3: {'name': 'Officer', "privileges": ('invite', 'discipline')},
+        4: {'name': "Member", "privileges": ()}
+    }
+    untouchable_ranks = (1, 2, 3)
+    re_name = re.compile(r"")
+
 
     def rename(self, key):
         key = ANSIString(key)
@@ -53,7 +65,64 @@ class AthanorFaction(AthanorObject):
         obj, errors = cls.create(clean_key, **kwargs)
         if obj:
             obj.create_bridge(parent, key, clean_key, abbr, tier)
+            obj.setup_faction()
         return obj, errors
+
+    def setup_faction(self):
+        privs = dict()
+
+        def priv(priv_name):
+            if priv_name in privs:
+                return privs.get(priv_name)
+            priv, created = self.privileges.get_or_create(db_name=priv_name)
+            if created:
+                priv.save()
+            privs[priv_name] = priv
+            return priv
+
+        for p in self.system_privileges:
+            priv(p)
+
+        for number, details in self.setup_ranks.items():
+            rank = self.create_rank(number, details["name"])
+            for p in details.get('privileges', tuple()):
+                rank.privileges.add(priv(p))
+
+    def create_rank(self, number, name):
+        bridge = self.faction_bridge
+        exists = bridge.ranks.filter(db_rank_value=number).first()
+        if exists:
+            raise ValueError(f"Cannot create rank: {exists} conflicts.")
+        rank, created = bridge.ranks.get_or_create(db_rank_value=number, db_name=name)
+        if created:
+            rank.save()
+        return rank
+
+    def effective_rank(self, character, check_admin=True):
+        if check_admin and character.is_admin():
+            return 0
+        found = self.find_member(character)
+        return found.db_rank.db_rank_number
+
+    def find_rank(self, number):
+        found = self.faction_bridge.ranks.filter(db_rank_number=number).first()
+        if not found:
+            raise ValueError(f"{self} does not have Rank {number}!")
+        return found
+
+    def rename_rank(self, number, new_name):
+        found = self.find_rank(number)
+        found.db_name = new_name
+
+    def find_member(self, character):
+        found = character.factions.filter(db_faction=self.faction_bridge)
+        if not found:
+            raise ValueError(f"{character} is not a member of {self}!")
+        return found
+
+    def title_member(self, character, new_title):
+        found = self.find_member(character)
+        found.db_title = new_title
 
 
 class AthanorFactionController(AthanorGlobalScript):
