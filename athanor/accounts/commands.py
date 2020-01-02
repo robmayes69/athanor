@@ -1,8 +1,8 @@
-from commands.command import Command
-from features.core.menu import AthanorMenu
+from athanor.core.command import AthanorCommand
+from athanor.core.menu import AthanorMenu
 
 
-class CmdAccount(Command):
+class CmdAccount(AthanorCommand):
 
     key = '@account'
     help_category = "Administration"

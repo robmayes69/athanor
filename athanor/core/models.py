@@ -1,5 +1,6 @@
 from django.db import models
 from django.core.exceptions import ValidationError
+
 from evennia.utils.ansi import ANSIString
 from evennia.typeclasses.models import SharedMemoryModel
 from evennia.utils.utils import class_from_module
@@ -41,6 +42,20 @@ class Relationship(SharedMemoryModel):
 
     class Meta:
         unique_together = (('db_holder', 'db_kind', 'db_object'),)
+
+
+class Privilege(SharedMemoryModel):
+    db_name = models.CharField(max_length=255, null=False, blank=False, unique=True)
+
+
+class Role(SharedMemoryModel):
+    db_object = models.ForeignKey('objects.ObjectDB', related_name='defined_roles', on_delete=models.CASCADE)
+    db_name = models.CharField(max_length=255, null=False, blank=False)
+    privileges = models.ManyToManyField(Privilege, related_name='roles')
+    holders = models.ManyToManyField('objects.ObjectDB', related_name='held_roles')
+
+    class Meta:
+        unique_together = (('db_object', 'db_name'),)
 
 
 class AccountBridge(SharedMemoryModel):

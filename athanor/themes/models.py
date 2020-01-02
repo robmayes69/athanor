@@ -3,10 +3,11 @@ from evennia.typeclasses.models import SharedMemoryModel
 
 
 class Theme(SharedMemoryModel):
-    db_script = models.OneToOneField('scripts.ScriptDB', related_name='theme_data', primary_key=True,
+    db_script = models.OneToOneField('scripts.ScriptDB', related_name='theme_bridge', primary_key=True,
                                      on_delete=models.CASCADE)
     db_name = models.CharField(max_length=255, null=False, blank=False)
     db_iname = models.CharField(max_length=255, null=False, blank=False, unique=True)
+    db_cname = models.CharField(max_length=255, null=False, blank=False)
 
     class Meta:
         verbose_name = 'Theme'

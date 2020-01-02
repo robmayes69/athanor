@@ -1,72 +1,84 @@
 from django.conf import settings
-from evennia.typeclasses.models import TypeclassBase
-from . models import AreaDB
-from typeclasses.scripts import GlobalScript
-from features.core.base import AthanorTypeEntity, AthanorTreeEntity
-from features.core.models import TypeclassMap
+
 from evennia.utils.utils import class_from_module
 from evennia.utils.logger import log_trace
-from utils.text import partial_match
-from typeclasses.rooms import Room
-from typeclasses.exits import Exit
-from evennia.typeclasses.managers import TypeclassManager
+from evennia.utils.ansi import ANSIString
+
+from athanor.core.scripts import AthanorGlobalScript
+from athanor.core.objects import AthanorObject
+from athanor.utils.text import partial_match
+
+from . models import Area
 
 
-class DefaultArea(AreaDB, AthanorTypeEntity, AthanorTreeEntity, metaclass=TypeclassBase):
-    objects = TypeclassManager()
+class AthanorArea(AthanorObject):
 
-    def __init__(self, *args, **kwargs):
-        AreaDB.__init__(self, *args, **kwargs)
-        AthanorTypeEntity.__init__(self, *args, **kwargs)
+    def create_bridge(self, parent, key, clean_key):
+        if hasattr(self, 'area_bridge'):
+            return
+        if parent:
+            parent = parent.area_bridge
+        area, created = Area.objects.get_or_create(db_object=self, db_parent=parent, db_name=clean_key,
+                                                   db_iname=clean_key.lower(), db_cname=key)
+        if created:
+            area.save()
 
     @classmethod
-    def create(cls, key, parent=None, owner=None, room_typeclass=None, exit_typeclass=None):
-        if DefaultArea.objects.filter(db_parent=parent, db_key__iexact=key).count():
-            raise ValueError("This would conflict with an existing Area for that parent.")
-        if room_typeclass and not isinstance(room_typeclass, TypeclassMap):
-            room_typeclass, room_created = TypeclassMap.objects.get_or_create(db_key=room_typeclass)
-            if room_created:
-                room_typeclass.save()
-        if exit_typeclass and not isinstance(exit_typeclass, TypeclassMap):
-            exit_typeclass, exit_created = TypeclassMap.objects.get_or_create(db_key=exit_typeclass)
-            if exit_created:
-                exit_typeclass.save()
-        created = cls(db_key=key, db_parent=parent, db_owner=owner, db_room_typeclass=room_typeclass,
-                      db_exit_typeclass=exit_typeclass)
-        created.save()
-        return created
+    def create_area(cls, key, parent=None, **kwargs):
+        key = ANSIString(key)
+        clean_key = str(key.clean())
+        if '|' in clean_key:
+            raise ValueError("Malformed ANSI in Area Name.")
+        if Area.objects.filter(db_iname=clean_key.lower(), db_parent=parent).count():
+            raise ValueError("Name conflicts with another Area with the same Parent.")
+        obj, errors = cls.create(clean_key, **kwargs)
+        if obj:
+            obj.create_bridge(parent, key, clean_key)
+        return obj, errors
+
+    def rename(self, key):
+        key = ANSIString(key)
+        clean_key = str(key.clean())
+        if '|' in clean_key:
+            raise ValueError("Malformed ANSI in Area Name.")
+        bridge = self.area_bridge
+        parent = bridge.db_parent
+        if Area.objects.filter(db_iname=clean_key.lower(), db_parent=parent).exclude(id=bridge).count():
+            raise ValueError("Name conflicts with another Area with the same Parent.")
+        self.key = clean_key
+        bridge.db_name = clean_key
+        bridge.db_iname = clean_key.lower()
+        bridge.db_cname = key
+
 
     def get_room_typeclass(self):
-        if self.room_typeclass:
-            return self.room_typeclass.get_typeclass()
-        if self.parent:
-            return self.parent.get_room_typeclass()
+        area_bridge = self.area_bridge
+        if area_bridge.room_typeclass:
+            return area_bridge.room_typeclass.get_typeclass()
+        if area_bridge.parent:
+            return area_bridge.parent.get_room_typeclass()
         return class_from_module(settings.BASE_ROOM_TYPECLASS, defaultpaths=settings.TYPECLASS_PATHS)
 
     def get_exit_typeclass(self):
-        if self.exit_typeclass:
-            return self.exit_typeclass.get_typeclass()
-        if self.parent:
-            return self.parent.get_exit_typeclass()
+        area_bridge = self.area_bridge
+        if area_bridge.exit_typeclass:
+            return area_bridge.exit_typeclass.get_typeclass()
+        if area_bridge.parent:
+            return area_bridge.parent.get_exit_typeclass()
         return class_from_module(settings.BASE_EXIT_TYPECLASS, defaultpaths=settings.TYPECLASS_PATHS)
 
-    def rename(self, new_name):
-        if DefaultArea.objects.filter(db_parent=self.parent, db_key__iexact=new_name).exclude(id=self.id).count():
-            raise ValueError("That would conflict with an existing Area!")
-        self.key = new_name
-
-    def create_exit(self, key, account, location, destination, aliases=None, gateway=None):
+    def create_exit(self, key, account, location, destination, aliases=None):
         typeclass = self.get_exit_typeclass()
-        new_exit = typeclass.create(key, account, location, destination)
-        return new_exit
+        new_exit, errors = typeclass.create_exit(key, account, self, location, destination, aliases)
+        return new_exit, errors
 
     def create_room(self, key, account):
         typeclass = self.get_room_typeclass()
-        new_room = typeclass.create(key, account)
-        return new_room
+        new_room, errors = typeclass.create_room(key, account, self)
+        return new_room, errors
 
 
-class DefaultAreaController(GlobalScript):
+class AthanorAreaController(AthanorGlobalScript):
     system_name = 'AREA'
     option_dict = {
         'area_locks': (
@@ -80,28 +92,16 @@ class DefaultAreaController(GlobalScript):
                                                          defaultpaths=settings.TYPECLASS_PATHS)
         except Exception:
             log_trace()
-            self.ndb.area_typeclass = DefaultArea
-
-        try:
-            self.ndb.room_typeclass = class_from_module(settings.BASE_ROOM_TYPECLASS,
-                                                         defaultpaths=settings.TYPECLASS_PATHS)
-        except Exception:
-            log_trace()
-            self.ndb.room_typeclass = Room
-
-        try:
-            self.ndb.exit_typeclass = class_from_module(settings.BASE_EXIT_TYPECLASS,
-                                                         defaultpaths=settings.TYPECLASS_PATHS)
-        except Exception:
-            log_trace()
-            self.ndb.exit_typeclass = Exit
+            self.ndb.area_typeclass = AthanorArea
 
     def areas(self, parent=None):
-        return DefaultArea.objects.filter(parent=parent).order_by('db_key')
+        return AthanorArea.objects.filter(area_bridge__parent=parent).order_by('db_key')
 
     def find_area(self, search_text):
-        if isinstance(search_text, DefaultArea):
+        if isinstance(search_text, AthanorArea):
             return search_text
+        if isinstance(search_text, Area):
+            return search_text.db_object
         search_text = search_text.strip('/')
         if '/' not in search_text:
             found = partial_match(search_text, self.areas())
@@ -115,13 +115,12 @@ class DefaultAreaController(GlobalScript):
             if not found:
                 raise ValueError(f"Cannot locate Area named: {path}")
             current_area = found
-        return current_area
+        return current_area.db_object
 
     def create_area(self, session, new_name, parent=None):
         if isinstance(parent, str):
             parent = self.find_area(parent)
-        new_area = self.ndb.area_typeclass.create(new_name, parent=parent)
-        path = new_area.full_path()
+        new_area = self.ndb.area_typeclass.create_area(new_name, parent=parent)
         return new_area
 
     def delete_area(self, session, area, area_name):
@@ -143,17 +142,15 @@ class DefaultAreaController(GlobalScript):
         new_area = self.find_area(new_area)
         area.change_parent(new_area)
 
-    def create_exit(self, session, area, key, account, location, destination, aliases=None, gateway=None):
+    def create_exit(self, session, area, key, account, location, destination, aliases=None):
         area = self.find_area(area)
-        new_exit, errors = area.create_exit(key, account, location, destination, aliases=aliases, gateway=gateway)
+        new_exit, errors = area.create_exit(key, account, location, destination, aliases=aliases)
         if aliases:
             for alias in aliases:
                 new_exit.aliases.add(alias)
-        area.db_fixtures.add(new_exit)
         return new_exit, errors
 
     def create_room(self, session, area, key, account):
         area = self.find_area(area)
         new_room, errors = area.create_room(key, account)
-        area.db_fixtures.add(new_room)
         return new_room, errors

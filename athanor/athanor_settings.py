@@ -63,9 +63,10 @@ WEBSOCKET_ENABLED = True
 
 INLINEFUNC_ENABLED = True
 
-INSTALLED_APPS = tuple(INSTALLED_APPS) + ('athanor.core', 'athanor.factions', 'athanor.forum', 'athanor.staff', 'athanor.themes',
-                                   'athanor.note', 'athanor.jobs', 'athanor.building',  'athanor.rplogger',
-                                   'athanor.mush_import', "athanor.items", "athanor.traits", 'athanor.channels')
+INSTALLED_APPS = tuple(INSTALLED_APPS) + ('athanor.building', 'athanor.characters', 'athanor.core', 'athanor.factions',
+                                          'athanor.forum', 'athanor.items', 'athanor.jobs',  'athanor.login',
+                                          'athanor.mail', 'athanor.mush_import', "athanor.note", "athanor.rplogger",
+                                          'athanor.staff', 'athanor.themes', 'athanor.traits')
 
 #ROOT_URLCONF = None
 
@@ -74,14 +75,31 @@ INSTALLED_APPS = tuple(INSTALLED_APPS) + ('athanor.core', 'athanor.factions', 'a
 
 #SERVER_SESSION_CLASS = "typeclasses.sessions.Session"
 
+AT_INITIAL_SETUP_HOOK_MODULE = "athanor.core.at_initial_setup"
+
+
+# Command set used on session before account has logged in
+CMDSET_UNLOGGEDIN = "commands.default_cmdsets.UnloggedinCmdSet"
+# Command set used on the logged-in session
+CMDSET_SESSION = "commands.default_cmdsets.SessionCmdSet"
+
+
 
 ######################################################################
 # Account Options
 ######################################################################
-BASE_ACCOUNT_TYPECLASS = "athanor.typeclasses.accounts.Account"
+# Command set for accounts without a character (ooc)
+CMDSET_ACCOUNT = "athanor.commands.default_cmdsets.AthanorAccountCmdSet"
+
+
+BASE_ACCOUNT_TYPECLASS = "athanor.accounts.accounts.AthanorAccount"
+
+# The Account Bridge is an ObjectDB instance that's used to allow Accounts to relate to Objects like Factions
+# and receive Mail or equip items.+-
+ACCOUNT_BRIDGE_OBJECT_TYPECLASS = "athanor.accounts.accounts.AthanorAccountBridge"
 
 GLOBAL_SCRIPTS['accounts'] = {
-    'typeclass': 'athanor.typeclasses.accounts.AccountController',
+    'typeclass': 'athanor.accounts.accounts.AthanorAccountController',
     'repeats': -1, 'interval': 50, 'desc': 'Controller for Account System'
 }
 
@@ -93,31 +111,48 @@ OPTIONS_ACCOUNT_DEFAULT['column_names_color'] = ("Table column header text.", "C
 
 
 ######################################################################
-# Area Settings
+# Building Settings
 ######################################################################
 GLOBAL_SCRIPTS['area'] = {
-    'typeclass': 'athanor.typeclasses.areas.AreaController',
+    'typeclass': 'athanor.building.areas.AthanorAreaController',
     'repeats': -1, 'interval': 50, 'desc': 'Controller for Area System'
 }
 
+BASE_AREA_TYPECLASS = "athanor.building.areas.AthanorArea"
+
+BASE_ROOM_TYPECLASS = "athanor.building.rooms.AthanorRoom"
+
+BASE_EXIT_TYPECLASS = "athanor.building.exits.AthanorExit"
+
+# Turn this on if your game uses North, Northeast, South, Southeast, In, Out, Up, Down, etc.
+# It will add default errors for when these directions are attempted but no exit
+# exists.
+DIRECTIONAL_EXIT_ERRORS = False
 
 ######################################################################
 # Channel Settings
 ######################################################################
 BASE_CHANNEL_TYPECLASS = "typeclasses.channels.Channel"
+
 CHANNEL_COMMAND_CLASS = "evennia.comms.channelhandler.ChannelCommand"
 
 ######################################################################
 # Character Settings
 ######################################################################
-BASE_CHARACTER_TYPECLASS = "athanor.typeclasses.characters.PlayerCharacter"
+# Default set for logged in account with characters (fallback)
+CMDSET_CHARACTER = "athanor.commands.default_cmdsets.AthanorCharacterCmdSet"
+
+BASE_CHARACTER_TYPECLASS = "athanor.characters.characters.AthanorPlayerCharacter"
 
 GLOBAL_SCRIPTS['characters'] = {
-    'typeclass': 'athanor.typeclasses.characters.CharacterController',
+    'typeclass': 'athanor.characters.characters.AthanorCharacterController',
     'repeats': -1, 'interval': 50, 'desc': 'Controller for Character System'
 }
 
-NAME_DUB_SYSTEM_ENABLED = False
+# If this is enabled, characters will not see each other's true names.
+# Instead, they'll see something generic.
+
+NAME_DUB_SYSTEM = False
 
 MAX_NR_CHARACTERS = 10000
 
@@ -169,24 +204,13 @@ GENDER_SUBSTITUTIONS = {
 }
 
 ######################################################################
-# Exit Settings
-######################################################################
-BASE_EXIT_TYPECLASS = "athanor.typeclasses.exits.Exit"
-EXIT_ERRORS = True
-
-######################################################################
 # Faction Settings
 ######################################################################
-# These are the permissions that can be granted to characters and ranks.
-# moderate: who can restrict a faction member's chat privileges.
-# manage: who can add/remove members, and arbitrarily set titles. Can promote members up to
-#   just under your own rank.
-# titleself: can set your own title.
-
+BASE_FACTION_TYPECLASS = "athanor.factions.factions.AthanorFaction"
 
 GLOBAL_SCRIPTS['faction'] = {
-    'typeclass': 'athanor.typeclasses.factions.FactionController',
-    'repeats': -1, 'interval': 50, 'desc': 'Faction Manager for Faction System'
+    'typeclass': 'athanor.factions.factions.AthanorFactionController',
+    'repeats': -1, 'interval': 60, 'desc': 'Faction Manager for Faction System'
 }
 
 
@@ -194,7 +218,7 @@ GLOBAL_SCRIPTS['faction'] = {
 # Forum Settings
 ######################################################################
 GLOBAL_SCRIPTS['forum'] = {
-    'typeclass': 'athanor.typeclasses.forum.ForumController',
+    'typeclass': 'athanor.forum.forum.AthanorForumController',
     'repeats': -1, 'interval': 60, 'desc': 'Forum BBS API',
     'locks': "admin:perm(Admin)",
 }
@@ -213,25 +237,26 @@ GLOBAL_SCRIPTS['jobs'] = {
 ######################################################################
 # Theme Settings
 ######################################################################
+BASE_THEME_TYPECLASS = "athanor.themes.themes.AthanorTheme"
+
 GLOBAL_SCRIPTS['theme'] = {
-    'typeclass': 'athanor.typeclasses.themes.ThemeController',
-    'repeats': -1, 'interval': 50, 'desc': 'Theme Controller for Theme System'
+    'typeclass': 'athanor.themes.themes.AthanorThemeController',
+    'repeats': -1, 'interval': 60, 'desc': 'Theme Controller for Theme System'
 }
 
 ######################################################################
 # RP Event Settings
 ######################################################################
-GLOBAL_SCRIPTS['events'] = {
-    'typeclass': 'athanor.typeclasses.rplogger.EventController',
-    'repeats': -1, 'interval': 50, 'desc': 'Event Controller for RP Logger System'
-}
-
+#GLOBAL_SCRIPTS['events'] = {
+#    'typeclass': 'athanor.rplogger.AthanorEventController',
+#    'repeats': -1, 'interval': 50, 'desc': 'Event Controller for RP Logger System'
+#}
 
 ######################################################################
 # Funcs Settings
 ######################################################################
-sections = ['building', 'effects', 'factions', 'forum', 'items',
-            'note', 'quests', 'rplogger']
+sections = ['building', 'factions', 'forum', 'items',
+            'note', 'rplogger']
 EXTRA_LOCK_FUNCS = tuple([f"athanor.{s}.locks" for s in sections])
 LOCK_FUNC_MODULES = LOCK_FUNC_MODULES + EXTRA_LOCK_FUNCS
 del EXTRA_LOCK_FUNCS

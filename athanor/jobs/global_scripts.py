@@ -1,8 +1,8 @@
 import re
 from evennia.locks.lockhandler import LockException
-from typeclasses.scripts import GlobalScript
-from features.jobs.models import BucketDB, JobDB
-from utils.text import partial_match
+from athanor.core.scripts import AthanorGlobalScript
+from athanor.jobs.models import BucketDB, JobDB
+from athanor.utils.text import partial_match
 from evennia.utils.validatorfuncs import duration, unsigned_integer, lock
 
 
@@ -13,7 +13,7 @@ _JOB_LINK_KIND = {0: 'Opened', 1: 'Replied', 2: '|rSTAFF COMMENTED|n', 3: 'Moved
                 10: 'Removed Handler', 11: 'Removed Helper', 12: 'Due Date Changed'}
 
 
-class JobManager(GlobalScript):
+class JobManager(AthanorGlobalScript):
     system_name = 'JOB'
     option_dict = {
         'bucket_locks': ('Default locks to use for new Buckets', 'Lock', 'see:all();post:all();admin:perm(Admin) or perm(Job_Admin)'),

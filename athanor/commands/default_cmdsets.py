@@ -15,16 +15,16 @@ own cmdsets by inheriting from them or directly from `evennia.CmdSet`.
 """
 from django.conf import settings
 from evennia import default_cmds
-from features.forum.commands import ALL_COMMANDS as BBS_COMMANDS
-from features.jobs.commands import JOB_COMMANDS
-from features.core.exit_errors import ExitErrorCmdSet
-from features.themes.commands import CmdTheme
-from features.mush_import.commands import CmdPennImport
-from features.factions.commands import FACTION_COMMANDS
-from features.accounts.commands import CmdAccount
+from athanor.forum.commands import ALL_COMMANDS as BBS_COMMANDS
+from athanor.jobs.commands import JOB_COMMANDS
+from athanor.building.exit_errors import ExitErrorCmdSet
+from athanor.themes.commands import CmdTheme
+from athanor.mush_import.commands import CmdPennImport
+from athanor.factions.commands import FACTION_COMMANDS
+from athanor.accounts.commands import CmdAccount
 
 
-class CharacterCmdSet(default_cmds.CharacterCmdSet):
+class AthanorCharacterCmdSet(default_cmds.CharacterCmdSet):
     """
     The `CharacterCmdSet` contains general in-game commands like `look`,
     `get`, etc available on in-game Character objects. It is merged with
@@ -42,7 +42,7 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         #
         for cmd in BBS_COMMANDS:
             self.add(cmd)
-        if settings.EXIT_ERRORS:
+        if settings.DIRECTIONAL_EXIT_ERRORS:
             self.add(ExitErrorCmdSet)
         for cmd in FACTION_COMMANDS:
             self.add(cmd)
@@ -50,7 +50,7 @@ class CharacterCmdSet(default_cmds.CharacterCmdSet):
         self.add(CmdAccount)
 
 
-class AccountCmdSet(default_cmds.AccountCmdSet):
+class AthanorAccountCmdSet(default_cmds.AccountCmdSet):
     """
     This is the cmdset available to the Account at all times. It is
     combined with the `CharacterCmdSet` when the Account puppets a

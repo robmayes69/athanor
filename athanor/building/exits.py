@@ -1,9 +1,8 @@
 from evennia.objects.objects import DefaultExit
-from features.core.base import AthanorEntity
+from athanor.core.gameentity import AthanorGameEntity
 
 
-class AthanorExit(DefaultExit, AthanorEntity):
+class AthanorExit(DefaultExit, AthanorGameEntity):
 
     def __init__(self, *args, **kwargs):
-        DefaultExit.__init__(self, *args, **kwargs)
-        AthanorEntity.__init__(self, *args, **kwargs)
+        super().__init__(self, *args, **kwargs)

@@ -7,15 +7,11 @@ from evennia.utils.utils import lazy_property
 from athanor.utils.events import EventEmitter
 from athanor.items.handlers import GearHandler, InventoryHandler
 from athanor.factions.handlers import FactionHandler, AllianceHandler
-from athanor.building.handlers import AssetHandler
 from athanor.core.handler import KeywordHandler
 from athanor.utils.color import green_yellow_red, red_yellow_green
 
 
 class AthanorGameEntity(EventEmitter):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(self, *args, **kwargs)
 
     @lazy_property
     def gear(self):
@@ -32,10 +28,6 @@ class AthanorGameEntity(EventEmitter):
     @lazy_property
     def alliances(self):
         return AllianceHandler(self)
-
-    @lazy_property
-    def assets(self):
-        return AssetHandler(self)
 
     @lazy_property
     def keywords(self):

@@ -1,23 +1,27 @@
 from evennia.objects.objects import DefaultRoom
-from features.core.base import AthanorEntity
+from athanor.core.gameentity import AthanorGameEntity
 from collections import defaultdict
 from evennia.utils import list_to_string
-from features.core.submessage import SubMessageMixin
-from evennia.utils.utils import lazy_property
-from features.core.handler import KeywordHandler
+from . models import RoomBridge
+
 
 HEADER_LINE = "O----------------------------------------------------------------------O"
 
 
-class AthanorRoom(DefaultRoom, AthanorEntity, SubMessageMixin):
+class AthanorRoom(DefaultRoom, AthanorGameEntity):
 
-    def __init__(self, *args, **kwargs):
-        DefaultRoom.__init__(self, *args, **kwargs)
-        AthanorEntity.__init__(self, *args, **kwargs)
+    def create_bridge(self, area):
+        if hasattr(self, 'room_bridge'):
+            return
+        bridge, created = RoomBridge.objects.get_or_create(db_object=self, db_area=area.area_bridge)
+        if created:
+            bridge.save()
 
-    @lazy_property
-    def keywords(self):
-        return KeywordHandler(self)
+    @classmethod
+    def create_room(cls, key, account, area, **kwargs):
+        room, errors = cls.create(key, account, **kwargs)
+        room.create_bridge(area)
+        return room, errors
 
     def return_appearance_header(self, looker, **kwargs):
         color = self.db.color
@@ -26,9 +30,9 @@ class AthanorRoom(DefaultRoom, AthanorEntity, SubMessageMixin):
             display_name = '|%s%s|n' % (color, display_name)
         output = HEADER_LINE
         output += '\n' + "Location: " + display_name
-        zone = self.db.zone
-        if zone:
-            output += '\n' + 'Zone: ' + zone.path_names(looker, join_str=', ')
+        area = self.room_bridge.db_area
+        if area:
+            output += '\n' + 'Area: ' + area.path_names(looker)
         output += '\n' + HEADER_LINE
         return output
 

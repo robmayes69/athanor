@@ -31,7 +31,7 @@ class TraitDB(TypedObject):
     __defaultclasspath__ = "features.traits.traits.DefaultTrait"
     __applabel__ = "traits"
 
-    db_object = models.ForeignKey('core.EntityMapDB', related_name='traits', on_delete=models.PROTECT)
+    db_object = models.ForeignKey('objects.ObjectDB', related_name='traits', on_delete=models.PROTECT)
     db_collection = models.CharField(max_length=255, null=False, blank=False)
     db_trait = models.ForeignKey(TraitDefinitionDB, related_name='traits', on_delete=models.PROTECT)
     db_context = models.CharField(max_length=255, null=False, blank=True, default='')

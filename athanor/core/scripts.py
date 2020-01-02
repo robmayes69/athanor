@@ -1,15 +1,11 @@
 from evennia import DefaultScript
 from evennia.utils.optionhandler import OptionHandler
 from evennia.utils.utils import lazy_property
-from utils.online import admin_accounts
-from features.core.base import AthanorEntity
+from athanor.utils.online import admin_accounts
 
 
-class AthanorScript(DefaultScript, AthanorEntity):
-
-    def __init__(self, *args, **kwargs):
-        DefaultScript.__init__(self, *args, **kwargs)
-        AthanorEntity.__init__(self, *args, **kwargs)
+class AthanorScript(DefaultScript):
+    pass
 
 
 class AthanorOptionScript(AthanorScript):

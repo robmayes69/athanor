@@ -1,5 +1,5 @@
 from evennia.typeclasses.tags import TagHandler
-from utils.events import EventEmitter
+from athanor.utils.events import EventEmitter
 
 
 class AthanorFlexHandler(EventEmitter):

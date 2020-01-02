@@ -1,5 +1,5 @@
 from evennia import GLOBAL_SCRIPTS
-from features.core.command import AthanorCommand
+from athanor.core.command import AthanorCommand
 
 
 class CmdTheme(AthanorCommand):

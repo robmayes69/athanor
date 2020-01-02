@@ -22,7 +22,7 @@ class PlotRunner(SharedMemoryModel):
     db_runner_type = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
-        unique_together = (('db_plot', 'db_entity'),)
+        unique_together = (('db_plot', 'db_object'),)
         index_together = (('db_plot', 'db_runner_type'),)
         verbose_name = 'PlotRunner'
         verbose_name_plural = ' PlotRunners'
@@ -70,10 +70,11 @@ class EventSource(SharedMemoryModel):
 
 
 class EventCodename(SharedMemoryModel):
+    db_name = models.CharField(max_length=255, null=False, blank=False)
     db_participant = models.ForeignKey(EventParticipant, related_name='codenames', on_delete=models.PROTECT)
 
     class Meta:
-        unique_together = (('db_participant', 'db_key'),)
+        unique_together = (('db_participant', 'db_name'),)
         verbose_name = 'EventCodeName'
         verbose_name_plural = 'EventCodeNames'
 

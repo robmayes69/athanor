@@ -1,5 +1,5 @@
 from django.dispatch import Signal
-from utils.time import utcnow
+from athanor.utils.time import utcnow
 
 
 class EventManager(object):

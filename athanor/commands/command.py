@@ -5,7 +5,7 @@ Commands describe the input the account can do to the game.
 
 """
 
-from features.core.command import AthanorCommand
+from athanor.core.command import AthanorCommand
 # from evennia import default_cmds
 from evennia.utils import make_iter
 

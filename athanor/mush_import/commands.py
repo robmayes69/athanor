@@ -10,8 +10,8 @@ from django.db.models import Q
 
 from . convpenn import PennParser, process_penntext
 from . models import MushObject, cobj, pmatch, objmatch, MushAttributeName, MushAttribute
-from utils.text import penn_substitutions
-from features.core.command import AthanorCommand
+from athanor.utils.text import penn_substitutions
+from athanor.core.command import AthanorCommand
 
 
 def from_unixtimestring(secs):
@@ -124,10 +124,10 @@ class CmdPennImport(AthanorCommand):
     def switch_area_recursive(self, district, parent=None):
         area = district.area
         if not area:
-            area = GLOBAL_SCRIPTS.area.create_area(self.session, district.name, parent=parent)
-            district.area = area
+            area, errors = GLOBAL_SCRIPTS.area.create_area(self.session, district.name, parent=parent)
+            district.area = area.area_bridge
             district.save()
-            self.report_status(f"Created Area: {area.full_path()}")
+            self.report_status(f"Created Area: {area}")
             for dist in district.children.filter(type=2).order_by('name'):
                 self.switch_area_recursive(dist, area)
 
@@ -145,7 +145,7 @@ class CmdPennImport(AthanorCommand):
 
         for counter, mush_room in enumerate(mush_rooms, start=1):
             self.report_status(f"Processing Room {counter} of {mush_rooms_count} - {mush_room.objid}: {mush_room.name}")
-            new_room, errs = area_con.create_room(self.session, mush_room.parent.area, mush_room.name, self.account)
+            new_room, errs = area_con.create_room(self.session, mush_room.parent.area.db_object, mush_room.name, self.account)
             mush_room.obj = new_room
             mush_room.obj.db.desc = process_penntext(mush_room.mushget('DESCRIBE'))
             mush_room.save()
@@ -160,7 +160,7 @@ class CmdPennImport(AthanorCommand):
             if alias_text:
                 aliases = alias_text.split(';')
 
-            new_exit, errs = area_con.create_exit(self.session, mush_exit.location.parent.area, mush_exit.name,
+            new_exit, errs = area_con.create_exit(self.session, mush_exit.location.parent.area.db_object, mush_exit.name,
                                                   self.account, mush_exit.location.obj, mush_exit.destination.obj,
                                                   aliases=aliases)
             mush_exit.obj = new_exit
@@ -274,9 +274,9 @@ class CmdPennImport(AthanorCommand):
                 continue
             self.report_status(f"Processing MushGroup {counter} of {mush_groups_count} - {mush_group}")
             abbr = mush_group['group_abbr'] if mush_group['group_abbr'] else None
-            new_faction = faction_typeclass(db_key=mush_group['group_name'], db_tier=mush_group['group_tier'],
-                                            db_abbreviation=abbr,
-                                            db_parent=faction_map[mush_group['group_parent']])
+            new_faction = faction_typeclass.create_faction(name=mush_group['group_name'],
+                                                           parent=faction_map[mush_group['group_parent']], abbr=abbr,
+                                                           tier=mush_group['group_tier'])
             new_faction.save()
             new_faction.db.private = mush_group['group_is_private']
             faction_map[mush_group['group_id']] = new_faction

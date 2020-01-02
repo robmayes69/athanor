@@ -1,40 +1,48 @@
-import re
-from evennia.typeclasses.models import TypeclassBase
-from . models import ThemeDB, ThemeParticipantDB
-from features.core.base import AthanorTypeEntity
-from typeclasses.scripts import GlobalScript
-from utils.text import partial_match
 from evennia.utils.utils import class_from_module
 from evennia.utils.logger import log_trace
-import features.themes.messages as messages
-from evennia.typeclasses.managers import TypeclassManager
+from evennia.utils.ansi import ANSIString
+
+from athanor.core.scripts import AthanorGlobalScript, AthanorOptionScript
+from athanor.utils.text import partial_match
+
+import athanor.themes.messages as messages
+
+from . models import Theme, ThemeParticipant
 
 
-class DefaultTheme(ThemeDB, AthanorTypeEntity, metaclass=TypeclassBase):
-    entity_class_name = 'Theme'
-    _re_key = re.compile(r"^[\w. ()-]+$")
-    objects = TypeclassManager()
+class AthanorTheme(AthanorOptionScript):
 
-    def __init__(self, *args, **kwargs):
-        ThemeDB.__init__(self, *args, **kwargs)
-        AthanorTypeEntity.__init__(self, *args, **kwargs)
+    def create_bridge(self, key, clean_key):
+        if hasattr(self, 'theme_bridge'):
+            return
+        area, created = Theme.objects.get_or_create(db_script=self, db_name=clean_key,
+                                                   db_iname=clean_key.lower(), db_cname=key)
+        if created:
+            area.save()
 
     @classmethod
-    def create(cls, name, description):
-        key = cls.validate_unique_key(name)
-        if not description:
-            raise ValueError("Must include a description!")
-        new_theme = cls(db_key=key, db_description=description)
-        new_theme.save()
-        return new_theme
+    def create_theme(cls, name, description, **kwargs):
+        key = ANSIString(name)
+        clean_key = str(key.clean())
+        if '|' in clean_key:
+            raise ValueError("Malformed ANSI in Theme Name.")
+        if Theme.objects.filter(db_iname=clean_key.lower()).count():
+            raise ValueError("Name conflicts with another Theme.")
+        obj, errors = cls.create(clean_key, **kwargs)
+        if obj:
+            obj.create_bridge(key, clean_key)
+        obj.db.desc = description
+        return obj, errors
 
     def add_character(self, character, list_type):
-        typeclass = self.get_participant_typeclass()
-        new_participant = typeclass.create(theme=self, character=character, list_type=list_type)
+        new_participant, created = ThemeParticipant.objects.get_or_create(db_theme=self.theme_bridge,
+                                                                          db_object=character, db_list_type=list_type)
+        if created:
+            new_participant.save()
         return new_participant
 
     def remove_character(self, character):
-        participant = self.participants.filter(db_character=character).first()
+        participant = self.participants.filter(db_object=character).first()
         if participant:
             if character.db._primary_theme == participant:
                 del character.db._primary_theme
@@ -43,38 +51,21 @@ class DefaultTheme(ThemeDB, AthanorTypeEntity, metaclass=TypeclassBase):
     def __str__(self):
         return self.db_key
 
-    def change_participant_typeclass(self, typeclass_path):
-        self.set_typeclass_field('participant_typeclass', typeclass_path)
-
-    def get_participant_typeclass(self):
-        from django.conf import settings
-        return self.get_typeclass_field('participant_typeclass', fallback=settings.BASE_THEME_PARTICIPANT_TYPECLASS)
-
-
-class DefaultThemeParticipant(ThemeParticipantDB, AthanorTypeEntity, metaclass=TypeclassBase):
-    entity_class_name = 'ThemeParticipant'
-    objects = TypeclassManager()
-
-    def __init__(self, *args, **kwargs):
-        ThemeParticipantDB.__init__(self, *args, **kwargs)
-        AthanorTypeEntity.__init__(self, *args, **kwargs)
-
-    @classmethod
-    def create(cls, theme, character, list_type):
-        if cls.objects.filter(db_theme=theme, db_character=character).count():
-            raise ValueError(f"{character} is already a member of {theme}!")
-        new_participant = cls(db_theme=theme, db_character=character, db_key=character.key, db_list_type=list_type)
-        new_participant.save()
-        return new_participant
-
-    def change_type(self, new_type):
-        self.list_type = new_type
-
-    def __str__(self):
-        return str(self.db_theme)
+    def rename(self, key):
+        key = ANSIString(key)
+        clean_key = str(key.clean())
+        if '|' in clean_key:
+            raise ValueError("Malformed ANSI in Theme Name.")
+        bridge = self.theme_bridge
+        if Theme.objects.filter(db_iname=clean_key.lower()).exclude(id=bridge).count():
+            raise ValueError("Name conflicts with another Theme.")
+        self.key = clean_key
+        bridge.db_name = clean_key
+        bridge.db_iname = clean_key.lower()
+        bridge.db_cname = key
 
 
-class DefaultThemeController(GlobalScript):
+class AthanorThemeController(AthanorGlobalScript):
     system_name = 'THEME'
     option_dict = {
         'system_locks': ('Locks governing Theme System.', 'Lock',
@@ -90,10 +81,10 @@ class DefaultThemeController(GlobalScript):
                                                      defaultpaths=settings.TYPECLASS_PATHS)
         except Exception:
             log_trace()
-            self.ndb.theme_typeclass = DefaultTheme
+            self.ndb.theme_typeclass = AthanorTheme
 
     def themes(self):
-        return DefaultTheme.objects.filter_family().order_by('db_key')
+        return AthanorTheme.objects.filter_family().order_by('db_key')
 
     def create_theme(self, session, theme_name, description):
         enactor = session.get_puppet_or_account()
@@ -102,10 +93,10 @@ class DefaultThemeController(GlobalScript):
         return new_theme
 
     def find_theme(self, enactor, theme_name):
-        if isinstance(theme_name, DefaultTheme):
+        if isinstance(theme_name, AthanorTheme):
             return theme_name
         if isinstance(theme_name, int):
-            theme = DefaultTheme.objects.filter(id=theme_name).first()
+            theme = AthanorTheme.objects.filter_family(id=theme_name).first()
             if not theme:
                 raise ValueError(f"Theme ID {theme_name}' not found!")
             return theme
@@ -128,7 +119,7 @@ class DefaultThemeController(GlobalScript):
     def rename_theme(self, session, theme_name, new_name):
         enactor = session.get_puppet_or_account()
         theme = self.find_theme(session, theme_name)
-        clean_name = DefaultTheme.validate_unique_key(new_name, rename_target=theme)
+        clean_name = AthanorTheme.validate_unique_key(new_name, rename_target=theme)
         old_name = theme.key
         theme.key = clean_name
         messages.ThemeRenameMessage(enactor, theme=theme, old_name=old_name).send()

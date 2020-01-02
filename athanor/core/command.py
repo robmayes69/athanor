@@ -1,6 +1,6 @@
 from evennia.commands.default.muxcommand import MuxCommand
 from evennia.utils.search import object_search
-from typeclasses.characters import PlayerCharacter
+from athanor.characters.characters import AthanorPlayerCharacter
 from evennia.utils.utils import lazy_property
 
 
@@ -38,7 +38,7 @@ class AthanorCommand(MuxCommand):
             return
 
     def search_characters(self, name, exact=False):
-        return object_search(name, exact=exact, candidates=PlayerCharacter.objects.filter_family())
+        return object_search(name, exact=exact, candidates=AthanorPlayerCharacter.objects.filter_family())
 
     def search_one_character(self, name, exact=False):
         results = self.search_characters(name, exact)

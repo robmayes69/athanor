@@ -1,174 +1,44 @@
 import re
+from django.conf import settings
 from django.db.models import F
-from evennia.typeclasses.models import TypeclassBase
-from evennia.utils.utils import lazy_property
+from django.db import transaction
+
+from evennia.utils.logger import log_trace
+from evennia.utils.utils import lazy_property, class_from_module
 from evennia.utils.optionhandler import OptionHandler
 from evennia.locks.lockhandler import LockException
 from evennia.utils.validatorfuncs import lock as validate_lock
-from utils.time import utcnow
-from utils.online import puppets as online_puppets
-from utils.valid import simple_name
-from . models import ForumCategoryDB, ForumBoardDB, ForumThreadDB, ForumPostDB, ForumThreadRead
-from features.core.base import AthanorTypeEntity
-from django.conf import settings
-from evennia.utils.utils import class_from_module
-from typeclasses.scripts import GlobalScript
-from utils.text import partial_match
-from evennia.utils.logger import log_trace
-from evennia.typeclasses.managers import TypeclassManager
+
+from athanor.utils.time import utcnow
+from athanor.utils.online import puppets as online_puppets
+from athanor.utils.valid import simple_name
+from athanor.utils.text import partial_match
+from athanor.core.scripts import AthanorGlobalScript, AthanorOptionScript
+
+from . models import ForumCategory, ForumBoard, ForumThread, ForumPost, ForumThreadRead
 
 
-class DefaultForumCategory(ForumCategoryDB, AthanorTypeEntity, metaclass=TypeclassBase):
+class AthanorForumCategory(AthanorOptionScript):
     option_dict = {
         'board_locks': ('Default locks for new Boards?', 'Lock', "read:all();post:all();admin:perm(Admin)"),
         'color': ('Color to display Prefix in.', 'Color', 'n'),
         'faction': ('Faction to use for Lock Templates', 'Faction', None)
     }
     prefix_regex = re.compile(r"^[a-zA-Z]{0,3}$")
-    objects = TypeclassManager()
 
-    def __init__(self, *args, **kwargs):
-        ForumCategoryDB.__init__(self, *args, **kwargs)
-        AthanorTypeEntity.__init__(self, *args, **kwargs)
 
     @classmethod
-    def validate_prefix(cls, prefix_text, rename_target=None):
-        if not cls.prefix_regex.match(prefix_text):
-            raise ValueError("Prefixes must be 0-3 alphabetical characters.")
-        query = cls.objects.filter(db_abbr__iexact=prefix_text)
-        if rename_target:
-            query = query.exclude(id=rename_target.id)
-        if query.count():
-            raise ValueError(f"A BoardCategory abbreviated '{prefix_text}' already exists!")
-        return prefix_text
+    def create_forum_category(cls, *args, **kwargs):
+        with transaction.atomic():
+            script, errors = cls.create(*args, **kwargs)
+
+
+class AthanorForumBoard(AthanorOptionScript):
 
     @classmethod
-    def validate_key(cls, key_text, rename_target=None):
-        if not key_text:
-            raise ValueError("A BoardCategory must have a name!")
-        key_text = simple_name(key_text, option_key="BBS Category")
-        query = cls.objects.filter(db_key__iexact=key_text)
-        if rename_target:
-            query = query.exclude(id=rename_target.id)
-        if query.count():
-            raise ValueError(f"A BoardCategory named '{key_text}' already exists!")
-        return key_text
-
-    @classmethod
-    def validate_order(cls, order_text):
-        pass
-
-    @lazy_property
-    def options(self):
-        return OptionHandler(self,
-                             options_dict=self.option_dict,
-                             savefunc=self.attributes.add,
-                             loadfunc=self.attributes.get,
-                             save_kwargs={"category": 'option'},
-                             load_kwargs={"category": 'option'})
-
-
-    def at_board_category_creation(self, *args, **kwargs):
-        pass
-
-    def at_first_save(self, *args, **kwargs):
-        pass
-
-    @classmethod
-    def create(cls, *args, **kwargs):
-        key = cls.validate_key(kwargs.get('key', None))
-        abbr = cls.validate_prefix(kwargs.get('abbr', None))
-
-        new_category = cls(db_key=key, db_abbr=abbr)
-        new_category.save()
-        return new_category
-
-    def __str__(self):
-        return self.key
-
-    def change_key(self, new_key):
-        new_key = self.validate_key(new_key, self)
-        self.key = new_key
-        return new_key
-
-    def change_prefix(self, new_prefix):
-        new_prefix = self.validate_prefix(new_prefix, self)
-        self.abbr = new_prefix
-        return new_prefix
-
-    def change_locks(self, new_locks):
-        if not new_locks:
-            raise ValueError("No locks entered!")
-        new_locks = validate_lock(new_locks, option_key='BBS Category Locks',
-                                        access_options=['see', 'create', 'delete', 'admin'])
-        try:
-            self.locks.add(new_locks)
-        except LockException as e:
-            raise ValueError(str(e))
-        return new_locks
-
-
-class DefaultForumBoard(ForumBoardDB, AthanorTypeEntity, metaclass=TypeclassBase):
-    objects = TypeclassManager()
-
-    def __init__(self, *args, **kwargs):
-        ForumBoardDB.__init__(self, *args, **kwargs)
-        AthanorTypeEntity.__init__(self, *args, **kwargs)
-
-    @classmethod
-    def validate_key(cls, key_text, category, rename_target=None):
-        if not key_text:
-            raise ValueError("A BBS Board must have a name!")
-        key_text = simple_name(key_text, option_key="BBS Board")
-        query = cls.objects.filter(db_key__iexact=key_text, db_category=category)
-        if rename_target:
-            query = query.exclude(id=rename_target.id)
-        if query.count():
-            raise ValueError(f"A BBS Board named '{key_text}' already exists in BBS Category '{category}'!")
-        return key_text
-
-    @classmethod
-    def validate_order(cls, order_input, category, rename_target=None):
-        if not order_input:
-            raise ValueError("A BBS Board must have an order number!")
-        order_input = int(order_input)
-        if order_input > 99:
-            raise ValueError("The maximum order of a board is 99!")
-        if order_input < 1:
-            raise ValueError("A BBS Board order may not be lower than 1!")
-        query = cls.objects.filter(db_order=order_input, db_category=category)
-        if rename_target:
-            query.exclude(id=rename_target)
-        if query.count():
-            raise ValueError(f"A BBS Board already uses Order {order_input} within BBS Category '{category}'!")
-        return order_input
-
-    def at_board_creation(self, *args, **kwargs):
-        pass
-
-    def at_first_save(self, *args, **kwargs):
-        pass
-
-    @classmethod
-    def create(cls, *args, **kwargs):
-        category = kwargs.get('category', None)
-        if not isinstance(category, ForumCategoryDB):
-            raise ValueError("Must provide a BoardCategory!")
-
-        key = kwargs.get('key', None)
-        order = kwargs.get('order', None)
-
-        key = cls.validate_key(key, category)
-        order = cls.validate_order(order, category)
-
-        if not key:
-            raise ValueError("Board name is empty!")
-        if not order:
-            raise ValueError("Board order not provided!")
-
-        new_board = cls(db_key=key, db_order=order, db_category=category)
-        new_board.save()
-        return new_board
+    def create_forum_board(cls, *args, **kwargs):
+        with transaction.atomic():
+            pass
 
     def __str__(self):
         return self.key
@@ -280,86 +150,7 @@ class DefaultForumBoard(ForumBoardDB, AthanorTypeEntity, metaclass=TypeclassBase
         return new_locks
 
 
-class DefaultForumThread(ForumThreadDB, AthanorTypeEntity, metaclass=TypeclassBase):
-    objects = TypeclassManager()
-
-    def __init__(self, *args, **kwargs):
-        ForumThreadDB.__init__(self, *args, **kwargs)
-        AthanorTypeEntity.__init__(self, *args, **kwargs)
-
-    def at_first_save(self, *args, **kwargs):
-        pass
-
-    @classmethod
-    def validate_key(cls, key_text, rename_from=None):
-        return key_text
-
-    @classmethod
-    def validate_order(cls, order_text, rename_from=None):
-        return int(order_text)
-
-    @classmethod
-    def create(cls, *args, **kwargs):
-        board = kwargs.get('board', None)
-        if not isinstance(board, ForumThreadDB):
-            raise ValueError("Posts must be linked to a board!")
-
-        owner = kwargs.get('owner', None)
-        key = kwargs.get('key', None)
-        key = cls.validate_key(key)
-
-        text = kwargs.get('text', None)
-        if not text:
-            raise ValueError("Post body is empty!")
-
-        order = kwargs.get('order', None)
-        if order:
-            order = cls.validate_order(order)
-        else:
-            last_post = board.last_post()
-            if last_post:
-                order = last_post.order + 1
-            else:
-                order = 1
-
-        new_post = cls(db_key=key, db_order=order, db_board=board, db_owner=owner, db_text=text)
-        new_post.save()
-        return new_post
-
-    def __str__(self):
-        return self.subject
-
-    def post_alias(self):
-        return f"{self.board.alias}/{self.order}"
-
-    def can_edit(self, checker=None):
-        if self.owner.account_stub.account == checker:
-            return True
-        return self.board.check_permission(checker=checker, type="admin")
-
-    def edit_post(self, find=None, replace=None):
-        if not find:
-            raise ValueError("No text entered to find.")
-        if not replace:
-            replace = ''
-        self.date_modified = utcnow()
-        self.text = self.text.replace(find, replace)
-
-    def update_read(self, account):
-        acc_read, created = self.read.get_or_create(account=account)
-        acc_read.date_read = utcnow()
-        acc_read.save()
-
-
-class DefaultForumPost(ForumPostDB, AthanorTypeEntity, metaclass=TypeclassBase):
-    objects = TypeclassManager()
-
-    def __init__(self, *args, **kwargs):
-        ForumPostDB.__init__(self, *args, **kwargs)
-        AthanorTypeEntity.__init__(self, *args, **kwargs)
-
-
-class DefaultForumController(GlobalScript):
+class AthanorForumController(AthanorGlobalScript):
     system_name = 'BBS'
     option_dict = {
         'category_locks': ('Default locks to use for new Board Categories?', 'Lock',
@@ -374,31 +165,17 @@ class DefaultForumController(GlobalScript):
                                                      defaultpaths=settings.TYPECLASS_PATHS)
         except Exception:
             log_trace()
-            self.ndb.category_typeclass = DefaultForumCategory
+            self.ndb.category_typeclass = AthanorForumCategory
 
         try:
             self.ndb.board_typeclass = class_from_module(settings.BASE_FORUM_BOARD_TYPECLASS,
                                                      defaultpaths=settings.TYPECLASS_PATHS)
         except Exception:
             log_trace()
-            self.ndb.board_typeclass = DefaultForumBoard
-
-        try:
-            self.ndb.thread_typeclass = class_from_module(settings.BASE_FORUM_THREAD_TYPECLASS,
-                                                     defaultpaths=settings.TYPECLASS_PATHS)
-        except Exception:
-            log_trace()
-            self.ndb.thread_typeclass = DefaultForumThread
-
-        try:
-            self.ndb.post_typeclass = class_from_module(settings.BASE_FORUM_POST_TYPECLASS,
-                                                     defaultpaths=settings.TYPECLASS_PATHS)
-        except Exception:
-            log_trace()
-            self.ndb.post_typeclass = DefaultForumPost
+            self.ndb.board_typeclass = AthanorForumBoard
 
     def categories(self):
-        return DefaultForumCategory.objects.filter_family().order_by('db_key')
+        return AthanorForumCategory.objects.filter_family().order_by('db_key')
 
     def visible_categories(self, character):
         return [cat for cat in self.categories() if cat.access(character, 'see')]

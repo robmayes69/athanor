@@ -2,7 +2,7 @@ from django.db import models
 from evennia.typeclasses.models import SharedMemoryModel
 
 
-class ItemDB(SharedMemoryModel):
+class ItemBridge(SharedMemoryModel):
 
     db_owner = models.ForeignKey('objects.ObjectDB', related_name='held_items', on_delete=models.CASCADE)
     db_object = models.OneToOneField('objects.ObjectDB', related_name='item_data', primary_key=True, on_delete=models.CASCADE)
@@ -15,7 +15,7 @@ class ItemDB(SharedMemoryModel):
         verbose_name_plural = 'Items'
 
 
-class EquipDB(SharedMemoryModel):
+class EquipBridge(SharedMemoryModel):
     db_owner = models.ForeignKey('objects.ObjectDB', related_name='equipped_items', on_delete=models.CASCADE)
     db_object = models.OneToOneField('objects.ObjectDB', related_name='equip_data', primary_key=True, on_delete=models.CASCADE)
     db_gearset = models.CharField(max_length=255, blank=False, null=False)
