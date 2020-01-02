@@ -38,12 +38,9 @@ class AthanorPlayerCharacter(AthanorCharacter):
             raise ValueError("Character name does not meet standards. Avoid double spaces and special characters.")
         if CharacterBridge.objects.filter(db_iname=clean_key.lower()).count():
             raise ValueError("Name conflicts with another Character.")
-        character, errors = cls.create(key, account, **kwargs)
-        character.create_bridge(account, key, clean_key)
-        bridge, created = CharacterBridge.objects.get_or_create(db_account=account, db_object=character,
-                                                                db_name=key, db_iname=key.lower())
-        if created:
-            bridge.save()
+        character, errors = cls.create(clean_key, account, **kwargs)
+        if character:
+            character.create_bridge(account, key, clean_key)
         return character, errors
 
     def rename(self, key):
