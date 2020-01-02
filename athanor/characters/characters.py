@@ -41,7 +41,9 @@ class AthanorPlayerCharacter(AthanorCharacter):
         character, errors = cls.create(clean_key, account, **kwargs)
         if character:
             character.create_bridge(account, key, clean_key)
-        return character, errors
+        else:
+            raise ValueError(errors)
+        return character
 
     def rename(self, key):
         key = ANSIString(key)

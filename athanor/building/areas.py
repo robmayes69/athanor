@@ -8,7 +8,7 @@ from athanor.core.scripts import AthanorGlobalScript
 from athanor.core.objects import AthanorObject
 from athanor.utils.text import partial_match
 
-from . models import Area
+from . models import AreaBridge
 
 
 class AthanorArea(AthanorObject):
@@ -18,7 +18,7 @@ class AthanorArea(AthanorObject):
             return
         if parent:
             parent = parent.area_bridge
-        area, created = Area.objects.get_or_create(db_object=self, db_parent=parent, db_name=clean_key,
+        area, created = AreaBridge.objects.get_or_create(db_object=self, db_parent=parent, db_name=clean_key,
                                                    db_iname=clean_key.lower(), db_cname=key)
         if created:
             area.save()
@@ -29,7 +29,7 @@ class AthanorArea(AthanorObject):
         clean_key = str(key.clean())
         if '|' in clean_key:
             raise ValueError("Malformed ANSI in Area Name.")
-        if Area.objects.filter(db_iname=clean_key.lower(), db_parent=parent).count():
+        if AreaBridge.objects.filter(db_iname=clean_key.lower(), db_parent=parent).count():
             raise ValueError("Name conflicts with another Area with the same Parent.")
         obj, errors = cls.create(clean_key, **kwargs)
         if obj:
@@ -43,7 +43,7 @@ class AthanorArea(AthanorObject):
             raise ValueError("Malformed ANSI in Area Name.")
         bridge = self.area_bridge
         parent = bridge.db_parent
-        if Area.objects.filter(db_iname=clean_key.lower(), db_parent=parent).exclude(id=bridge).count():
+        if AreaBridge.objects.filter(db_iname=clean_key.lower(), db_parent=parent).exclude(id=bridge).count():
             raise ValueError("Name conflicts with another Area with the same Parent.")
         self.key = clean_key
         bridge.db_name = clean_key
@@ -100,7 +100,7 @@ class AthanorAreaController(AthanorGlobalScript):
     def find_area(self, search_text):
         if isinstance(search_text, AthanorArea):
             return search_text
-        if isinstance(search_text, Area):
+        if isinstance(search_text, AreaBridge):
             return search_text.db_object
         search_text = search_text.strip('/')
         if '/' not in search_text:

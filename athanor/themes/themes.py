@@ -1,3 +1,5 @@
+import re
+
 from evennia.utils.utils import class_from_module
 from evennia.utils.logger import log_trace
 from evennia.utils.ansi import ANSIString
@@ -11,6 +13,7 @@ from . models import Theme, ThemeParticipant
 
 
 class AthanorTheme(AthanorOptionScript):
+    re_name = re.compile(r"")
 
     def create_bridge(self, key, clean_key):
         if hasattr(self, 'theme_bridge'):
@@ -19,6 +22,9 @@ class AthanorTheme(AthanorOptionScript):
                                                    db_iname=clean_key.lower(), db_cname=key)
         if created:
             area.save()
+
+    def rename(self, key):
+        pass
 
     @classmethod
     def create_theme(cls, name, description, **kwargs):

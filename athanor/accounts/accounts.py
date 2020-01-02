@@ -65,7 +65,7 @@ class AthanorAccountBridge(AthanorObject):
 
     @classmethod
     def create_account_bridge(cls, account):
-        obj, errors = cls.create(account.key, account)
+        obj, errors = cls.create(account.key)
         return obj, errors
 
 

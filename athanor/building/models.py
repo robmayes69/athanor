@@ -2,7 +2,7 @@ from django.db import models
 from evennia.typeclasses.models import SharedMemoryModel
 
 
-class Area(SharedMemoryModel):
+class AreaBridge(SharedMemoryModel):
     db_object = models.OneToOneField('objects.ObjectDB', related_name='area_bridge', primary_key=True,
                                      on_delete=models.CASCADE)
     db_parent = models.ForeignKey('self', related_name='children', on_delete=models.PROTECT, null=True)
@@ -28,8 +28,11 @@ class Area(SharedMemoryModel):
         chain.reverse()
         return join_str.join([area.db_object.get_display_name(looker) for area in chain])
 
+    def __str__(self):
+        return str(self.db_name)
+
 
 class RoomBridge(SharedMemoryModel):
     db_object = models.OneToOneField('objects.ObjectDB', related_name='room_bridge', primary_key=True,
                                      on_delete=models.CASCADE)
-    db_area = models.ForeignKey(Area, related_name='rooms', on_delete=models.PROTECT)
+    db_area = models.ForeignKey(AreaBridge, related_name='rooms', on_delete=models.PROTECT)
