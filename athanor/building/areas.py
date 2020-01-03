@@ -17,7 +17,8 @@ class AthanorArea(AthanorObject):
         if hasattr(self, 'area_bridge'):
             return
         if parent:
-            parent = parent.area_bridge
+            if hasattr(parent, 'area_bridge'):
+                parent = parent.area_bridge
         area, created = AreaBridge.objects.get_or_create(db_object=self, db_parent=parent, db_name=clean_key,
                                                    db_iname=clean_key.lower(), db_cname=key)
         if created:
@@ -29,12 +30,17 @@ class AthanorArea(AthanorObject):
         clean_key = str(key.clean())
         if '|' in clean_key:
             raise ValueError("Malformed ANSI in Area Name.")
+        if parent:
+            if hasattr(parent, 'area_bridge'):
+                parent = parent.area_bridge
         if AreaBridge.objects.filter(db_iname=clean_key.lower(), db_parent=parent).count():
             raise ValueError("Name conflicts with another Area with the same Parent.")
         obj, errors = cls.create(clean_key, **kwargs)
         if obj:
             obj.create_bridge(parent, key, clean_key)
-        return obj, errors
+        else:
+            raise ValueError(errors)
+        return obj
 
     def rename(self, key):
         key = ANSIString(key)
@@ -56,7 +62,7 @@ class AthanorArea(AthanorObject):
         if area_bridge.room_typeclass:
             return area_bridge.room_typeclass.get_typeclass()
         if area_bridge.parent:
-            return area_bridge.parent.get_room_typeclass()
+            return area_bridge.parent.db_object.get_room_typeclass()
         return class_from_module(settings.BASE_ROOM_TYPECLASS, defaultpaths=settings.TYPECLASS_PATHS)
 
     def get_exit_typeclass(self):
@@ -64,18 +70,16 @@ class AthanorArea(AthanorObject):
         if area_bridge.exit_typeclass:
             return area_bridge.exit_typeclass.get_typeclass()
         if area_bridge.parent:
-            return area_bridge.parent.get_exit_typeclass()
+            return area_bridge.parent.db_object.get_exit_typeclass()
         return class_from_module(settings.BASE_EXIT_TYPECLASS, defaultpaths=settings.TYPECLASS_PATHS)
 
     def create_exit(self, key, account, location, destination, aliases=None):
         typeclass = self.get_exit_typeclass()
-        new_exit, errors = typeclass.create_exit(key, account, self, location, destination, aliases)
-        return new_exit, errors
+        return typeclass.create_exit(key, account, location, destination, aliases)
 
     def create_room(self, key, account):
         typeclass = self.get_room_typeclass()
-        new_room, errors = typeclass.create_room(key, account, self)
-        return new_room, errors
+        return typeclass.create_room(key, account, self)
 
 
 class AthanorAreaController(AthanorGlobalScript):
@@ -106,7 +110,7 @@ class AthanorAreaController(AthanorGlobalScript):
         if '/' not in search_text:
             found = partial_match(search_text, self.areas())
             if found:
-                return found
+                return found.db_object
             raise ValueError(f"Cannot locate Area named: {search_text}")
         current_area = None
         for path in search_text.split('/'):
@@ -144,13 +148,13 @@ class AthanorAreaController(AthanorGlobalScript):
 
     def create_exit(self, session, area, key, account, location, destination, aliases=None):
         area = self.find_area(area)
-        new_exit, errors = area.create_exit(key, account, location, destination, aliases=aliases)
+        new_exit = area.create_exit(key, account, location, destination, aliases=aliases)
         if aliases:
             for alias in aliases:
                 new_exit.aliases.add(alias)
-        return new_exit, errors
+        return new_exit
 
     def create_room(self, session, area, key, account):
         area = self.find_area(area)
-        new_room, errors = area.create_room(key, account)
-        return new_room, errors
+        new_room = area.create_room(key, account)
+        return new_room

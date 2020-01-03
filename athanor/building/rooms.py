@@ -20,8 +20,11 @@ class AthanorRoom(DefaultRoom, AthanorGameEntity):
     @classmethod
     def create_room(cls, key, account, area, **kwargs):
         room, errors = cls.create(key, account, **kwargs)
-        room.create_bridge(area)
-        return room, errors
+        if room:
+            room.create_bridge(area)
+            return room
+        else:
+            raise ValueError(errors)
 
     def return_appearance_header(self, looker, **kwargs):
         color = self.db.color

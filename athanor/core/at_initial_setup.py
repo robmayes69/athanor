@@ -31,7 +31,7 @@ def at_initial_setup():
     from athanor.characters.characters import AthanorPlayerCharacter
 
     god_character = AthanorPlayerCharacter.objects.filter_family().first()
-    god_character.create_bridge(god_account)
+    god_character.create_bridge(god_account, god_character.key, god_character.key)
 
     # Finally we need to locate limbo, create an Area to encompass it and create a RoomBridge to link Limbo to it.
     from athanor.building.rooms import AthanorRoom

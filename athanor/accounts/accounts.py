@@ -32,9 +32,6 @@ class AccountMixin(object):
 
 class AthanorAccount(DefaultAccount, AccountMixin, AthanorGameEntity):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(self, *args, **kwargs)
-
     def __str__(self):
         return self.key
 
@@ -57,8 +54,11 @@ class AthanorAccount(DefaultAccount, AccountMixin, AthanorGameEntity):
     @classmethod
     def create_account(cls, *args, **kwargs):
         account, errors = cls.create(*args, **kwargs)
-        account.create_bridge()
-        return account, errors
+        if account:
+            account.create_bridge()
+            return account
+        else:
+            raise ValueError(errors)
 
 
 class AthanorAccountBridge(AthanorObject):
@@ -82,9 +82,7 @@ class AthanorAccountController(AthanorGlobalScript):
             self.ndb.account_typeclass = AthanorAccount
 
     def create_account(self, session, username, email, password, show_password=False):
-        new_account, errors = self.ndb.account_typeclass.create_account(username=username, email=email, password=password)
-        if errors:
-            raise ValueError(f"Error Creating {username} - {email}: {str(errors)}")
+        new_account = self.ndb.account_typeclass.create_account(username=username, email=email, password=password)
         if not isinstance(new_account.db._playable_characters, list):
             new_account.db._playable_characters = list()
         return new_account

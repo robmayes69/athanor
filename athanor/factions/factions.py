@@ -12,7 +12,7 @@ from athanor.core.objects import AthanorObject
 from athanor.utils.valid import simple_name
 from athanor.utils.text import partial_match
 
-from .models import Faction
+from .models import FactionBridge
 from . import messages
 
 
@@ -35,7 +35,7 @@ class AthanorFaction(AthanorObject):
             raise ValueError("Malformed ANSI in Faction Name.")
         bridge = self.faction_bridge
         parent = bridge.db_parent
-        if Faction.objects.filter(db_iname=clean_key.lower(), db_parent=parent).exclude(id=bridge).count():
+        if FactionBridge.objects.filter(db_iname=clean_key.lower(), db_parent=parent).exclude(id=bridge).count():
             raise ValueError("Name conflicts with another Faction with the same Parent.")
         self.key = clean_key
         bridge.db_name = clean_key
@@ -48,7 +48,7 @@ class AthanorFaction(AthanorObject):
         if parent:
             parent = parent.faction_bridge
         iabbr = abbr.lower() if abbr else None
-        area, created = Faction.objects.get_or_create(db_object=self, db_parent=parent, db_name=clean_key,
+        area, created = FactionBridge.objects.get_or_create(db_object=self, db_parent=parent, db_name=clean_key,
                                                       db_iname=clean_key.lower(), db_cname=key, db_abbreviation=abbr,
                                                       db_iabbreviation=iabbr, db_tier=tier)
         if created:
@@ -60,7 +60,7 @@ class AthanorFaction(AthanorObject):
         clean_key = str(key.clean())
         if '|' in clean_key:
             raise ValueError("Malformed ANSI in Faction Name.")
-        if Faction.objects.filter(db_iname=clean_key.lower(), db_parent=parent).count():
+        if FactionBridge.objects.filter(db_iname=clean_key.lower(), db_parent=parent).count():
             raise ValueError("Name conflicts with another Faction with the same Parent.")
         obj, errors = cls.create(clean_key, **kwargs)
         if obj:
@@ -151,7 +151,7 @@ class AthanorFactionController(AthanorGlobalScript):
             raise ValueError("Not faction entered to search for!")
         if isinstance(search_text, AthanorFaction):
             return search_text
-        if isinstance(search_text, Faction):
+        if isinstance(search_text, FactionBridge):
             return search_text.db_object
         search_tree = [text.strip() for text in search_text.split('/')] if '/' in search_text else [search_text]
         found = None

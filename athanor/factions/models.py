@@ -2,7 +2,7 @@ from django.db import models
 from evennia.typeclasses.models import SharedMemoryModel
 
 
-class Faction(SharedMemoryModel):
+class FactionBridge(SharedMemoryModel):
     db_object = models.OneToOneField('objects.ObjectDB', related_name='faction_bridge', primary_key=True,
                                      on_delete=models.CASCADE)
     db_parent = models.ForeignKey('self', related_name='children', on_delete=models.PROTECT, null=True)
@@ -21,7 +21,7 @@ class Faction(SharedMemoryModel):
 
 
 class FactionPrivilege(SharedMemoryModel):
-    db_faction = models.ForeignKey(Faction, related_name='privileges', on_delete=models.CASCADE)
+    db_faction = models.ForeignKey(FactionBridge, related_name='privileges', on_delete=models.CASCADE)
     db_name = models.CharField(max_length=255, null=False, blank=False, unique=True)
 
     class Meta:
@@ -32,7 +32,7 @@ class FactionPrivilege(SharedMemoryModel):
 
 
 class FactionRank(SharedMemoryModel):
-    db_faction = models.ForeignKey(Faction, related_name='members', on_delete=models.CASCADE)
+    db_faction = models.ForeignKey(FactionBridge, related_name='members', on_delete=models.CASCADE)
     db_rank_number = models.IntegerField(null=False, blank=False)
     db_name = models.CharField(max_length=255, null=True, blank=True)
     privileges = models.ManyToManyField(FactionPrivilege, related_name='ranks')
@@ -42,8 +42,11 @@ class FactionRank(SharedMemoryModel):
 
 
 class FactionMember(SharedMemoryModel):
-    db_faction = models.ForeignKey(Faction, related_name='members', on_delete=models.CASCADE)
+    db_faction = models.ForeignKey(FactionBridge, related_name='members', on_delete=models.CASCADE)
     db_object = models.ForeignKey('objects.ObjectDB', related_name='factions', on_delete=models.CASCADE)
     db_rank = models.ForeignKey(FactionRank, related_name='members', on_delete=models.PROTECT)
     db_title = models.CharField(max_length=255, null=True, blank=False)
     privileges = models.ManyToManyField(FactionPrivilege, related_name='memberships')
+
+    class Meta:
+        unique_together = (('db_faction', 'db_object'),)

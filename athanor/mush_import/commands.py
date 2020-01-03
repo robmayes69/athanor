@@ -124,12 +124,12 @@ class CmdPennImport(AthanorCommand):
     def switch_area_recursive(self, district, parent=None):
         area = district.area
         if not area:
-            area, errors = GLOBAL_SCRIPTS.area.create_area(self.session, district.name, parent=parent)
+            area = GLOBAL_SCRIPTS.area.create_area(self.session, district.name, parent=parent)
             district.area = area.area_bridge
             district.save()
             self.report_status(f"Created Area: {area}")
-            for dist in district.children.filter(type=2).order_by('name'):
-                self.switch_area_recursive(dist, area)
+        for dist in district.children.filter(type=2).order_by('name'):
+            self.switch_area_recursive(dist, area)
 
     def switch_areas(self):
         district_parent = cobj('district')
@@ -145,7 +145,7 @@ class CmdPennImport(AthanorCommand):
 
         for counter, mush_room in enumerate(mush_rooms, start=1):
             self.report_status(f"Processing Room {counter} of {mush_rooms_count} - {mush_room.objid}: {mush_room.name}")
-            new_room, errs = area_con.create_room(self.session, mush_room.parent.area.db_object, mush_room.name, self.account)
+            new_room = area_con.create_room(self.session, mush_room.parent.area.db_object, mush_room.name, self.account)
             mush_room.obj = new_room
             mush_room.obj.db.desc = process_penntext(mush_room.mushget('DESCRIBE'))
             mush_room.save()
@@ -154,13 +154,13 @@ class CmdPennImport(AthanorCommand):
         mush_exits_count = len(mush_exits)
 
         for counter, mush_exit in enumerate(mush_exits, start=1):
-            self.report_status(f"Processing Exit {counter} of {mush_exits_count} - {mush_exit.objid}: {mush_room.name} FROM {mush_exit.location.name} TO {mush_exit.destination.name}")
+            self.report_status(f"Processing Exit {counter} of {mush_exits_count} - {mush_exit.objid}: {mush_exit.name} FROM {mush_exit.location.name} TO {mush_exit.destination.name}")
             aliases = None
             alias_text = mush_exit.mushget('alias')
             if alias_text:
                 aliases = alias_text.split(';')
 
-            new_exit, errs = area_con.create_exit(self.session, mush_exit.location.parent.area.db_object, mush_exit.name,
+            new_exit = area_con.create_exit(self.session, mush_exit.location.parent.area.db_object, mush_exit.name,
                                                   self.account, mush_exit.location.obj, mush_exit.destination.obj,
                                                   aliases=aliases)
             mush_exit.obj = new_exit
@@ -183,7 +183,7 @@ class CmdPennImport(AthanorCommand):
             old_email = mush_acc.mushget('email')
             email = f"{username}@ourgame.org"
             self.report_status(f"Processing Account {counter} of {mush_accounts_count} - {mush_acc.objid}: {mush_acc.name} / {old_email}. New username: {username} - Password: {password}")
-            new_account, errors = accounts_con.create_account(self.session, username, email, password)
+            new_account = accounts_con.create_account(self.session, username, email, password)
             mush_acc.account = new_account
             mush_acc.save()
             new_account.db._penn_import = True
@@ -195,7 +195,7 @@ class CmdPennImport(AthanorCommand):
         try:
             lost_and_found = GLOBAL_SCRIPTS.accounts.find_account("LostAndFound")
         except:
-            lost_and_found, errors = GLOBAL_SCRIPTS.accounts.create_account(self.session, "LostAndFound", 'dummy@dummy.com',
+            lost_and_found = GLOBAL_SCRIPTS.accounts.create_account(self.session, "LostAndFound", 'dummy@dummy.com',
                                                                             self.random_password())
             lost_and_found.db._lost_and_found = True
         return lost_and_found
@@ -216,7 +216,7 @@ class CmdPennImport(AthanorCommand):
                 acc = lost_and_found
                 self.report_status("Character has no Account! Will assign to Lost and Found!")
 
-            new_char, errors = chars_con.create_character(self.session, acc, mush_char.name)
+            new_char = chars_con.create_character(self.session, acc, mush_char.name)
             mush_char.obj = new_char
             mush_char.save()
             new_char.db._penn_import = True

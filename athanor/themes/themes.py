@@ -9,7 +9,7 @@ from athanor.utils.text import partial_match
 
 import athanor.themes.messages as messages
 
-from . models import Theme, ThemeParticipant
+from . models import ThemeBridge, ThemeParticipant
 
 
 class AthanorTheme(AthanorOptionScript):
@@ -18,10 +18,10 @@ class AthanorTheme(AthanorOptionScript):
     def create_bridge(self, key, clean_key):
         if hasattr(self, 'theme_bridge'):
             return
-        area, created = Theme.objects.get_or_create(db_script=self, db_name=clean_key,
+        theme, created = ThemeBridge.objects.get_or_create(db_script=self, db_name=clean_key,
                                                    db_iname=clean_key.lower(), db_cname=key)
         if created:
-            area.save()
+            theme.save()
 
     def rename(self, key):
         pass
@@ -32,13 +32,15 @@ class AthanorTheme(AthanorOptionScript):
         clean_key = str(key.clean())
         if '|' in clean_key:
             raise ValueError("Malformed ANSI in Theme Name.")
-        if Theme.objects.filter(db_iname=clean_key.lower()).count():
+        if ThemeBridge.objects.filter(db_iname=clean_key.lower()).count():
             raise ValueError("Name conflicts with another Theme.")
         obj, errors = cls.create(clean_key, **kwargs)
         if obj:
             obj.create_bridge(key, clean_key)
-        obj.db.desc = description
-        return obj, errors
+            obj.db.desc = description
+        else:
+            raise ValueError(errors)
+        return obj
 
     def add_character(self, character, list_type):
         new_participant, created = ThemeParticipant.objects.get_or_create(db_theme=self.theme_bridge,
@@ -63,7 +65,7 @@ class AthanorTheme(AthanorOptionScript):
         if '|' in clean_key:
             raise ValueError("Malformed ANSI in Theme Name.")
         bridge = self.theme_bridge
-        if Theme.objects.filter(db_iname=clean_key.lower()).exclude(id=bridge).count():
+        if ThemeBridge.objects.filter(db_iname=clean_key.lower()).exclude(id=bridge).count():
             raise ValueError("Name conflicts with another Theme.")
         self.key = clean_key
         bridge.db_name = clean_key
@@ -94,13 +96,15 @@ class AthanorThemeController(AthanorGlobalScript):
 
     def create_theme(self, session, theme_name, description):
         enactor = session.get_puppet_or_account()
-        new_theme = self.ndb.theme_typeclass.create(theme_name, description)
+        new_theme = self.ndb.theme_typeclass.create_theme(theme_name, description)
         messages.ThemeCreateMessage(enactor, theme=new_theme).send()
         return new_theme
 
     def find_theme(self, enactor, theme_name):
         if isinstance(theme_name, AthanorTheme):
             return theme_name
+        if isinstance(theme_name, ThemeBridge):
+            return theme_name.db_script
         if isinstance(theme_name, int):
             theme = AthanorTheme.objects.filter_family(id=theme_name).first()
             if not theme:
@@ -109,7 +113,7 @@ class AthanorThemeController(AthanorGlobalScript):
         theme = partial_match(theme_name, self.themes())
         if not theme:
             raise ValueError(f"Theme '{theme_name}' not found!")
-        return theme
+        return theme.db_script
 
     def set_description(self, session, theme_name, new_description):
         enactor = session.get_puppet_or_account()

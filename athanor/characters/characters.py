@@ -83,11 +83,9 @@ class AthanorCharacterController(AthanorGlobalScript):
         pass
 
     def create_character(self, session, account, character_name):
-        new_character, errors = self.ndb.character_typeclass.create(character_name, account)
-        if errors:
-            raise ValueError(f"Error Creating {account} - {character_name}: {str(errors)}")
+        new_character = self.ndb.character_typeclass.create_character(character_name, account)
         new_character.db.account = account
-        return new_character, errors
+        return new_character
 
     def delete_character(self):
         pass
