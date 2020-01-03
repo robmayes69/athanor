@@ -32,7 +32,7 @@ class ForumBoard(SharedMemoryModel):
 
 
 class ForumThread(SharedMemoryModel):
-    db_script = models.OneToOneField('scripts.ScriptDB', related_name='forum_thread_data', primary_key=True,
+    db_script = models.OneToOneField('scripts.ScriptDB', related_name='forum_thread_bridge', primary_key=True,
                                      on_delete=models.CASCADE)
     db_account = models.ForeignKey('accounts.AccountDB', related_name='+', null=True,
                                    on_delete=models.SET_NULL)
@@ -109,6 +109,7 @@ class ForumThread(SharedMemoryModel):
         acc_read.date_read = utcnow()
         acc_read.save()
 
+
 class ForumThreadRead(models.Model):
     account = models.ForeignKey('accounts.AccountDB', related_name='forum_read', on_delete=models.CASCADE)
     thread = models.ForeignKey(ForumThread, related_name='read', on_delete=models.CASCADE)
@@ -119,8 +120,6 @@ class ForumThreadRead(models.Model):
 
 
 class ForumPost(SharedMemoryModel):
-    db_script = models.OneToOneField('scripts.ScriptDB', related_name='forum_post_data', primary_key=True,
-                                     on_delete=models.CASCADE)
     db_account = models.ForeignKey('accounts.AccountDB', related_name='+', null=True, on_delete=models.SET_NULL)
     db_object = models.ForeignKey('objects.ObjectDB', related_name='+', null=True, on_delete=models.SET_NULL)
     db_date_created = models.DateTimeField(null=False)
