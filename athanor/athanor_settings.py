@@ -183,7 +183,7 @@ GENDER_SUBSTITUTIONS = {
             'objective': 'her',
             'possessive': 'hers',
         },
-        None: {
+        'neuter': {
             'gender': 'neuter',
             'child': 'being',
             'young': 'young being',

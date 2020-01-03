@@ -5,6 +5,9 @@ from django.conf import settings
 class SubMessageMixin(object):
     gender_pack = settings.GENDER_SUBSTITUTIONS
 
+    def get_gender(self, looker):
+        return 'neuter'
+
     def generate_substitutions(self, viewer):
         response = dict()
         name = self.get_display_name(looker=viewer)
