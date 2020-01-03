@@ -2,7 +2,7 @@ from django.db import models
 from evennia.typeclasses.models import SharedMemoryModel
 
 
-class ForumCategory(SharedMemoryModel):
+class ForumCategoryBridge(SharedMemoryModel):
     db_script = models.OneToOneField('scripts.ScriptDB', related_name='forum_category_data', primary_key=True,
                                      on_delete=models.CASCADE)
     db_name = models.CharField(max_length=255, blank=False, null=False)
@@ -15,10 +15,10 @@ class ForumCategory(SharedMemoryModel):
         verbose_name_plural = 'ForumCategories'
 
 
-class ForumBoard(SharedMemoryModel):
+class ForumBoardBridge(SharedMemoryModel):
     db_script = models.OneToOneField('scripts.ScriptDB', related_name='forum_board_data', primary_key=True,
                                      on_delete=models.CASCADE)
-    db_category = models.ForeignKey(ForumCategory, related_name='boards', null=False, on_delete=models.CASCADE)
+    db_category = models.ForeignKey(ForumCategoryBridge, related_name='boards', null=False, on_delete=models.CASCADE)
     db_name = models.CharField(max_length=255, blank=False, null=False)
     db_iname = models.CharField(max_length=255, blank=False, null=False, unique=True)
     db_order = models.PositiveIntegerField(default=0)
@@ -31,7 +31,7 @@ class ForumBoard(SharedMemoryModel):
         unique_together = (('db_category', 'db_order'), ('db_category', 'db_iname'))
 
 
-class ForumThread(SharedMemoryModel):
+class ForumThreadBridge(SharedMemoryModel):
     db_script = models.OneToOneField('scripts.ScriptDB', related_name='forum_thread_bridge', primary_key=True,
                                      on_delete=models.CASCADE)
     db_account = models.ForeignKey('accounts.AccountDB', related_name='+', null=True,
@@ -40,7 +40,7 @@ class ForumThread(SharedMemoryModel):
     db_name = models.CharField(max_length=255, blank=False, null=False)
     db_iname = models.CharField(max_length=255, blank=False, null=False, unique=True)
     db_date_created = models.DateTimeField(null=False)
-    db_board = models.ForeignKey(ForumBoard, related_name='threads', on_delete=models.CASCADE)
+    db_board = models.ForeignKey(ForumBoardBridge, related_name='threads', on_delete=models.CASCADE)
     db_date_modified = models.DateTimeField(null=False)
     db_order = models.PositiveIntegerField(null=True)
 
@@ -60,7 +60,7 @@ class ForumThread(SharedMemoryModel):
     @classmethod
     def create(cls, *args, **kwargs):
         board = kwargs.get('board', None)
-        if not isinstance(board, ForumThreadDB):
+        if not isinstance(board, ForumThreadBridge):
             raise ValueError("Posts must be linked to a board!")
 
         owner = kwargs.get('owner', None)
@@ -112,7 +112,7 @@ class ForumThread(SharedMemoryModel):
 
 class ForumThreadRead(models.Model):
     account = models.ForeignKey('accounts.AccountDB', related_name='forum_read', on_delete=models.CASCADE)
-    thread = models.ForeignKey(ForumThread, related_name='read', on_delete=models.CASCADE)
+    thread = models.ForeignKey(ForumThreadBridge, related_name='read', on_delete=models.CASCADE)
     date_read = models.DateTimeField(null=True)
 
     class Meta:
@@ -123,7 +123,7 @@ class ForumPost(SharedMemoryModel):
     db_account = models.ForeignKey('accounts.AccountDB', related_name='+', null=True, on_delete=models.SET_NULL)
     db_object = models.ForeignKey('objects.ObjectDB', related_name='+', null=True, on_delete=models.SET_NULL)
     db_date_created = models.DateTimeField(null=False)
-    db_thread = models.ForeignKey(ForumThread, related_name='posts', on_delete=models.CASCADE)
+    db_thread = models.ForeignKey(ForumThreadBridge, related_name='posts', on_delete=models.CASCADE)
     db_date_modified = models.DateTimeField(null=False)
     db_order = models.PositiveIntegerField(null=True)
     db_body = models.TextField(null=True, blank=True)

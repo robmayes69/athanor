@@ -19,10 +19,10 @@ class AthanorArea(AthanorObject):
         if parent:
             if hasattr(parent, 'area_bridge'):
                 parent = parent.area_bridge
-        area, created = AreaBridge.objects.get_or_create(db_object=self, db_parent=parent, db_name=clean_key,
+        bridge, created = AreaBridge.objects.get_or_create(db_object=self, db_parent=parent, db_name=clean_key,
                                                    db_iname=clean_key.lower(), db_cname=key)
         if created:
-            area.save()
+            bridge.save()
 
     @classmethod
     def create_area(cls, key, parent=None, **kwargs):
@@ -55,7 +55,6 @@ class AthanorArea(AthanorObject):
         bridge.db_name = clean_key
         bridge.db_iname = clean_key.lower()
         bridge.db_cname = key
-
 
     def get_room_typeclass(self):
         area_bridge = self.area_bridge
