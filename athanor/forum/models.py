@@ -7,8 +7,10 @@ class ForumCategoryBridge(SharedMemoryModel):
                                      on_delete=models.CASCADE)
     db_name = models.CharField(max_length=255, blank=False, null=False)
     db_iname = models.CharField(max_length=255, blank=False, null=False, unique=True)
+    db_cname = models.CharField(max_length=255, blank=False, null=False)
     db_abbr = models.CharField(max_length=5, blank=True, null=False)
     db_iabbr = models.CharField(max_length=5, unique=True, blank=True, null=False)
+    db_cabbr = models.CharField(max_length=50, blank=False, null=False)
 
     class Meta:
         verbose_name = 'ForumCategory'
@@ -20,7 +22,8 @@ class ForumBoardBridge(SharedMemoryModel):
                                      on_delete=models.CASCADE)
     db_category = models.ForeignKey(ForumCategoryBridge, related_name='boards', null=False, on_delete=models.CASCADE)
     db_name = models.CharField(max_length=255, blank=False, null=False)
-    db_iname = models.CharField(max_length=255, blank=False, null=False, unique=True)
+    db_iname = models.CharField(max_length=255, blank=False, null=False)
+    db_cname = models.CharField(max_length=255, blank=False, null=False)
     db_order = models.PositiveIntegerField(default=0)
     ignore_list = models.ManyToManyField('accounts.AccountDB')
     db_mandatory = models.BooleanField(default=False)
@@ -38,7 +41,8 @@ class ForumThreadBridge(SharedMemoryModel):
                                    on_delete=models.SET_NULL)
     db_object = models.ForeignKey('objects.ObjectDB', related_name='+', null=True, on_delete=models.SET_NULL)
     db_name = models.CharField(max_length=255, blank=False, null=False)
-    db_iname = models.CharField(max_length=255, blank=False, null=False, unique=True)
+    db_iname = models.CharField(max_length=255, blank=False, null=False)
+    db_cname = models.CharField(max_length=255, blank=False, null=False)
     db_date_created = models.DateTimeField(null=False)
     db_board = models.ForeignKey(ForumBoardBridge, related_name='threads', on_delete=models.CASCADE)
     db_date_modified = models.DateTimeField(null=False)

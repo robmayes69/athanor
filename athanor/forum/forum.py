@@ -1,21 +1,18 @@
 import re
 from django.conf import settings
-from django.db.models import F
-from django.db import transaction
+from django.db.models import F, Q
 
 from evennia.utils.logger import log_trace
-from evennia.utils.utils import lazy_property, class_from_module
-from evennia.utils.optionhandler import OptionHandler
+from evennia.utils.utils import class_from_module
 from evennia.locks.lockhandler import LockException
 from evennia.utils.validatorfuncs import lock as validate_lock
+from evennia.utils.ansi import ANSIString
 
-from athanor.utils.time import utcnow
 from athanor.utils.online import puppets as online_puppets
-from athanor.utils.valid import simple_name
 from athanor.utils.text import partial_match
 from athanor.core.scripts import AthanorGlobalScript, AthanorOptionScript
 
-from . models import ForumCategory, ForumBoard, ForumThread, ForumPost, ForumThreadRead
+from . models import ForumCategoryBridge, ForumBoardBridge, ForumThreadBridge, ForumPost, ForumThreadRead
 
 
 class AthanorForumCategory(AthanorOptionScript):
@@ -26,25 +23,35 @@ class AthanorForumCategory(AthanorOptionScript):
     }
     prefix_regex = re.compile(r"^[a-zA-Z]{0,3}$")
 
+    def create_bridge(self, key, clean_key):
+        pass
 
     @classmethod
-    def create_forum_category(cls, *args, **kwargs):
-        with transaction.atomic():
-            script, errors = cls.create(*args, **kwargs)
+    def create_forum_category(cls, key, abbr, *args, **kwargs):
+        key = ANSIString(key)
+        abbr = ANSIString(abbr)
+        clean_key = str(key.clean())
+        clean_abbr = str(abbr.clean())
+        if '|' in clean_key:
+            raise ValueError("Malformed ANSI in ForumCategory Name.")
+        if ForumCategoryBridge.objects.filter(Q(db_iname=clean_key.lower()) | Q(db_iabbr=clean_abbr.lower())).count():
+            raise ValueError("Name or Abbreviation conflicts with another ForumCategory.")
+        script, errors = cls.create(clean_key, *args, **kwargs)
+        if script:
+            script.create_bridge(key, clean_key)
+        else:
+            raise ValueError(errors)
+        return script
 
 
 class AthanorForumBoard(AthanorOptionScript):
 
+    def create_bridge(self, category, key, clean_key):
+        pass
+
     @classmethod
-    def create_forum_board(cls, *args, **kwargs):
-        with transaction.atomic():
-            pass
-
-    def __str__(self):
-        return self.key
-
-    def __int__(self):
-        return self.order
+    def create_forum_board(cls, category, key, order, *args, **kwargs):
+        pass
 
     @property
     def prefix_order(self):
@@ -148,6 +155,10 @@ class AthanorForumBoard(AthanorOptionScript):
         except LockException as e:
             raise ValueError(str(e))
         return new_locks
+
+
+class AthanorForumThread(AthanorOptionScript):
+    pass
 
 
 class AthanorForumController(AthanorGlobalScript):
