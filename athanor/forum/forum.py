@@ -10,21 +10,28 @@ from evennia.utils.ansi import ANSIString
 
 from athanor.utils.online import puppets as online_puppets
 from athanor.utils.text import partial_match
+from athanor.utils.time import utcnow
 from athanor.core.scripts import AthanorGlobalScript, AthanorOptionScript
 
-from . models import ForumCategoryBridge, ForumBoardBridge, ForumThreadBridge, ForumPost, ForumThreadRead
+from .models import ForumCategoryBridge, ForumBoardBridge, ForumThreadBridge, ForumPost, ForumThreadRead
 
 
 class AthanorForumCategory(AthanorOptionScript):
-    option_dict = {
-        'board_locks': ('Default locks for new Boards?', 'Lock', "read:all();post:all();admin:perm(Admin)"),
-        'color': ('Color to display Prefix in.', 'Color', 'n'),
-        'faction': ('Faction to use for Lock Templates', 'Faction', None)
-    }
-    prefix_regex = re.compile(r"^[a-zA-Z]{0,3}$")
+    re_name = re.compile(r"^[a-zA-Z]{0,3}$")
+    re_abbr = re.compile(r"^[a-zA-Z]{0,3}$")
+    lockstring = "see:all();create:perm(Admin);delete:perm(Admin);admin:perm(Admin)"
 
-    def create_bridge(self, key, clean_key):
-        pass
+    def create_bridge(self, key, clean_key, abbr, clean_abbr):
+        if hasattr(self, 'forum_category_bridge'):
+            return
+        bridge, created = ForumCategoryBridge.objects.get_or_create(db_script=self, db_name=clean_key, db_cabbr=abbr,
+                                                                    db_iname=clean_key.lower(), db_cname=key,
+                                                                    db_abbr=clean_abbr, db_iabbr=clean_abbr.lower())
+        if created:
+            bridge.save()
+
+    def setup_locks(self):
+        self.locks.add(self.lockstring)
 
     @classmethod
     def create_forum_category(cls, key, abbr, *args, **kwargs):
@@ -34,40 +41,67 @@ class AthanorForumCategory(AthanorOptionScript):
         clean_abbr = str(abbr.clean())
         if '|' in clean_key:
             raise ValueError("Malformed ANSI in ForumCategory Name.")
+        if not cls.re_abbr.match(clean_abbr):
+            raise ValueError("Abbreviations must be between 0-3 alphabetical characters.")
         if ForumCategoryBridge.objects.filter(Q(db_iname=clean_key.lower()) | Q(db_iabbr=clean_abbr.lower())).count():
             raise ValueError("Name or Abbreviation conflicts with another ForumCategory.")
         script, errors = cls.create(clean_key, *args, **kwargs)
         if script:
-            script.create_bridge(key, clean_key)
+            script.create_bridge(key, clean_key, abbr, clean_abbr)
+            script.setup_locks()
         else:
             raise ValueError(errors)
         return script
 
 
 class AthanorForumBoard(AthanorOptionScript):
+    lockstring = "read:all();post:all();admin:perm(Admin)"
 
-    def create_bridge(self, category, key, clean_key):
-        pass
+    def setup_locks(self):
+        self.locks.add(self.lockstring)
+
+    def create_bridge(self, category, key, clean_key, order):
+        if hasattr(self, 'forum_category_bridge'):
+            return
+        bridge, created = ForumBoardBridge.objects.get_or_create(db_script=self, db_name=clean_key, db_order=order,
+                                                                 db_category=category.forum_category_bridge,
+                                                                 db_iname=clean_key.lower(), db_cname=key)
+        if created:
+            bridge.save()
 
     @classmethod
     def create_forum_board(cls, category, key, order, *args, **kwargs):
-        pass
+        key = ANSIString(key)
+        clean_key = str(key.clean())
+        if '|' in clean_key:
+            raise ValueError("Malformed ANSI in ForumCategory Name.")
+        if not cls.re_name.match(clean_key):
+            raise ValueError("Forum Board Names must <qualifier>")
+        if ForumBoardBridge.objects.filter(db_category=category.forum_category_bridge).filter(
+                Q(db_iname=clean_key.lower()) | Q(db_order=order)).count():
+            raise ValueError("Name or Order conflicts with another Forum Board in this category.")
+        script, errors = cls.create(clean_key, *args, **kwargs)
+        if script:
+            script.create_bridge(category, key, clean_key, order)
+            script.setup_locks()
+        else:
+            raise ValueError(errors)
+        return script
 
     @property
     def prefix_order(self):
-        if self.category:
-            return '%s%s' % (self.category.abbr, self.order)
-        return str(self.order)
+        bridge = self.forum_bridge_data
+        return f'{bridge.category.db_abbr}{bridge.db_order}'
 
     @property
     def main_threads(self):
-        return self.threads.filter(parent=None)
+        return self.forum_board_bridge.threads.filter(parent=None)
 
     def character_join(self, character):
-        self.ignore_list.remove(character)
+        self.forum_board_bridge.ignore_list.remove(character)
 
     def character_leave(self, character):
-        self.ignore_list.add(character)
+        self.forum_board_bridge.ignore_list.add(character)
 
     def parse_threadnums(self, account, check=None):
         if not check:
@@ -102,7 +136,8 @@ class AthanorForumBoard(AthanorOptionScript):
             return False
 
     def unread_threads(self, account):
-        return self.threads.exclude(read__account=account, db_date_modified__lte=F('read__date_read')).order_by('db_order')
+        return self.threads.exclude(read__account=account, db_date_modified__lte=F('read__date_read')).order_by(
+            'db_order')
 
     def display_permissions(self, looker=None):
         if not looker:
@@ -149,7 +184,7 @@ class AthanorForumBoard(AthanorOptionScript):
         if not new_locks:
             raise ValueError("No locks entered!")
         new_locks = validate_lock(new_locks, option_key='BBS Board Locks',
-                                        access_options=['read', 'post', 'admin'])
+                                  access_options=['read', 'post', 'admin'])
         try:
             self.locks.add(new_locks)
         except LockException as e:
@@ -158,32 +193,67 @@ class AthanorForumBoard(AthanorOptionScript):
 
 
 class AthanorForumThread(AthanorOptionScript):
-    pass
+
+    def create_bridge(self, board, key, clean_key, order, account, obj, date_created, date_modified):
+        if hasattr(self, 'forum_category_bridge'):
+            return
+        if not date_created:
+            date_created = utcnow()
+        if not date_modified:
+            date_modified = utcnow()
+        bridge, created = ForumThreadBridge.objects.get_or_create(db_script=self, db_name=clean_key, db_order=order,
+                                                                  db_board=board.forum_board_bridge, db_object=obj,
+                                                                  db_iname=clean_key.lower(), db_cname=key,
+                                                                  db_date_created=date_created, db_account=account,
+                                                                  db_date_modified=date_modified)
+        if created:
+            bridge.save()
+
+    @classmethod
+    def create_forum_thread(cls, board, key, order, account, obj, date_created, date_modified, *args, **kwargs):
+        key = ANSIString(key)
+        clean_key = str(key.clean())
+        if '|' in clean_key:
+            raise ValueError("Malformed ANSI in Forum Thread Name.")
+        if not cls.re_name.match(clean_key):
+            raise ValueError("Forum Thread Names must <qualifier>")
+        if ForumThreadBridge.objects.filter(db_board=board.forum_board_bridge).filter(
+                Q(db_iname=clean_key.lower()) | Q(db_order=order)).count():
+            raise ValueError("Name or Order conflicts with another Forum Thread on this Board.")
+        script, errors = cls.create(clean_key, *args, **kwargs)
+        if script:
+            script.create_bridge(board, key, clean_key, order, account, obj, date_created, date_modified)
+        else:
+            raise ValueError(errors)
+        return script
 
 
 class AthanorForumController(AthanorGlobalScript):
     system_name = 'BBS'
-    option_dict = {
-        'category_locks': ('Default locks to use for new Board Categories?', 'Lock',
-                           "see:all();create:perm(Admin);delete:perm(Admin);admin:perm(Admin)"),
-    }
 
     def at_start(self):
         from django.conf import settings
 
         try:
             self.ndb.category_typeclass = class_from_module(settings.BASE_FORUM_CATEGORY_TYPECLASS,
-                                                     defaultpaths=settings.TYPECLASS_PATHS)
+                                                            defaultpaths=settings.TYPECLASS_PATHS)
         except Exception:
             log_trace()
             self.ndb.category_typeclass = AthanorForumCategory
 
         try:
             self.ndb.board_typeclass = class_from_module(settings.BASE_FORUM_BOARD_TYPECLASS,
-                                                     defaultpaths=settings.TYPECLASS_PATHS)
+                                                         defaultpaths=settings.TYPECLASS_PATHS)
         except Exception:
             log_trace()
             self.ndb.board_typeclass = AthanorForumBoard
+
+        try:
+            self.ndb.thread_typeclass = class_from_module(settings.BASE_FORUM_THREAD_TYPECLASS,
+                                                          defaultpaths=settings.TYPECLASS_PATHS)
+        except Exception:
+            log_trace()
+            self.ndb.thread_typeclass = AthanorForumThread
 
     def categories(self):
         return AthanorForumCategory.objects.filter_family().order_by('db_key')
@@ -191,60 +261,49 @@ class AthanorForumController(AthanorGlobalScript):
     def visible_categories(self, character):
         return [cat for cat in self.categories() if cat.access(character, 'see')]
 
-    def create_category(self, account, name, abbr=None):
-        if not abbr:
-            abbr = ''
-        if not self.access(account, 'admin'):
+    def create_category(self, session, name, abbr=''):
+        if not self.access(session, 'admin'):
             raise ValueError("Permission denied!")
-        typeclass = class_from_module(settings.BASE_FORUM_CATEGORY_TYPECLASS)
-        new_category = typeclass.create(key=name, abbr=abbr)
+
+        new_category = self.ndb.category_typeclass.create_forum_category(key=name, abbr=abbr)
         announce = f"Created BBS Category: {abbr} - {name}"
-        self.alert(announce, enactor=account)
-        self.msg_target(announce, account)
+        self.alert(announce, enactor=session)
+        self.msg_target(announce, session)
         return new_category
 
-    def find_category(self, character, category=None):
+    def find_category(self, session, category=None):
         if not category:
             raise ValueError("Must enter a category name!")
-        candidates = self.categories()
-        if not character.account.is_superuser:
-            candidates = [c for c in candidates if c.access(character, 'see')]
-        if not candidates:
+        if not (candidates := self.visible_categories(session)):
             raise ValueError("No Board Categories visible!")
-        found = partial_match(category, candidates)
-        if not found:
+        if not (found := partial_match(category, candidates)):
             raise ValueError(f"Category '{category}' not found!")
         return found
 
-    def rename_category(self, character, category=None, new_name=None):
-        if not category:
-            raise ValueError("Must enter a category name!")
-        category = self.find_category(character, category)
-        if not category.access(character, 'admin'):
+    def rename_category(self, session, category=None, new_name=None):
+        category = self.find_category(session, category)
+        if not category.access(session, 'admin'):
             raise ValueError("Permission denied!")
         old_name = category.key
         old_abbr = category.abbr
-        new_name = category.change_key(new_name)
+        new_name = category.rename(new_name)
         announce = f"BBS Category '{old_abbr} - {old_name}' renamed to: '{old_abbr} - {new_name}'"
-        self.alert(announce, enactor=character)
-        self.msg_target(announce, character)
+        self.alert(announce, enactor=session)
+        self.msg_target(announce, session)
 
-    def prefix_category(self, character, category=None, new_prefix=None):
-        if not category:
-            raise ValueError("Must enter a category name!")
-        category = self.find_category(character, category)
-        if not category.access(character, 'admin'):
+    def prefix_category(self, session, category=None, new_prefix=None):
+        category = self.find_category(session, category)
+        if not category.access(session, 'admin'):
             raise ValueError("Permission denied!")
         old_abbr = category.abbr
-        category.abbr = new_prefix
         new_prefix = category.change_prefix(new_prefix)
         announce = f"BBS Category '{old_abbr} - {category.key}' re-prefixed to: '{new_prefix} - {category.key}'"
-        self.alert(announce, enactor=character)
-        self.msg_target(announce, character)
+        self.alert(announce, enactor=session)
+        self.msg_target(announce, session)
 
-    def delete_category(self, character, category, abbr=None):
-        category_found = self.find_category(character, category)
-        if not character.account.is_superuser:
+    def delete_category(self, session, category, abbr=None):
+        category_found = self.find_category(session, category)
+        if not session.account.is_superuser:
             raise ValueError("Permission denied! Superuser only!")
         if not category == category_found.key:
             raise ValueError("Names must be exact for verification.")
@@ -253,21 +312,21 @@ class AthanorForumController(AthanorGlobalScript):
         if not abbr == category_found.abbr:
             raise ValueError("Must provide exact prefix for verification!")
         announce = f"|rDELETED|n BBS Category '{category_found.abbr} - {category_found.key}'"
-        self.alert(announce, enactor=character)
-        self.msg_target(announce, character)
+        self.alert(announce, enactor=session)
+        self.msg_target(announce, session)
         category_found.delete()
 
-    def lock_category(self, character, category, new_locks):
-        category = self.find_category(character, category)
-        if not character.account.is_superuser:
+    def lock_category(self, session, category, new_locks):
+        category = self.find_category(session, category)
+        if not session.account.is_superuser:
             raise ValueError("Permission denied! Superuser only!")
         new_locks = category.change_locks(new_locks)
         announce = f"BBS Category '{category.abbr} - {category.key}' lock changed to: {new_locks}"
-        self.alert(announce, enactor=character)
-        self.msg_target(announce, character)
+        self.alert(announce, enactor=session)
+        self.msg_target(announce, session)
 
     def boards(self):
-        return DefaultForumBoard.objects.filter_family().order_by('db_category__db_key', 'db_order')
+        return AthanorForumBoard.objects.filter_family().order_by('forum_board_bridge__db_category__db_key', 'forum_board_bridge__db_order')
 
     def usable_boards(self, character, mode='read', check_admin=True):
         return [board for board in self.boards() if board.check_permission(character, mode=mode, checkadmin=check_admin)
@@ -277,134 +336,113 @@ class AthanorForumController(AthanorGlobalScript):
         return [board for board in self.usable_boards(character, mode='read', check_admin=check_admin)
                 if board.category.access(character, 'see')]
 
-    def find_board(self, character, find_name=None, visible_only=True):
-        if isinstance(find_name, DefaultForumBoard):
-            return find_name
+    def find_board(self, session, find_name=None, visible_only=True):
         if not find_name:
             raise ValueError("No board entered to find!")
-        if visible_only:
-            boards = self.visible_boards(character)
-        else:
-            boards = self.usable_boards(character)
-        if not boards:
-            raise ValueError("No applicable forum.")
-
+        if isinstance(find_name, ForumBoardBridge):
+            return find_name.db_script
+        if isinstance(find_name, AthanorForumBoard):
+            return find_name
+        if not (boards := self.visible_boards(session) if visible_only else self.usable_boards(session)):
+            raise ValueError("No applicable Forum Boards.")
         board_dict = {board.prefix_order.upper(): board for board in boards}
+        if not (found := board_dict.get(find_name.upper(), None)):
+            raise ValueError("Board '%s' not found!" % find_name)
+        return found
 
-        if find_name.upper() in board_dict:
-            return board_dict[find_name.upper()]
-        raise ValueError("Board '%s' not found!" % find_name)
-
-    def create_board(self, character, category, name=None, order=None):
-        category = self.find_category(character, category)
-        if not category.access(character, 'create'):
+    def create_board(self, session, category, name=None, order=None):
+        category = self.find_category(session, category)
+        if not category.access(session, 'create'):
             raise ValueError("Permission denied!")
-        typeclass = class_from_module(settings.BASE_FORUM_BOARD_TYPECLASS)
-        new_board = typeclass.create(key=name, order=order, category=category)
+        typeclass = self.ndb.board_typeclass
+        new_board = typeclass.create_forum_board(key=name, order=order, category=category)
         announce = f"BBS Board Created: ({category}) - {new_board.prefix_order}: {new_board.key}"
-        self.alert(announce, enactor=character)
-        self.msg_target(announce, character)
+        self.alert(announce, enactor=session)
+        self.msg_target(announce, session)
         return new_board
 
-    def delete_board(self, character, name=None):
-        board = self.find_board(name, character)
+    def delete_board(self, session, name=None):
+        board = self.find_board(name, session)
         if not name == board.key:
             raise ValueError("Entered name must match board name exactly!")
-        if not board.category.access(character, 'delete'):
+        if not board.category.access(session, 'delete'):
             raise ValueError("Permission denied!")
         announce = f"Deleted BBS Board ({board.category.key}) - {board.alias}: {board.key}"
-        self.alert(announce, enactor=character)
-        self.msg_target(announce, character)
+        self.alert(announce, enactor=session)
+        self.msg_target(announce, session)
         board.delete()
 
-    def rename_board(self, character, name=None, new_name=None):
-        board = self.find_board(character, name)
-        if not board.category.access('admin', character):
+    def rename_board(self, session, name=None, new_name=None):
+        board = self.find_board(session, name)
+        if not board.category.access('admin', session):
             raise ValueError("Permission denied!")
         old_name = board.key
         board.change_key(new_name)
         announce = f"Renamed BBS Board ({board.category.key}) - {board.alias}: {old_name} to: {board.key}"
-        self.alert(announce, enactor=character)
-        self.msg_target(announce, character)
+        self.alert(announce, enactor=session)
+        self.msg_target(announce, session)
 
-    def order_board(self, character, name=None, order=None):
-        board = self.find_board(character, name)
-        if not board.category.access('admin', character):
+    def order_board(self, session, name=None, order=None):
+        board = self.find_board(session, name)
+        if not board.category.access('admin', session):
             raise ValueError("Permission denied!")
         old_order = board.order
         order = board.change_order(order)
         announce = f"Re-Ordered BBS Board ({board.category.key}) - {board.alias}: {old_order} to: {order}"
-        self.alert(announce, enactor=character)
-        self.msg_target(announce, character)
+        self.alert(announce, enactor=session)
+        self.msg_target(announce, session)
 
-    def lock_board(self, character, name=None, lock=None):
-        board = self.find_board(character, name)
-        if not board.category.access('admin', character):
+    def lock_board(self, session, name=None, lock=None):
+        board = self.find_board(session, name)
+        if not board.category.access('admin', session):
             raise ValueError("Permission denied!")
         lock = board.change_locks(lock)
         announce = f"BBS Board ({board.category.key}) - {board.alias}: {board.key} lock changed to: {lock}"
-        self.alert(announce, enactor=character)
-        self.msg_target(announce, character)
+        self.alert(announce, enactor=session)
+        self.msg_target(announce, session)
 
-    def create_thread(self, character, board=None, subject=None, text=None, announce=True, date=None, no_post=False):
-        board = self.find_board(character, board)
-        typeclass = class_from_module(settings.BASE_FORUM_THREAD_TYPECLASS)
-        new_thread = typeclass.create(key=subject, text=text, owner=character.full_stub, board=board, date=date)
+    def create_thread(self, session, board=None, subject=None, text=None, announce=True, date=None, no_post=False):
+        board = self.find_board(session, board)
+        new_thread = self.ndb.thread_typeclass.create_forum_thread(key=subject, text=text, owner=session.full_stub, board=board, date=date)
         if not no_post:
-            new_post = self.create_post(character, board=board, thread=new_thread, subject=subject, text=text,
+            new_post = self.create_post(session, board=board, thread=new_thread, subject=subject, text=text,
                                         announce=False, date=date)
         if announce:
             pass  # do something!
         return new_thread
 
-    def rename_thread(self, character, board=None, thread=None, new_name=None):
-        pass
+    def rename_thread(self, session, board=None, thread=None, new_name=None):
+        board = self.find_board(session, board)
+        thread = board.find_thread(session, thread)
 
-    def delete_thread(self, character, board=None, thread=None, name_confirm=None):
-        pass
 
-    def create_post(self, character, board=None, thread=None, subject=None, text=None, announce=True, date=None):
-        if not isinstance(board, DefaultForumBoard):
-            board = self.find_board(character, board)
-        if not isinstance(thread, DefaultForumThread):
-            thread = board.parse_threadnums(character, thread)
-            if len(thread) > 1:
-                raise ValueError("Can only create posts on a single thread at a time!")
-            thread = thread[0]
-        typeclass = class_from_module(settings.BASE_FORUM_POST_TYPECLASS)
-        new_post = typeclass.create(key=subject, text=text, owner=character, thread=thread, date=date)
+    def delete_thread(self, session, board=None, thread=None, name_confirm=None):
+        board = self.find_board(session, board)
+        thread = board.find_thread(session, thread)
+
+
+    def create_post(self, session, board=None, thread=None, subject=None, text=None, announce=True, date=None):
+        board = self.find_board(session, board)
+        thread = board.find_thread(session, thread)
+        new_post = thread.create_post(text=text, owner=session, date=date)
         if announce:
             pass  # do something!
         return new_post
 
-    def edit_post(self, character, board=None, post=None, seek_text=None, replace_text=None):
-        board = self.find_board(character, board)
-        posts = board.parse_threadnums(character, post)
-        if not posts:
-            raise ValueError("Post not found!")
-        if len(posts) > 1:
-            raise ValueError("Cannot edit multiple posts at once.")
-        p = posts[0]
-        if not p.can_edit(character):
+    def edit_post(self, session, board=None, thread=None, post=None, seek_text=None, replace_text=None):
+        board = self.find_board(session, board)
+        thread = board.find_thread(session, thread)
+        post = thread.find_post(session, post)
+        if not post.can_edit(session):
             raise ValueError("Permission denied.")
-        p.edit_post(find=seek_text, replace=replace_text)
+        post.edit_post(find=seek_text, replace=replace_text)
         announce = f"Post edited!"
-        self.msg_target(announce, character)
+        self.msg_target(announce, session)
 
-    def delete_post(self, character, board=None, post=None):
-        board = self.find_board(character, board)
-        posts = board.parse_threadnums(character, post)
-        if not posts:
-            raise ValueError("Post not found!")
-        errors = set()
-        for p in posts:
-            if p.can_edit(character):
-                self.msg_target(f"Post {p.order} deleted!", character)
-                p.delete()
-            else:
-                errors.add(p.order)
-        if errors:
-            pass
+    def delete_post(self, session, board=None, thread=None, post=None, verify_string=None):
+        board = self.find_board(session, board)
+        thread = board.find_thread(session, thread)
+        post = thread.find_post(session, post)
 
     def set_mandatory(self, character, board=None, value=None):
         board = self.find_board(character, board)

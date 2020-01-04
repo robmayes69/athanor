@@ -26,7 +26,7 @@ class AthanorFaction(AthanorObject):
     }
     untouchable_ranks = (1, 2, 3)
     re_name = re.compile(r"")
-
+    lockstring = ""
 
     def rename(self, key):
         key = ANSIString(key)
@@ -66,7 +66,9 @@ class AthanorFaction(AthanorObject):
         if obj:
             obj.create_bridge(parent, key, clean_key, abbr, tier)
             obj.setup_faction()
-        return obj, errors
+        else:
+            raise ValueError(errors)
+        return obj
 
     def setup_faction(self):
         privs = dict()
@@ -90,8 +92,7 @@ class AthanorFaction(AthanorObject):
 
     def create_rank(self, number, name):
         bridge = self.faction_bridge
-        exists = bridge.ranks.filter(db_rank_value=number).first()
-        if exists:
+        if (exists := bridge.ranks.filter(db_rank_value=number).first()):
             raise ValueError(f"Cannot create rank: {exists} conflicts.")
         rank, created = bridge.ranks.get_or_create(db_rank_value=number, db_name=name)
         if created:
@@ -115,8 +116,7 @@ class AthanorFaction(AthanorObject):
         found.db_name = new_name
 
     def find_member(self, character):
-        found = character.factions.filter(db_faction=self.faction_bridge)
-        if not found:
+        if not (found := character.factions.filter(db_faction=self.faction_bridge)):
             raise ValueError(f"{character} is not a member of {self}!")
         return found
 

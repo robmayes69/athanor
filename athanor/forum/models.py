@@ -3,7 +3,7 @@ from evennia.typeclasses.models import SharedMemoryModel
 
 
 class ForumCategoryBridge(SharedMemoryModel):
-    db_script = models.OneToOneField('scripts.ScriptDB', related_name='forum_category_data', primary_key=True,
+    db_script = models.OneToOneField('scripts.ScriptDB', related_name='forum_category_bridge', primary_key=True,
                                      on_delete=models.CASCADE)
     db_name = models.CharField(max_length=255, blank=False, null=False)
     db_iname = models.CharField(max_length=255, blank=False, null=False, unique=True)
@@ -16,17 +16,23 @@ class ForumCategoryBridge(SharedMemoryModel):
         verbose_name = 'ForumCategory'
         verbose_name_plural = 'ForumCategories'
 
+    def __str__(self):
+        return str(self.db_name)
+
 
 class ForumBoardBridge(SharedMemoryModel):
-    db_script = models.OneToOneField('scripts.ScriptDB', related_name='forum_board_data', primary_key=True,
+    db_script = models.OneToOneField('scripts.ScriptDB', related_name='forum_board_bridge', primary_key=True,
                                      on_delete=models.CASCADE)
     db_category = models.ForeignKey(ForumCategoryBridge, related_name='boards', null=False, on_delete=models.CASCADE)
     db_name = models.CharField(max_length=255, blank=False, null=False)
     db_iname = models.CharField(max_length=255, blank=False, null=False)
     db_cname = models.CharField(max_length=255, blank=False, null=False)
     db_order = models.PositiveIntegerField(default=0)
-    ignore_list = models.ManyToManyField('accounts.AccountDB')
+    ignore_list = models.ManyToManyField('objects.ObjectDB')
     db_mandatory = models.BooleanField(default=False)
+
+    def __str__(self):
+        return str(self.db_name)
 
     class Meta:
         verbose_name = 'Forum'

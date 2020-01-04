@@ -68,20 +68,14 @@ INSTALLED_APPS = tuple(INSTALLED_APPS) + ('athanor.building', 'athanor.character
                                           'athanor.mail', 'athanor.mush_import', "athanor.note", "athanor.rplogger",
                                           'athanor.staff', 'athanor.themes', 'athanor.traits')
 
-#ROOT_URLCONF = None
-
-#COMMAND_DEFAULT_CLASS = "commands.command.Command"
-
-
-#SERVER_SESSION_CLASS = "typeclasses.sessions.Session"
 
 AT_INITIAL_SETUP_HOOK_MODULE = "athanor.core.at_initial_setup"
 
 
 # Command set used on session before account has logged in
-CMDSET_UNLOGGEDIN = "commands.default_cmdsets.UnloggedinCmdSet"
+CMDSET_UNLOGGEDIN = "athanor.commands.login.AthanorUnloggedinCmdSet"
 # Command set used on the logged-in session
-CMDSET_SESSION = "commands.default_cmdsets.SessionCmdSet"
+CMDSET_SESSION = "athanor.commands.session.AthanorSessionCmdSet"
 
 
 
@@ -89,7 +83,7 @@ CMDSET_SESSION = "commands.default_cmdsets.SessionCmdSet"
 # Account Options
 ######################################################################
 # Command set for accounts without a character (ooc)
-CMDSET_ACCOUNT = "athanor.commands.default_cmdsets.AthanorAccountCmdSet"
+CMDSET_ACCOUNT = "athanor.commands.account.AthanorAccountCmdSet"
 
 
 BASE_ACCOUNT_TYPECLASS = "athanor.accounts.accounts.AthanorAccount"
@@ -140,7 +134,7 @@ CHANNEL_COMMAND_CLASS = "evennia.comms.channelhandler.ChannelCommand"
 # Character Settings
 ######################################################################
 # Default set for logged in account with characters (fallback)
-CMDSET_CHARACTER = "athanor.commands.default_cmdsets.AthanorCharacterCmdSet"
+CMDSET_CHARACTER = "athanor.commands.character.AthanorCharacterCmdSet"
 
 BASE_CHARACTER_TYPECLASS = "athanor.characters.characters.AthanorPlayerCharacter"
 
