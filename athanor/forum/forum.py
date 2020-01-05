@@ -61,7 +61,7 @@ class AthanorForumBoard(AthanorOptionScript):
         self.locks.add(self.lockstring)
 
     def create_bridge(self, category, key, clean_key, order):
-        if hasattr(self, 'forum_category_bridge'):
+        if hasattr(self, 'forum_board_bridge'):
             return
         bridge, created = ForumBoardBridge.objects.get_or_create(db_script=self, db_name=clean_key, db_order=order,
                                                                  db_category=category.forum_category_bridge,

@@ -34,7 +34,7 @@ class CmdPennImport(AthanorCommand):
     key = '@penn'
     system_name = 'IMPORT'
     locks = 'cmd:perm(Developers)'
-    admin_switches = ['initialize', 'areas', 'grid', 'accounts', 'characters', 'groups', 'bbs', 'themes', 'radio', 'jobs', 'scenes']
+    admin_switches = ['initialize', 'areas', 'grid', 'accounts', 'groups', 'bbs', 'themes', 'radio', 'jobs', 'scenes']
     
     def report_status(self, message):
         print(message)
@@ -173,23 +173,27 @@ class CmdPennImport(AthanorCommand):
         password = ''.join(password_list)
         return password
 
-    def switch_accounts(self):
-        accounts_con = GLOBAL_SCRIPTS.accounts
-        mush_accounts = cobj(abbr='accounts').children.filter(account=None)
-        mush_accounts_count = len(mush_accounts)
-        for counter, mush_acc in enumerate(mush_accounts, start=1):
-            password = self.random_password()
-            username = f"mush_acc_{mush_acc.dbref.strip('#')}"
-            old_email = mush_acc.mushget('email')
-            email = f"{username}@ourgame.org"
-            self.report_status(f"Processing Account {counter} of {mush_accounts_count} - {mush_acc.objid}: {mush_acc.name} / {old_email}. New username: {username} - Password: {password}")
-            new_account = accounts_con.create_account(self.session, username, email, password)
-            mush_acc.account = new_account
-            mush_acc.save()
-            new_account.db._penn_import = True
-            new_account.db._penn_name = mush_acc.name
-            new_account.db._penn_email = old_email
-        self.report_status(f"Imported {mush_accounts_count} PennMUSH Accounts!")
+    def ghost_account(self, objid, name, email):
+        par = cobj(abbr='accounts')
+        if (found := par.children.filter(objid=objid).first()):
+            return found
+        dbref, created = objid.split(':')
+        ghost, created = par.children.get_or_create(dbref=dbref, objid=objid, created=from_unixtimestring(created),
+                                                    location=par, name=name, owner=par, type=par.type, recreated=True)
+        if created:
+            ghost.save()
+        return ghost
+
+    def ghost_character(self, objid, name):
+        character = pmatch(objid)
+        if character:
+            return character
+        dbref, timestamp = objid.split(':',1)
+        ghost, created = MushObject.objects.get_or_create(dbref=dbref, objid=objid, name=name, created=from_unixtimestring(timestamp), recreated=True,
+                           type=8)
+        if created:
+            ghost.save()
+        return ghost
 
     def get_lost_and_found(self):
         try:
@@ -200,43 +204,97 @@ class CmdPennImport(AthanorCommand):
             lost_and_found.db._lost_and_found = True
         return lost_and_found
 
-    def switch_characters(self):
+    def switch_accounts(self):
+        accounts_con = GLOBAL_SCRIPTS.accounts
+
+        c = self.sql_cursor()
+
+        c.execute("""SELECT * FROM volv_accounts ORDER BY account_date_created ASC""")
+        mush_accounts = c.fetchall()
+
+        mush_accounts_obj = {obj.objid: obj for obj in cobj(abbr='accounts').children.filter()}
+        mush_accounts_count = len(mush_accounts)
+
+        mush_account_dict = dict()
+
+        for counter, mush_acc in enumerate(mush_accounts, start=1):
+            objid = mush_acc['account_objid']
+            old_name = mush_acc['account_name']
+            old_email = mush_acc['account_email']
+            if not (obj := mush_accounts_obj.get(objid, None)):
+                obj = self.ghost_account(objid, old_name, old_email)
+                mush_accounts_obj[objid] = obj
+            if obj.account is not None:
+                continue
+            password = self.random_password()
+            username = f"mush_acc_{mush_acc['account_id']}"
+            email = f"{username}@ourgame.org"
+            self.report_status(f"Processing Account {counter} of {mush_accounts_count} - {mush_acc.objid}: {mush_acc.name} / {old_email}. New username: {username} - Password: {password}")
+            new_account = accounts_con.create_account(self.session, username, email, password)
+            obj.account = new_account
+            obj.save()
+            new_account.db._penn_import = True
+            new_account.db._penn_name = mush_acc.name
+            new_account.db._penn_email = old_email
+            mush_account_dict[mush_acc['account_id']] = new_account
+        self.report_status(f"Imported {mush_accounts_count} PennMUSH Accounts!")
+
         lost_and_found = self.get_lost_and_found()
         self.report_status(f"Acquired Lost and Found Account: {lost_and_found}")
+
         chars_con = GLOBAL_SCRIPTS.characters
-        mush_characters = MushObject.objects.filter(type=8, obj=None).exclude(powers__icontains='Guest')
+
+        c.execute("""SELECT * FROM volv_character""")
+        mush_characters = c.fetchall()
+
+        mush_characters_obj = MushObject.objects.filter(type=8, obj=None).exclude(powers__icontains='Guest')
         mush_characters_count = len(mush_characters)
 
         for counter, mush_char in enumerate(mush_characters, start=1):
             self.report_status(f"Processing Character {counter} of {mush_characters_count} - {mush_char.objid}: {mush_char.name}")
-            if mush_char.parent and  mush_char.parent.account:
-                acc = mush_char.parent.account
-                self.report_status(f"Account Found! Will assign to Account: {acc}")
-            else:
-                acc = lost_and_found
-                self.report_status("Character has no Account! Will assign to Lost and Found!")
 
-            new_char = chars_con.create_character(self.session, acc, mush_char.name)
-            mush_char.obj = new_char
-            mush_char.save()
+            objid = mush_char['character_objid']
+            old_name = mush_char['character_name']
+
+            if not (obj := mush_characters_obj.get(objid, None)):
+                obj = self.ghost_character(objid, old_name)
+                mush_characters_obj[objid] = obj
+
+            if obj.obj is not None:
+                continue
+
+            acc_id = mush_char['account_id']
+            if not (acc := mush_account_dict.get(acc_id, None)):
+                if mush_char.parent and mush_char.parent.account:
+                    acc = mush_char.parent.account
+                    self.report_status(f"Account Found! Will assign to Account: {acc}")
+                else:
+                    acc = lost_and_found
+                    self.report_status("Character has no Account! Will assign to Lost and Found!")
+            else:
+                self.report_status(f"Account Found! Will assign to Account: {acc}")
+            namespace = None if obj.recreated else 0
+            new_char = chars_con.create_character(self.session, acc, obj.name, namespace=namespace)
+            obj.obj = new_char
+            obj.save()
             new_char.db._penn_import = True
 
-            for alias in mush_char.aliases():
+            for alias in obj.aliases():
                 new_char.aliases.add(alias)
-            description = process_penntext(mush_char.mushget('DESCRIBE'))
+            description = process_penntext(obj.mushget('DESCRIBE'))
             if description:
                 self.report_status(f"FOUND DESCRIPTION: {description}")
                 new_char.db.desc = description
-            last_logout = mush_char.mushget('LASTLOGOUT')
+            last_logout = obj.mushget('LASTLOGOUT')
             if last_logout:
                 new_char.db._last_logout = from_mushtimestring(last_logout)
 
             flags = mush_char.flags.split(' ')
 
             if acc != lost_and_found:
-                set_super = mush_char.dbref == '#1'
+                set_super = obj.dbref == '#1'
                 set_developer = 'WIZARD' in flags
-                set_admin = 'ROYALTY' in flags or int(mush_char.mushget('V`ADMIN', default='0'))
+                set_admin = 'ROYALTY' in flags or int(obj.mushget('V`ADMIN', default='0'))
                 if set_super:
                     acc.is_superuser = True
                     acc.save()
@@ -269,10 +327,12 @@ class CmdPennImport(AthanorCommand):
         mush_groups_count = len(mush_groups)
 
         for counter, mush_group in enumerate(mush_groups, start=1):
+            self.report_status(f"Processing MushGroup {counter} of {mush_groups_count} - {mush_group}")
+
             mush_object = objmatch(mush_group['group_objid'])
             if not mush_object:
                 continue
-            self.report_status(f"Processing MushGroup {counter} of {mush_groups_count} - {mush_group}")
+
             abbr = mush_group['group_abbr'] if mush_group['group_abbr'] else None
             new_faction = faction_typeclass.create_faction(name=mush_group['group_name'],
                                                            parent=faction_map[mush_group['group_parent']], abbr=abbr,
@@ -329,8 +389,8 @@ class CmdPennImport(AthanorCommand):
             new_role_link = role_link_typeclass(db_link=new_link, db_role=role, db_grantable=False, db_key=role.key)
             new_role_link.save()
 
-        from typeclasses.characters import PlayerCharacter
-        for counter, character in enumerate(PlayerCharacter.objects.filter_family()):
+        from athanor.characters.characters import AthanorPlayerCharacter
+        for counter, character in enumerate(AthanorPlayerCharacter.objects.filter_family()):
             if not hasattr(character, 'mush'):
                 continue
             tiers = character.mush.mushget('V`TIERS')
@@ -342,24 +402,11 @@ class CmdPennImport(AthanorCommand):
                 continue
             character.db._primary_faction = group.group
 
-
-    def ghost_character(self, objid, name):
-        character = pmatch(objid)
-        if character:
-            return character
-        dbref, timestamp = objid.split(':',1)
-        ghost, created = MushObject.objects.get_or_create(dbref=dbref, objid=objid, name=name, created=from_unixtimestring(timestamp), recreated=True,
-                           type=8)
-        if created:
-            ghost.save()
-        return ghost
-
     def switch_bbs(self):
         forum_con = GLOBAL_SCRIPTS.forum
         category_typeclass = forum_con.ndb.category_typeclass
         board_typeclass = forum_con.ndb.board_typeclass
         thread_typeclass = forum_con.ndb.thread_typeclass
-        post_typeclass = forum_con.ndb.post_typeclass
         c = self.sql_cursor()
 
         c.execute("""SELECT * FROM volv_board ORDER BY group_id ASC,board_number DESC""")
@@ -372,21 +419,20 @@ class CmdPennImport(AthanorCommand):
         factions = {obj.objid: obj.group for obj in MushObject.objects.exclude(group=None) if not obj.group.parent}
         factions[None] = None
 
-        new_category = category_typeclass(db_key="Public Boards", db_abbr='')
-        new_category.save()
+        new_category = category_typeclass.create_forum_category(key="Public Boards", abbr='')
         forum_category_map[None] = new_category
 
         for counter, mush_board in enumerate(mush_boards, start=1):
             self.report_status(f"Processing MushBoard {counter} of {mush_boards_count} - {mush_board}")
             faction = factions[mush_board['group_objid']]
             if faction not in forum_category_map:
-                new_category = category_typeclass(db_key=faction.key, db_abbr=faction.abbreviation)
+                new_category = category_typeclass.create_forum_category(key=faction.key, abbr=faction.abbreviation)
                 new_category.save()
                 forum_category_map[faction] = new_category
             forum_category = forum_category_map[faction]
-            new_board = board_typeclass(db_category=forum_category, db_order=mush_board['board_number'],
-                                        db_mandatory=mush_board['board_mandatory'], db_key=mush_board['board_name'])
-            new_board.save()
+            new_board = board_typeclass.create_forum_board(category=forum_category, key=mush_board['board_name'], order=mush_board['board_number'])
+            if mush_board['board_mandatory']:
+                new_board.forum_board_bridge.mandatory = True
             forum_board_map[mush_board['board_id']] = new_board
 
         forum_thread_map = dict()
@@ -399,14 +445,16 @@ class CmdPennImport(AthanorCommand):
 
         for counter, mush_post in enumerate(mush_posts, start=1):
             self.report_status(f"Processing MushPost {counter} of {mush_posts_count} - {mush_post}")
-            entity = self.ghost_character(mush_post['entity_objid'], mush_post['entity_name']).entity
+            obj = self.ghost_character(mush_post['entity_objid'], mush_post['entity_name'])
             board = forum_board_map[mush_post['board_id']]
             created = mush_post['post_date_created']
             modified = mush_post['post_date_modified']
             title = process_penntext(mush_post['post_title'])
-            new_thread = thread_typeclass(db_key=title, db_entity=entity,
-                                          db_board=board, db_date_created=created, db_date_modified=modified,
-                                          db_order=mush_post['post_display_num'])
+            new_thread = thread_typeclass.create_forum_thread(board=board, key=title,
+                                                              order=mush_post['post_display_num'], obj=obj,
+                                                              date_created=created, date_modified=modified)
+
+
             new_thread.save()
             forum_thread_map[mush_post['post_id']] = new_thread
             new_post = post_typeclass(db_entity=entity, db_date_created=created, db_date_modified=modified,

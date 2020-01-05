@@ -62,3 +62,33 @@ class AccountBridge(SharedMemoryModel):
     db_account = models.OneToOneField('accounts.AccountDB', related_name='account_bridge', primary_key=True,
                                       on_delete=models.CASCADE)
     db_object = models.OneToOneField('objects.ObjectDB', related_name='account_bridge', on_delete=models.CASCADE)
+
+
+class AccountCharacter(SharedMemoryModel):
+    db_account = models.ForeignKey('accounts.AccountDB', related_name='character_combinations', on_delete=models.PROTECT)
+    db_object = models.ForeignKey('objects.ObjectDB', related_name='account_combinations', on_delete=models.PROTECT)
+
+
+class AbstractNameHistory(SharedMemoryModel):
+    db_date_began = models.DateTimeField(null=False)
+    db_date_ended = models.DateTimeField(null=True)
+    db_new_name = models.CharField(max_length=255, null=False, blank=False)
+    db_new_cname = models.CharField(max_length=255, null=False, blank=False)
+
+    class Meta:
+        abstract = True
+        index_together = (('db_date_began', 'db_date_ended'),)
+
+
+class AccountNameHistory(AbstractNameHistory):
+    db_account = models.ForeignKey('acccounts.AccountDB', related_name='name_history', on_delete=models.CASCADE)
+
+
+class ObjectNameHistory(AbstractNameHistory):
+    db_object = models.ForeignKey('objects.ObjectDB', related_name='name_history', on_delete=models.CASCADE)
+
+
+class ObjectAccountHistory(SharedMemoryModel):
+    db_date_created = models.DateTimeField(null=False)
+    db_account = models.ForeignKey('accounts.AccountDB', related_name='characters_history', on_delete=models.PROTECT)
+    db_object = models.ForeignKey('objects.ObjectDB', related_name='accounts_history', on_delete=models.PROTECT)

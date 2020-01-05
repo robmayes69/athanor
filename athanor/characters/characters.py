@@ -19,28 +19,29 @@ class AthanorCharacter(DefaultCharacter, AthanorGameEntity, SubMessageMixin):
 class AthanorPlayerCharacter(AthanorCharacter):
     re_name = re.compile(r"(?i)^([A-Z]|[0-9]|\.|-|')+( ([A-Z]|[0-9]|\.|-|')+)*$")
 
-    def create_bridge(self, account, key, clean_key):
+    def create_bridge(self, account, key, clean_key, namespace):
         if hasattr(self, 'character_bridge'):
             return
         char_bridge, created = CharacterBridge.objects.get_or_create(db_object=self, db_account=account,
                                                                      db_name=clean_key, db_cname=key,
-                                                                     db_iname=clean_key.lower())
+                                                                     db_iname=clean_key.lower(), db_namespace=namespace)
         if created:
             char_bridge.save()
 
     @classmethod
-    def create_character(cls, key, account, **kwargs):
+    def create_character(cls, key, account, namespace=0, **kwargs):
         key = ANSIString(key)
         clean_key = str(key.clean())
         if '|' in clean_key:
             raise ValueError("Malformed ANSI in Character Name.")
         if not cls.re_name.match(clean_key):
             raise ValueError("Character name does not meet standards. Avoid double spaces and special characters.")
-        if CharacterBridge.objects.filter(db_iname=clean_key.lower()).count():
-            raise ValueError("Name conflicts with another Character.")
+        if namespace is not None:
+            if CharacterBridge.objects.filter(db_iname=clean_key.lower(), db_namespace=namespace).count():
+                raise ValueError("Name conflicts with another Character.")
         character, errors = cls.create(clean_key, account, **kwargs)
         if character:
-            character.create_bridge(account, key, clean_key)
+            character.create_bridge(account, key, clean_key, namespace)
         else:
             raise ValueError(errors)
         return character
@@ -82,8 +83,8 @@ class AthanorCharacterController(AthanorGlobalScript):
             return character
         pass
 
-    def create_character(self, session, account, character_name):
-        new_character = self.ndb.character_typeclass.create_character(character_name, account)
+    def create_character(self, session, account, character_name, namespace=0):
+        new_character = self.ndb.character_typeclass.create_character(character_name, account, namespace=namespace)
         new_character.db.account = account
         return new_character
 
