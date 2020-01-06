@@ -1,7 +1,9 @@
-from django.conf import settings
-from evennia.utils.utils import class_from_module
 from os import path, scandir, getcwd
 import yaml
+from collections import defaultdict
+from django.conf import settings
+
+from evennia.utils.utils import class_from_module
 from evennia.utils.utils import mod_import
 
 
@@ -12,15 +14,13 @@ class Extension(object):
         self.manager = manager
         self.module = module
         self.abstracts_yaml = dict()
-        self.masters_yaml = dict()
-        self.instances_yaml = dict()
-        self.entities = dict()
-        self.areas_yaml = dict()
+        self.templates_yaml = dict()
+        self.maps_yaml = dict()
+        self.structures_yaml = dict()
         self.path = path.dirname(module.__file__)
         self.abstracts_path = path.join(self.path, 'abstracts')
-        self.areas_path = path.join(self.path, 'areas')
-        self.actors_path = path.join(self.path, 'actors')
-
+        self.maps_path = path.join(self.path, 'maps')
+        self.structures_path = path.join(self.path, 'structures')
 
     def initialize_abstracts(self):
         if not path.isdir(self.abstracts_path):
@@ -32,38 +32,24 @@ class Extension(object):
                     data.update(entry)
                 self.abstracts_yaml[f.name.split('.', 1)[0]] = data
 
-    def initialize_areas(self):
-        if not path.isdir(self.areas_path):
+    def initialize_maps(self):
+        self.initialize_mapstruct(self.maps_path, self.maps_yaml)
+
+    def initialize_structures(self):
+        self.initialize_mapstruct(self.structures_path, self.structures_yaml)
+
+    def initialize_data(self, folder_path, yaml_obj):
+        if not path.isdir(folder_path):
             return
-        for folder in [folder for folder in scandir(self.areas_path) if folder.is_dir()]:
-            area_data = dict()
+        for folder in [folder for folder in scandir(folder_path) if folder.is_dir()]:
+            main_data = dict()
             for f in [f for f in scandir(folder) if f.is_file() and f.name.lower().endswith(".yaml")]:
                 with open(f, "r") as yfile:
                     data = dict()
                     for entry in yaml.safe_load_all(yfile):
                         data.update(entry)
-                    area_data[f.name.lower().split('.', 1)[0]] = data
-            self.areas_yaml[folder.name.lower()] = area_data
-
-    def initialize_masters(self):
-        if not path.isdir(self.actors_path):
-            return
-        for f in [f for f in scandir(self.actors_path) if f.is_file() and f.name.lower().endswith(".yaml")]:
-            with open(f, "r") as yfile:
-                data = dict()
-                for entry in yaml.safe_load_all(yfile):
-                    data.update(entry)
-                self.masters_yaml[f.name.split('.', 1)[0]] = data
-
-    def initialize_instances(self):
-        instance_file = path.join(self.path, 'instances.yaml')
-        if not path.isfile(instance_file):
-            return
-        with open(instance_file, "r") as yfile:
-            data = dict()
-            for entry in yaml.safe_load_all(yfile):
-                data.update(entry)
-            self.instances_yaml = data
+                    main_data[f.name.lower().split('.', 1)[0]] = data
+            yaml_obj[folder.name.lower()] = main_data
 
 
 class World(object):
@@ -72,30 +58,19 @@ class World(object):
     """
 
     def __init__(self):
-        self.next_actor_id = 0
-        self.actors = dict()
+        self.next_entity_id = 0
+        self.entities = dict()
         self.extensions = dict()
-        self.abstracts = dict()
-        self.rooms = dict()
-        self.exits = dict()
-        self.gateways = dict()
-        self.masters = dict()
-        self.class_cache = {
-            'areas': dict(),
-            'rooms': dict(),
-            'gateways': dict(),
-            'exits': dict(),
-            'actors': dict(),
-            'masters': dict(),
-            'instances': dict(),
-            'instance_masters': dict()
-        }
+        self.abstracts = defaultdict(dict)
+        self.structures = dict()
+        self.templates = defaultdict(dict)
+        self.class_cache = defaultdict(dict)
 
     def load(self):
         self.load_extensions()
         self.load_abstracts()
-        self.load_masters()
-        self.load_grid()
+        self.load_templates()
+        self.load_structures()
 
     def load_extensions(self):
         extension_class = class_from_module(settings.WORLD_EXTENSION_CLASS)

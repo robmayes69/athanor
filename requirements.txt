@@ -1,1 +1,3 @@
 django-helpdesk
+arango_orm
+marshmallow
