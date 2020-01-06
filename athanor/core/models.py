@@ -92,3 +92,11 @@ class ObjectAccountHistory(SharedMemoryModel):
     db_date_created = models.DateTimeField(null=False)
     db_account = models.ForeignKey('accounts.AccountDB', related_name='characters_history', on_delete=models.PROTECT)
     db_object = models.ForeignKey('objects.ObjectDB', related_name='accounts_history', on_delete=models.PROTECT)
+
+
+class ObjectStub(SharedMemoryModel):
+    db_object = models.OneToOneField('objects.ObjectDB', related_name='object_stub', on_delete=models.CASCADE)
+    db_object_owner = models.ForeignKey('objects.ObjectDB', related_name='owned_objects', null=True,
+                                        on_delete=models.PROTECT)
+    db_parent = models.ForeignKey('objects.ObjectDB', related_name='children', on_delete=models.PROTECT, null=True)
+    db_loyalty = models.ForeignKey('objects.ObjectDB', related_name='subjects', on_delete=models.PROTECT, null=True)

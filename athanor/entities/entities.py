@@ -27,7 +27,84 @@ from evennia.typeclasses.tags import Tag, TagHandler, AliasHandler, PermissionHa
 from evennia.locks.lockhandler import LockHandler
 
 
-class TransientEntity(object):
+class AbstractEntity(object):
+
+    # location getsetter
+    def __location_get(self):
+        """Get location"""
+        return self.db_location
+
+    def __location_set(self, location):
+        """Set location, checking for loops and allowing dbref"""
+        if isinstance(location, (str, int)):
+            # allow setting of #dbref
+            dbid = dbref(location, reqhash=False)
+            if dbid:
+                try:
+                    location = ObjectDB.objects.get(id=dbid)
+                except ObjectDoesNotExist:
+                    # maybe it is just a name that happens to look like a dbid
+                    pass
+        try:
+
+            def is_loc_loop(loc, depth=0):
+                """Recursively traverse target location, trying to catch a loop."""
+                if depth > 10:
+                    return None
+                elif loc == self:
+                    raise RuntimeError
+                elif loc is None:
+                    raise RuntimeWarning
+                return is_loc_loop(loc.db_location, depth + 1)
+
+            try:
+                is_loc_loop(location)
+            except RuntimeWarning:
+                # we caught an infinite location loop!
+                # (location1 is in location2 which is in location1 ...)
+                pass
+
+            # if we get to this point we are ready to change location
+
+            old_location = self.db_location
+
+            # this is checked in _db_db_location_post_save below
+            self._safe_contents_update = True
+
+            # actually set the field (this will error if location is invalid)
+            self.db_location = location
+            self.save(update_fields=["db_location"])
+
+            # remove the safe flag
+            del self._safe_contents_update
+
+            # update the contents cache
+            if old_location:
+                old_location.contents_cache.remove(self)
+            if self.db_location:
+                self.db_location.contents_cache.add(self)
+
+        except RuntimeError:
+            errmsg = "Error: %s.location = %s creates a location loop." % (
+                self.key,
+                location,
+            )
+            raise RuntimeError(errmsg)
+        except Exception as e:
+            errmsg = "Error (%s): %s is not a valid location." % (str(e), location)
+            raise RuntimeError(errmsg)
+        return
+
+    def __location_del(self):
+        """Cleanly delete the location reference"""
+        self.db_location = None
+        self.save(update_fields=["db_location"])
+
+    location = property(__location_get, __location_set, __location_del)
+
+
+
+class TransientEntity(AbstractEntity):
     base_type = None
     lockstring = ""
 
@@ -137,78 +214,7 @@ class TransientEntity(object):
     def sessions(self):
         return ObjectSessionHandler(self)
 
-    # location getsetter
-    def __location_get(self):
-        """Get location"""
-        return self.db_location
 
-    def __location_set(self, location):
-        """Set location, checking for loops and allowing dbref"""
-        if isinstance(location, (str, int)):
-            # allow setting of #dbref
-            dbid = dbref(location, reqhash=False)
-            if dbid:
-                try:
-                    location = ObjectDB.objects.get(id=dbid)
-                except ObjectDoesNotExist:
-                    # maybe it is just a name that happens to look like a dbid
-                    pass
-        try:
-
-            def is_loc_loop(loc, depth=0):
-                """Recursively traverse target location, trying to catch a loop."""
-                if depth > 10:
-                    return None
-                elif loc == self:
-                    raise RuntimeError
-                elif loc is None:
-                    raise RuntimeWarning
-                return is_loc_loop(loc.db_location, depth + 1)
-
-            try:
-                is_loc_loop(location)
-            except RuntimeWarning:
-                # we caught an infinite location loop!
-                # (location1 is in location2 which is in location1 ...)
-                pass
-
-            # if we get to this point we are ready to change location
-
-            old_location = self.db_location
-
-            # this is checked in _db_db_location_post_save below
-            self._safe_contents_update = True
-
-            # actually set the field (this will error if location is invalid)
-            self.db_location = location
-            self.save(update_fields=["db_location"])
-
-            # remove the safe flag
-            del self._safe_contents_update
-
-            # update the contents cache
-            if old_location:
-                old_location.contents_cache.remove(self)
-            if self.db_location:
-                self.db_location.contents_cache.add(self)
-
-        except RuntimeError:
-            errmsg = "Error: %s.location = %s creates a location loop." % (
-                self.key,
-                location,
-            )
-            raise RuntimeError(errmsg)
-        except Exception as e:
-            errmsg = "Error (%s): %s is not a valid location." % (str(e), location)
-            raise RuntimeError(errmsg)
-        return
-
-    def __location_del(self):
-        """Cleanly delete the location reference"""
-        self.db_location = None
-        self.save(update_fields=["db_location"])
-
-    location = property(__location_get, __location_set, __location_del)
 
     # cmdset_storage property handling
     def __cmdset_storage_get(self):
@@ -1920,7 +1926,8 @@ class TransientEntity(object):
     def serialize(self):
         pass
 
-class PersistentEntity(object):
+
+class PersistentEntity(AbstractEntity):
 
     def __init__(self, master):
         self.master = master
