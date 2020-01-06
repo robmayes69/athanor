@@ -27,18 +27,48 @@ from evennia.typeclasses.tags import Tag, TagHandler, AliasHandler, PermissionHa
 from evennia.locks.lockhandler import LockHandler
 
 
-class AbstractEntity(object):
+class TransientEntity(object):
+    base_type = None
     lockstring = ""
 
-    def __init__(self, eid):
-        self.eid = eid
-        self.dbref = f"E#{eid}"
+    def __init__(self, id):
+        self.id = id
+        self.dbref = f"T#{id}"
         self.db_account = None
         self.db_sessid = ""
         self.db_key = ""
         self.db_typeclass_path = ""
         self.db_date_created = datetime.datetime.utcnow()
         self.db_lock_storage = ""
+        self.db_location = None
+        self.db_home = ""
+        self.db_destination = ""
+        self.db_cmdset_storage = ""
+        self.db_lock_storage = ""
+
+    def __eq__(self, other):
+        try:
+            return self.base_type == other.base_type and self.eid == other.eid
+        except AttributeError:
+            return False
+
+    def __hash__(self):
+        # this is required to maintain hashing
+        return super().__hash__()
+
+    def __str__(self):
+        return self.db_key
+
+    def __repr__(self):
+        return self.db_key
+
+    @property
+    def account(self):
+        return self.db_account
+
+    @account.setter
+    def account(self, value):
+        self.db_account = value
 
     @property
     def key(self):
@@ -58,7 +88,7 @@ class AbstractEntity(object):
 
     @property
     def attributes(self):
-        return AttributeHandler(self)
+        return NAttributeHandler(self)
 
     @property
     def nattributes(self):
@@ -79,14 +109,6 @@ class AbstractEntity(object):
     @lazy_property
     def permissions(self):
         return PermissionHandler(self)
-
-    @property
-    def account(self):
-        return self.db_account
-
-    @account.setter
-    def account(self, value):
-        self.db_account = value
 
     @property
     def sessid(self):
@@ -115,9 +137,98 @@ class AbstractEntity(object):
     def sessions(self):
         return ObjectSessionHandler(self)
 
-    @property
-    def location(self):
-        return None
+    # location getsetter
+    def __location_get(self):
+        """Get location"""
+        return self.db_location
+
+    def __location_set(self, location):
+        """Set location, checking for loops and allowing dbref"""
+        if isinstance(location, (str, int)):
+            # allow setting of #dbref
+            dbid = dbref(location, reqhash=False)
+            if dbid:
+                try:
+                    location = ObjectDB.objects.get(id=dbid)
+                except ObjectDoesNotExist:
+                    # maybe it is just a name that happens to look like a dbid
+                    pass
+        try:
+
+            def is_loc_loop(loc, depth=0):
+                """Recursively traverse target location, trying to catch a loop."""
+                if depth > 10:
+                    return None
+                elif loc == self:
+                    raise RuntimeError
+                elif loc is None:
+                    raise RuntimeWarning
+                return is_loc_loop(loc.db_location, depth + 1)
+
+            try:
+                is_loc_loop(location)
+            except RuntimeWarning:
+                # we caught an infinite location loop!
+                # (location1 is in location2 which is in location1 ...)
+                pass
+
+            # if we get to this point we are ready to change location
+
+            old_location = self.db_location
+
+            # this is checked in _db_db_location_post_save below
+            self._safe_contents_update = True
+
+            # actually set the field (this will error if location is invalid)
+            self.db_location = location
+            self.save(update_fields=["db_location"])
+
+            # remove the safe flag
+            del self._safe_contents_update
+
+            # update the contents cache
+            if old_location:
+                old_location.contents_cache.remove(self)
+            if self.db_location:
+                self.db_location.contents_cache.add(self)
+
+        except RuntimeError:
+            errmsg = "Error: %s.location = %s creates a location loop." % (
+                self.key,
+                location,
+            )
+            raise RuntimeError(errmsg)
+        except Exception as e:
+            errmsg = "Error (%s): %s is not a valid location." % (str(e), location)
+            raise RuntimeError(errmsg)
+        return
+
+    def __location_del(self):
+        """Cleanly delete the location reference"""
+        self.db_location = None
+        self.save(update_fields=["db_location"])
+
+    location = property(__location_get, __location_set, __location_del)
+
+    # cmdset_storage property handling
+    def __cmdset_storage_get(self):
+        """getter"""
+        storage = self.db_cmdset_storage
+        return [path.strip() for path in storage.split(",")] if storage else []
+
+    def __cmdset_storage_set(self, value):
+        """setter"""
+        self.db_cmdset_storage = ",".join(str(val).strip() for val in make_iter(value))
+        self.save(update_fields=["db_cmdset_storage"])
+
+    def __cmdset_storage_del(self):
+        """deleter"""
+        self.db_cmdset_storage = None
+        self.save(update_fields=["db_cmdset_storage"])
+
+    cmdset_storage = property(
+        __cmdset_storage_get, __cmdset_storage_set, __cmdset_storage_del
+    )
 
     @property
     def is_connected(self):
@@ -1806,12 +1917,16 @@ class AbstractEntity(object):
                                        exclude=exclude,
                                        mapping=location_mapping)
 
-class TransientEntity(AbstractEntity):
-    pass
+    def serialize(self):
+        pass
 
+class PersistentEntity(object):
 
+    def __init__(self, master):
+        self.master = master
 
-class PersistentEntity(AbstractEntity):
+    def __getattr__(self, item):
+        return getattr(self.master, item)
 
-    def save(self, *args, **kwargs):
-        return self.master.save(*args, **kwargs)
+    def serialize(self):
+        return self.master
