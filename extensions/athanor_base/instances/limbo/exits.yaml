@@ -1,0 +1,21 @@
+limbo_room:
+  northern_limbo:
+    abstract: n
+  southern_limbo:
+    abstract: s
+  eastern_limbo:
+    abstract: e
+  western_limbo:
+    abstract: w
+northern_limbo:
+  limbo_room:
+    abstract: s
+southern_limbo:
+  limbo_room:
+    abstract: n
+eastern_limbo:
+  limbo_room:
+    abstract: w
+western_limbo:
+  limbo_room:
+    abstract: e

@@ -1,0 +1,48 @@
+n:
+  name: North
+  aliases:
+    - n
+s:
+  name: South
+  aliases:
+    - s
+e:
+  name: East
+  aliases:
+    - e
+w:
+  name: West
+  aliases:
+    - w
+ne:
+  name: Northeast
+  aliases:
+    - ne
+nw:
+  name: Northwest
+  aliases:
+    - nw
+se:
+  name: Southeast
+  aliases:
+    - se
+sw:
+  name: Southwest
+  aliase:
+    - sw
+u:
+  name: Up
+  aliases:
+    - u
+d:
+  name: Down
+  aliases:
+    - d
+i:
+  name: In
+  aliases:
+    - i
+o:
+  name: Out
+  aliases:
+    - o

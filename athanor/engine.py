@@ -15,41 +15,53 @@ class Extension(object):
         self.module = module
         self.abstracts_yaml = dict()
         self.templates_yaml = dict()
-        self.maps_yaml = dict()
+        self.instances_yaml = dict()
+        self.organizations_yaml = dict()
+        self.base_yaml = dict()
         self.structures_yaml = dict()
         self.path = path.dirname(module.__file__)
-        self.abstracts_path = path.join(self.path, 'abstracts')
-        self.maps_path = path.join(self.path, 'maps')
-        self.structures_path = path.join(self.path, 'structures')
+
+    def initialize_base(self):
+        self.base_yaml = self.scan_contents(self.path)
 
     def initialize_abstracts(self):
-        if not path.isdir(self.abstracts_path):
+        abstracts_path = path.join(self.path, 'abstracts')
+        if not path.isdir(abstracts_path):
             return
-        for f in [f for f in scandir(self.abstracts_path) if f.is_file() and f.name.lower().endswith(".yaml")]:
+        self.abstracts_yaml = self.scan_contents(abstracts_path)
+
+    def initialize_instances(self):
+        instances_path = path.join(self.path, 'instances')
+        if not path.isdir(instances_path):
+            return
+        self.instances_yaml = self.scan_folders(instances_path)
+
+    def initialize_templates(self):
+        templates_path = path.join(self.path, 'templates')
+        if not path.isdir(templates_path):
+            return
+        self.templates_yaml = self.scan_contents(templates_path)
+
+    def scan_contents(self, folder_path):
+        if not path.isdir(folder_path):
+            return
+        main_data = dict()
+        for f in [f for f in scandir(folder_path) if f.is_file() and f.name.lower().endswith(".yaml")]:
             with open(f, "r") as yfile:
                 data = dict()
                 for entry in yaml.safe_load_all(yfile):
                     data.update(entry)
-                self.abstracts_yaml[f.name.split('.', 1)[0]] = data
+                main_data[f.name.lower().split('.', 1)[0]] = data
+        return main_data
 
-    def initialize_maps(self):
-        self.initialize_mapstruct(self.maps_path, self.maps_yaml)
-
-    def initialize_structures(self):
-        self.initialize_mapstruct(self.structures_path, self.structures_yaml)
-
-    def initialize_data(self, folder_path, yaml_obj):
+    def scan_folders(self, folder_path):
         if not path.isdir(folder_path):
             return
+        main_data = dict()
         for folder in [folder for folder in scandir(folder_path) if folder.is_dir()]:
-            main_data = dict()
-            for f in [f for f in scandir(folder) if f.is_file() and f.name.lower().endswith(".yaml")]:
-                with open(f, "r") as yfile:
-                    data = dict()
-                    for entry in yaml.safe_load_all(yfile):
-                        data.update(entry)
-                    main_data[f.name.lower().split('.', 1)[0]] = data
-            yaml_obj[folder.name.lower()] = main_data
+            data = self.scan_contents(folder)
+            main_data[folder.name] = data
+        return main_data
 
 
 class World(object):
@@ -58,11 +70,15 @@ class World(object):
     """
 
     def __init__(self):
-        self.next_entity_id = 0
-        self.entities = dict()
+        self.uuid_mapping = dict()
+        self.entities = set()
         self.extensions = dict()
         self.abstracts = defaultdict(dict)
-        self.structures = dict()
+        self.instances = dict()
+        self.alliances = set()
+        self.alliance_keys = dict()
+        self.factions = set()
+        self.faction_keys = dict()
         self.templates = defaultdict(dict)
         self.class_cache = defaultdict(dict)
 
