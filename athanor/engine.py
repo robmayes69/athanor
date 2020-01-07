@@ -16,9 +16,7 @@ class Extension(object):
         self.abstracts_yaml = dict()
         self.templates_yaml = dict()
         self.instances_yaml = dict()
-        self.organizations_yaml = dict()
         self.base_yaml = dict()
-        self.structures_yaml = dict()
         self.path = path.dirname(module.__file__)
 
     def initialize_base(self):
@@ -59,34 +57,19 @@ class Extension(object):
             return
         main_data = dict()
         for folder in [folder for folder in scandir(folder_path) if folder.is_dir()]:
-            data = self.scan_contents(folder)
-            main_data[folder.name] = data
+            main_data[folder.name.lower()] = self.scan_contents(folder)
         return main_data
 
 
-class World(object):
-    """
-    This is the Engine that ties together the entire game.
-    """
+class GameDataManager(object):
 
-    def __init__(self):
-        self.uuid_mapping = dict()
-        self.entities = set()
+    def __init__(self, world):
+        self.world = world
         self.extensions = dict()
-        self.abstracts = defaultdict(dict)
+        self.abstracts = dict()
         self.instances = dict()
-        self.alliances = set()
-        self.alliance_keys = dict()
-        self.factions = set()
-        self.faction_keys = dict()
-        self.templates = defaultdict(dict)
+        self.templates = dict()
         self.class_cache = defaultdict(dict)
-
-    def load(self):
-        self.load_extensions()
-        self.load_abstracts()
-        self.load_templates()
-        self.load_structures()
 
     def load_extensions(self):
         extension_class = class_from_module(settings.WORLD_EXTENSION_CLASS)
@@ -96,6 +79,31 @@ class World(object):
                 found_module = mod_import(f"extensions.{ex}")
                 self.extensions[ex] = extension_class(ex, self, found_module)
 
+
+class World(object):
+    """
+    This is the Engine that ties together the entire game.
+    """
+
+    def __init__(self):
+        self.data_manager = class_from_module(settings.DATA_MANAGER_CLASS)(self)
+        self.uuid_mapping = dict()
+        self.uuid_owners = dict()
+        self.entities = set()
+        self.alliances = set()
+        self.alliance_keys = dict()
+        self.factions = set()
+        self.faction_keys = dict()
+
+
+    def load(self):
+        self.load_data()
+        self.load_abstracts()
+        self.load_templates()
+        self.load_structures()
+
+
+
     def load_abstracts(self):
         abstracts_raw = dict()
 
@@ -104,6 +112,7 @@ class World(object):
             for abtract_type, abstracts in ex.abstracts_yaml.items():
                 for abtract_key, abtract_data in abstracts.items():
                     abstracts_raw[(ex.key, abtract_type, abtract_key)] = abtract_data
+
         abstracts_left = set(abstracts_raw.keys())
         loaded_set = set()
         current_count = 0
