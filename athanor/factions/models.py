@@ -27,3 +27,18 @@ class FactionBridge(SharedMemoryModel):
     class Meta:
         verbose_name = 'Faction'
         verbose_name_plural = 'Factions'
+
+
+class DivisionBridge(SharedMemoryModel):
+    db_object = models.OneToOneField('objects.ObjectDB', related_name='division_bridge', primary_key=True,
+                                     on_delete=models.CASCADE)
+    db_faction = models.ForeignKey(FactionBridge, related_name='divisions', on_delete=models.PROTECT)
+    db_name = models.CharField(max_length=255, null=False, blank=False)
+    db_iname = models.CharField(max_length=255, null=False, blank=False)
+    db_cname = models.CharField(max_length=255, null=False, blank=False)
+    db_system_identifier = models.CharField(max_length=255, null=True, blank=False, unique=True)
+
+    class Meta:
+        unique_together = (('db_faction', 'db_iname'),)
+        verbose_name = 'Division'
+        verbose_name_plural = 'Divisions'
