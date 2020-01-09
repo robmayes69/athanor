@@ -6,27 +6,44 @@ from evennia.utils.utils import lazy_property
 
 from athanor.utils.events import EventEmitter
 from athanor.items.handlers import GearHandler, InventoryHandler
-from athanor.factions.handlers import FactionHandler, AllianceHandler
+from athanor.factions.handlers import FactionHandler, AllianceHandler, DivisionHandler
 from athanor.core.handler import KeywordHandler
 from athanor.utils.color import green_yellow_red, red_yellow_green
 
 
 class AthanorGameEntity(EventEmitter):
+    persistent = False
+
+    @lazy_property
+    def __location(self):
+        return None
 
     # location getsetter
     def __location_get(self):
         """Get location"""
-        return self.db_location
+        return self.__location
 
     def __location_set(self, location):
-        current_location = self.db_location
-        self.db_location = location
+        if location and not hasattr(location, 'instance'):
+            raise ValueError(f"{location} is not a valid location for a game entity.")
+        if (current_location := self.__location):
+            current_location.contents.remove(self)
+            current_location.instance.entities.remove(self)
+        if (self.__location := location):
+            location.contents.add(self)
+            location.instance.entities.add(self)
+        self.save_location(location)
 
     def __location_del(self):
         """Cleanly delete the location reference"""
-        self.db_location = None
+        self.__location = None
 
     location = property(__location_get, __location_set, __location_del)
+
+    def save_location(self, new_location):
+        if self.persistent:
+            loc_bri = self.location_bridge
+            loc_bri
 
     @lazy_property
     def contents(self):
@@ -43,6 +60,10 @@ class AthanorGameEntity(EventEmitter):
     @lazy_property
     def factions(self):
         return FactionHandler(self)
+
+    @lazy_property
+    def divisions(self):
+        return DivisionHandler(self)
 
     @lazy_property
     def alliances(self):
@@ -111,24 +132,3 @@ class AthanorGameEntity(EventEmitter):
     def is_admin(self):
         pass
 
-    def is_member(self, faction, check_admin=True):
-
-        def recursive_check(fact):
-            checking = fact
-            while checking:
-                if checking == faction:
-                    return True
-                checking = checking.db_parent
-            return False
-
-        if hasattr(faction, 'faction_bridge'):
-            faction = faction.faction_bridge
-        if check_admin and self.is_admin():
-            return True
-        if self.factions.filter(db_faction=faction).count():
-            return True
-        all_factions = self.factions.all()
-        for fac in all_factions:
-            if recursive_check(fac.db_faction):
-                return True
-        return False
