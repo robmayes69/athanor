@@ -13,6 +13,25 @@ from athanor.utils.color import green_yellow_red, red_yellow_green
 
 class AthanorGameEntity(EventEmitter):
 
+    # location getsetter
+    def __location_get(self):
+        """Get location"""
+        return self.db_location
+
+    def __location_set(self, location):
+        current_location = self.db_location
+        self.db_location = location
+
+    def __location_del(self):
+        """Cleanly delete the location reference"""
+        self.db_location = None
+
+    location = property(__location_get, __location_set, __location_del)
+
+    @lazy_property
+    def contents(self):
+        return set()
+
     @lazy_property
     def gear(self):
         return GearHandler(self)

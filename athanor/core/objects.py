@@ -3,6 +3,6 @@ from athanor.core.gameentity import AthanorGameEntity
 from . submessage import SubMessageMixin
 
 
-class AthanorObject(DefaultObject, AthanorGameEntity, SubMessageMixin):
+class AthanorObject(AthanorGameEntity, DefaultObject, SubMessageMixin):
     pass
 

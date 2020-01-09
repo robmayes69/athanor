@@ -12,7 +12,7 @@ from athanor.core.scripts import AthanorGlobalScript
 from . models import CharacterBridge
 
 
-class AthanorCharacter(DefaultCharacter, AthanorGameEntity, SubMessageMixin):
+class AthanorCharacter(AthanorGameEntity, DefaultCharacter, SubMessageMixin):
     pass
 
 

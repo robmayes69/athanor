@@ -27,6 +27,7 @@ from evennia.typeclasses.tags import Tag, TagHandler, AliasHandler, PermissionHa
 from evennia.locks.lockhandler import LockHandler
 
 from athanor.utils.time import utcnow
+from athanor.core.gameentity import AthanorGameEntity
 
 _INFLECT = inflect.engine()
 _MULTISESSION_MODE = settings.MULTISESSION_MODE
@@ -36,58 +37,34 @@ _AT_SEARCH_RESULT = variable_from_module(*settings.SEARCH_AT_RESULT.rsplit(".", 
 _SESSID_MAX = 16 if _MULTISESSION_MODE in (1, 3) else 1
 
 
-class BaseGameEntity(object):
+class TransientEntity(AthanorGameEntity):
     """
     This is an Abstract class that implements most of the DefaultObject API for Evennia, as a replacement
-    for it. It has no direct persistence, relying instead on ObjectDB as a persistence backend. Sometimes.
+    for it. It has no direct persistence.
     """
     base_type = None
     lockstring = ""
 
-    def __init__(self, id, ex_key=None, kind=None, entity_key=None, data=None, model=None):
+    def __init__(self, id, ex_key=None, kind=None, entity_key=None, data=None):
         if not data:
             data = dict()
         self.id = id
-        self.model = model
         self.db_account = None
         self.db_sessid = ""
-        if model:
-            self.db_key = model.key
-            self.db_date_created = model.date_created
-            self.db_lock_storage = model.lock_storage
-            self.db_typeclass_path = model.typeclass_path
-            self.db_cmdset_storage = model.cmdset_storage
-        else:
-            self.db_key = data.get("key", f"Unknown {kind}")
-            self.db_date_created = data.get("date_created", utcnow())
-            self.db_lock_storage = data.get('lock_storage', self.lockstring.format())
-            self.db_typeclass_path = data.get('typeclass_path', '')
-            self.db_cmdset_storage = data.get('cmdset_storage', "")
+        self.db_key = data.get("key", f"Unknown {kind}")
+        self.db_date_created = data.get("date_created", utcnow())
+        self.db_lock_storage = data.get('lock_storage', self.lockstring.format())
+        self.db_typeclass_path = data.get('typeclass_path', '')
+        self.db_cmdset_storage = data.get('cmdset_storage', "")
         self.db_location = None
         self.db_home = None
         self.db_destination = None
-        self.contents = set()
 
     def __str__(self):
         return self.db_key
 
     def __repr__(self):
         return self.db_key
-
-    # location getsetter
-    def __location_get(self):
-        """Get location"""
-        return self.db_location
-
-    def __location_set(self, location):
-        current_location = self.db_location
-        self.db_location = location
-
-    def __location_del(self):
-        """Cleanly delete the location reference"""
-        self.db_location = None
-
-    location = property(__location_get, __location_set, __location_del)
 
     # cmdset_storage property handling
     def __cmdset_storage_get(self):
@@ -165,8 +142,6 @@ class BaseGameEntity(object):
 
     @property
     def attributes(self):
-        if self.model:
-            return self.model.attributes
         return NAttributeHandler(self)
 
     def __db_get(self):
@@ -203,8 +178,6 @@ class BaseGameEntity(object):
 
     @property
     def nattributes(self):
-        if self.model:
-            return self.model.nattributes
         return NAttributeHandler(self)
 
     def __ndb_get(self):
@@ -238,49 +211,34 @@ class BaseGameEntity(object):
 
     @lazy_property
     def locks(self):
-        if self.model:
-            return self.model.locks
         return LockHandler(self)
 
     @lazy_property
     def tags(self):
-        if self.model:
-            return self.model.tags
         return TagHandler(self)
 
     @lazy_property
     def aliases(self):
-        if self.model:
-            return self.model.aliases
         return AliasHandler(self)
 
     @lazy_property
     def permissions(self):
-        if self.model:
-            return self.model.permissions
         return PermissionHandler(self)
 
     @lazy_property
     def cmdset(self):
-        if self.model:
-            return self.model.cmdset
         return CmdSetHandler(self, True)
 
     @lazy_property
     def scripts(self):
-        if self.model:
-            return self.model.scripts
         return ScriptHandler(self)
 
     @lazy_property
     def nicks(self):
-        if self.model:
-            return self.model.nicks
         return NickHandler(self)
 
     def save(self, *args, **kwargs):
-        if self.model:
-            self.model.save(*args, **kwargs)
+        pass
 
     @lazy_property
     def sessions(self):
