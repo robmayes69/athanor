@@ -1,10 +1,10 @@
-import time, datetime
-import inflect
+import time, datetime, inflect
 from collections import defaultdict
 
 from django.conf import settings
 
 from evennia.typeclasses.attributes import NickHandler
+from evennia.typeclasses.models import DbHolder
 from evennia.objects.models import ObjectDB
 from evennia.scripts.scripthandler import ScriptHandler
 from evennia.commands import cmdset, command
@@ -26,8 +26,53 @@ from evennia.typeclasses.tags import Tag, TagHandler, AliasHandler, PermissionHa
 
 from evennia.locks.lockhandler import LockHandler
 
+from athanor.utils.time import utcnow
 
-class AbstractEntity(object):
+_INFLECT = inflect.engine()
+_MULTISESSION_MODE = settings.MULTISESSION_MODE
+
+_AT_SEARCH_RESULT = variable_from_module(*settings.SEARCH_AT_RESULT.rsplit(".", 1))
+# the sessid_max is based on the length of the db_sessid csv field (excluding commas)
+_SESSID_MAX = 16 if _MULTISESSION_MODE in (1, 3) else 1
+
+
+class BaseGameEntity(object):
+    """
+    This is an Abstract class that implements most of the DefaultObject API for Evennia, as a replacement
+    for it. It has no direct persistence, relying instead on ObjectDB as a persistence backend. Sometimes.
+    """
+    base_type = None
+    lockstring = ""
+
+    def __init__(self, id, ex_key=None, kind=None, entity_key=None, data=None, model=None):
+        if not data:
+            data = dict()
+        self.id = id
+        self.model = model
+        self.db_account = None
+        self.db_sessid = ""
+        if model:
+            self.db_key = model.key
+            self.db_date_created = model.date_created
+            self.db_lock_storage = model.lock_storage
+            self.db_typeclass_path = model.typeclass_path
+            self.db_cmdset_storage = model.cmdset_storage
+        else:
+            self.db_key = data.get("key", f"Unknown {kind}")
+            self.db_date_created = data.get("date_created", utcnow())
+            self.db_lock_storage = data.get('lock_storage', self.lockstring.format())
+            self.db_typeclass_path = data.get('typeclass_path', '')
+            self.db_cmdset_storage = data.get('cmdset_storage', "")
+        self.db_location = None
+        self.db_home = None
+        self.db_destination = None
+        self.contents = set()
+
+    def __str__(self):
+        return self.db_key
+
+    def __repr__(self):
+        return self.db_key
 
     # location getsetter
     def __location_get(self):
@@ -44,42 +89,23 @@ class AbstractEntity(object):
 
     location = property(__location_get, __location_set, __location_del)
 
+    # cmdset_storage property handling
+    def __cmdset_storage_get(self):
+        """getter"""
+        storage = self.db_cmdset_storage
+        return [path.strip() for path in storage.split(",")] if storage else []
 
+    def __cmdset_storage_set(self, value):
+        """setter"""
+        self.db_cmdset_storage = ",".join(str(val).strip() for val in make_iter(value))
 
-class TransientEntity(AbstractEntity):
-    base_type = None
-    lockstring = ""
+    def __cmdset_storage_del(self):
+        """deleter"""
+        self.db_cmdset_storage = None
 
-    def __init__(self, id):
-        self.id = id
-        self.dbref = f"T#{id}"
-        self.db_account = None
-        self.db_sessid = ""
-        self.db_key = ""
-        self.db_typeclass_path = ""
-        self.db_date_created = datetime.datetime.utcnow()
-        self.db_lock_storage = ""
-        self.db_location = None
-        self.db_home = ""
-        self.db_destination = ""
-        self.db_cmdset_storage = ""
-        self.db_lock_storage = ""
-
-    def __eq__(self, other):
-        try:
-            return self.base_type == other.base_type and self.eid == other.eid
-        except AttributeError:
-            return False
-
-    def __hash__(self):
-        # this is required to maintain hashing
-        return super().__hash__()
-
-    def __str__(self):
-        return self.db_key
-
-    def __repr__(self):
-        return self.db_key
+    cmdset_storage = property(
+        __cmdset_storage_get, __cmdset_storage_set, __cmdset_storage_del
+    )
 
     @property
     def account(self):
@@ -90,12 +116,44 @@ class TransientEntity(AbstractEntity):
         self.db_account = value
 
     @property
+    def sessid(self):
+        return self.db_sessid
+
+    @sessid.setter
+    def sessid(self, value):
+        self.db_sessid = value
+
+    @property
     def key(self):
         return self.db_key
 
     @key.setter
     def key(self, value):
         self.db_key = value
+
+    @property
+    def date_created(self):
+        return self.db_date_created
+
+    @date_created.setter
+    def date_created(self, value):
+        self.db_date_created = value
+
+    @property
+    def lock_storage(self):
+        return self.db_lock_storage
+
+    @lock_storage.setter
+    def lock_storage(self, value):
+        self.db_lock_storage = value
+
+    @property
+    def typeclass_path(self):
+        return self.db_typeclass_path
+
+    @typeclass_path.setter
+    def typeclass_path(self, value):
+        self.db_typeclass_path = value
 
     @property
     def name(self):
@@ -107,76 +165,126 @@ class TransientEntity(AbstractEntity):
 
     @property
     def attributes(self):
+        if self.model:
+            return self.model.attributes
         return NAttributeHandler(self)
+
+    def __db_get(self):
+        """
+        Attribute handler wrapper. Allows for the syntax
+           obj.db.attrname = value
+             and
+           value = obj.db.attrname
+             and
+           del obj.db.attrname
+             and
+           all_attr = obj.db.all() (unless there is an attribute
+                      named 'all', in which case that will be returned instead).
+        """
+        try:
+            return self._db_holder
+        except AttributeError:
+            self._db_holder = DbHolder(self, "attributes")
+            return self._db_holder
+
+    # @db.setter
+    def __db_set(self, value):
+        "Stop accidentally replacing the db object"
+        string = "Cannot assign directly to db object! "
+        string += "Use db.attr=value instead."
+        raise Exception(string)
+
+    # @db.deleter
+    def __db_del(self):
+        "Stop accidental deletion."
+        raise Exception("Cannot delete the db object!")
+
+    db = property(__db_get, __db_set, __db_del)
 
     @property
     def nattributes(self):
+        if self.model:
+            return self.model.nattributes
         return NAttributeHandler(self)
+
+    def __ndb_get(self):
+        """
+        A non-attr_obj store (ndb: NonDataBase). Everything stored
+        to this is guaranteed to be cleared when a server is shutdown.
+        Syntax is same as for the _get_db_holder() method and
+        property, e.g. obj.ndb.attr = value etc.
+        """
+        try:
+            return self._ndb_holder
+        except AttributeError:
+            self._ndb_holder = DbHolder(
+                self, "nattrhandler", manager_name="nattributes"
+            )
+            return self._ndb_holder
+
+    # @db.setter
+    def __ndb_set(self, value):
+        "Stop accidentally replacing the ndb object"
+        string = "Cannot assign directly to ndb object! "
+        string += "Use ndb.attr=value instead."
+        raise Exception(string)
+
+    # @db.deleter
+    def __ndb_del(self):
+        "Stop accidental deletion."
+        raise Exception("Cannot delete the ndb object!")
+
+    ndb = property(__ndb_get, __ndb_set, __ndb_del)
 
     @lazy_property
     def locks(self):
+        if self.model:
+            return self.model.locks
         return LockHandler(self)
 
     @lazy_property
     def tags(self):
+        if self.model:
+            return self.model.tags
         return TagHandler(self)
 
     @lazy_property
     def aliases(self):
+        if self.model:
+            return self.model.aliases
         return AliasHandler(self)
 
     @lazy_property
     def permissions(self):
+        if self.model:
+            return self.model.permissions
         return PermissionHandler(self)
-
-    @property
-    def sessid(self):
-        return self.db_sessid
-
-    @sessid.setter
-    def sessid(self, value):
-        self.db_sessid = value
 
     @lazy_property
     def cmdset(self):
+        if self.model:
+            return self.model.cmdset
         return CmdSetHandler(self, True)
 
     @lazy_property
     def scripts(self):
+        if self.model:
+            return self.model.scripts
         return ScriptHandler(self)
 
     @lazy_property
     def nicks(self):
+        if self.model:
+            return self.model.nicks
         return NickHandler(self)
 
     def save(self, *args, **kwargs):
-        pass
+        if self.model:
+            self.model.save(*args, **kwargs)
 
     @lazy_property
     def sessions(self):
         return ObjectSessionHandler(self)
-
-
-
-    # cmdset_storage property handling
-    def __cmdset_storage_get(self):
-        """getter"""
-        storage = self.db_cmdset_storage
-        return [path.strip() for path in storage.split(",")] if storage else []
-
-    def __cmdset_storage_set(self, value):
-        """setter"""
-        self.db_cmdset_storage = ",".join(str(val).strip() for val in make_iter(value))
-        self.save(update_fields=["db_cmdset_storage"])
-
-    def __cmdset_storage_del(self):
-        """deleter"""
-        self.db_cmdset_storage = None
-        self.save(update_fields=["db_cmdset_storage"])
-
-    cmdset_storage = property(
-        __cmdset_storage_get, __cmdset_storage_set, __cmdset_storage_del
-    )
 
     @property
     def is_connected(self):
@@ -203,34 +311,6 @@ class TransientEntity(AbstractEntity):
         """
         return self.db_account and self.db_account.is_superuser \
                and not self.db_account.attributes.get("_quell")
-
-    def contents_get(self, exclude=None):
-        """
-        Returns the contents of this object, i.e. all
-        objects that has this object set as its location.
-        This should be publically available.
-
-        Args:
-            exclude (Object): Object to exclude from returned
-                contents list
-
-        Returns:
-            contents (list): List of contents of this Object.
-
-        Notes:
-            Also available as the `contents` property.
-
-        """
-        con = self.contents_cache.get(exclude=exclude)
-        # print "contents_get:", self, con, id(self), calledby()  # DEBUG
-        return con
-
-    def contents_set(self, *args):
-        "You cannot replace this property"
-        raise AttributeError("{}.contents is read-only. Use obj.move_to or "
-                             "obj.location to move an object here.".format(self.__class__))
-
-    contents = property(contents_get, contents_set, contents_set)
 
     @property
     def exits(self):
@@ -1183,7 +1263,7 @@ class TransientEntity(AbstractEntity):
             puppeting this Object.
 
         """
-        self.account.db._last_puppet = self
+        pass
 
     def at_pre_unpuppet(self, **kwargs):
         """
@@ -1864,18 +1944,3 @@ class TransientEntity(AbstractEntity):
                                        from_obj=self,
                                        exclude=exclude,
                                        mapping=location_mapping)
-
-    def serialize(self):
-        pass
-
-
-class PersistentEntity(AbstractEntity):
-
-    def __init__(self, master):
-        self.master = master
-
-    def __getattr__(self, item):
-        return getattr(self.master, item)
-
-    def serialize(self):
-        return self.master

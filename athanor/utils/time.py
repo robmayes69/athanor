@@ -1,4 +1,4 @@
-import datetime, re
+import datetime, re, pytz
 from django.utils.timezone import utc
 
 def utcnow():
@@ -76,3 +76,11 @@ def duration_from_string(time_string):
             raise ValueError("Could not convert section '%s' to a time duration." % interval)
 
     return datetime.timedelta(days, seconds, 0, 0, minutes, hours, weeks)
+
+
+def from_unixtimestring(secs):
+    try:
+        convert = datetime.datetime.fromtimestamp(int(secs)).replace(tzinfo=pytz.utc)
+    except ValueError:
+        return None
+    return convert

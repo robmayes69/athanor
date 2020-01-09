@@ -14,12 +14,7 @@ from athanor.utils.text import penn_substitutions
 from athanor.core.command import AthanorCommand
 
 
-def from_unixtimestring(secs):
-    try:
-        convert = datetime.datetime.fromtimestamp(int(secs)).replace(tzinfo=pytz.utc)
-    except ValueError:
-        return None
-    return convert
+
 
 
 def from_mushtimestring(timestring):

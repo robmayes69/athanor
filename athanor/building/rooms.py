@@ -2,7 +2,7 @@ from evennia.objects.objects import DefaultRoom
 from athanor.core.gameentity import AthanorGameEntity
 from collections import defaultdict
 from evennia.utils import list_to_string
-from . models import RoomBridge
+#from . models import RoomBridge
 
 
 HEADER_LINE = "O----------------------------------------------------------------------O"
@@ -33,7 +33,7 @@ class AthanorRoom(DefaultRoom, AthanorGameEntity):
             display_name = '|%s%s|n' % (color, display_name)
         output = HEADER_LINE
         output += '\n' + "Location: " + display_name
-        area = self.room_bridge.db_area
+        area = None
         if area:
             output += '\n' + 'Area: ' + area.path_names(looker)
         output += '\n' + HEADER_LINE
