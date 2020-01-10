@@ -11,6 +11,7 @@ from athanor.core.handler import KeywordHandler
 from athanor.utils.color import green_yellow_red, red_yellow_green
 from athanor.building.handlers import LocationHandler
 
+
 class AthanorGameEntity(EventEmitter):
     persistent = False
 
@@ -18,54 +19,13 @@ class AthanorGameEntity(EventEmitter):
     def locations(self):
         return LocationHandler(self)
 
+    @property
+    def location(self):
+        return self.locations.room
 
-
-    # location getsetter
-    def __location_get(self):
-        """Get location"""
-        return self.__room
-
-    def __location_set(self, room):
-        if room and not hasattr(room, 'instance'):
-            raise ValueError(f"{room} is not a valid location for a game entity.")
-        current_instance = None
-        if (current_location := self.__room):
-            current_instance = current_location.instance
-            current_location.unregister_entity(self)
-        if (self.__room := room):
-            if room.instance != current_instance:
-                room.instance.register_entity(self)
-            room.register_entity(self)
-        else:
-            if current_instance:
-                current_instance.unregister_entity(self)
-        if self.persistent:
-            self.save_location()
-
-    def __location_del(self):
-        """Cleanly delete the location reference"""
-        instance = self.__instance
-        room = self.__room
-        self.__instance = None
-        self.__room = None
-        if instance:
-            self.__instance.unregister_entity(self)
-        if room:
-            self.__room.unregister_entity(self)
-        self.x = None
-        self.y = None
-        self.z = None
-
-    location = property(__location_get, __location_set, __location_del)
-
-    def save_location(self):
-        loc_bri = self.location_bridge
-        loc_bri.instance = self.__instance
-        loc_bri.room_key = self.__room.room_key if self.__room else None
-        loc_bri.x_coordinate = self.x
-        loc_bri.y_coordinate = self.y
-        loc_bri.z_coordinate = self.z
-        loc_bri.save(update_fields=['instance', 'room_key', 'x_coordinate', 'y_coordinate', 'z_coordinate'])
+    @location.setter
+    def location(self, value):
+        self.locations.set(value)
 
     def register_entity(self, entity):
         if entity in self.entities:
