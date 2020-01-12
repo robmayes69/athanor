@@ -24,20 +24,10 @@ def at_initial_setup():
     # god Account setup skips this.
     from athanor.accounts.accounts import AthanorAccount
     god_account = AthanorAccount.objects.get(id=1)
-    god_account.create_bridge()
 
     # Next, the God Character must be linked properly to the God Account and given
     # a Character Bridge model.
     from athanor.characters.characters import AthanorPlayerCharacter
 
     god_character = AthanorPlayerCharacter.objects.filter_family().first()
-    god_character.create_bridge(god_account, god_character.key, god_character.key)
-
-    # Finally we need to locate limbo, create an Area to encompass it and create a RoomBridge to link Limbo to it.
-    from athanor.building.rooms import AthanorRoom
-
-    area_typeclass = class_from_module(settings.BASE_AREA_TYPECLASS)
-    area, errors = area_typeclass.create_area("OOC", parent=None)
-
-    limbo = AthanorRoom.objects.filter_family().first()
-    limbo.create_bridge(area)
+    god_character.create_bridge(god_account, god_character.key, god_character.key, 0)

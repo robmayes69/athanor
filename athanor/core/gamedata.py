@@ -1,70 +1,9 @@
 from os import path, scandir, getcwd
-import yaml
-from collections import defaultdict
 from django.conf import settings
-
+from collections import defaultdict
 from evennia.utils.utils import class_from_module
 from evennia.utils.utils import mod_import
-
-
-class Extension(object):
-
-    def __init__(self, key, manager, module):
-        self.key = key
-        self.manager = manager
-        self.module = module
-        self.abstracts_yaml = dict()
-        self.templates_yaml = dict()
-        self.instances_yaml = dict()
-        self.instances = dict()
-        self.abstracts = defaultdict(dict)
-        self.templates = defaultdict(dict)
-        self.base_yaml = dict()
-        self.base = defaultdict(dict)
-        self.abstracts = defaultdict(dict)
-        self.path = path.dirname(module.__file__)
-
-    def initialize_base(self):
-        self.base_yaml = self.scan_contents(self.path)
-
-    def initialize_abstracts(self):
-        abstracts_path = path.join(self.path, 'abstracts')
-        if not path.isdir(abstracts_path):
-            return
-        self.abstracts_yaml = self.scan_contents(abstracts_path)
-
-    def initialize_instances(self):
-        instances_path = path.join(self.path, 'instances')
-        if not path.isdir(instances_path):
-            return
-        self.instances_yaml = self.scan_folders(instances_path)
-
-    def initialize_templates(self):
-        templates_path = path.join(self.path, 'templates')
-        if not path.isdir(templates_path):
-            return
-        self.templates_yaml = self.scan_contents(templates_path)
-
-    def scan_contents(self, folder_path):
-        if not path.isdir(folder_path):
-            return
-        main_data = dict()
-        for f in [f for f in scandir(folder_path) if f.is_file() and f.name.lower().endswith(".yaml")]:
-            with open(f, "r") as yfile:
-                data = dict()
-                for entry in yaml.safe_load_all(yfile):
-                    data.update(entry)
-                main_data[f.name.lower().split('.', 1)[0]] = data
-        return main_data
-
-    def scan_folders(self, folder_path):
-        if not path.isdir(folder_path):
-            return
-        main_data = dict()
-        for folder in [folder for folder in scandir(folder_path) if folder.is_dir()]:
-            main_data[folder.name.lower()] = self.scan_contents(folder)
-        return main_data
-
+from athanor.building.regions import AthanorRegion
 
 class GameDataManager(object):
 
@@ -72,20 +11,29 @@ class GameDataManager(object):
         self.world = world
         self.extensions = dict()
         self.class_cache = dict()
+        self.regions = dict()
 
     def load(self):
         self.load_extensions()
         self.prepare_abstracts()
         self.prepare_base()
         self.prepare_instances()
+        self.load_regions()
 
     def load_extensions(self):
-        extension_class = class_from_module(settings.WORLD_EXTENSION_CLASS)
+        extension_class = class_from_module(settings.GAME_EXTENSION_CLASS)
+
         ex_path = path.join(getcwd(), 'extensions')
-        for ex in [ex for ex in scandir(ex_path) if ex.is_dir()]:
-            if ex not in self.extensions:
-                found_module = mod_import(f"extensions.{ex}")
-                self.extensions[ex] = extension_class(ex, self, found_module)
+        if path.exists(ex_path) and path.isdir(ex_path):
+            for ex in [ex for ex in scandir(ex_path) if ex.is_dir() and not ex.name.startswith("_")]:
+                if ex.name not in self.extensions:
+                    self.extensions[ex.name] = extension_class(ex.name, self, ex)
+
+        import athanor.ath_extensions as ath_ext
+        ath_ext_path = path.dirname(ath_ext.__file__)
+        for ex in [ex for ex in scandir(ath_ext_path) if ex.is_dir() and not ex.name.startswith("_")]:
+            if ex.name not in self.extensions:
+                self.extensions[ex.name] = extension_class(ex.name, self, ex)
 
     def resolve_path(self, path, extension, kind):
         split_path = path.split('/')
@@ -148,31 +96,32 @@ class GameDataManager(object):
             raise ValueError(f"No Abstract Key: {extension}/{kind}/{key}")
         return k
 
-    def prepare_data(self, kind, start_data, extension):
+    def prepare_data(self, kind, start_data, extension, no_class=False):
         data = dict()
         if (abstract := start_data.get('abstract', None)):
             data.update(self.get_abstract(extension, kind, abstract))
         data.update(start_data)
-        data['class'] = self.get_class(kind, start_data.get('class', None))
+        if not no_class:
+            data['class'] = self.get_class(kind, start_data.get('class', None))
         return data
 
     def prepare_instances(self):
         for ex_key, ex in self.extensions.items():
             ex.initialize_instances()
             for key, data in ex.instances_yaml.items():
-                instance_data = dict()
-                instance_data['instance'] = self.prepare_data('instances', data.get('instance', dict()), key[0])
+                instance_data = defaultdict(dict)
+                instance_data['instance'] = self.prepare_data('instances', data.get('instance', dict()), ex_key, no_class=True)
 
                 for kind in ('areas', 'rooms', 'gateways'):
                     for thing_key, thing_data in data.get(kind, dict()).items():
-                        instance_data[kind][thing_key] = self.prepare_data(kind, thing_data, key[0])
+                        instance_data[kind][thing_key] = self.prepare_data(kind, thing_data, ex_key)
 
                 for room_key, room_exits in data.get('exits', dict()).items():
                     instance_data['rooms'][room_key]['exits'] = dict()
                     if not room_exits:
                         continue
                     for dest_key, exit_data in room_exits.items():
-                        instance_data['rooms'][room_key]['exits'][dest_key] = self.prepare_data('exits', exit_data, key[0])
+                        instance_data['rooms'][room_key]['exits'][dest_key] = self.prepare_data('exits', exit_data, ex_key)
 
                 ex.instances[key] = instance_data
 
@@ -190,24 +139,12 @@ class GameDataManager(object):
                 for key, thing_data in data.items():
                     ex.base[kind][key] = self.prepare_data(kind, thing_data, ex_key)
 
-
-class World(object):
-    """
-    This is the Engine that ties together the entire game.
-    """
-
-    def __init__(self):
-        self.data_manager = class_from_module(settings.DATA_MANAGER_CLASS)(self)
-        self.uuid_mapping = dict()
-        self.uuid_owners = dict()
-        self.entities = set()
-        self.alliances = set()
-        self.alliance_keys = dict()
-        self.factions = set()
-        self.faction_keys = dict()
-
-
-    def load(self):
-        self.data_manager.load()
-        self.ready_organizations()
-        self.load_structures()
+    def load_regions(self):
+        for ex_key, ex in self.extensions.items():
+            for key, data in ex.base.get('regions', dict()).items():
+                if not (found := AthanorRegion.objects.filter_family(region_bridge__system_key=key).first()):
+                    region_class = data.get('class', None)
+                    found = region_class.create_region(ex_key, key, data)
+                else:
+                    found.update_data(data)
+                self.regions[key] = found

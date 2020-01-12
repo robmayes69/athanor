@@ -1,48 +1,74 @@
+base:
+  locks: "traverse:all();puppet:false();get:false();call:all()"
 n:
   name: North
+  parents:
+    - base
   aliases:
     - n
 s:
   name: South
+  parents:
+    - base
   aliases:
     - s
 e:
   name: East
+  parents:
+    - base
   aliases:
     - e
 w:
   name: West
+  parents:
+    - base
   aliases:
     - w
 ne:
   name: Northeast
+  parents:
+    - base
   aliases:
     - ne
 nw:
   name: Northwest
+  parents:
+    - base
   aliases:
     - nw
 se:
   name: Southeast
+  parents:
+    - base
   aliases:
     - se
 sw:
   name: Southwest
+  parents:
+    - base
   aliase:
     - sw
 u:
   name: Up
+  parents:
+    - base
   aliases:
     - u
 d:
   name: Down
+  parents:
+    - base
   aliases:
     - d
 i:
   name: In
+  parents:
+    - base
   aliases:
     - i
 o:
   name: Out
+  parents:
+    - base
   aliases:
     - o

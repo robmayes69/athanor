@@ -44,7 +44,7 @@ class EventBridge(SharedMemoryModel):
     db_date_started = models.DateTimeField(null=True)
     db_date_finished = models.DateTimeField(null=True)
     plots = models.ManyToManyField(PlotBridge, related_name='events')
-    db_thread = models.OneToOneField('forum.ForumThread', related_name='event', null=True, on_delete=models.SET_NULL)
+    db_thread = models.OneToOneField('forum.ForumThreadBridge', related_name='event', null=True, on_delete=models.SET_NULL)
     db_status = models.PositiveSmallIntegerField(default=0, db_index=True)
     # Status: 0 = Active. 1 = Paused. 2 = ???. 3 = Finished. 4 = Scheduled. 5 = Canceled.
 

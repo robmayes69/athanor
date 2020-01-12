@@ -1,10 +1,10 @@
 from django.conf import settings
 import evennia
 from evennia.utils.utils import class_from_module
-from commands.command import Command
+from athanor.core.command import AthanorCommand
 
 
-class ForumCommand(Command):
+class ForumCommand(AthanorCommand):
     """
     Class for the Board System commands.
     """

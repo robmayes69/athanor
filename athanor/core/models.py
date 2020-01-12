@@ -81,7 +81,7 @@ class AbstractNameHistory(SharedMemoryModel):
 
 
 class AccountNameHistory(AbstractNameHistory):
-    db_account = models.ForeignKey('acccounts.AccountDB', related_name='name_history', on_delete=models.CASCADE)
+    db_account = models.ForeignKey('accounts.AccountDB', related_name='name_history', on_delete=models.CASCADE)
 
 
 class ObjectNameHistory(AbstractNameHistory):

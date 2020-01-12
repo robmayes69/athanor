@@ -1,0 +1,2 @@
+class AthanorMobile(object):
+    pass

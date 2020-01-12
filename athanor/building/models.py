@@ -1,6 +1,12 @@
 from django.db import models
 
 
+class RegionBridge(models.Model):
+    object = models.OneToOneField('objects.ObjectDB', related_name='region_bridge', primary_key=True,
+                                  on_delete=models.CASCADE)
+    system_key = models.CharField(max_length=255, blank=False, null=False, unique=True)
+
+
 class InstanceBridge(models.Model):
     object = models.OneToOneField('objects.ObjectDB', related_name='instance_bridge', primary_key=True,
                                      on_delete=models.CASCADE)

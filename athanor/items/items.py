@@ -1,0 +1,2 @@
+class AthanorItem(object):
+    pass

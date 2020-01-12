@@ -13,5 +13,3 @@ class AthanorFlexHandler(EventEmitter):
         return self.model_class.objects.filter(db_entity=self.ent)
 
 
-class KeywordHandler(TagHandler):
-    _tagtype = 'keyword'

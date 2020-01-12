@@ -1,20 +1,14 @@
 import datetime
 
-from django.db import transaction
-from django.conf import settings
-
 from evennia.accounts.accounts import DefaultAccount
 from evennia.utils.utils import class_from_module
 from evennia.utils.logger import log_trace
 from evennia.utils.search import search_account
 
-from athanor.core.objects import AthanorObject
-from athanor.core.models import AccountBridge
-from athanor.core.gameentity import AthanorGameEntity
 from athanor.core.scripts import AthanorGlobalScript
 
 
-class AccountMixin(object):
+class AthanorAccount(DefaultAccount):
 
     def system_msg(self, text=None, system_name=None, enactor=None):
         sysmsg_border = self.options.sys_msg_border
@@ -29,44 +23,16 @@ class AccountMixin(object):
             tz = self.options.timezone
         return time_data.astimezone(tz).strftime(time_format)
 
-
-class AthanorAccount(DefaultAccount, AccountMixin, AthanorGameEntity):
-
     def __str__(self):
         return self.key
-
-    def create_bridge(self):
-        """
-        Called by create_account and at_intial_setup to create an Account Bridge Object.
-        Meant to be called within a transaction.
-
-        Returns:
-            None
-        """
-        if hasattr(self, 'account_bridge'):
-            return
-        acc_bridge_typeclass = class_from_module(settings.ACCOUNT_BRIDGE_OBJECT_TYPECLASS)
-        obj, errors = acc_bridge_typeclass.create_account_bridge(account=self)
-        bridge, created = AccountBridge.objects.get_or_create(db_account=self, db_object=obj)
-        if created:
-            bridge.save()
 
     @classmethod
     def create_account(cls, *args, **kwargs):
         account, errors = cls.create(*args, **kwargs)
         if account:
-            account.create_bridge()
             return account
         else:
             raise ValueError(errors)
-
-
-class AthanorAccountBridge(AthanorObject):
-
-    @classmethod
-    def create_account_bridge(cls, account):
-        obj, errors = cls.create(account.key)
-        return obj, errors
 
 
 class AthanorAccountController(AthanorGlobalScript):

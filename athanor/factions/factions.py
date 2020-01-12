@@ -16,6 +16,10 @@ from .models import FactionBridge
 from . import messages
 
 
+class AthanorAlliance(AthanorObject):
+    pass
+
+
 class AthanorFaction(AthanorObject):
     system_privileges = ('manage', 'invite', 'discipline')
     setup_ranks = {

@@ -1,62 +1,188 @@
-import time, datetime, inflect
+import datetime, re, time
+from django.conf import settings
 from collections import defaultdict
 
-from django.conf import settings
-
-from evennia.typeclasses.attributes import NickHandler
-from evennia.typeclasses.models import DbHolder
-from evennia.objects.models import ObjectDB
-from evennia.scripts.scripthandler import ScriptHandler
-from evennia.commands import cmdset, command
-from evennia.commands.cmdsethandler import CmdSetHandler
-from evennia.commands import cmdhandler
-from evennia.utils import create
-from evennia.utils import search
-from evennia.utils import logger
 from evennia.utils import ansi
-from evennia.utils.utils import (variable_from_module, lazy_property,
-                                 make_iter, is_iter, list_to_string,
-                                 to_str)
-from django.utils.translation import ugettext as _
-
+from evennia.utils.utils import time_format, logger, lazy_property, make_iter, to_str, is_iter, list_to_string
+from evennia.utils.ansi import ANSIString
+from evennia.commands.cmdsethandler import CmdSetHandler
+from evennia.locks.lockhandler import LockHandler
+from evennia.typeclasses.tags import Tag, TagHandler, AliasHandler, PermissionHandler
+from evennia.objects.objects import _INFLECT
+from evennia.commands import cmdhandler
 from evennia.objects.objects import ObjectSessionHandler
 
-from evennia.typeclasses.attributes import Attribute, AttributeHandler, NAttributeHandler
-from evennia.typeclasses.tags import Tag, TagHandler, AliasHandler, PermissionHandler
-
-from evennia.locks.lockhandler import LockHandler
-
+from athanor.utils.events import EventEmitter
+from athanor.items.handlers import GearHandler, InventoryHandler
+from athanor.factions.handlers import FactionHandler, AllianceHandler, DivisionHandler
+from athanor.entities.handlers import KeywordHandler
+from athanor.utils.color import green_yellow_red, red_yellow_green
+from athanor.building.handlers import LocationHandler, InstanceHandler
 from athanor.utils.time import utcnow
-from athanor.core.gameentity import AthanorGameEntity
+from athanor.utils.text import partial_match
 
-_INFLECT = inflect.engine()
-_MULTISESSION_MODE = settings.MULTISESSION_MODE
+from django.utils.translation import ugettext as _
 
-_AT_SEARCH_RESULT = variable_from_module(*settings.SEARCH_AT_RESULT.rsplit(".", 1))
-# the sessid_max is based on the length of the db_sessid csv field (excluding commas)
-_SESSID_MAX = 16 if _MULTISESSION_MODE in (1, 3) else 1
+_PERMISSION_HIERARCHY = [p.lower() for p in settings.PERMISSION_HIERARCHY]
 
 
-class TransientEntity(AthanorGameEntity):
+class AbstractGameEntity(EventEmitter):
     """
-    This is an Abstract class that implements most of the DefaultObject API for Evennia, as a replacement
-    for it. It has no direct persistence.
-    """
-    base_type = None
-    lockstring = ""
+    This class is not meant to be used directly. It forms the foundation for Athanor's Entity system,
+    providing new Handlers and additional hook and logics for use by both Athanor Entities and Athanor sub-classes
+    of Evennia's DefauultObject.
 
-    def __init__(self, id, ex_key=None, kind=None, entity_key=None, data=None):
-        if not data:
-            data = dict()
-        self.id = id
+    Simply adding this as a mixin to something like DefaultCharacter is not enough.
+    Custom edits are needed to objects that inherit from DefaultObject to make them co-exist with Entities.
+
+    This has nothing that DefaultObject already implements, only stuff that must be ADDED to it.
+    """
+    persistent = False
+    re_search = re.compile(r"^(?i)(?P<choice>(all|[0-9]+)\.)?(?P<search>.*)?")
+
+    @lazy_property
+    def locations(self):
+        return LocationHandler(self)
+
+    def register_entity(self, entity):
+        self.contents.append(entity)
+        self.at_register_entity(entity)
+
+    def at_register_entity(self, entity):
+        pass
+
+    def unregister_entity(self, entity):
+        self.contents.remove(entity)
+        self.at_unregister_entity(entity)
+
+    def at_unregister_entity(self, entity):
+        pass
+
+    @lazy_property
+    def instance(self):
+        return InstanceHandler(self)
+
+    @lazy_property
+    def gear(self):
+        return GearHandler(self)
+
+    @lazy_property
+    def items(self):
+        return InventoryHandler(self)
+
+    @lazy_property
+    def factions(self):
+        return FactionHandler(self)
+
+    @lazy_property
+    def divisions(self):
+        return DivisionHandler(self)
+
+    @lazy_property
+    def alliances(self):
+        return AllianceHandler(self)
+
+    @lazy_property
+    def keywords(self):
+        return KeywordHandler(self)
+
+    def get_gender(self, looker):
+        return "neuter"
+
+    def system_msg(self, *args, **kwargs):
+        if hasattr(self, 'account'):
+            self.account.system_msg(*args, **kwargs)
+
+    def pretty_idle_time(self, override=None):
+        idle_time = override if override is not None else self.idle_time
+        color_cutoff_seconds = 3600
+        value = 0
+        if idle_time <= color_cutoff_seconds:
+            value = (color_cutoff_seconds // idle_time) * 100
+        return ANSIString(f"|{red_yellow_green(value)}{time_format(idle_time, style=1)}|n")
+
+    def pretty_conn_time(self, override=None):
+        conn_time = override if override is not None else self.connection_time
+        return ANSIString(f"|{red_yellow_green(100)}{time_format(conn_time, style=1)}|n")
+
+    def get_last_logout(self):
+        return utcnow()
+
+    def pretty_last_time(self, viewer, time_format='%b %m'):
+        return ANSIString(f"|x{viewer.localize_timestring(self.get_last_logout(), time_format=time_format)}|n")
+
+    def idle_or_last(self, viewer, time_format='%b %m'):
+        if self.sessions.all() and self.conn_visible_to(viewer):
+            return self.pretty_idle_time()
+        return self.pretty_last_time(viewer, time_format)
+
+    def conn_or_last(self, viewer, time_format='%b %m'):
+        if self.sessions.all() and self.conn_visible_to(viewer):
+            return self.pretty_conn_time()
+        return self.pretty_last_time(viewer, time_format)
+
+    def idle_or_off(self, viewer):
+        if self.sessions.all() and self.conn_visible_to(viewer):
+            return self.pretty_idle_time()
+        return '|XOff|n'
+
+    def conn_or_off(self, viewer):
+        if self.sessions.all() and self.conn_visible_to(viewer):
+            return self.pretty_conn_time()
+        return '|XOff|n'
+
+    def conn_visible_to(self, viewer):
+        if self.is_conn_hidden():
+            return self.access(viewer, 'see_hidden', default="perm(Admin)")
+        return True
+
+    def is_conn_hidden(self):
+        return False
+
+    def localize_timestring(self, time_data, time_format='%x %X'):
+        if hasattr(self, 'account'):
+            return self.account.localize_timestring(time_data, time_format)
+        return time_data.astimezone(datetime.timezone.utc).strftime(time_format)
+
+    @property
+    def idle_time(self):
+        """
+        Returns the idle time of the least idle session in seconds. If
+        no sessions are connected it returns nothing.
+        """
+        idle = [session.cmd_last_visible for session in self.sessions.all()]
+        if idle:
+            return time.time() - float(max(idle))
+        return None
+
+    @property
+    def connection_time(self):
+        """
+        Returns the maximum connection time of all connected sessions
+        in seconds. Returns nothing if there are no sessions.
+        """
+        conn = [session.conn_time for session in self.sessions.all()]
+        if conn:
+            return time.time() - float(min(conn))
+        return None
+
+
+class AthanorGameEntity(AbstractGameEntity):
+    """
+    This class builds on AbstractGameEntity, re-implementing much of DefaultObject's features.
+    """
+    persistent = False
+    _is_deleted = False
+
+    def __init__(self, data):
+        self.id = -1
+        self.db_key = data.get("name", "Unknown Entity")
+        self.db_lock_storage = data.get('locks', "")
+        self.db_cmdset_storage = data.get('cmdsets', "")
         self.db_account = None
         self.db_sessid = ""
-        self.db_key = data.get("key", f"Unknown {kind}")
         self.db_date_created = data.get("date_created", utcnow())
-        self.db_lock_storage = data.get('lock_storage', self.lockstring.format())
         self.db_typeclass_path = data.get('typeclass_path', '')
-        self.db_cmdset_storage = data.get('cmdset_storage', "")
-        self.db_location = None
         self.db_home = None
         self.db_destination = None
 
@@ -65,6 +191,136 @@ class TransientEntity(AthanorGameEntity):
 
     def __repr__(self):
         return self.db_key
+
+    @lazy_property
+    def dbref(self):
+        return f"#{self.id}"
+
+    @property
+    def account(self):
+        return self.db_account
+
+    @account.setter
+    def account(self, value):
+        self.db_account = value
+
+    @property
+    def sessid(self):
+        return self.db_sessid
+
+    @sessid.setter
+    def sessid(self, value):
+        self.db_sessid = value
+
+    @property
+    def name(self):
+        return self.db_key
+
+    @property
+    def key(self):
+        return self.db_key
+
+    @key.setter
+    def key(self, value):
+        self.db_key = value
+
+    @property
+    def date_created(self):
+        return self.db_date_created
+
+    @date_created.setter
+    def date_created(self, value):
+        self.db_date_created = value
+
+    def contents_get(self, exclude=None):
+        contents = list(self.contents)
+        if exclude:
+            for entity in make_iter(exclude):
+                contents.remove(entity)
+        return contents
+
+    def search_entities(self, searchdata, candidates=None, allow_here=True,  allow_me=True, allow_all=True):
+
+        if allow_here and searchdata.lower() in ("here",):
+            return [self.location]
+        if allow_me and searchdata.lower() in ("me", "self"):
+            return [self]
+        if allow_all and searchdata.lower() in ('all'):
+            return candidates
+
+        if not candidates:
+            candidates = self.contents
+            if self.location:
+                candidates += self.location.contents
+                candidates.remove(self)
+
+        process_search = self.re_search.match(searchdata).groupdict()
+
+        if not (search := process_search.get('search', None)):
+            raise ValueError("Must enter some text to search for!")
+
+        search = search.strip()
+
+        choice = process_search.get('choice', None)
+
+        if choice:
+            if choice.isdigit():
+                choice = int(choice) - 1
+            elif choice.lower() == "all":
+                choice = "all"
+        else:
+            choice = 0
+
+        keywords = defaultdict(list)
+        for ent in candidates:
+            for keyword in ent.keywords.all(looker=self):
+                keywords[keyword.strip()].append(ent)
+
+        if not (found := partial_match(search, keywords.keys())):
+            raise ValueError(f"Nothing around here that looks like a {search}!")
+
+        ents = keywords.get(found, list())
+        if choice == "all":
+            return ents
+        if choice > len(ents):
+            raise ValueError(f"There isn't a {choice} {search} here to target!")
+        return [ents[choice]]
+
+    def get_display_name(self, looker, **kwargs):
+        return self.name
+
+    def get_numbered_name(self, count, looker, **kwargs):
+        key = kwargs.get("key", self.key)
+        key = ansi.ANSIString(
+            key
+        )  # this is needed to allow inflection of colored names
+        plural = _INFLECT.plural(key, 2)
+        plural = "%s %s" % (_INFLECT.number_to_words(count, threshold=12), plural)
+        singular = _INFLECT.an(key)
+        if not self.aliases.get(plural, category="plural_key"):
+            # we need to wipe any old plurals/an/a in case key changed in the interrim
+            self.aliases.clear(category="plural_key")
+            self.aliases.add(plural, category="plural_key")
+            # save the singular form as an alias here too so we can display "an egg" and also
+            # look at 'an egg'.
+            self.aliases.add(singular, category="plural_key")
+        return singular, plural
+
+    @property
+    def lock_storage(self):
+        return self.db_lock_storage
+
+    @lock_storage.setter
+    def lock_storage(self, value):
+        self.db_lock_storage = value
+
+    @property
+    def typeclass_path(self):
+        return self.db_typeclass_path
+
+    @typeclass_path.setter
+    def typeclass_path(self, value):
+        self.db_typeclass_path = value
 
     # cmdset_storage property handling
     def __cmdset_storage_get(self):
@@ -85,137 +341,36 @@ class TransientEntity(AthanorGameEntity):
     )
 
     @property
-    def account(self):
-        return self.db_account
+    def location(self):
+        return self.locations.room
 
-    @account.setter
-    def account(self, value):
-        self.db_account = value
+    @location.setter
+    def location(self, value):
+        self.locations.set(value)
 
-    @property
-    def sessid(self):
-        return self.db_sessid
-
-    @sessid.setter
-    def sessid(self, value):
-        self.db_sessid = value
+    @lazy_property
+    def contents(self):
+        return list()
 
     @property
-    def key(self):
-        return self.db_key
+    def destination(self):
+        return self.db_destination
 
-    @key.setter
-    def key(self, value):
-        self.db_key = value
-
-    @property
-    def date_created(self):
-        return self.db_date_created
-
-    @date_created.setter
-    def date_created(self, value):
-        self.db_date_created = value
+    @destination.setter
+    def destination(self, value):
+        self.db_destination = value
 
     @property
-    def lock_storage(self):
-        return self.db_lock_storage
+    def exits(self):
+        return [exi for exi in self.contents if exi.destination]
 
-    @lock_storage.setter
-    def lock_storage(self, value):
-        self.db_lock_storage = value
-
-    @property
-    def typeclass_path(self):
-        return self.db_typeclass_path
-
-    @typeclass_path.setter
-    def typeclass_path(self, value):
-        self.db_typeclass_path = value
-
-    @property
-    def name(self):
-        return self.key
-
-    @name.setter
-    def name(self, value):
-        self.key = value
-
-    @property
-    def attributes(self):
-        return NAttributeHandler(self)
-
-    def __db_get(self):
-        """
-        Attribute handler wrapper. Allows for the syntax
-           obj.db.attrname = value
-             and
-           value = obj.db.attrname
-             and
-           del obj.db.attrname
-             and
-           all_attr = obj.db.all() (unless there is an attribute
-                      named 'all', in which case that will be returned instead).
-        """
-        try:
-            return self._db_holder
-        except AttributeError:
-            self._db_holder = DbHolder(self, "attributes")
-            return self._db_holder
-
-    # @db.setter
-    def __db_set(self, value):
-        "Stop accidentally replacing the db object"
-        string = "Cannot assign directly to db object! "
-        string += "Use db.attr=value instead."
-        raise Exception(string)
-
-    # @db.deleter
-    def __db_del(self):
-        "Stop accidental deletion."
-        raise Exception("Cannot delete the db object!")
-
-    db = property(__db_get, __db_set, __db_del)
-
-    @property
-    def nattributes(self):
-        return NAttributeHandler(self)
-
-    def __ndb_get(self):
-        """
-        A non-attr_obj store (ndb: NonDataBase). Everything stored
-        to this is guaranteed to be cleared when a server is shutdown.
-        Syntax is same as for the _get_db_holder() method and
-        property, e.g. obj.ndb.attr = value etc.
-        """
-        try:
-            return self._ndb_holder
-        except AttributeError:
-            self._ndb_holder = DbHolder(
-                self, "nattrhandler", manager_name="nattributes"
-            )
-            return self._ndb_holder
-
-    # @db.setter
-    def __ndb_set(self, value):
-        "Stop accidentally replacing the ndb object"
-        string = "Cannot assign directly to ndb object! "
-        string += "Use ndb.attr=value instead."
-        raise Exception(string)
-
-    # @db.deleter
-    def __ndb_del(self):
-        "Stop accidental deletion."
-        raise Exception("Cannot delete the ndb object!")
-
-    ndb = property(__ndb_get, __ndb_set, __ndb_del)
+    @lazy_property
+    def cmdset(self):
+        return CmdSetHandler(self, True)
 
     @lazy_property
     def locks(self):
         return LockHandler(self)
-
-    @lazy_property
-    def tags(self):
-        return TagHandler(self)
 
     @lazy_property
     def aliases(self):
@@ -225,350 +380,153 @@ class TransientEntity(AthanorGameEntity):
     def permissions(self):
         return PermissionHandler(self)
 
-    @lazy_property
-    def cmdset(self):
-        return CmdSetHandler(self, True)
+    def access(self, accessing_obj, access_type="read", default=False, no_superuser_bypass=False, **kwargs):
+        return self.locks.check(
+            accessing_obj,
+            access_type=access_type,
+            default=default,
+            no_superuser_bypass=no_superuser_bypass,
+        )
 
-    @lazy_property
-    def scripts(self):
-        return ScriptHandler(self)
-
-    @lazy_property
-    def nicks(self):
-        return NickHandler(self)
-
-    def save(self, *args, **kwargs):
-        pass
-
-    @lazy_property
-    def sessions(self):
-        return ObjectSessionHandler(self)
-
-    @property
-    def is_connected(self):
-        # we get an error for objects subscribed to channels without this
-        if self.account:  # seems sane to pass on the account
-            return self.account.is_connected
+    def check_permstring(self, permstring):
+        if hasattr(self, "account"):
+            if (
+                    self.account
+                    and self.account.is_superuser
+                    and not self.account.attributes.get("_quell")
+            ):
+                return True
         else:
+            if self.is_superuser and not self.attributes.get("_quell"):
+                return True
+
+        if not permstring:
             return False
+        perm = permstring.lower()
+        perms = [p.lower() for p in self.permissions.all()]
+        if perm in perms:
+            # simplest case - we have a direct match
+            return True
+        if perm in _PERMISSION_HIERARCHY:
+            # check if we have a higher hierarchy position
+            ppos = _PERMISSION_HIERARCHY.index(perm)
+            return any(
+                True
+                for hpos, hperm in enumerate(_PERMISSION_HIERARCHY)
+                if hperm in perms and hpos > ppos
+            )
+        # we ignore pluralization (english only)
+        if perm.endswith("s"):
+            return self.check_permstring(perm[:-1])
 
-    @property
-    def has_account(self):
-        """
-        Convenience property for checking if an active account is
-        currently connected to this object.
-
-        """
-        return self.sessions.count()
+        return False
 
     @property
     def is_superuser(self):
-        """
-        Check if user has an account, and if so, if it is a superuser.
+        return False
 
+    def return_appearance(self, looker, **kwargs):
         """
-        return self.db_account and self.db_account.is_superuser \
-               and not self.db_account.attributes.get("_quell")
-
-    @property
-    def exits(self):
-        """
-        Returns all exits from this object, i.e. all objects at this
-        location having the property destination != `None`.
-        """
-        return [exi for exi in self.contents if exi.destination]
-
-    def get_display_name(self, looker, **kwargs):
-        """
-        Displays the name of the object in a viewer-aware manner.
+        This formats a description. It is the hook a 'look' command
+        should call.
 
         Args:
-            looker (TypedObject): The object or account that is looking
-                at/getting inforamtion for this object.
-
-        Returns:
-            name (str): A string containing the name of the object,
-                including the DBREF if this user is privileged to control
-                said object.
-
-        Notes:
-            This function could be extended to change how object names
-            appear to users in character, but be wary. This function
-            does not change an object's keys or aliases when
-            searching, and is expected to produce something useful for
-            builders.
-
+            looker (Object): Object doing the looking.
+            **kwargs (dict): Arbitrary, optional arguments for users
+                overriding the call (unused by default).
         """
-        if self.locks.check_lockstring(looker, "perm(Builder)"):
-            return "{}(#{})".format(self.name, self.id)
-        return self.name
-
-    def get_numbered_name(self, count, looker, **kwargs):
-        """
-        Return the numbered (singular, plural) forms of this object's key. This is by default called
-        by return_appearance and is used for grouping multiple same-named of this object. Note that
-        this will be called on *every* member of a group even though the plural name will be only
-        shown once. Also the singular display version, such as 'an apple', 'a tree' is determined
-        from this method.
-
-        Args:
-            count (int): Number of objects of this type
-            looker (Object): Onlooker. Not used by default.
-        Kwargs:
-            key (str): Optional key to pluralize, if given, use this instead of the object's key.
-        Returns:
-            singular (str): The singular form to display.
-            plural (str): The determined plural form of the key, including the count.
-        """
-        key = kwargs.get("key", self.key)
-        key = ansi.ANSIString(key)  # this is needed to allow inflection of colored names
-        plural = _INFLECT.plural(key, 2)
-        plural = "%s %s" % (_INFLECT.number_to_words(count, threshold=12), plural)
-        singular = _INFLECT.an(key)
-        if not self.aliases.get(plural, category="plural_key"):
-            # we need to wipe any old plurals/an/a in case key changed in the interrim
-            self.aliases.clear(category="plural_key")
-            self.aliases.add(plural, category="plural_key")
-            # save the singular form as an alias here too so we can display "an egg" and also
-            # look at 'an egg'.
-            self.aliases.add(singular, category="plural_key")
-        return singular, plural
-
-    def search(self, searchdata,
-               global_search=False,
-               use_nicks=True,
-               typeclass=None,
-               location=None,
-               attribute_name=None,
-               quiet=False,
-               exact=False,
-               candidates=None,
-               nofound_string=None,
-               multimatch_string=None,
-               use_dbref=None):
-        """
-        Returns an Object matching a search string/condition
-
-        Perform a standard object search in the database, handling
-        multiple results and lack thereof gracefully. By default, only
-        objects in the current `location` of `self` or its inventory are searched for.
-
-        Args:
-            searchdata (str or obj): Primary search criterion. Will be matched
-                against `object.key` (with `object.aliases` second) unless
-                the keyword attribute_name specifies otherwise.
-                **Special strings:**
-                - `#<num>`: search by unique dbref. This is always
-                   a global search.
-                - `me,self`: self-reference to this object
-                - `<num>-<string>` - can be used to differentiate
-                   between multiple same-named matches
-            global_search (bool): Search all objects globally. This is overruled
-                by `location` keyword.
-            use_nicks (bool): Use nickname-replace (nicktype "object") on `searchdata`.
-            typeclass (str or Typeclass, or list of either): Limit search only
-                to `Objects` with this typeclass. May be a list of typeclasses
-                for a broader search.
-            location (Object or list): Specify a location or multiple locations
-                to search. Note that this is used to query the *contents* of a
-                location and will not match for the location itself -
-                if you want that, don't set this or use `candidates` to specify
-                exactly which objects should be searched.
-            attribute_name (str): Define which property to search. If set, no
-                key+alias search will be performed. This can be used
-                to search database fields (db_ will be automatically
-                prepended), and if that fails, it will try to return
-                objects having Attributes with this name and value
-                equal to searchdata. A special use is to search for
-                "key" here if you want to do a key-search without
-                including aliases.
-            quiet (bool): don't display default error messages - this tells the
-                search method that the user wants to handle all errors
-                themselves. It also changes the return value type, see
-                below.
-            exact (bool): if unset (default) - prefers to match to beginning of
-                string rather than not matching at all. If set, requires
-                exact matching of entire string.
-            candidates (list of objects): this is an optional custom list of objects
-                to search (filter) between. It is ignored if `global_search`
-                is given. If not set, this list will automatically be defined
-                to include the location, the contents of location and the
-                caller's contents (inventory).
-            nofound_string (str):  optional custom string for not-found error message.
-            multimatch_string (str): optional custom string for multimatch error header.
-            use_dbref (bool or None, optional): If `True`, allow to enter e.g. a query "#123"
-                to find an object (globally) by its database-id 123. If `False`, the string "#123"
-                will be treated like a normal string. If `None` (default), the ability to query by
-                #dbref is turned on if `self` has the permission 'Builder' and is turned off
-                otherwise.
-
-        Returns:
-            match (Object, None or list): will return an Object/None if `quiet=False`,
-                otherwise it will return a list of 0, 1 or more matches.
-
-        Notes:
-            To find Accounts, use eg. `evennia.account_search`. If
-            `quiet=False`, error messages will be handled by
-            `settings.SEARCH_AT_RESULT` and echoed automatically (on
-            error, return will be `None`). If `quiet=True`, the error
-            messaging is assumed to be handled by the caller.
-
-        """
-        is_string = isinstance(searchdata, str)
-
-
-        if is_string:
-            # searchdata is a string; wrap some common self-references
-            if searchdata.lower() in ("here", ):
-                return [self.location] if quiet else self.location
-            if searchdata.lower() in ("me", "self",):
-                return [self] if quiet else self
-
-        if use_dbref is None:
-            use_dbref = self.locks.check_lockstring(self, "_dummy:perm(Builder)")
-
-        if use_nicks:
-            # do nick-replacement on search
-            searchdata = self.nicks.nickreplace(searchdata, categories=("object", "account"), include_account=True)
-
-        if (global_search or (is_string and searchdata.startswith("#") and
-                              len(searchdata) > 1 and searchdata[1:].isdigit())):
-            # only allow exact matching if searching the entire database
-            # or unique #dbrefs
-            exact = True
-            candidates = None
-
-        elif candidates is None:
-            # no custom candidates given - get them automatically
-            if location:
-                # location(s) were given
-                candidates = []
-                for obj in make_iter(location):
-                    candidates.extend(obj.contents)
+        if not looker:
+            return ""
+        # get and identify all objects
+        visible = (
+            con for con in self.contents if con != looker and con.access(looker, "view")
+        )
+        exits, users, things = [], [], defaultdict(list)
+        for con in visible:
+            key = con.get_display_name(looker)
+            if con.destination:
+                exits.append(key)
+            elif con.has_account:
+                users.append("|c%s|n" % key)
             else:
-                # local search. Candidates are taken from
-                # self.contents, self.location and
-                # self.location.contents
-                location = self.location
-                candidates = self.contents
-                if location:
-                    candidates = candidates + [location] + location.contents
+                # things can be pluralized
+                things[key].append(con)
+        # get description, build string
+        string = "|c%s|n\n" % self.get_display_name(looker)
+        desc = self.db.desc
+        if desc:
+            string += "%s" % desc
+        if exits:
+            string += "\n|wExits:|n " + list_to_string(exits)
+        if users or things:
+            # handle pluralization of things (never pluralize users)
+            thing_strings = []
+            for key, itemlist in sorted(things.items()):
+                nitem = len(itemlist)
+                if nitem == 1:
+                    key, _ = itemlist[0].get_numbered_name(nitem, looker, key=key)
                 else:
-                    # normally we don't need this since we are
-                    # included in location.contents
-                    candidates.append(self)
+                    key = [
+                        item.get_numbered_name(nitem, looker, key=key)[1]
+                        for item in itemlist
+                    ][0]
+                thing_strings.append(key)
 
-        results = ObjectDB.objects.object_search(searchdata,
-                                                 attribute_name=attribute_name,
-                                                 typeclass=typeclass,
-                                                 candidates=candidates,
-                                                 exact=exact,
-                                                 use_dbref=use_dbref)
+            string += "\n|wYou see:|n " + list_to_string(users + thing_strings)
 
-        if quiet:
-            return results
-        return _AT_SEARCH_RESULT(results, self, query=searchdata,
-                                 nofound_string=nofound_string, multimatch_string=multimatch_string)
+        return string
 
-    def search_account(self, searchdata, quiet=False):
+    def at_look(self, target, **kwargs):
         """
-        Simple shortcut wrapper to search for accounts, not characters.
+        Called when this object performs a look. It allows to
+        customize just what this means. It will not itself
+        send any data.
 
         Args:
-            searchdata (str): Search criterion - the key or dbref of the account
-                to search for. If this is "here" or "me", search
-                for the account connected to this object.
-            quiet (bool): Returns the results as a list rather than
-                echo eventual standard error messages. Default `False`.
+            target (Object): The target being looked at. This is
+                commonly an object or the current location. It will
+                be checked for the "view" type access.
+            **kwargs (dict): Arbitrary, optional arguments for users
+                overriding the call. This will be passed into
+                return_appearance, get_display_name and at_desc but is not used
+                by default.
 
         Returns:
-            result (Account, None or list): Just what is returned depends on
-                the `quiet` setting:
-                    - `quiet=True`: No match or multumatch auto-echoes errors
-                      to self.msg, then returns `None`. The esults are passed
-                      through `settings.SEARCH_AT_RESULT` and
-                      `settings.SEARCH_AT_MULTIMATCH_INPUT`. If there is a
-                      unique match, this will be returned.
-                    - `quiet=True`: No automatic error messaging is done, and
-                      what is returned is always a list with 0, 1 or more
-                      matching Accounts.
+            lookstring (str): A ready-processed look string
+                potentially ready to return to the looker.
 
         """
-        if isinstance(searchdata, str):
-            # searchdata is a string; wrap some common self-references
-            if searchdata.lower() in ("me", "self",):
-                return [self.account] if quiet else self.account
+        if not target.access(self, "view"):
+            try:
+                return "Could not view '%s'." % target.get_display_name(self, **kwargs)
+            except AttributeError:
+                return "Could not view '%s'." % target.key
 
-        results = search.search_account(searchdata)
+        description = target.return_appearance(self, **kwargs)
 
-        if quiet:
-            return results
-        return _AT_SEARCH_RESULT(results, self, query=searchdata)
+        # the target's at_desc() method.
+        # this must be the last reference to target so it may delete itself when acted on.
+        target.at_desc(looker=self, **kwargs)
+
+        return description
+
+    def at_desc(self, looker=None, **kwargs):
+        """
+        This is called whenever someone looks at this object.
+
+        Args:
+            looker (Object, optional): The object requesting the description.
+            **kwargs (dict): Arbitrary, optional arguments for users
+                overriding the call (unused by default).
+
+        """
+        pass
 
     def execute_cmd(self, raw_string, session=None, **kwargs):
-        """
-        Do something as this object. This is never called normally,
-        it's only used when wanting specifically to let an object be
-        the caller of a command. It makes use of nicks of eventual
-        connected accounts as well.
-
-        Args:
-            raw_string (string): Raw command input
-            session (Session, optional): Session to
-                return results to
-
-        Kwargs:
-            Other keyword arguments will be added to the found command
-            object instace as variables before it executes.  This is
-            unused by default Evennia but may be used to set flags and
-            change operating paramaters for commands at run-time.
-
-        Returns:
-            defer (Deferred): This is an asynchronous Twisted object that
-                will not fire until the command has actually finished
-                executing. To overload this one needs to attach
-                callback functions to it, with addCallback(function).
-                This function will be called with an eventual return
-                value from the command execution. This return is not
-                used at all by Evennia by default, but might be useful
-                for coders intending to implement some sort of nested
-                command structure.
-
-        """
-        # nick replacement - we require full-word matching.
-        # do text encoding conversion
         raw_string = self.nicks.nickreplace(raw_string, categories=("inputline", "channel"), include_account=True)
         return cmdhandler.cmdhandler(self, raw_string, callertype="object", session=session, **kwargs)
 
     def msg(self, text=None, from_obj=None, session=None, options=None, **kwargs):
-        """
-        Emits something to a session attached to the object.
-
-        Args:
-            text (str or tuple, optional): The message to send. This
-                is treated internally like any send-command, so its
-                value can be a tuple if sending multiple arguments to
-                the `text` oob command.
-            from_obj (obj or list, optional): object that is sending. If
-                given, at_msg_send will be called. This value will be
-                passed on to the protocol. If iterable, will execute hook
-                on all entities in it.
-            session (Session or list, optional): Session or list of
-                Sessions to relay data to, if any. If set, will force send
-                to these sessions. If unset, who receives the message
-                depends on the MULTISESSION_MODE.
-            options (dict, optional): Message-specific option-value
-                pairs. These will be applied at the protocol level.
-        Kwargs:
-            any (string or tuples): All kwarg keys not listed above
-                will be treated as send-command names and their arguments
-                (which can be a string or a tuple).
-
-        Notes:
-            `at_msg_receive` will be called on this Object.
-            All extra kwargs will be passed on to the protocol.
-
-        """
         # try send hooks
         if from_obj:
             for obj in make_iter(from_obj):
@@ -598,6 +556,44 @@ class TransientEntity(AthanorGameEntity):
         for session in sessions:
             session.data_out(**kwargs)
 
+    def save(self, *args, **kwargs):
+        pass
+
+    @lazy_property
+    def sessions(self):
+        return ObjectSessionHandler(self)
+
+    @property
+    def is_connected(self):
+        # we get an error for objects subscribed to channels without this
+        if self.account:  # seems sane to pass on the account
+            return self.account.is_connected
+        else:
+            return False
+
+    @property
+    def has_account(self):
+        return self.sessions.count()
+
+    def msg_contents(self, text=None, exclude=None, from_obj=None, mapping=None, **kwargs):
+        # we also accept an outcommand on the form (message, {kwargs})
+        is_outcmd = text and is_iter(text)
+        inmessage = text[0] if is_outcmd else text
+        outkwargs = text[1] if is_outcmd and len(text) > 1 else {}
+
+        contents = self.contents
+        if exclude:
+            exclude = make_iter(exclude)
+            contents = [obj for obj in contents if obj not in exclude]
+        for obj in contents:
+            if mapping:
+                substitutions = {t: sub.get_display_name(obj)
+                                 if hasattr(sub, 'get_display_name')
+                                 else str(sub) for t, sub in mapping.items()}
+                outmessage = inmessage.format(**substitutions)
+            else:
+                outmessage = inmessage
+            obj.msg(text=(outmessage, outkwargs), from_obj=from_obj, **kwargs)
 
     def for_contents(self, func, exclude=None, **kwargs):
         """
@@ -620,72 +616,6 @@ class TransientEntity(AthanorGameEntity):
             contents = [obj for obj in contents if obj not in exclude]
         for obj in contents:
             func(obj, **kwargs)
-
-    def msg_contents(self, text=None, exclude=None, from_obj=None, mapping=None, **kwargs):
-        """
-        Emits a message to all objects inside this object.
-
-        Args:
-            text (str or tuple): Message to send. If a tuple, this should be
-                on the valid OOB outmessage form `(message, {kwargs})`,
-                where kwargs are optional data passed to the `text`
-                outputfunc.
-            exclude (list, optional): A list of objects not to send to.
-            from_obj (Object, optional): An object designated as the
-                "sender" of the message. See `DefaultObject.msg()` for
-                more info.
-            mapping (dict, optional): A mapping of formatting keys
-                `{"key":<object>, "key2":<object2>,...}. The keys
-                must match `{key}` markers in the `text` if this is a string or
-                in the internal `message` if `text` is a tuple. These
-                formatting statements will be
-                replaced by the return of `<object>.get_display_name(looker)`
-                for every looker in contents that receives the
-                message. This allows for every object to potentially
-                get its own customized string.
-        Kwargs:
-            Keyword arguments will be passed on to `obj.msg()` for all
-            messaged objects.
-
-        Notes:
-            The `mapping` argument is required if `message` contains
-            {}-style format syntax. The keys of `mapping` should match
-            named format tokens, and its values will have their
-            `get_display_name()` function called for  each object in
-            the room before substitution. If an item in the mapping does
-            not have `get_display_name()`, its string value will be used.
-
-        Example:
-            Say Char is a Character object and Npc is an NPC object:
-
-            char.location.msg_contents(
-                "{attacker} kicks {defender}",
-                mapping=dict(attacker=char, defender=npc), exclude=(char, npc))
-
-            This will result in everyone in the room seeing 'Char kicks NPC'
-            where everyone may potentially see different results for Char and Npc
-            depending on the results of `char.get_display_name(looker)` and
-            `npc.get_display_name(looker)` for each particular onlooker
-
-        """
-        # we also accept an outcommand on the form (message, {kwargs})
-        is_outcmd = text and is_iter(text)
-        inmessage = text[0] if is_outcmd else text
-        outkwargs = text[1] if is_outcmd and len(text) > 1 else {}
-
-        contents = self.contents
-        if exclude:
-            exclude = make_iter(exclude)
-            contents = [obj for obj in contents if obj not in exclude]
-        for obj in contents:
-            if mapping:
-                substitutions = {t: sub.get_display_name(obj)
-                                 if hasattr(sub, 'get_display_name')
-                                 else str(sub) for t, sub in mapping.items()}
-                outmessage = inmessage.format(**substitutions)
-            else:
-                outmessage = inmessage
-            obj.msg(text=(outmessage, outkwargs), from_obj=from_obj, **kwargs)
 
     def move_to(self, destination, quiet=False,
                 emit_to_obj=None, use_destination=True, to_none=False, move_hooks=True,
@@ -731,7 +661,6 @@ class TransientEntity(AthanorGameEntity):
              5. `self.announce_move_to(source_location)`
              6. `destination.at_object_receive(self, source_location)`
              7. `self.at_after_move(source_location)`
-
         """
         def logerr(string="", err=None):
             """Simple log helper method"""
@@ -822,54 +751,14 @@ class TransientEntity(AthanorGameEntity):
         Destroys all of the exits and any exits pointing to this
         object as a destination.
         """
-        for out_exit in [exi for exi in ObjectDB.objects.get_contents(self) if exi.db_destination]:
-            out_exit.delete()
-        for in_exit in ObjectDB.objects.filter(db_destination=self):
-            in_exit.delete()
+        pass
 
     def clear_contents(self):
         """
         Moves all objects (accounts/things) to their home location or
         to default home.
         """
-        # Gather up everything that thinks this is its location.
-        default_home_id = int(settings.DEFAULT_HOME.lstrip("#"))
-        try:
-            default_home = ObjectDB.objects.get(id=default_home_id)
-            if default_home.dbid == self.dbid:
-                # we are deleting default home!
-                default_home = None
-        except Exception:
-            string = _("Could not find default home '(#%d)'.")
-            logger.log_err(string % default_home_id)
-            default_home = None
-
-        for obj in self.contents:
-            home = obj.home
-            # Obviously, we can't send it back to here.
-            if not home or (home and home.dbid == self.dbid):
-                obj.home = default_home
-                home = default_home
-
-            # If for some reason it's still None...
-            if not home:
-                string = "Missing default home, '%s(#%d)' "
-                string += "now has a null location."
-                obj.location = None
-                obj.msg(_("Something went wrong! You are dumped into nowhere. Contact an admin."))
-                logger.log_err(string % (obj.name, obj.dbid))
-                return
-
-            if obj.has_account:
-                if home:
-                    string = "Your current location has ceased to exist,"
-                    string += " moving you to %s(#%d)."
-                    obj.msg(_(string) % (home.name, home.dbid))
-                else:
-                    # Famous last words: The account should never see this.
-                    string = "This place should not exist ... contact an admin."
-                    obj.msg(_(string))
-            obj.move_to(home)
+        pass
 
     @classmethod
     def create(cls, key, account=None, **kwargs):
@@ -1028,27 +917,6 @@ class TransientEntity(AthanorGameEntity):
         super().delete()
         return True
 
-    def access(self, accessing_obj, access_type='read', default=False, no_superuser_bypass=False, **kwargs):
-        """
-        Determines if another object has permission to access this object
-        in whatever way.
-
-        Args:
-          accessing_obj (Object): Object trying to access this one.
-          access_type (str, optional): Type of access sought.
-          default (bool, optional): What to return if no lock of access_type was found.
-          no_superuser_bypass (bool, optional): If `True`, don't skip
-            lock check for superuser (be careful with this one).
-
-        Kwargs:
-          Passed on to the at_access hook along with the result of the access check.
-
-        """
-        result = self.locks.check(accessing_obj, access_type=access_type, default=default,
-                                no_superuser_bypass=no_superuser_bypass)
-        self.at_access(result, accessing_obj, access_type, **kwargs)
-        return result
-
     def at_first_save(self):
         """
         This is called by the typeclass system whenever an instance of
@@ -1058,59 +926,7 @@ class TransientEntity(AthanorGameEntity):
         overload the hooks called by this method.
 
         """
-        self.basetype_setup()
-        self.at_object_creation()
-
-        if hasattr(self, "_createdict"):
-            # this will only be set if the utils.create function
-            # was used to create the object. We want the create
-            # call's kwargs to override the values set by hooks.
-            cdict = self._createdict
-            updates = []
-            if not cdict.get("key"):
-                if not self.db_key:
-                    self.db_key = "#%i" % self.dbid
-                    updates.append("db_key")
-            elif self.key != cdict.get("key"):
-                updates.append("db_key")
-                self.db_key = cdict["key"]
-            if cdict.get("location") and self.location != cdict["location"]:
-                self.db_location = cdict["location"]
-                updates.append("db_location")
-            if cdict.get("home") and self.home != cdict["home"]:
-                self.home = cdict["home"]
-                updates.append("db_home")
-            if cdict.get("destination") and self.destination != cdict["destination"]:
-                self.destination = cdict["destination"]
-                updates.append("db_destination")
-            if updates:
-                self.save(update_fields=updates)
-
-            if cdict.get("permissions"):
-                self.permissions.batch_add(*cdict["permissions"])
-            if cdict.get("locks"):
-                self.locks.add(cdict["locks"])
-            if cdict.get("aliases"):
-                self.aliases.batch_add(*cdict["aliases"])
-            if cdict.get("location"):
-                cdict["location"].at_object_receive(self, None)
-                self.at_after_move(None)
-            if cdict.get("tags"):
-                # this should be a list of tags, tuples (key, category) or (key, category, data)
-                self.tags.batch_add(*cdict["tags"])
-            if cdict.get("attributes"):
-                # this should be tuples (key, val, ...)
-                self.attributes.batch_add(*cdict["attributes"])
-            if cdict.get("nattributes"):
-                # this should be a dict of nattrname:value
-                for key, value in cdict["nattributes"]:
-                    self.nattributes.add(key, value)
-
-            del self._createdict
-
-        self.basetype_posthook_setup()
-
-    # hooks called by the game engine #
+        pass
 
     def basetype_setup(self):
         """
@@ -1560,7 +1376,8 @@ class TransientEntity(AthanorGameEntity):
         """
         pass
 
-    # hooks called by the default cmdset.
+    def get_description(self, looker):
+        return f"{self} has no description!"
 
     def return_appearance(self, looker, **kwargs):
         """
@@ -1589,7 +1406,7 @@ class TransientEntity(AthanorGameEntity):
                 things[key].append(con)
         # get description, build string
         string = "|c%s|n\n" % self.get_display_name(looker)
-        desc = self.db.desc
+        desc = self.get_description(looker)
         if desc:
             string += "%s" % desc
         if exits:

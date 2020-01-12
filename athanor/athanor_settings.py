@@ -72,11 +72,33 @@ INSTALLED_APPS = tuple(INSTALLED_APPS) + ('athanor.building', 'athanor.character
 AT_INITIAL_SETUP_HOOK_MODULE = "athanor.core.at_initial_setup"
 
 
+SERVER_SESSION_CLASS = "athanor.core.sessions.AthanorSession"
+
+
 # Command set used on session before account has logged in
 CMDSET_UNLOGGEDIN = "athanor.commands.login.AthanorUnloggedinCmdSet"
 # Command set used on the logged-in session
 CMDSET_SESSION = "athanor.commands.session.AthanorSessionCmdSet"
 
+# ENGINE OPTIONS
+GAME_WORLD_CLASS = "athanor.core.world.World"
+GAME_DATA_MANAGER_CLASS = "athanor.core.gamedata.GameDataManager"
+GAME_EXTENSION_CLASS = "athanor.core.extension.Extension"
+
+
+# KINDS CLASSES
+DEFAULT_ENTITY_CLASSES = {
+    'areas': "athanor.building.areas.AthanorArea",
+    'exits': "athanor.entities.exits.AthanorExit",
+    "gateway": "athanor.entities.gateways.AthanorGateway",
+    "rooms": "athanor.entities.rooms.AthanorRoom",
+    "mobiles": "athanor.mobiles.mobiles.AthanorMobile",
+    "items": "athanor.items.items.AthanorItem",
+    "structures": "athanor.structures.structures.AthanorStructure",
+    "alliances": "athanor.factions.factions.AthanorAlliance",
+    "factions": "athanor.factions.factions.AthanorFaction",
+    "regions": "athanor.building.regions.AthanorRegion",
+}
 
 
 ######################################################################
@@ -112,11 +134,11 @@ GLOBAL_SCRIPTS['area'] = {
     'repeats': -1, 'interval': 50, 'desc': 'Controller for Area System'
 }
 
-BASE_AREA_TYPECLASS = "athanor.building.areas.AthanorArea"
+#BASE_AREA_TYPECLASS = "athanor.building.areas.AthanorArea"
 
-BASE_ROOM_TYPECLASS = "athanor.building.rooms.AthanorRoom"
+#BASE_ROOM_TYPECLASS = "athanor.building.rooms.AthanorRoom"
 
-BASE_EXIT_TYPECLASS = "athanor.building.exits.AthanorExit"
+#BASE_EXIT_TYPECLASS = "athanor.building.exits.AthanorExit"
 
 # Turn this on if your game uses North, Northeast, South, Southeast, In, Out, Up, Down, etc.
 # It will add default errors for when these directions are attempted but no exit
@@ -145,8 +167,12 @@ GLOBAL_SCRIPTS['characters'] = {
 
 # If this is enabled, characters will not see each other's true names.
 # Instead, they'll see something generic.
-
 NAME_DUB_SYSTEM = False
+
+
+#DEFAULT_HOME = "limbo/limbo"
+START_LOCATION = "limbo/limbo_room"
+
 
 MAX_NR_CHARACTERS = 10000
 
@@ -196,6 +222,8 @@ GENDER_SUBSTITUTIONS = {
             'possessive': 'your',
         }
 }
+
+
 
 ######################################################################
 # Faction Settings

@@ -14,9 +14,6 @@ from athanor.utils.text import penn_substitutions
 from athanor.core.command import AthanorCommand
 
 
-
-
-
 def from_mushtimestring(timestring):
     try:
         convert = datetime.datetime.strptime(timestring, '%c').replace(tzinfo=pytz.utc)
