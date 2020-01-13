@@ -1719,3 +1719,12 @@ class AthanorGameEntity(AbstractGameEntity, HasLocks):
                                        from_obj=self,
                                        exclude=exclude,
                                        mapping=location_mapping)
+
+
+class AbstractMapEntity(AthanorGameEntity):
+
+    def __init__(self, unique_key, handler, data):
+        super().__init__(data)
+        self.unique_key = unique_key
+        self.handler = handler
+        self.instance = handler.owner
