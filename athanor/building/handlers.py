@@ -5,20 +5,7 @@ class InstanceHandler(object):
         self.rooms = dict()
         self.gateways = dict()
         self.areas = dict()
-        self.entities = set()
         self.loaded = False
-
-    def register_entity(self, entity):
-        if entity in self.entities:
-            return
-        self.entities.add(entity)
-        self.owner.at_register_entity(entity)
-
-    def unregister_entity(self, entity):
-        if entity not in self.entities:
-            return
-        self.entities.remove(entity)
-        self.owner.at_unregister_entity(entity)
 
     def get_room(self, room_key):
         if not self.loaded:
@@ -64,11 +51,16 @@ class LocationHandler(object):
     
     def __init__(self, owner):
         self.owner = owner
-        self.instance = None
         self.room = None
         self.x = None
         self.y = None
         self.z = None
+
+    @property
+    def instance(self):
+        if not self.room:
+            return None
+        return self.room.instance
 
     def set(self, room, save=True):
         if room and not hasattr(room, 'instance'):
@@ -76,17 +68,20 @@ class LocationHandler(object):
             # raise ValueError(f"{room} is not a valid location for a game entity.")
         if room and room == self.room:
             return
-        if self.room:
-            self.room.unregister_entity(self.owner)
-            if not room or room.instance != self.instance:
-                self.instance.unregister_entity(self.owner)
+        old_room = self.room
+        if old_room:
+            old_room.entities.remove(self.owner)
+            old_room.at_unregister_entity(self.owner)
+            if not room or room.instance != old_room.instance:
+                old_room.instance.entities.remove(self.owner)
+                old_room.instance.at_unregister_entity(self.owner)
         self.room = room
         if room:
-            self.instance = room.instance
-            room.instance.register_entity(self.owner)
-            room.register_entity(self.owner)
-        else:
-            self.instance = None
+            if not old_room or old_room.instance != room.instance:
+                room.instance.entities.add(self.owner)
+                room.instance.at_register_entity(self.owner)
+            room.entities.add(self.owner)
+            room.at_register_entity(self.owner)
         if room and save and room.fixed:
             self.save()
 

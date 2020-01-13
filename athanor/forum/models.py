@@ -1,5 +1,6 @@
 from django.db import models
 from evennia.typeclasses.models import SharedMemoryModel
+from athanor.utils.time import utcnow
 
 
 class ForumCategoryBridge(SharedMemoryModel):
@@ -129,16 +130,16 @@ class ForumThreadRead(models.Model):
         unique_together = (('account', 'thread'),)
 
 
-class ForumPost(SharedMemoryModel):
-    db_account = models.ForeignKey('accounts.AccountDB', related_name='+', null=True, on_delete=models.SET_NULL)
-    db_object = models.ForeignKey('objects.ObjectDB', related_name='+', null=True, on_delete=models.SET_NULL)
-    db_date_created = models.DateTimeField(null=False)
-    db_thread = models.ForeignKey(ForumThreadBridge, related_name='posts', on_delete=models.CASCADE)
-    db_date_modified = models.DateTimeField(null=False)
-    db_order = models.PositiveIntegerField(null=True)
-    db_body = models.TextField(null=True, blank=True)
+class ForumPost(models.Model):
+    account = models.ForeignKey('accounts.AccountDB', related_name='+', null=True, on_delete=models.SET_NULL)
+    object = models.ForeignKey('objects.ObjectDB', related_name='+', null=True, on_delete=models.SET_NULL)
+    date_created = models.DateTimeField(null=False)
+    thread = models.ForeignKey(ForumThreadBridge, related_name='posts', on_delete=models.CASCADE)
+    date_modified = models.DateTimeField(null=False)
+    order = models.PositiveIntegerField(null=True)
+    body = models.TextField(null=True, blank=True)
 
     class Meta:
         verbose_name = 'Post'
         verbose_name_plural = 'Posts'
-        unique_together = (('db_thread', 'db_order'), )
+        unique_together = (('thread', 'order'), )

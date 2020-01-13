@@ -12,8 +12,9 @@ from evennia.objects.objects import _INFLECT
 from evennia.commands import cmdhandler
 from evennia.objects.objects import ObjectSessionHandler
 
-from athanor.utils.events import EventEmitter
+from athanor.mixins import HasLocks, HasInventory
 from athanor.items.handlers import GearHandler, InventoryHandler
+from athanor.aspects.handlers import AspectHandler
 from athanor.factions.handlers import FactionHandler, AllianceHandler, DivisionHandler
 from athanor.entities.handlers import KeywordHandler
 from athanor.utils.color import green_yellow_red, red_yellow_green
@@ -26,7 +27,7 @@ from django.utils.translation import ugettext as _
 _PERMISSION_HIERARCHY = [p.lower() for p in settings.PERMISSION_HIERARCHY]
 
 
-class AbstractGameEntity(EventEmitter):
+class AbstractGameEntity(HasInventory):
     """
     This class is not meant to be used directly. It forms the foundation for Athanor's Entity system,
     providing new Handlers and additional hook and logics for use by both Athanor Entities and Athanor sub-classes
@@ -44,19 +45,19 @@ class AbstractGameEntity(EventEmitter):
     def locations(self):
         return LocationHandler(self)
 
-    def register_entity(self, entity):
-        self.contents.append(entity)
-        self.at_register_entity(entity)
+    @lazy_property
+    def entities(self):
+        return set()
 
     def at_register_entity(self, entity):
         pass
 
-    def unregister_entity(self, entity):
-        self.contents.remove(entity)
-        self.at_unregister_entity(entity)
-
     def at_unregister_entity(self, entity):
         pass
+
+    @lazy_property
+    def aspects(self):
+        return AspectHandler(self)
 
     @lazy_property
     def instance(self):
@@ -166,8 +167,71 @@ class AbstractGameEntity(EventEmitter):
             return time.time() - float(min(conn))
         return None
 
+    def search_entities(self, searchdata, candidates=None, allow_here=True,  allow_me=True, allow_all=True):
 
-class AthanorGameEntity(AbstractGameEntity):
+        if allow_here and searchdata.lower() in ("here",):
+            return [self.location]
+        if allow_me and searchdata.lower() in ("me", "self"):
+            return [self]
+        if allow_all and searchdata.lower() in ('all'):
+            return candidates
+
+        if not candidates:
+            candidates = self.contents
+            if self.location:
+                candidates += self.location.contents
+                candidates.remove(self)
+
+        process_search = self.re_search.match(searchdata).groupdict()
+
+        if not (search := process_search.get('search', None)):
+            raise ValueError("Must enter some text to search for!")
+
+        search = search.strip()
+
+        choice = process_search.get('choice', None)
+
+        if choice:
+            if choice.isdigit():
+                choice = int(choice) - 1
+            elif choice.lower() == "all":
+                choice = "all"
+        else:
+            choice = 0
+
+        keywords = defaultdict(list)
+        for ent in candidates:
+            for keyword in ent.keywords.all(looker=self):
+                keywords[keyword.strip()].append(ent)
+
+        if not (found := partial_match(search, keywords.keys())):
+            raise ValueError(f"Nothing around here that looks like a {search}!")
+
+        ents = keywords.get(found, list())
+        if choice == "all":
+            return ents
+        if choice > len(ents):
+            raise ValueError(f"There isn't a {choice} {search} here to target!")
+        return [ents[choice]]
+
+    def at_entity_change(self):
+        """
+        Hook that's called when something changes regarding this entity, like stats
+        or durability.
+
+        This will make sure that any relevant code calls are made to make sure
+        this change persists, if needed.
+
+        Returns:
+            None
+        """
+        if self.inventory_location:
+            self.inventory_location.update(self)
+        if self.gear_location:
+            self.gear_location.update(self)
+
+
+class AthanorGameEntity(AbstractGameEntity, HasLocks):
     """
     This class builds on AbstractGameEntity, re-implementing much of DefaultObject's features.
     """
@@ -185,6 +249,8 @@ class AthanorGameEntity(AbstractGameEntity):
         self.db_typeclass_path = data.get('typeclass_path', '')
         self.db_home = None
         self.db_destination = None
+        self.inventory_location = None
+        self.gear_location = None
 
     def __str__(self):
         return self.db_key
@@ -233,58 +299,12 @@ class AthanorGameEntity(AbstractGameEntity):
         self.db_date_created = value
 
     def contents_get(self, exclude=None):
-        contents = list(self.contents)
+        contents = self.contents
         if exclude:
             for entity in make_iter(exclude):
-                contents.remove(entity)
+                if entity in contents:
+                    contents.remove(entity)
         return contents
-
-    def search_entities(self, searchdata, candidates=None, allow_here=True,  allow_me=True, allow_all=True):
-
-        if allow_here and searchdata.lower() in ("here",):
-            return [self.location]
-        if allow_me and searchdata.lower() in ("me", "self"):
-            return [self]
-        if allow_all and searchdata.lower() in ('all'):
-            return candidates
-
-        if not candidates:
-            candidates = self.contents
-            if self.location:
-                candidates += self.location.contents
-                candidates.remove(self)
-
-        process_search = self.re_search.match(searchdata).groupdict()
-
-        if not (search := process_search.get('search', None)):
-            raise ValueError("Must enter some text to search for!")
-
-        search = search.strip()
-
-        choice = process_search.get('choice', None)
-
-        if choice:
-            if choice.isdigit():
-                choice = int(choice) - 1
-            elif choice.lower() == "all":
-                choice = "all"
-        else:
-            choice = 0
-
-        keywords = defaultdict(list)
-        for ent in candidates:
-            for keyword in ent.keywords.all(looker=self):
-                keywords[keyword.strip()].append(ent)
-
-        if not (found := partial_match(search, keywords.keys())):
-            raise ValueError(f"Nothing around here that looks like a {search}!")
-
-        ents = keywords.get(found, list())
-        if choice == "all":
-            return ents
-        if choice > len(ents):
-            raise ValueError(f"There isn't a {choice} {search} here to target!")
-        return [ents[choice]]
 
     def get_display_name(self, looker, **kwargs):
         return self.name
@@ -305,14 +325,6 @@ class AthanorGameEntity(AbstractGameEntity):
             # look at 'an egg'.
             self.aliases.add(singular, category="plural_key")
         return singular, plural
-
-    @property
-    def lock_storage(self):
-        return self.db_lock_storage
-
-    @lock_storage.setter
-    def lock_storage(self, value):
-        self.db_lock_storage = value
 
     @property
     def typeclass_path(self):
@@ -348,9 +360,9 @@ class AthanorGameEntity(AbstractGameEntity):
     def location(self, value):
         self.locations.set(value)
 
-    @lazy_property
+    @property
     def contents(self):
-        return list()
+        return self.items.all() + list(self.entities) + list(self.exits)
 
     @property
     def destination(self):
@@ -362,15 +374,11 @@ class AthanorGameEntity(AbstractGameEntity):
 
     @property
     def exits(self):
-        return [exi for exi in self.contents if exi.destination]
+        return list()
 
     @lazy_property
     def cmdset(self):
         return CmdSetHandler(self, True)
-
-    @lazy_property
-    def locks(self):
-        return LockHandler(self)
 
     @lazy_property
     def aliases(self):
@@ -379,14 +387,6 @@ class AthanorGameEntity(AbstractGameEntity):
     @lazy_property
     def permissions(self):
         return PermissionHandler(self)
-
-    def access(self, accessing_obj, access_type="read", default=False, no_superuser_bypass=False, **kwargs):
-        return self.locks.check(
-            accessing_obj,
-            access_type=access_type,
-            default=default,
-            no_superuser_bypass=no_superuser_bypass,
-        )
 
     def check_permstring(self, permstring):
         if hasattr(self, "account"):

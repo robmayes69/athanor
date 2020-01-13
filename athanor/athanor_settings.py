@@ -129,11 +129,12 @@ OPTIONS_ACCOUNT_DEFAULT['column_names_color'] = ("Table column header text.", "C
 ######################################################################
 # Building Settings
 ######################################################################
+"""
 GLOBAL_SCRIPTS['area'] = {
     'typeclass': 'athanor.building.areas.AthanorAreaController',
     'repeats': -1, 'interval': 50, 'desc': 'Controller for Area System'
 }
-
+"""
 #BASE_AREA_TYPECLASS = "athanor.building.areas.AthanorArea"
 
 #BASE_ROOM_TYPECLASS = "athanor.building.rooms.AthanorRoom"
@@ -223,7 +224,15 @@ GENDER_SUBSTITUTIONS = {
         }
 }
 
+######################################################################
+# Entity Settings
+######################################################################
+# The following Inventory class is the general/fallback for if an inventory type is requested
+# that isn't defined in SPECIAL_INVENTORY_CLASSES.
 
+BASE_INVENTORY_CLASS = "athanor.items.inventory.Inventory"
+
+SPECIAL_INVENTORY_CLASSES = dict()
 
 ######################################################################
 # Faction Settings
@@ -245,6 +254,11 @@ GLOBAL_SCRIPTS['forum'] = {
     'locks': "admin:perm(Admin)",
 }
 
+FORUM_CATEGORY_TYPECLASS = "athanor.forum.forum.AthanorForumCategory"
+
+FORUM_BOARD_TYPECLASS = "athanor.forum.forum.AthanorForumBoard"
+
+FORUM_THREAD_TYPECLASS = "athanor.forum.forum.AthanorForumThread"
 
 ######################################################################
 # Job Settings

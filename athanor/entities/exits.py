@@ -6,6 +6,7 @@ from evennia.objects.objects import ExitCommand
 class AthanorExit(AbstractMapEntity):
     exit_command = ExitCommand
     priority = 101
+    default_inventory = 'exits'
 
     def __init__(self, destination_key, handler, data, room):
         super().__init__(data.get("name"), handler, data)
@@ -81,12 +82,7 @@ class AthanorExit(AbstractMapEntity):
         if traversing_object.move_to(target_location):
             self.at_after_traverse(traversing_object, source_location)
         else:
-            if self.db.err_traverse:
-                # if exit has a better error message, let's use it.
-                traversing_object.msg(self.db.err_traverse)
-            else:
-                # No shorthand error message. Call hook.
-                self.at_failed_traverse(traversing_object)
+            self.at_failed_traverse(traversing_object)
 
     def at_failed_traverse(self, traversing_object, **kwargs):
         """

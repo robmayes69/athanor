@@ -24,17 +24,17 @@ class AthanorForumCategory(AthanorOptionScript):
     def create_bridge(self, key, clean_key, abbr, clean_abbr):
         if hasattr(self, 'forum_category_bridge'):
             return
-        bridge, created = ForumCategoryBridge.objects.get_or_create(db_script=self, db_name=clean_key, db_cabbr=abbr,
-                                                                    db_iname=clean_key.lower(), db_cname=key,
-                                                                    db_abbr=clean_abbr, db_iabbr=clean_abbr.lower())
-        if created:
-            bridge.save()
+        ForumCategoryBridge.objects.create(db_script=self, db_name=clean_key, db_cabbr=abbr, db_iname=clean_key.lower(),
+                                           db_cname=key, db_abbr=clean_abbr, db_iabbr=clean_abbr.lower())
 
     def setup_locks(self):
         self.locks.add(self.lockstring)
 
+    def __str__(self):
+        return self.key
+
     @classmethod
-    def create_forum_category(cls, key, abbr, *args, **kwargs):
+    def create_forum_category(cls, key, abbr, **kwargs):
         key = ANSIString(key)
         abbr = ANSIString(abbr)
         clean_key = str(key.clean())
@@ -45,9 +45,9 @@ class AthanorForumCategory(AthanorOptionScript):
             raise ValueError("Abbreviations must be between 0-3 alphabetical characters.")
         if ForumCategoryBridge.objects.filter(Q(db_iname=clean_key.lower()) | Q(db_iabbr=clean_abbr.lower())).count():
             raise ValueError("Name or Abbreviation conflicts with another ForumCategory.")
-        script, errors = cls.create(clean_key, *args, **kwargs)
+        script, errors = cls.create(clean_key, persistent=True, **kwargs)
         if script:
-            script.create_bridge(key, clean_key, abbr, clean_abbr)
+            script.create_bridge(key.raw(), clean_key, abbr.raw(), clean_abbr)
             script.setup_locks()
         else:
             raise ValueError(errors)
@@ -55,6 +55,7 @@ class AthanorForumCategory(AthanorOptionScript):
 
 
 class AthanorForumBoard(AthanorOptionScript):
+    re_name = re.compile(r"(?i)^([A-Z]|[0-9]|\.|-|')+( ([A-Z]|[0-9]|\.|-|')+)*$")
     lockstring = "read:all();post:all();admin:perm(Admin)"
 
     def setup_locks(self):
@@ -63,14 +64,11 @@ class AthanorForumBoard(AthanorOptionScript):
     def create_bridge(self, category, key, clean_key, order):
         if hasattr(self, 'forum_board_bridge'):
             return
-        bridge, created = ForumBoardBridge.objects.get_or_create(db_script=self, db_name=clean_key, db_order=order,
-                                                                 db_category=category.forum_category_bridge,
-                                                                 db_iname=clean_key.lower(), db_cname=key)
-        if created:
-            bridge.save()
+        ForumBoardBridge.objects.create(db_script=self, db_name=clean_key, db_category=category.forum_category_bridge,
+                                        db_order=order, db_iname=clean_key.lower(), db_cname=key)
 
     @classmethod
-    def create_forum_board(cls, category, key, order, *args, **kwargs):
+    def create_forum_board(cls, category, key, order, **kwargs):
         key = ANSIString(key)
         clean_key = str(key.clean())
         if '|' in clean_key:
@@ -80,17 +78,20 @@ class AthanorForumBoard(AthanorOptionScript):
         if ForumBoardBridge.objects.filter(db_category=category.forum_category_bridge).filter(
                 Q(db_iname=clean_key.lower()) | Q(db_order=order)).count():
             raise ValueError("Name or Order conflicts with another Forum Board in this category.")
-        script, errors = cls.create(clean_key, *args, **kwargs)
+        script, errors = cls.create(clean_key, persistent=True, **kwargs)
         if script:
-            script.create_bridge(category, key, clean_key, order)
+            script.create_bridge(category, key.raw(), clean_key, order)
             script.setup_locks()
         else:
             raise ValueError(errors)
         return script
 
+    def __str__(self):
+        return self.key
+
     @property
     def prefix_order(self):
-        bridge = self.forum_bridge_data
+        bridge = self.forum_board_bridge
         return f'{bridge.category.db_abbr}{bridge.db_order}'
 
     @property
@@ -136,7 +137,7 @@ class AthanorForumBoard(AthanorOptionScript):
             return False
 
     def unread_threads(self, account):
-        return self.threads.exclude(read__account=account, db_date_modified__lte=F('read__date_read')).order_by(
+        return self.forum_board_bridge.threads.exclude(read__account=account, db_date_modified__lte=F('read__date_read')).order_by(
             'db_order')
 
     def display_permissions(self, looker=None):
@@ -193,6 +194,7 @@ class AthanorForumBoard(AthanorOptionScript):
 
 
 class AthanorForumThread(AthanorOptionScript):
+    re_name = re.compile(r"(?i)^([A-Z]|[0-9]|\.|-|')+( ([A-Z]|[0-9]|\.|-|')+)*$")
 
     def create_bridge(self, board, key, clean_key, order, account, obj, date_created, date_modified):
         if hasattr(self, 'forum_category_bridge'):
@@ -201,16 +203,13 @@ class AthanorForumThread(AthanorOptionScript):
             date_created = utcnow()
         if not date_modified:
             date_modified = utcnow()
-        bridge, created = ForumThreadBridge.objects.get_or_create(db_script=self, db_name=clean_key, db_order=order,
-                                                                  db_board=board.forum_board_bridge, db_object=obj,
-                                                                  db_iname=clean_key.lower(), db_cname=key,
-                                                                  db_date_created=date_created, db_account=account,
-                                                                  db_date_modified=date_modified)
-        if created:
-            bridge.save()
+        ForumThreadBridge.objects.create(db_script=self, db_name=clean_key, db_order=order, db_object=obj, db_cname=key,
+                                         db_board=board.forum_board_bridge,  db_iname=clean_key.lower(),
+                                         db_date_created=date_created, db_account=account,
+                                         db_date_modified=date_modified)
 
     @classmethod
-    def create_forum_thread(cls, board, key, order, account, obj, date_created, date_modified, *args, **kwargs):
+    def create_forum_thread(cls, board, key, order, account, obj, date_created, date_modified, **kwargs):
         key = ANSIString(key)
         clean_key = str(key.clean())
         if '|' in clean_key:
@@ -220,12 +219,15 @@ class AthanorForumThread(AthanorOptionScript):
         if ForumThreadBridge.objects.filter(db_board=board.forum_board_bridge).filter(
                 Q(db_iname=clean_key.lower()) | Q(db_order=order)).count():
             raise ValueError("Name or Order conflicts with another Forum Thread on this Board.")
-        script, errors = cls.create(clean_key, *args, **kwargs)
+        script, errors = cls.create(clean_key, persistent=True, **kwargs)
         if script:
-            script.create_bridge(board, key, clean_key, order, account, obj, date_created, date_modified)
+            script.create_bridge(board, key.raw(), clean_key, order, account, obj, date_created, date_modified)
         else:
             raise ValueError(errors)
         return script
+
+    def __str__(self):
+        return self.key
 
 
 class AthanorForumController(AthanorGlobalScript):
@@ -235,21 +237,21 @@ class AthanorForumController(AthanorGlobalScript):
         from django.conf import settings
 
         try:
-            self.ndb.category_typeclass = class_from_module(settings.BASE_FORUM_CATEGORY_TYPECLASS,
+            self.ndb.category_typeclass = class_from_module(settings.FORUM_CATEGORY_TYPECLASS,
                                                             defaultpaths=settings.TYPECLASS_PATHS)
         except Exception:
             log_trace()
             self.ndb.category_typeclass = AthanorForumCategory
 
         try:
-            self.ndb.board_typeclass = class_from_module(settings.BASE_FORUM_BOARD_TYPECLASS,
+            self.ndb.board_typeclass = class_from_module(settings.FORUM_BOARD_TYPECLASS,
                                                          defaultpaths=settings.TYPECLASS_PATHS)
         except Exception:
             log_trace()
             self.ndb.board_typeclass = AthanorForumBoard
 
         try:
-            self.ndb.thread_typeclass = class_from_module(settings.BASE_FORUM_THREAD_TYPECLASS,
+            self.ndb.thread_typeclass = class_from_module(settings.FORUM_THREAD_TYPECLASS,
                                                           defaultpaths=settings.TYPECLASS_PATHS)
         except Exception:
             log_trace()
@@ -326,15 +328,16 @@ class AthanorForumController(AthanorGlobalScript):
         self.msg_target(announce, session)
 
     def boards(self):
-        return AthanorForumBoard.objects.filter_family().order_by('forum_board_bridge__db_category__db_key', 'forum_board_bridge__db_order')
+        return AthanorForumBoard.objects.filter_family().order_by('forum_board_bridge__db_category__db_name',
+                                                                  'forum_board_bridge__db_order')
 
     def usable_boards(self, character, mode='read', check_admin=True):
         return [board for board in self.boards() if board.check_permission(character, mode=mode, checkadmin=check_admin)
-                and board.category.access(character, 'see')]
+                and board.forum_board_bridge.category.db_script.access(character, 'see')]
 
     def visible_boards(self, character, check_admin=True):
         return [board for board in self.usable_boards(character, mode='read', check_admin=check_admin)
-                if board.category.access(character, 'see')]
+                if board.forum_board_bridge.category.db_script.access(character, 'see')]
 
     def find_board(self, session, find_name=None, visible_only=True):
         if not find_name:
@@ -361,11 +364,11 @@ class AthanorForumController(AthanorGlobalScript):
         self.msg_target(announce, session)
         return new_board
 
-    def delete_board(self, session, name=None):
-        board = self.find_board(name, session)
-        if not name == board.key:
+    def delete_board(self, session, name=None, verify=None):
+        board = self.find_board(session, name)
+        if not verify == board.key:
             raise ValueError("Entered name must match board name exactly!")
-        if not board.category.access(session, 'delete'):
+        if not board.forum_board_bridge.category.db_script.access(session, 'delete'):
             raise ValueError("Permission denied!")
         announce = f"Deleted BBS Board ({board.category.key}) - {board.alias}: {board.key}"
         self.alert(announce, enactor=session)
@@ -374,7 +377,7 @@ class AthanorForumController(AthanorGlobalScript):
 
     def rename_board(self, session, name=None, new_name=None):
         board = self.find_board(session, name)
-        if not board.category.access('admin', session):
+        if not board.forum_board_bridge.category.db_script.access('admin', session):
             raise ValueError("Permission denied!")
         old_name = board.key
         board.change_key(new_name)

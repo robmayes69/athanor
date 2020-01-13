@@ -1,6 +1,6 @@
 from django.conf import settings
 from evennia.objects.objects import DefaultObject
-from evennia.utils.utils import lazy_property
+from evennia.utils.utils import lazy_property, make_iter
 from athanor.entities.base import AbstractGameEntity
 
 from evennia.utils import logger
@@ -13,6 +13,14 @@ class AthanorObject(DefaultObject, AbstractGameEntity):
     """
     persistent = True
 
+    @lazy_property
+    def inventory_location(self):
+        return None
+
+    @lazy_property
+    def gear_location(self):
+        return None
+
     @property
     def location(self):
         return self.locations.room
@@ -23,7 +31,15 @@ class AthanorObject(DefaultObject, AbstractGameEntity):
 
     @lazy_property
     def contents(self):
-        return list()
+        return self.items.all()
+
+    def contents_get(self, exclude=None):
+        contents = self.contents
+        if exclude:
+            for entity in make_iter(exclude):
+                if entity in contents:
+                    contents.remove(entity)
+        return contents
 
     def move_to(self, destination, quiet=False, emit_to_obj=None, use_destination=False, to_none=False, move_hooks=True,
                 **kwargs):

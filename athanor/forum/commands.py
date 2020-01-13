@@ -2,6 +2,7 @@ from django.conf import settings
 import evennia
 from evennia.utils.utils import class_from_module
 from athanor.core.command import AthanorCommand
+from evennia.utils.ansi import ANSIString
 
 
 class ForumCommand(AthanorCommand):
@@ -16,11 +17,12 @@ class ForumCommand(AthanorCommand):
         return self.styled_columns(f"{'ID':<6}{'Name':<31}{'Mem':<4}{'#Mess':>6}{'#Unrd':>6} Perm")
 
     def display_board_row(self, account, board):
-        if board.mandatory:
+        bri = board.forum_board_bridge
+        if bri.mandatory:
             member = 'MND'
         else:
-            member = 'No' if account in board.ignore_list.all() else 'Yes'
-        return f"{board.prefix_order:<6}{board.key:<31}{member:<4} {board.threads.count():>5} {board.unread_threads(account).count():>5} {str(board.locks)}"
+            member = 'No' if account in bri.ignore_list.all() else 'Yes'
+        return f"{board.prefix_order:<6}{board.key:<31}{member:<4} {bri.threads.count():>5} {board.unread_threads(account).count():>5} {str(board.locks)}"
 
     def switch_main_read(self):
         boards = evennia.GLOBAL_SCRIPTS.forum.visible_boards(self.caller, check_admin=True)
@@ -30,9 +32,9 @@ class ForumCommand(AthanorCommand):
         message.append(self._blank_separator)
         this_cat = None
         for board in boards:
-            if this_cat != board.category:
-                message.append(self.styled_separator(board.category.key))
-                this_cat = board.category
+            if this_cat != board.forum_board_bridge.category:
+                message.append(self.styled_separator(board.forum_board_bridge.category.cname))
+                this_cat = board.forum_board_bridge.category
             message.append(self.display_board_row(self.account, board))
         message.append(self._blank_footer)
         self.msg('\n'.join(str(l) for l in message))
@@ -67,7 +69,10 @@ class CmdForumCategory(ForumCommand):
     switch_options = ('create', 'delete', 'rename', 'prefix', 'lock')
 
     def display_category_row(self, category):
-        return f"{category.abbr:<7}{category.key[:26]:<27}{category.boards.count():<7}{str(category.locks):<30}"
+        bri = category.forum_category_bridge
+        cabbr = ANSIString(bri.cabbr)
+        cname = ANSIString(bri.cname)
+        return f"{cabbr:<7}{cname:<27}{bri.boards.count():<7}{str(category.locks):<30}"
 
     def switch_main(self):
         cats = evennia.GLOBAL_SCRIPTS.forum.visible_categories(self.caller)
