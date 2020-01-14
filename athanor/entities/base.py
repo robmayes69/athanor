@@ -12,13 +12,11 @@ from evennia.objects.objects import _INFLECT
 from evennia.commands import cmdhandler
 from evennia.objects.objects import ObjectSessionHandler
 
-from athanor.mixins import HasLocks, HasInventory
-from athanor.items.handlers import GearHandler, InventoryHandler
-from athanor.aspects.handlers import AspectHandler
-from athanor.factions.handlers import FactionHandler, AllianceHandler, DivisionHandler
-from athanor.entities.handlers import KeywordHandler
+from athanor.utils.mixins import HasLocks, HasInventory
+from athanor.entities.handlers import GearHandler, ItemHandler, AspectHandler, KeywordHandler, LocationHandler
+from athanor.entities.handlers import LocationHandler, InstanceHandler
+from athanor.entities.handlers import FactionHandler, AllianceHandler, DivisionHandler
 from athanor.utils.color import green_yellow_red, red_yellow_green
-from athanor.building.handlers import LocationHandler, InstanceHandler
 from athanor.utils.time import utcnow
 from athanor.utils.text import partial_match
 
@@ -1722,6 +1720,9 @@ class AthanorGameEntity(AbstractGameEntity, HasLocks):
 
 
 class AbstractMapEntity(AthanorGameEntity):
+    """
+    A sub-class of AthanorGameEntity that's specialized for being chunks of the map.
+    """
 
     def __init__(self, unique_key, handler, data):
         super().__init__(data)

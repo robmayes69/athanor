@@ -12,7 +12,7 @@ class KeywordHandler(object):
         pass
 
 
-class FormHandler(object):
+class BodyHandler(object):
 
     @property
     def persistent(self):

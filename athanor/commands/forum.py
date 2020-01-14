@@ -1,8 +1,11 @@
 from django.conf import settings
+
 import evennia
 from evennia.utils.utils import class_from_module
-from athanor.core.command import AthanorCommand
 from evennia.utils.ansi import ANSIString
+
+from athanor.commands.command import AthanorCommand
+
 
 
 class ForumCommand(AthanorCommand):

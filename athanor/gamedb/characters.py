@@ -4,9 +4,9 @@ from django.conf import settings
 
 from evennia.utils.ansi import ANSIString
 
-from athanor.classes.objects import AthanorObject
+from athanor.gamedb.objects import AthanorObject
 from athanor.entities.base import AbstractGameEntity
-from athanor.classes.models import CharacterBridge
+from athanor.gamedb.models import CharacterBridge
 
 
 class AthanorPlayerCharacter(AthanorObject, AbstractGameEntity):

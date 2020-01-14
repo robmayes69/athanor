@@ -1,7 +1,9 @@
 from django.conf import settings
+
 from evennia import default_cmds
+
 from athanor.jobs.commands import JOB_COMMANDS
-from athanor.themes.commands import CmdTheme
+from athanor.commands.themes import CmdTheme
 
 
 USE_COMMANDS = [CmdTheme]

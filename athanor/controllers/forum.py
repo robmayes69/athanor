@@ -2,10 +2,10 @@ from evennia.utils.logger import log_trace
 from evennia.utils.utils import class_from_module
 
 from athanor.utils.text import partial_match
-from athanor.classes.scripts import AthanorGlobalScript
+from athanor.gamedb.scripts import AthanorGlobalScript
 
-from athanor.classes.models import ForumCategoryBridge, ForumBoardBridge, ForumThreadBridge, ForumPost, ForumThreadRead
-from athanor.classes.forum import AthanorForumCategory, AthanorForumBoard, AthanorForumThread
+from athanor.gamedb.models import ForumCategoryBridge, ForumBoardBridge, ForumThreadBridge, ForumPost, ForumThreadRead
+from athanor.gamedb.forum import AthanorForumCategory, AthanorForumBoard, AthanorForumThread
 
 
 class AthanorForumController(AthanorGlobalScript):

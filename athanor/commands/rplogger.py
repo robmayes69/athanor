@@ -1,5 +1,7 @@
-from athanor.core.command import AthCommand
 from evennia.utils.ansi import ANSIString
+
+from athanor.commands.command import AthCommand
+
 from athanor.utils.time import utcnow, header, subheader, separator, make_table, sanitize_string, partial_match, \
     duration_from_string, utc_from_string
 from world.database.scenes.models import Event, Pot, Plot, Scene

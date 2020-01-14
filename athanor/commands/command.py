@@ -1,6 +1,6 @@
 from evennia.commands.default.muxcommand import MuxCommand
 from evennia.utils.search import object_search
-from athanor.characters.characters import AthanorPlayerCharacter
+from athanor.gamedb.characters import AthanorPlayerCharacter
 from evennia.utils.utils import lazy_property
 
 

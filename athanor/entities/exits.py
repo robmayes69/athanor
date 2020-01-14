@@ -1,5 +1,5 @@
-from athanor.building.base import AbstractMapEntity
-from evennia.commands import cmdset, command
+from athanor.entities.base import AbstractMapEntity
+from evennia.commands import cmdset
 from evennia.objects.objects import ExitCommand
 
 

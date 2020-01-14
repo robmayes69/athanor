@@ -2,8 +2,8 @@ from evennia.utils.utils import class_from_module
 from evennia.utils.logger import log_trace
 from evennia.utils.search import search_account
 
-from athanor.classes.scripts import AthanorGlobalScript
-from athanor.classes.accounts import AthanorAccount
+from athanor.gamedb.scripts import AthanorGlobalScript
+from athanor.gamedb.accounts import AthanorAccount
 
 
 class AthanorAccountController(AthanorGlobalScript):

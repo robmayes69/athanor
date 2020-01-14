@@ -1,5 +1,6 @@
 from collections import defaultdict
-from athanor.mixins import HasLocks
+
+from athanor.utils.mixins import HasLocks
 
 
 class Inventory(HasLocks):

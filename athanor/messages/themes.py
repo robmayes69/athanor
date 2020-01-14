@@ -1,4 +1,4 @@
-from athanor.core.submessage import SubMessage
+from athanor.utils.submessage import SubMessage
 
 
 class ThemeMessage(SubMessage):

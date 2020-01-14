@@ -1,5 +1,5 @@
-from athanor.core.command import AthanorCommand
-from athanor.core.menu import AthanorMenu
+from athanor.commands.command import AthanorCommand
+from athanor.utils.menu import AthanorMenu
 
 
 class CmdAccount(AthanorCommand):

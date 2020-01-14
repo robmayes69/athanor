@@ -1,8 +1,9 @@
-from collections import
-from athanor.mixins import HasLocks
-
 from django.conf import settings
+
 from evennia.utils.utils import class_from_module
+
+from athanor.utils.mixins import HasLocks
+
 
 class GearSlot(object):
 

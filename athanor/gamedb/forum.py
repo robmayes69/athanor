@@ -7,9 +7,9 @@ from evennia.utils.ansi import ANSIString
 
 from athanor.utils.online import puppets as online_puppets
 from athanor.utils.time import utcnow
-from athanor.classes.scripts import AthanorOptionScript
+from athanor.gamedb.scripts import AthanorOptionScript
 
-from athanor.classes.models import ForumCategoryBridge, ForumBoardBridge, ForumThreadBridge, ForumPost, ForumThreadRead
+from athanor.gamedb.models import ForumCategoryBridge, ForumBoardBridge, ForumThreadBridge, ForumPost, ForumThreadRead
 
 
 class AthanorForumCategory(AthanorOptionScript):

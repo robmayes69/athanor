@@ -4,11 +4,11 @@ from django.db.models import Q
 from evennia.utils.utils import class_from_module
 from evennia.utils.logger import log_trace
 
-from athanor.classes.scripts import AthanorGlobalScript
-from athanor.classes.factions import AthanorFaction, AthanorAlliance, AthanorDivision
+from athanor.gamedb.scripts import AthanorGlobalScript
+from athanor.gamedb.factions import AthanorFaction, AthanorAlliance, AthanorDivision
 from athanor.utils.valid import simple_name
 from athanor.utils.text import partial_match
-from athanor.classes.models import FactionBridge, DivisionBridge, AllianceBridge
+from athanor.gamedb.models import FactionBridge, DivisionBridge, AllianceBridge
 from athanor.messages import factions as fmsg
 
 

@@ -2,10 +2,10 @@ from evennia.utils.utils import class_from_module
 from evennia.utils.logger import log_trace
 
 import athanor.messages.themes as tmsg
-from athanor.classes.scripts import AthanorGlobalScript
+from athanor.gamedb.scripts import AthanorGlobalScript
 from athanor.utils.text import partial_match
-from athanor.classes.models import ThemeBridge
-from athanor.classes.themes import AthanorTheme
+from athanor.gamedb.models import ThemeBridge
+from athanor.gamedb.themes import AthanorTheme
 
 
 class AthanorThemeController(AthanorGlobalScript):

@@ -1,4 +1,4 @@
-from athanor.building.base import AbstractMapEntity
+from athanor.entities.base import AbstractMapEntity
 
 
 class AthanorArea(AbstractMapEntity):

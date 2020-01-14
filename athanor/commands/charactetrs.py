@@ -1,6 +1,7 @@
+from athanor.commands.command import AthanorCommand
 
 
-class CmdCharacter(object):
+class CmdCharacter(AthanorCommand):
     key = '@character'
     switch_options = ('list', 'search', 'enable', 'disable', 'shelf', 'unshelf', 'ban', 'unban', 'lock', 'addperm',
                       'delperm', 'typeclass', 'status', 'puppet', 'cost', 'create', 'account', 'shelved')

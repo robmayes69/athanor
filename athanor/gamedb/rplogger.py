@@ -2,8 +2,8 @@ import re
 
 from evennia.utils.ansi import ANSIString
 
-from athanor.classes.scripts import AthanorOptionScript
-from athanor.classes.models import PlotBridge, EventBridge
+from athanor.gamedb.scripts import AthanorOptionScript
+from athanor.gamedb.models import PlotBridge, EventBridge
 
 
 class AthanorPlot(AthanorOptionScript):

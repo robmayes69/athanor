@@ -1,8 +1,8 @@
 from evennia import GLOBAL_SCRIPTS
-from commands.command import Command
+from athanor.commands.command import AthanorCommand
 
 
-class _CmdBase(Command):
+class _CmdBase(AthanorCommand):
     help_category = 'Factions'
     system_name = 'FACTION'
 

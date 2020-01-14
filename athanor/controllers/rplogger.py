@@ -1,9 +1,9 @@
 from evennia.utils.utils import class_from_module
 from evennia.utils.logger import log_trace
 
-from athanor.classes.scripts import AthanorGlobalScript
-from athanor.classes.rplogger import AthanorPlot, AthanorEvent
-from athanor.classes.models import PlotBridge, EventBridge
+from athanor.gamedb.scripts import AthanorGlobalScript
+from athanor.gamedb.rplogger import AthanorPlot, AthanorEvent
+from athanor.gamedb.models import PlotBridge, EventBridge
 
 
 class AthanorRoleplayController(AthanorGlobalScript):

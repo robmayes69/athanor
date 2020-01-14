@@ -2,8 +2,8 @@ import re
 
 from evennia.utils.ansi import ANSIString
 
-from athanor.classes.objects import AthanorObject
-from athanor.classes.models import FactionBridge
+from athanor.gamedb.objects import AthanorObject
+from athanor.gamedb.models import FactionBridge
 
 
 class AthanorAlliance(AthanorObject):

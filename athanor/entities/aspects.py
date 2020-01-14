@@ -1,3 +1,11 @@
+"""
+The Aspect system is SUPPOSED to handle things like Character Classes, Final Fantasy Jobs, Professions, etc.
+Also Species/Races.
+
+We'll see how well that works out.
+"""
+
+
 class Aspect(object):
     name = "Unknown Aspect"
 
