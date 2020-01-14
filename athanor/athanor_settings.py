@@ -105,7 +105,7 @@ DEFAULT_ENTITY_CLASSES = {
 ######################################################################
 # Account Options
 ######################################################################
-GLOBAL_SCRIPTS['accounts'] = {
+GLOBAL_SCRIPTS['account'] = {
     'typeclass': 'athanor.controllers.account.AthanorAccountController',
     'repeats': -1, 'interval': 50, 'desc': 'Controller for Account System'
 }
@@ -250,7 +250,7 @@ FORUM_THREAD_TYPECLASS = "athanor.gamedb.forum.AthanorForumThread"
 ######################################################################
 # Job Settings
 ######################################################################
-GLOBAL_SCRIPTS['jobs'] = {
+GLOBAL_SCRIPTS['job'] = {
     'typeclass': 'athanor.controllers.job.AthanorJobManager',
     'repeats': -1, 'interval': 60, 'desc': 'Job API for Job System',
     'locks': "admin:perm(Admin)",
@@ -272,7 +272,7 @@ BASE_THEME_TYPECLASS = "athanor.gamedb.themes.AthanorTheme"
 ######################################################################
 # RP Event Settings
 ######################################################################
-GLOBAL_SCRIPTS['events'] = {
+GLOBAL_SCRIPTS['roleplay'] = {
     'typeclass': 'athanor.controller.rplogger.AthanorRoleplayController',
     'repeats': -1, 'interval': 50, 'desc': 'Event Controller for RP Logger System'
 }

@@ -20,8 +20,6 @@ class AthanorAccountController(AthanorGlobalScript):
 
     def create_account(self, session, username, email, password, show_password=False):
         new_account = self.ndb.account_typeclass.create_account(username=username, email=email, password=password)
-        if not isinstance(new_account.db._playable_characters, list):
-            new_account.db._playable_characters = list()
         return new_account
 
     def rename_account(self, session, account, new_name):
@@ -34,7 +32,7 @@ class AthanorAccountController(AthanorGlobalScript):
         if isinstance(search_text, AthanorAccount):
             return search_text
         if '@' in search_text:
-            found = DefaultAccount.objects.get_account_from_email(search_text).first()
+            found = AthanorAccount.objects.get_account_from_email(search_text).first()
             if found:
                 return found
             raise ValueError(f"Cannot find a user with email address: {search_text}")
@@ -45,11 +43,14 @@ class AthanorAccountController(AthanorGlobalScript):
             raise ValueError(f"Cannot find a user named {search_text}!")
         raise ValueError(f"That matched multiple accounts: {found}")
 
-    def disable_account(self, session, account):
+    def disable_account(self, session, account, reason):
         pass
 
-    def enable_account(self, session, account):
+    def enable_account(self, session, account, reason):
         pass
 
     def ban_account(self, session, account, duration):
+        pass
+
+    def reset_password(self, session, account, new_password):
         pass

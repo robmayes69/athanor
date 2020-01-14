@@ -1,5 +1,4 @@
 from athanor.commands.command import AthanorCommand
-from athanor.utils.menu import AthanorMenu
 
 
 class CmdAccount(AthanorCommand):
@@ -9,31 +8,46 @@ class CmdAccount(AthanorCommand):
     switch_options = ('list', 'create', 'disable', 'enable', 'rename', 'ban', 'password', 'email', 'addperm', 'delperm')
 
     def switch_main(self):
-        AthanorMenu(self.caller, 'athanor.commands.menu_create', startnode='node_main', session=self.session, menu_name='Account Editor')
+        pass
 
     def switch_list(self):
         pass
 
     def switch_create(self):
-        pass
+        if not len(self.arglist) == 3:
+            raise ValueError("Usage: @account/create <username>,<email>,<password>")
+        username, email, password = self.arglist
+        self.controllers.account.create_account(self.session, username, email, password)
 
     def switch_disable(self):
-        pass
+        if not self.lhs and self.rhs:
+            raise ValueError("Usage: @account/disable <account>=<reason>")
+        self.controllers.account.disable_account(self.session, self.lhs, self.rhs)
 
     def switch_enable(self):
-        pass
+        if not self.lhs and self.rhs:
+            raise ValueError("Usage: @account/enable <account>=<reason>")
+        self.controllers.account.enable_account(self.session, self.lhs, self.rhs)
 
     def switch_rename(self):
-        pass
+        if not self.lhs and self.rhs:
+            raise ValueError("Usage: @account/rename <account>=<new name>")
+        self.controllers.account.rename_account(self.session, self.lhs, self.rhs)
 
     def switch_ban(self):
-        pass
+        if not self.lhs and self.rhs:
+            raise ValueError("Usage: @account/ban <account>=<duration>")
+        self.controllers.account.ban_account(self.session, self.lhs, self.rhs)
 
     def switch_password(self):
-        pass
+        if not self.lhs and self.rhs:
+            raise ValueError("Usage: @account/password <account>=<new password>")
+        self.controllers.account.reset_password(self.session, self.lhs, self.rhs)
 
     def switch_email(self):
-        pass
+        if not self.lhs and self.rhs:
+            raise ValueError("Usage: @account/email <account>=<new email>")
+        self.controllers.account.change_email(self.session, self.lhs, self.rhs)
 
     def switch_addperm(self):
         pass
