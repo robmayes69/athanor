@@ -6,9 +6,9 @@ import yaml
 
 class AthanorPlugin(object):
 
-    def __init__(self, key, manager, path):
-        self.key = key
-        self.manager = manager
+    def __init__(self, module):
+        self.key = None
+        self.module = module
         self.parents_yaml = dict()
         self.templates_yaml = dict()
         self.maps_yaml = dict()
@@ -18,7 +18,10 @@ class AthanorPlugin(object):
         self.base_yaml = dict()
         self.base = defaultdict(dict)
         self.parents = defaultdict(dict)
-        self.path = path
+        self.path = path.dirname(module.__file__)
+
+    def initialize(self):
+        pass
 
     def initialize_base(self):
         self.base_yaml = self.scan_contents(self.path)

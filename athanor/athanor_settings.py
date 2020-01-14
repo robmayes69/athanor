@@ -61,9 +61,6 @@ TELNET_OOB_ENABLED = True
 WEBSOCKET_ENABLED = True
 INLINEFUNC_ENABLED = True
 
-INSTALLED_APPS = tuple(INSTALLED_APPS) + ('athanor.gamedb', 'athanor.jobs', 'athanor.mush_import', 'athanor.traits')
-
-
 AT_INITIAL_SETUP_HOOK_MODULE = "athanor.at_initial_setup"
 
 
@@ -79,12 +76,7 @@ CMDSET_SESSION = "athanor.commands.cmdsets.session.AthanorSessionCmdSet"
 ######################################################################
 # Plugin Options
 ######################################################################
-GLOBAL_SCRIPTS['plugin'] = {
-    'typeclass': 'athanor.controllers.plugin.AthanorPluginController',
-    'repeats': -1, 'interval': 50, 'desc': 'Controller for Plugin System'
-}
 
-PLUGIN_CLASS = "athanor.gamedb.plugins.AthanorPlugin"
 
 
 # KINDS CLASSES
@@ -288,3 +280,48 @@ GLOBAL_SCRIPTS['roleplay'] = {
 # Definitely want these OFF in Production.
 DEBUG = True
 IN_GAME_ERRORS = True
+
+
+######################################################################
+# Plugins
+######################################################################
+GLOBAL_SCRIPTS['plugin'] = {
+    'typeclass': 'athanor.controllers.plugin.AthanorPluginController',
+    'repeats': -1, 'interval': 50, 'desc': 'Controller for Plugin System'
+}
+
+PLUGIN_CLASS = "athanor.gamedb.plugins.AthanorPlugin"
+
+ATHANOR_PLUGINS = list()
+
+try:
+    from plugin_settings import *
+except ImportError:
+    print("plugin_settings.py file not found or failed to import.")
+
+INSTALLED_APPS = list(INSTALLED_APPS)
+INSTALLED_APPS.extend(['athanor.gamedb', 'athanor.jobs', 'athanor.mush_import', 'athanor.traits'])
+
+import athanor
+athanor._init(ATHANOR_PLUGINS, PLUGIN_CLASS)
+
+SERVER_SERVICES_PLUGIN_MODULES.extend(athanor.SETTINGS.get("SERVER_SERVICES_PLUGIN_MODULES", list()))
+PORTAL_SERVICES_PLUGIN_MODULES.extend(athanor.SETTINGS.get("PORTAL_SERVICES_PLUGIN_MODULES", list()))
+INSTALLED_APPS.extend(athanor.SETTINGS.get("INSTALLED_APPS", list()))
+LOCK_FUNC_MODULES.extend(athanor.SETTINGS.get("LOCK_FUNC_MODULES", list()))
+INPUT_FUNC_MODULES.extend(athanor.SETTINGS.get("INPUT_FUNC_MODULES", list()))
+INLINEFUNC_MODULES.extend(athanor.SETTINGS.get("INLINEFUNC_MODULES", list()))
+PROTOTYPE_MODULES.extend(athanor.SETTINGS.get("PROTOTYPE_MODULES", list()))
+PROTOTYPEFUNC_MODULES.extend(athanor.SETTINGS.get("PROTOTYPEFUNC_MODULES", list()))
+PROT_FUNC_MODULES.extend(athanor.SETTINGS.get("PROT_FUNC_MODULES", list()))
+CMDSET_PATHS.extend(athanor.SETTINGS.get("CMDSET_PATHS", list()))
+TYPECLASS_PATHS.extend(athanor.SETTINGS.get("TYPECLASS_PATHS", list()))
+OPTION_CLASS_MODULES.extend(athanor.SETTINGS.get("OPTION_CLASS_MODULES", list()))
+VALIDATOR_FUNC_MODULES.extend(athanor.SETTINGS.get("VALIDATOR_FUNC_MODULES", list()))
+BASE_BATCHPROCESS_PATHS.extend(athanor.SETTINGS.get("BASE_BATCHPROCESS_PATHS", list()))
+STATICFILES_DIRS.extend(athanor.SETTINGS.get("STATICFILES_DIRS", list()))
+
+GLOBAL_SCRIPTS.update(athanor.SETTINGS.get("GLOBAL_SCRIPTS", dict()))
+OPTIONS_ACCOUNT_DEFAULT.update(athanor.SETTINGS.get("OPTIONS_ACCOUNT_DEFAULT", dict()))
+
+INSTALLED_APPS = tuple(INSTALLED_APPS)

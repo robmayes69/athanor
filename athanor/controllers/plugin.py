@@ -5,6 +5,7 @@ from collections import defaultdict
 from evennia.utils.logger import log_trace
 from evennia.utils.utils import class_from_module
 
+import athanor
 from athanor.gamedb.objects import AthanorObject
 from athanor.gamedb.scripts import AthanorGlobalScript
 from athanor.gamedb.plugins import AthanorPlugin
@@ -26,23 +27,10 @@ class AthanorPluginController(AthanorGlobalScript):
         self.load()
 
     def load(self):
-        self.ndb.plugins = dict()
+        self.ndb.plugins = athanor.PLUGINS
         self.ndb.class_cache = defaultdict(dict)
         self.ndb.regions = dict()
-    
-    def load_plugins(self):
-        plugin_path = path.join(getcwd(), 'plugins')
-        if path.exists(plugin_path) and path.isdir(plugin_path):
-            for plugin in [plugin for plugin in scandir(plugin_path) if plugin.is_dir() and not plugin.name.startswith("_")]:
-                if plugin.name not in self.ndb.plugins:
-                    self.ndb.plugins[plugin.name] = self.ndb.plugin_class(plugin.name, self, plugin)
 
-        import athanor.ath_plugins as ath_plug
-        ath_ath_plug_path = path.dirname(ath_plug.__file__)
-        for plugin in [plugin for plugin in scandir(ath_ath_plug_path) if plugin.is_dir() and not plugin.name.startswith("_")]:
-            if plugin.name not in self.ndb.plugins:
-                self.ndb.plugins[plugin.name] = self.ndb.plugin_class(plugin.name, self, plugin)
-    
     def resolve_path(self, path, plugin, kind):
         split_path = path.split('/')
         if len(split_path) == 1:
