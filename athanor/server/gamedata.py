@@ -3,7 +3,7 @@ from django.conf import settings
 from collections import defaultdict
 from evennia.utils.utils import class_from_module
 from evennia.utils.utils import mod_import
-from athanor.building.regions import AthanorRegion
+from athanor.gamedb.regions import AthanorRegion
 
 class GameDataManager(object):
 
@@ -29,7 +29,7 @@ class GameDataManager(object):
                 if ex.name not in self.extensions:
                     self.extensions[ex.name] = extension_class(ex.name, self, ex)
 
-        import athanor.ath_extensions as ath_ext
+        import athanor.ath_plugins as ath_ext
         ath_ext_path = path.dirname(ath_ext.__file__)
         for ex in [ex for ex in scandir(ath_ext_path) if ex.is_dir() and not ex.name.startswith("_")]:
             if ex.name not in self.extensions:

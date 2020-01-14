@@ -4,7 +4,7 @@ from os import scandir
 import yaml
 
 
-class Extension(object):
+class AthanorPlugin(object):
 
     def __init__(self, key, manager, path):
         self.key = key

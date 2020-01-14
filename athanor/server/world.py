@@ -10,9 +10,6 @@ class World(object):
 
     def __init__(self):
         self.data_manager = class_from_module(settings.GAME_DATA_MANAGER_CLASS)(self)
-        self.uuid_mapping = dict()
-        self.uuid_owners = dict()
-        self.entities = set()
         self.alliances = set()
         self.alliance_keys = dict()
         self.factions = set()

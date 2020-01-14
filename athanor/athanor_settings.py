@@ -80,10 +80,16 @@ CMDSET_UNLOGGEDIN = "athanor.commands.login.AthanorUnloggedinCmdSet"
 # Command set used on the logged-in session
 CMDSET_SESSION = "athanor.commands.session.AthanorSessionCmdSet"
 
-# ENGINE OPTIONS
-GAME_WORLD_CLASS = "athanor.core.world.World"
-GAME_DATA_MANAGER_CLASS = "athanor.core.gamedata.GameDataManager"
-GAME_EXTENSION_CLASS = "athanor.core.extension.Extension"
+
+######################################################################
+# Account Options
+######################################################################
+GLOBAL_SCRIPTS['plugin'] = {
+    'typeclass': 'athanor.controllers.plugin.AthanorPluginController',
+    'repeats': -1, 'interval': 50, 'desc': 'Controller for Plugin System'
+}
+
+PLUGIN_CLASS = "athanor.core.extension.Extension"
 
 
 # KINDS CLASSES
