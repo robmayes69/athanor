@@ -1,21 +1,21 @@
 limbo_room:
   northern_limbo:
-    abstract: n
+    parent: n
   southern_limbo:
-    abstract: s
+    parent: s
   eastern_limbo:
-    abstract: e
+    parent: e
   western_limbo:
-    abstract: w
+    parent: w
 northern_limbo:
   limbo_room:
-    abstract: s
+    parent: s
 southern_limbo:
   limbo_room:
-    abstract: n
+    parent: n
 eastern_limbo:
   limbo_room:
-    abstract: w
+    parent: w
 western_limbo:
   limbo_room:
-    abstract: e
+    parent: e

@@ -1,6 +1,6 @@
 from athanor.gamedb.objects import AthanorObject
 from evennia.utils.utils import lazy_property
-from athanor.gamedb.models import RegionBridge, InstanceBridge
+from athanor.gamedb.models import RegionBridge, MapBridge
 
 
 class AthanorRegion(AthanorObject):
@@ -9,7 +9,7 @@ class AthanorRegion(AthanorObject):
         if hasattr(self, 'region_bridge'):
             return
         RegionBridge.objects.create(object=self, system_key=key)
-        InstanceBridge.objects.create(object=self, extension=extension, instance_key=data.get('instance'))
+        MapBridge.objects.create(object=self, extension=extension, instance_key=data.get('instance'))
 
 
     @classmethod

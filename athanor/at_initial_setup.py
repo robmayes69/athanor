@@ -16,18 +16,10 @@ does what you expect it to.
 
 
 def at_initial_setup():
-    from django.conf import settings
-    from evennia.utils.utils import class_from_module
+    from athanor.gamedb.accounts import AthanorAccount
+    from athanor.gamedb.characters import AthanorPlayerCharacter
 
-    # First, the God Account needs a Bridge Object.
-    # Normally this would be done inside AthanorAccount.create_account() but the
-    # god Account setup skips this.
-    from athanor.accounts.accounts import AthanorAccount
     god_account = AthanorAccount.objects.get(id=1)
-
-    # Next, the God Character must be linked properly to the God Account and given
-    # a Character Bridge model.
-    from athanor.characters.characters import AthanorPlayerCharacter
 
     god_character = AthanorPlayerCharacter.objects.filter_family().first()
     god_character.create_bridge(god_account, god_character.key, god_character.key, 0)

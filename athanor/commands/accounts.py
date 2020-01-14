@@ -9,7 +9,7 @@ class CmdAccount(AthanorCommand):
     switch_options = ('list', 'create', 'disable', 'enable', 'rename', 'ban', 'password', 'email', 'addperm', 'delperm')
 
     def switch_main(self):
-        AthanorMenu(self.caller, 'features.accounts.menu_create', startnode='node_main', session=self.session, menu_name='Account Editor')
+        AthanorMenu(self.caller, 'athanor.commands.menu_create', startnode='node_main', session=self.session, menu_name='Account Editor')
 
     def switch_list(self):
         pass

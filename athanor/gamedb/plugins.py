@@ -9,31 +9,31 @@ class AthanorPlugin(object):
     def __init__(self, key, manager, path):
         self.key = key
         self.manager = manager
-        self.abstracts_yaml = dict()
+        self.parents_yaml = dict()
         self.templates_yaml = dict()
-        self.instances_yaml = dict()
-        self.instances = dict()
-        self.abstracts = defaultdict(dict)
+        self.maps_yaml = dict()
+        self.maps = dict()
+        self.parents = defaultdict(dict)
         self.templates = defaultdict(dict)
         self.base_yaml = dict()
         self.base = defaultdict(dict)
-        self.abstracts = defaultdict(dict)
+        self.parents = defaultdict(dict)
         self.path = path
 
     def initialize_base(self):
         self.base_yaml = self.scan_contents(self.path)
 
-    def initialize_abstracts(self):
-        abstracts_path = path.join(self.path, 'abstracts')
-        if not path.isdir(abstracts_path):
+    def initialize_parents(self):
+        parents_path = path.join(self.path, 'parents')
+        if not path.isdir(parents_path):
             return
-        self.abstracts_yaml = self.scan_contents(abstracts_path)
+        self.parents_yaml = self.scan_contents(parents_path)
 
-    def initialize_instances(self):
-        instances_path = path.join(self.path, 'instances')
-        if not path.isdir(instances_path):
+    def initialize_maps(self):
+        maps_path = path.join(self.path, 'maps')
+        if not path.isdir(maps_path):
             return
-        self.instances_yaml = self.scan_folders(instances_path)
+        self.maps_yaml = self.scan_folders(maps_path)
 
     def initialize_templates(self):
         templates_path = path.join(self.path, 'templates')

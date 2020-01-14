@@ -7,7 +7,7 @@ from evennia.utils.utils import class_from_module
 
 from athanor.gamedb.objects import AthanorObject
 from athanor.gamedb.scripts import AthanorGlobalScript
-from athanor.server.plugins import AthanorPlugin
+from athanor.gamedb.plugins import AthanorPlugin
 from athanor.gamedb.regions import AthanorRegion
 
 
@@ -73,7 +73,7 @@ class AthanorPluginController(AthanorGlobalScript):
             if obj.isdigit():
                 if not (found := AthanorObject.objects.filter(id=int(obj)).first()):
                     raise ValueError(f"Cannot find an object for #{obj}!")
-                if not hasattr(found, 'instance_bridge'):
+                if not hasattr(found, 'map_bridge'):
                     raise ValueError(f"Must target objects with internal maps.")
             else:
                 raise ValueError(f"Path is malformed. Must be in format of OBJ/ROOM_KEY")
@@ -82,18 +82,18 @@ class AthanorPluginController(AthanorGlobalScript):
                 raise ValueError(f"Cannot find a region for {obj}!")
         if not room_key:
             raise ValueError(f"Path is malformed. Must be in format of OBJ/ROOM_KEY")
-        if not (room := found.instance.get_room(room_key)):
+        if not (room := found.map.get_room(room_key)):
             raise ValueError(f"Cannot find that room_key in {found}!")
         return room
     
     def prepare_parents(self):
         parents_raw = dict()
 
-        for ex in self.extensions.values():
-            ex.initialize_parents()
-            for abtract_type, parents in ex.parents_yaml.items():
-                for abtract_key, abtract_data in parents.items():
-                    parents_raw[(ex.key, abtract_type, abtract_key)] = abtract_data
+        for plugin in self.ndb.plugins.values():
+            plugin.initialize_parents()
+            for parent_type, parents in plugin.parents_yaml.items():
+                for parent_key, parent_data in parents.items():
+                    parents_raw[(plugin.key, parent_type, parent_key)] = parent_data
 
         parents_left = set(parents_raw.keys())
         loaded_set = set()
@@ -111,7 +111,7 @@ class AthanorPluginController(AthanorGlobalScript):
                     final_data.update(parents_raw[parent_par])
                 final_data.update(parents_raw[parent])
                 final_data.pop('parents')
-                self.extensions[parent[0]].parents[parent[1]][parent[2]] = final_data
+                self.ndb.plugins[parent[0]].parents[parent[1]][parent[2]] = final_data
                 loaded_set.add(parent)
                 current_count += 1
             parents_left -= loaded_set
@@ -119,9 +119,9 @@ class AthanorPluginController(AthanorGlobalScript):
                 raise ValueError(f"Unresolveable parents detected! Error for parent {parent} ! Potential endless loop broken! parents left: {parents_left}")
 
     def get_parent(self, plugin, kind, key):
-        if not (ex := self.ndb.plugins.get(plugin, None)):
+        if not (plugin := self.ndb.plugins.get(plugin, None)):
             raise ValueError(f"No such Plugin: {plugin}")
-        if not (ki := ex.parents.get(kind, None)):
+        if not (ki := plugin.parents.get(kind, None)):
             raise ValueError(f"No Parent Kind: {plugin}/{kind}")
         if not (k := ki.get(key, None)):
             raise ValueError(f"No Parent Key: {plugin}/{kind}/{key}")
@@ -134,25 +134,50 @@ class AthanorPluginController(AthanorGlobalScript):
             del start_data['parent']
         data.update(start_data)
         if not no_class:
-            data['class'] = self.get_class(kind, start_data.get('class', None))
+            data['class'] = self.get_class(kind, start_data.pop('class', None))
         return data
 
-    def prepare_instances(self):
-        for ex_key, ex in self.extensions.items():
-            ex.initialize_instances()
-            for key, data in ex.instances_yaml.items():
-                instance_data = defaultdict(dict)
-                instance_data['instance'] = self.prepare_data('instances', data.get('instance', dict()), ex_key, no_class=True)
+    def prepare_maps(self):
+        for plugin_key, plugin in self.ndb.plugins.items():
+            plugin.initialize_maps()
+            for key, data in plugin.maps_yaml.items():
+                map_data = defaultdict(dict)
+                map_data['map'] = self.prepare_data('maps', data.get('map', dict()), plugin_key, no_class=True)
 
                 for kind in ('areas', 'rooms', 'gateways'):
                     for thing_key, thing_data in data.get(kind, dict()).items():
-                        instance_data[kind][thing_key] = self.prepare_data(kind, thing_data, ex_key)
+                        map_data[kind][thing_key] = self.prepare_data(kind, thing_data, plugin_key)
 
                 for room_key, room_exits in data.get('exits', dict()).items():
-                    instance_data['rooms'][room_key]['exits'] = dict()
+                    map_data['rooms'][room_key]['exits'] = dict()
                     if not room_exits:
                         continue
                     for dest_key, exit_data in room_exits.items():
-                        instance_data['rooms'][room_key]['exits'][dest_key] = self.prepare_data('exits', exit_data, ex_key)
+                        map_data['rooms'][room_key]['exits'][dest_key] = self.prepare_data('exits', exit_data, 
+                                                                                           plugin_key)
 
-                ex.instances[key] = instance_data
+                plugin.maps[key] = map_data
+    
+    def prepare_templates(self):
+        for plugin_key, plugin in self.ndb.plugins.items():
+            plugin.initialize_templates()
+            for kind, templates in plugin.templates_yaml.items():
+                for temp_key, template_data in templates.items():
+                    plugin.templates[kind][temp_key] = self.prepare_data(kind, template_data, plugin_key)
+
+    def prepare_base(self):
+        for plugin_key, plugin in self.ndb.plugins.items():
+            plugin.initialize_base()
+            for kind, data in plugin.base_yaml.items():
+                for key, thing_data in data.items():
+                    plugin.base[kind][key] = self.prepare_data(kind, thing_data, plugin_key)
+
+    def load_regions(self):
+        for plugin_key, plugin in self.ndb.plugins.items():
+            for key, data in plugin.base.get('regions', dict()).items():
+                if not (found := AthanorRegion.objects.filter_family(region_bridge__system_key=key).first()):
+                    region_class = data.pop('class', None)
+                    found = region_class.create_region(plugin_key, key, data)
+                else:
+                    found.update_data(data)
+                self.ndb.regions[key] = found

@@ -9,7 +9,7 @@ evennia/settings_default.py
 Remember:
 
 This is for settings that Athanor assumes. For your own server's
-settings, adjust old_settings.py. See the instructions there for more
+settings, adjust <mygame>/server/conf/settings.py. See the instructions there for more
 information.
 
 """
@@ -58,72 +58,63 @@ MULTISESSION_MODE = 3
 
 USE_TZ = True
 TELNET_OOB_ENABLED = True
-
 WEBSOCKET_ENABLED = True
-
 INLINEFUNC_ENABLED = True
 
-INSTALLED_APPS = tuple(INSTALLED_APPS) + ('athanor.building', 'athanor.characters', 'athanor.core', 'athanor.factions',
-                                          'athanor.forum', 'athanor.items', 'athanor.jobs',  'athanor.login',
-                                          'athanor.mail', 'athanor.mush_import', "athanor.note", "athanor.rplogger",
-                                          'athanor.staff', 'athanor.themes', 'athanor.traits')
+INSTALLED_APPS = tuple(INSTALLED_APPS) + ('athanor.gamedb', 'athanor.jobs', 'athanor.mush_import', 'athanor.traits')
 
 
-AT_INITIAL_SETUP_HOOK_MODULE = "athanor.core.at_initial_setup"
+AT_INITIAL_SETUP_HOOK_MODULE = "athanor.at_initial_setup"
 
 
 SERVER_SESSION_CLASS = "athanor.core.sessions.AthanorSession"
 
 
 # Command set used on session before account has logged in
-CMDSET_UNLOGGEDIN = "athanor.commands.login.AthanorUnloggedinCmdSet"
+CMDSET_UNLOGGEDIN = "athanor.commands.cmdsets.login.AthanorUnloggedinCmdSet"
 # Command set used on the logged-in session
-CMDSET_SESSION = "athanor.commands.session.AthanorSessionCmdSet"
+CMDSET_SESSION = "athanor.commands.cmdsets.session.AthanorSessionCmdSet"
 
 
 ######################################################################
-# Account Options
+# Plugin Options
 ######################################################################
 GLOBAL_SCRIPTS['plugin'] = {
     'typeclass': 'athanor.controllers.plugin.AthanorPluginController',
     'repeats': -1, 'interval': 50, 'desc': 'Controller for Plugin System'
 }
 
-PLUGIN_CLASS = "athanor.core.extension.Extension"
+PLUGIN_CLASS = "athanor.gamedb.plugins.AthanorPlugin"
 
 
 # KINDS CLASSES
 DEFAULT_ENTITY_CLASSES = {
-    'areas': "athanor.building.areas.AthanorArea",
+    'areas': "athanor.entities.areas.AthanorArea",
     'exits': "athanor.entities.exits.AthanorExit",
     "gateway": "athanor.entities.gateways.AthanorGateway",
     "rooms": "athanor.entities.rooms.AthanorRoom",
-    "mobiles": "athanor.mobiles.mobiles.AthanorMobile",
-    "items": "athanor.items.items.AthanorItem",
-    "structures": "athanor.structures.structures.AthanorStructure",
-    "alliances": "athanor.factions.factions.AthanorAlliance",
-    "factions": "athanor.factions.factions.AthanorFaction",
-    "regions": "athanor.building.regions.AthanorRegion",
+    "mobiles": "athanor.entities.mobiles.AthanorMobile",
+    "items": "athanor.entities.items.AthanorItem",
+    "structures": "athanor.gamedb.structures.AthanorStructure",
+    "alliances": "athanor.gamedb.factions.AthanorAlliance",
+    "factions": "athanor.gamedb.factions.AthanorFaction",
+    "regions": "athanor.gamedb.regions.AthanorRegion",
 }
 
 
 ######################################################################
 # Account Options
 ######################################################################
-# Command set for accounts without a character (ooc)
-CMDSET_ACCOUNT = "athanor.commands.account.AthanorAccountCmdSet"
-
-
-BASE_ACCOUNT_TYPECLASS = "athanor.accounts.accounts.AthanorAccount"
-
-# The Account Bridge is an ObjectDB instance that's used to allow Accounts to relate to Objects like Factions
-# and receive Mail or equip items.+-
-ACCOUNT_BRIDGE_OBJECT_TYPECLASS = "athanor.accounts.accounts.AthanorAccountBridge"
-
 GLOBAL_SCRIPTS['accounts'] = {
-    'typeclass': 'athanor.accounts.accounts.AthanorAccountController',
+    'typeclass': 'athanor.controllers.account.AthanorAccountController',
     'repeats': -1, 'interval': 50, 'desc': 'Controller for Account System'
 }
+
+BASE_ACCOUNT_TYPECLASS = "athanor.gamedb.accounts.AthanorAccount"
+
+# Command set for accounts without a character (ooc)
+CMDSET_ACCOUNT = "athanor.commands.cmdsets.account.AthanorAccountCmdSet"
+
 
 OPTIONS_ACCOUNT_DEFAULT['sys_msg_border'] = ('For -=<>=-', 'Color', 'm')
 OPTIONS_ACCOUNT_DEFAULT['sys_msg_text'] = ('For text in sys_msg', 'Color', 'w')
@@ -133,19 +124,8 @@ OPTIONS_ACCOUNT_DEFAULT['column_names_color'] = ("Table column header text.", "C
 
 
 ######################################################################
-# Building Settings
+# Command Settings
 ######################################################################
-"""
-GLOBAL_SCRIPTS['area'] = {
-    'typeclass': 'athanor.building.areas.AthanorAreaController',
-    'repeats': -1, 'interval': 50, 'desc': 'Controller for Area System'
-}
-"""
-#BASE_AREA_TYPECLASS = "athanor.building.areas.AthanorArea"
-
-#BASE_ROOM_TYPECLASS = "athanor.building.rooms.AthanorRoom"
-
-#BASE_EXIT_TYPECLASS = "athanor.building.exits.AthanorExit"
 
 # Turn this on if your game uses North, Northeast, South, Southeast, In, Out, Up, Down, etc.
 # It will add default errors for when these directions are attempted but no exit
@@ -155,22 +135,22 @@ DIRECTIONAL_EXIT_ERRORS = False
 ######################################################################
 # Channel Settings
 ######################################################################
-BASE_CHANNEL_TYPECLASS = "typeclasses.channels.Channel"
+#BASE_CHANNEL_TYPECLASS = "typeclasses.channels.Channel"
 
-CHANNEL_COMMAND_CLASS = "evennia.comms.channelhandler.ChannelCommand"
+#CHANNEL_COMMAND_CLASS = "evennia.comms.channelhandler.ChannelCommand"
 
 ######################################################################
 # Character Settings
 ######################################################################
-# Default set for logged in account with characters (fallback)
-CMDSET_CHARACTER = "athanor.commands.character.AthanorCharacterCmdSet"
-
-BASE_CHARACTER_TYPECLASS = "athanor.characters.characters.AthanorPlayerCharacter"
-
 GLOBAL_SCRIPTS['characters'] = {
-    'typeclass': 'athanor.characters.characters.AthanorCharacterController',
+    'typeclass': 'athanor.controllers.character.AthanorCharacterController',
     'repeats': -1, 'interval': 50, 'desc': 'Controller for Character System'
 }
+
+# Default set for logged in account with characters (fallback)
+CMDSET_CHARACTER = "athanor.commands.cmdsets.character.AthanorCharacterCmdSet"
+
+BASE_CHARACTER_TYPECLASS = "athanor.gamedb.characters.AthanorPlayerCharacter"
 
 # If this is enabled, characters will not see each other's true names.
 # Instead, they'll see something generic.
@@ -235,42 +215,43 @@ GENDER_SUBSTITUTIONS = {
 ######################################################################
 # The following Inventory class is the general/fallback for if an inventory type is requested
 # that isn't defined in SPECIAL_INVENTORY_CLASSES.
-
-BASE_INVENTORY_CLASS = "athanor.items.inventory.Inventory"
+BASE_INVENTORY_CLASS = "athanor.entities.inventory.Inventory"
 
 SPECIAL_INVENTORY_CLASSES = dict()
+
+
 
 ######################################################################
 # Faction Settings
 ######################################################################
-BASE_FACTION_TYPECLASS = "athanor.factions.factions.AthanorFaction"
-
 GLOBAL_SCRIPTS['faction'] = {
-    'typeclass': 'athanor.factions.factions.AthanorFactionController',
+    'typeclass': 'athanor.controllers.faction.AthanorFactionController',
     'repeats': -1, 'interval': 60, 'desc': 'Faction Manager for Faction System'
 }
+
+BASE_FACTION_TYPECLASS = "athanor.gamedb.factions.AthanorFaction"
 
 
 ######################################################################
 # Forum Settings
 ######################################################################
 GLOBAL_SCRIPTS['forum'] = {
-    'typeclass': 'athanor.forum.forum.AthanorForumController',
+    'typeclass': 'athanor.controllers.forum.AthanorForumController',
     'repeats': -1, 'interval': 60, 'desc': 'Forum BBS API',
     'locks': "admin:perm(Admin)",
 }
 
-FORUM_CATEGORY_TYPECLASS = "athanor.forum.forum.AthanorForumCategory"
+FORUM_CATEGORY_TYPECLASS = "athanor.gamedb.forum.AthanorForumCategory"
 
-FORUM_BOARD_TYPECLASS = "athanor.forum.forum.AthanorForumBoard"
+FORUM_BOARD_TYPECLASS = "athanor.gamedb.forum.AthanorForumBoard"
 
-FORUM_THREAD_TYPECLASS = "athanor.forum.forum.AthanorForumThread"
+FORUM_THREAD_TYPECLASS = "athanor.gamedb.forum.AthanorForumThread"
 
 ######################################################################
 # Job Settings
 ######################################################################
 GLOBAL_SCRIPTS['jobs'] = {
-    'typeclass': 'athanor.jobs.global_scripts.JobManager',
+    'typeclass': 'athanor.controllers.job.AthanorJobManager',
     'repeats': -1, 'interval': 60, 'desc': 'Job API for Job System',
     'locks': "admin:perm(Admin)",
 }
@@ -279,30 +260,27 @@ GLOBAL_SCRIPTS['jobs'] = {
 ######################################################################
 # Theme Settings
 ######################################################################
-BASE_THEME_TYPECLASS = "athanor.themes.themes.AthanorTheme"
-
 GLOBAL_SCRIPTS['theme'] = {
-    'typeclass': 'athanor.themes.themes.AthanorThemeController',
+    'typeclass': 'athanor.controllers.theme.AthanorThemeController',
     'repeats': -1, 'interval': 60, 'desc': 'Theme Controller for Theme System'
 }
+
+BASE_THEME_TYPECLASS = "athanor.gamedb.themes.AthanorTheme"
+
+
 
 ######################################################################
 # RP Event Settings
 ######################################################################
-#GLOBAL_SCRIPTS['events'] = {
-#    'typeclass': 'athanor.rplogger.AthanorEventController',
-#    'repeats': -1, 'interval': 50, 'desc': 'Event Controller for RP Logger System'
-#}
+GLOBAL_SCRIPTS['events'] = {
+    'typeclass': 'athanor.controller.rplogger.AthanorRoleplayController',
+    'repeats': -1, 'interval': 50, 'desc': 'Event Controller for RP Logger System'
+}
 
 ######################################################################
 # Funcs Settings
 ######################################################################
-sections = ['building', 'factions', 'forum', 'items',
-            'note', 'rplogger']
-EXTRA_LOCK_FUNCS = tuple([f"athanor.{s}.locks" for s in sections])
-LOCK_FUNC_MODULES = LOCK_FUNC_MODULES + EXTRA_LOCK_FUNCS
-del EXTRA_LOCK_FUNCS
-del sections
+
 
 ######################################################################
 # Misc Settings
