@@ -1,6 +1,7 @@
 from evennia import DefaultScript
 from evennia.utils.optionhandler import OptionHandler
 from evennia.utils.utils import lazy_property
+
 from athanor.utils.online import admin_accounts
 from athanor.utils.submessage import SubMessageMixin
 

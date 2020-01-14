@@ -1,15 +1,16 @@
 from django.conf import settings
+from django.utils.translation import ugettext as _
+
 from evennia.objects.objects import DefaultObject
 from evennia.utils.utils import lazy_property, make_iter
-from athanor.entities.base import AbstractGameEntity
-
 from evennia.utils import logger
-from django.utils.translation import ugettext as _
+
+from athanor.entities.base import AbstractGameEntity
 
 
 class AthanorObject(DefaultObject, AbstractGameEntity):
     """
-    This is used as the new 'base' for DefaultRoom, DefaultCharacter, etc.
+    This is used as the new 'base' for DefaultRoom, DefaultCharacter, etc. It alters how locations and contents work.
     """
     persistent = True
 
@@ -29,17 +30,20 @@ class AthanorObject(DefaultObject, AbstractGameEntity):
     def location(self, value):
         self.locations.set(value)
 
-    @lazy_property
+    @property
     def contents(self):
+        """
+        This must return a list for commands to work properly.
+
+        Returns:
+            items (list)
+        """
         return self.items.all()
 
     def contents_get(self, exclude=None):
-        contents = self.contents
-        if exclude:
-            for entity in make_iter(exclude):
-                if entity in contents:
-                    contents.remove(entity)
-        return contents
+        if not exclude:
+            return self.contents
+        return list(set(self.contents) - set(make_iter(exclude)))
 
     def move_to(self, destination, quiet=False, emit_to_obj=None, use_destination=False, to_none=False, move_hooks=True,
                 **kwargs):
@@ -213,4 +217,4 @@ class AthanorObject(DefaultObject, AbstractGameEntity):
                 self.location = None
 
     def at_server_reload(self):
-        self.locations.save('reload')
+        self.locations.save()
