@@ -2,13 +2,10 @@ from django.conf import settings
 
 from evennia import default_cmds
 
-from athanor.jobs.commands import JOB_COMMANDS
-from athanor.commands.themes import CmdTheme
 
+USE_COMMANDS = []
 
-USE_COMMANDS = [CmdTheme]
-
-USE_LISTS = [USE_COMMANDS, JOB_COMMANDS]
+USE_LISTS = [USE_COMMANDS]
 
 
 class AthanorAccountCmdSet(default_cmds.AccountCmdSet):

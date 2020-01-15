@@ -212,55 +212,6 @@ BASE_INVENTORY_CLASS = "athanor.entities.inventory.Inventory"
 SPECIAL_INVENTORY_CLASSES = dict()
 
 
-
-######################################################################
-# Faction Settings
-######################################################################
-GLOBAL_SCRIPTS['faction'] = {
-    'typeclass': 'athanor.controllers.faction.AthanorFactionController',
-    'repeats': -1, 'interval': 60, 'desc': 'Faction Manager for Faction System'
-}
-
-BASE_FACTION_TYPECLASS = "athanor.gamedb.factions.AthanorFaction"
-
-
-######################################################################
-# Forum Settings
-######################################################################
-GLOBAL_SCRIPTS['forum'] = {
-    'typeclass': 'athanor.controllers.forum.AthanorForumController',
-    'repeats': -1, 'interval': 60, 'desc': 'Forum BBS API',
-    'locks': "admin:perm(Admin)",
-}
-
-FORUM_CATEGORY_TYPECLASS = "athanor.gamedb.forum.AthanorForumCategory"
-
-FORUM_BOARD_TYPECLASS = "athanor.gamedb.forum.AthanorForumBoard"
-
-FORUM_THREAD_TYPECLASS = "athanor.gamedb.forum.AthanorForumThread"
-
-######################################################################
-# Job Settings
-######################################################################
-GLOBAL_SCRIPTS['job'] = {
-    'typeclass': 'athanor.controllers.job.AthanorJobManager',
-    'repeats': -1, 'interval': 60, 'desc': 'Job API for Job System',
-    'locks': "admin:perm(Admin)",
-}
-
-
-######################################################################
-# Theme Settings
-######################################################################
-GLOBAL_SCRIPTS['theme'] = {
-    'typeclass': 'athanor.controllers.theme.AthanorThemeController',
-    'repeats': -1, 'interval': 60, 'desc': 'Theme Controller for Theme System'
-}
-
-BASE_THEME_TYPECLASS = "athanor.gamedb.themes.AthanorTheme"
-
-
-
 ######################################################################
 # RP Event Settings
 ######################################################################
@@ -268,11 +219,6 @@ GLOBAL_SCRIPTS['roleplay'] = {
     'typeclass': 'athanor.controller.rplogger.AthanorRoleplayController',
     'repeats': -1, 'interval': 50, 'desc': 'Event Controller for RP Logger System'
 }
-
-######################################################################
-# Funcs Settings
-######################################################################
-
 
 ######################################################################
 # Misc Settings
@@ -286,7 +232,6 @@ IN_GAME_ERRORS = True
 # Plugins
 ######################################################################
 
-
 GLOBAL_SCRIPTS['plugin'] = {
     'typeclass': 'athanor.controllers.plugin.AthanorPluginController',
     'repeats': -1, 'interval': 50, 'desc': 'Controller for Plugin System'
@@ -294,6 +239,7 @@ GLOBAL_SCRIPTS['plugin'] = {
 
 PLUGIN_CLASS = "athanor.gamedb.plugins.AthanorPlugin"
 
+# This basic plugin is provided to grant a starting area if nothing else is installed.
 ATHANOR_PLUGINS = ['athanor.base_plugin']
 
 try:
@@ -302,7 +248,7 @@ except ImportError:
     pass
 
 INSTALLED_APPS = list(INSTALLED_APPS)
-INSTALLED_APPS.extend(['athanor.gamedb', 'athanor.jobs', 'athanor.traits'])
+INSTALLED_APPS.extend(['athanor.gamedb', 'athanor.traits'])
 
 import athanor
 athanor._init(ATHANOR_PLUGINS)
@@ -329,3 +275,4 @@ GLOBAL_SCRIPTS.update(athanor.SETTINGS.get("GLOBAL_SCRIPTS", dict()))
 OPTIONS_ACCOUNT_DEFAULT.update(athanor.SETTINGS.get("OPTIONS_ACCOUNT_DEFAULT", dict()))
 
 INSTALLED_APPS = tuple(INSTALLED_APPS)
+LOCK_FUNC_MODULES = tuple(LOCK_FUNC_MODULES)
