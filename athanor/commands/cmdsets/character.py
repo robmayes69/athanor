@@ -2,16 +2,12 @@ from django.conf import settings
 
 from evennia import default_cmds
 
-from athanor.commands.forum import ALL_COMMANDS as FORUM_COMMANDS
 from athanor.commands.exit_errors import ExitErrorCmdSet
-from athanor.commands.themes import CmdTheme
-from athanor.mush_import.commands import CmdPennImport
-from athanor.commands.factions import FACTION_COMMANDS
 from athanor.commands.accounts import CmdAccount
 
-USE_COMMANDS = [CmdTheme, CmdPennImport, CmdAccount]
+USE_COMMANDS = [CmdAccount]
 
-USE_LISTS = [FORUM_COMMANDS, FACTION_COMMANDS, USE_COMMANDS]
+USE_LISTS = [USE_COMMANDS]
 
 
 class AthanorCharacterCmdSet(default_cmds.CharacterCmdSet):

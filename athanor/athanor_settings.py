@@ -302,7 +302,7 @@ except ImportError:
     pass
 
 INSTALLED_APPS = list(INSTALLED_APPS)
-INSTALLED_APPS.extend(['athanor.gamedb', 'athanor.jobs', 'athanor.mush_import', 'athanor.traits'])
+INSTALLED_APPS.extend(['athanor.gamedb', 'athanor.jobs', 'athanor.traits'])
 
 import athanor
 athanor._init(ATHANOR_PLUGINS)
