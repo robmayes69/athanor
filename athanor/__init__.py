@@ -29,6 +29,7 @@ def _init(plugin_paths):
 
     for plugin_path in plugin_paths:
         plugin_module = import_module(plugin_path)
+        PLUGINS.append(plugin_module)
 
         for op in _LIST_SETTINGS:
             if op not in SETTINGS:

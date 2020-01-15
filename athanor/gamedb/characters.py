@@ -6,7 +6,7 @@ from evennia.utils.ansi import ANSIString
 
 from athanor.gamedb.objects import AthanorObject
 from athanor.entities.base import AbstractGameEntity
-from athanor.gamedb.models import CharacterBridge
+from athanor.models import CharacterBridge
 
 
 class AthanorPlayerCharacter(AthanorObject, AbstractGameEntity):

@@ -27,9 +27,16 @@ class AthanorPluginController(AthanorGlobalScript):
         self.load()
 
     def load(self):
-        self.ndb.plugins = athanor.PLUGINS
+        self.ndb.plugins = dict()
+        self.load_plugins()
         self.ndb.class_cache = defaultdict(dict)
         self.ndb.regions = dict()
+
+    def load_plugins(self):
+        for plugin_module in athanor.PLUGINS:
+            loaded_plugin = self.ndb.plugin_class(plugin_module)
+            loaded_plugin.initialize()
+            self.ndb.plugins[loaded_plugin.key] = loaded_plugin
 
     def resolve_path(self, path, plugin, kind):
         split_path = path.split('/')

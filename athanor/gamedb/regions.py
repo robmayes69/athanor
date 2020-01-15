@@ -1,6 +1,6 @@
 from athanor.gamedb.objects import AthanorObject
 from evennia.utils.utils import lazy_property
-from athanor.gamedb.models import RegionBridge, MapBridge
+from athanor.models import RegionBridge, MapBridge
 
 
 class AthanorRegion(AthanorObject):

@@ -18,18 +18,17 @@ class AthanorPlugin(object):
         self.base_yaml = dict()
         self.base = defaultdict(dict)
         self.parents = defaultdict(dict)
-        self.path = path.abspath(module.__file__)
+        self.path = path.dirname(module.__file__)
         self.data_path = path.join(self.path, 'data')
         self.SETTINGS = dict()
 
     def initialize(self):
-        if not path.exists(self.path.join('manifest.yaml')):
-            self.key = self.path.split()[1]
+        manifest_path = path.join(self.path, "manifest.yaml")
+        if not path.exists(manifest_path):
+            self.key = path.split(self.path)[1]
             return
-        found_data = self.scan_contents(self.path)
-        if 'manifest' not in found_data:
-            return
-        self.key = found_data.pop("key", self.path.split()[1])
+        found_data = self.scan_contents(self.path).get("manifest", dict())
+        self.key = found_data.pop("key", path.split(self.path)[1])
         self.SETTINGS.update(found_data)
 
     def initialize_base(self):

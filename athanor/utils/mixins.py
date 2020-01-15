@@ -1,14 +1,14 @@
 from evennia.locks.lockhandler import LockHandler
 from evennia.utils.utils import lazy_property
-from athanor.items.handlers import InventoryHandler
+from athanor.entities.handlers import ItemHandler
 
 
-class HasInventory(InventoryHandler):
+class HasInventory(object):
     default_inventory = "general"
 
     @lazy_property
     def items(self):
-        return InventoryHandler(self)
+        return ItemHandler(self)
 
 
 class HasLocks(object):

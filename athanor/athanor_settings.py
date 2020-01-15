@@ -64,7 +64,7 @@ INLINEFUNC_ENABLED = True
 AT_INITIAL_SETUP_HOOK_MODULE = "athanor.at_initial_setup"
 
 
-SERVER_SESSION_CLASS = "athanor.core.sessions.AthanorSession"
+SERVER_SESSION_CLASS = "athanor.gamedb.sessions.AthanorSession"
 
 
 # Command set used on session before account has logged in
@@ -215,10 +215,7 @@ SPECIAL_INVENTORY_CLASSES = dict()
 ######################################################################
 # RP Event Settings
 ######################################################################
-GLOBAL_SCRIPTS['roleplay'] = {
-    'typeclass': 'athanor.controller.rplogger.AthanorRoleplayController',
-    'repeats': -1, 'interval': 50, 'desc': 'Event Controller for RP Logger System'
-}
+
 
 ######################################################################
 # Misc Settings
@@ -248,7 +245,7 @@ except ImportError:
     pass
 
 INSTALLED_APPS = list(INSTALLED_APPS)
-INSTALLED_APPS.extend(['athanor.gamedb', 'athanor.traits'])
+INSTALLED_APPS.extend(['athanor'])
 
 import athanor
 athanor._init(ATHANOR_PLUGINS)
