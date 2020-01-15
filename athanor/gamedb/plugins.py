@@ -1,73 +1,40 @@
 from collections import defaultdict
 from os import path, getcwd
 from os import scandir
-import yaml
+import yaml, json
 
 
 class AthanorPlugin(object):
 
     def __init__(self, module):
-        self.key = None
+        self.key = getattr(self.module, "KEY", path.split(self.path)[1])
         self.module = module
-        self.parents_yaml = dict()
-        self.templates_yaml = dict()
-        self.maps_yaml = dict()
         self.maps = dict()
-        self.parents = defaultdict(dict)
         self.templates = defaultdict(dict)
-        self.base_yaml = dict()
-        self.base = defaultdict(dict)
-        self.parents = defaultdict(dict)
         self.path = path.dirname(module.__file__)
         self.data_path = path.join(self.path, 'data')
         self.SETTINGS = dict()
+        self.data = dict()
 
     def initialize(self):
-        manifest_path = path.join(self.path, "manifest.yaml")
-        if not path.exists(manifest_path):
-            self.key = path.split(self.path)[1]
+        if not path.exists(self.data_path):
             return
-        found_data = self.scan_contents(self.path).get("manifest", dict())
-        self.key = found_data.pop("key", path.split(self.path)[1])
-        self.SETTINGS.update(found_data)
+        self.data = self.load_data(self.data_path)
 
-    def initialize_base(self):
-        self.base_yaml = self.scan_contents(self.data_path)
-
-    def initialize_parents(self):
-        parents_path = path.join(self.data_path, 'parents')
-        if not path.isdir(parents_path):
+    def load_data(self, data_path):
+        if not path.exists(data_path):
             return
-        self.parents_yaml = self.scan_contents(parents_path)
-
-    def initialize_maps(self):
-        maps_path = path.join(self.data_path, 'maps')
-        if not path.isdir(maps_path):
-            return
-        self.maps_yaml = self.scan_folders(maps_path)
-
-    def initialize_templates(self):
-        templates_path = path.join(self.data_path, 'templates')
-        if not path.isdir(templates_path):
-            return
-        self.templates_yaml = self.scan_contents(templates_path)
-
-    def scan_contents(self, folder_path):
-        if not path.isdir(folder_path):
-            return
-        main_data = dict()
-        for f in [f for f in scandir(folder_path) if f.is_file() and f.name.lower().endswith(".yaml")]:
-            with open(f, "r") as yfile:
+        final_data = dict()
+        for node in scandir(data_path):
+            if node.is_dir():
+                final_data[node.name.lower()] = self.load_data(node)
+            elif node.is_file():
+                node_name = node.name.lower()
                 data = dict()
-                for entry in yaml.safe_load_all(yfile):
-                    data.update(entry)
-                main_data[f.name.lower().split('.', 1)[0]] = data
-        return main_data
-
-    def scan_folders(self, folder_path):
-        if not path.isdir(folder_path):
-            return
-        main_data = dict()
-        for folder in [folder for folder in scandir(folder_path) if folder.is_dir()]:
-            main_data[folder.name.lower()] = self.scan_contents(folder)
-        return main_data
+                with open(node, "r") as data_file:
+                    if node_name.endswith(".yaml"):
+                        data = yaml.safe_load_all(data_file)
+                    elif node_name.endswith(".json"):
+                        data = json.load(data_file)
+                final_data[node_name.split('.', 1)[0]] = data
+        return final_data

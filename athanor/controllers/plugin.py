@@ -1,9 +1,8 @@
-from os import path, scandir, getcwd
 from django.conf import settings
 from collections import defaultdict
 
 from evennia.utils.logger import log_trace
-from evennia.utils.utils import class_from_module
+from evennia.utils.utils import class_from_module, make_iter
 
 import athanor
 from athanor.gamedb.objects import AthanorObject
@@ -30,7 +29,10 @@ class AthanorPluginController(AthanorGlobalScript):
         self.ndb.plugins = dict()
         self.load_plugins()
         self.ndb.class_cache = defaultdict(dict)
+        self.prepare_templates()
         self.ndb.regions = dict()
+        self.prepare_maps()
+        self.load_regions()
 
     def load_plugins(self):
         for plugin_module in athanor.PLUGINS:
@@ -52,6 +54,8 @@ class AthanorPluginController(AthanorGlobalScript):
         return plugin_path, kind_path, key_path
 
     def get_class(self, kind, path):
+        if not isinstance(path, str):
+            return path
         if not path:
             return class_from_module(settings.DEFAULT_ENTITY_CLASSES[kind])
         if not (found := self.class_cache[kind].get(path, None)):
@@ -81,61 +85,50 @@ class AthanorPluginController(AthanorGlobalScript):
             raise ValueError(f"Cannot find that room_key in {found}!")
         return room
     
-    def prepare_parents(self):
-        parents_raw = dict()
+    def prepare_templates(self):
+        templates_raw = dict()
 
         for plugin in self.ndb.plugins.values():
-            plugin.initialize_parents()
-            for parent_type, parents in plugin.parents_yaml.items():
-                for parent_key, parent_data in parents.items():
-                    parents_raw[(plugin.key, parent_type, parent_key)] = parent_data
+            for template_type, templates in plugin.data.pop("old_templates", dict()).items():
+                for template_key, template_data in templates.items():
+                    templates_raw[(plugin.key, template_type, template_key)] = template_data
 
-        parents_left = set(parents_raw.keys())
+        templates_left = set(templates_raw.keys())
         loaded_set = set()
         current_count = 0
-        while len(parents_left) > 0:
+        while len(templates_left) > 0:
             start_count = current_count
-            for parent in parents_left:
-                parent_data = parents_raw[parent]
-                parent_list = parent_data.get('parents', list())
-                resolved = [self.resolve_path(parent_par, parent[0], parent[1]) for parent_par in parent_list]
+            for template in templates_left:
+                template_data = templates_raw[template]
+                template_list = make_iter(template_data.get('templates', list()))
+                resolved = [self.resolve_path(template_par, template[0], template[1]) for template_par in template_list]
                 if len(set(resolved) - loaded_set) > 0:
                     continue
                 final_data = dict()
-                for parent_par in resolved:
-                    final_data.update(parents_raw[parent_par])
-                final_data.update(parents_raw[parent])
-                final_data.pop('parents')
-                self.ndb.plugins[parent[0]].parents[parent[1]][parent[2]] = final_data
-                loaded_set.add(parent)
+                for template_par in resolved:
+                    final_data.update(templates_raw[template_par])
+                final_data.update(templates_raw[template])
+                final_data.pop('templates')
+                final_data['class'] = self.get_class(template[1], final_data.get('class', None))
+                self.ndb.plugins[template[0]].templates[template[1]][template[2]] = final_data
+                loaded_set.add(template)
                 current_count += 1
-            parents_left -= loaded_set
+            templates_left -= loaded_set
             if start_count == current_count:
-                raise ValueError(f"Unresolveable parents detected! Error for parent {parent} ! Potential endless loop broken! parents left: {parents_left}")
+                raise ValueError(f"Unresolveable old_templates detected! Error for template {template} ! Potential endless loop broken! old_templates left: {templates_left}")
 
-    def get_parent(self, plugin, kind, key):
+    def get_template(self, plugin, kind, key):
         if not (plugin := self.ndb.plugins.get(plugin, None)):
             raise ValueError(f"No such Plugin: {plugin}")
-        if not (ki := plugin.parents.get(kind, None)):
+        if not (ki := plugin.templates.get(kind, None)):
             raise ValueError(f"No Parent Kind: {plugin}/{kind}")
         if not (k := ki.get(key, None)):
             raise ValueError(f"No Parent Key: {plugin}/{kind}/{key}")
         return k
 
-    def prepare_data(self, kind, start_data, plugin, no_class=False):
-        data = dict()
-        if (parent := start_data.get('parent', None)):
-            data.update(self.get_parent(plugin, kind, parent))
-            del start_data['parent']
-        data.update(start_data)
-        if not no_class:
-            data['class'] = self.get_class(kind, start_data.pop('class', None))
-        return data
-
     def prepare_maps(self):
         for plugin_key, plugin in self.ndb.plugins.items():
-            plugin.initialize_maps()
-            for key, data in plugin.maps_yaml.items():
+            for key, data in plugin.data.pop("maps", dict()).items():
                 map_data = defaultdict(dict)
                 map_data['map'] = self.prepare_data('maps', data.get('map', dict()), plugin_key, no_class=True)
 
@@ -152,26 +145,12 @@ class AthanorPluginController(AthanorGlobalScript):
                                                                                            plugin_key)
 
                 plugin.maps[key] = map_data
-    
-    def prepare_templates(self):
-        for plugin_key, plugin in self.ndb.plugins.items():
-            plugin.initialize_templates()
-            for kind, templates in plugin.templates_yaml.items():
-                for temp_key, template_data in templates.items():
-                    plugin.templates[kind][temp_key] = self.prepare_data(kind, template_data, plugin_key)
-
-    def prepare_base(self):
-        for plugin_key, plugin in self.ndb.plugins.items():
-            plugin.initialize_base()
-            for kind, data in plugin.base_yaml.items():
-                for key, thing_data in data.items():
-                    plugin.base[kind][key] = self.prepare_data(kind, thing_data, plugin_key)
 
     def load_regions(self):
         for plugin_key, plugin in self.ndb.plugins.items():
-            for key, data in plugin.base.get('regions', dict()).items():
+            for key, data in plugin.data.pop('regions', dict()).items():
                 if not (found := AthanorRegion.objects.filter_family(region_bridge__system_key=key).first()):
-                    region_class = data.pop('class', None)
+                    region_class = self.get_class("regions", data.pop('class', None))
                     found = region_class.create_region(plugin_key, key, data)
                 else:
                     found.update_data(data)
