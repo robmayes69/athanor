@@ -285,6 +285,8 @@ IN_GAME_ERRORS = True
 ######################################################################
 # Plugins
 ######################################################################
+
+
 GLOBAL_SCRIPTS['plugin'] = {
     'typeclass': 'athanor.controllers.plugin.AthanorPluginController',
     'repeats': -1, 'interval': 50, 'desc': 'Controller for Plugin System'
@@ -292,18 +294,20 @@ GLOBAL_SCRIPTS['plugin'] = {
 
 PLUGIN_CLASS = "athanor.gamedb.plugins.AthanorPlugin"
 
-ATHANOR_PLUGINS = list()
+ATHANOR_PLUGINS = ['athanor.base_plugin']
 
 try:
-    from plugin_settings import *
+    from server.conf.plugin_settings import *
 except ImportError:
-    print("plugin_settings.py file not found or failed to import.")
+    pass
 
 INSTALLED_APPS = list(INSTALLED_APPS)
 INSTALLED_APPS.extend(['athanor.gamedb', 'athanor.jobs', 'athanor.mush_import', 'athanor.traits'])
 
 import athanor
-athanor._init(ATHANOR_PLUGINS, PLUGIN_CLASS)
+athanor._init(ATHANOR_PLUGINS)
+
+LOCK_FUNC_MODULES = list(LOCK_FUNC_MODULES)
 
 SERVER_SERVICES_PLUGIN_MODULES.extend(athanor.SETTINGS.get("SERVER_SERVICES_PLUGIN_MODULES", list()))
 PORTAL_SERVICES_PLUGIN_MODULES.extend(athanor.SETTINGS.get("PORTAL_SERVICES_PLUGIN_MODULES", list()))

@@ -18,28 +18,37 @@ class AthanorPlugin(object):
         self.base_yaml = dict()
         self.base = defaultdict(dict)
         self.parents = defaultdict(dict)
-        self.path = path.dirname(module.__file__)
+        self.path = path.abspath(module.__file__)
+        self.data_path = path.join(self.path, 'data')
+        self.SETTINGS = dict()
 
     def initialize(self):
-        pass
+        if not path.exists(self.path.join('manifest.yaml')):
+            self.key = self.path.split()[1]
+            return
+        found_data = self.scan_contents(self.path)
+        if 'manifest' not in found_data:
+            return
+        self.key = found_data.pop("key", self.path.split()[1])
+        self.SETTINGS.update(found_data)
 
     def initialize_base(self):
-        self.base_yaml = self.scan_contents(self.path)
+        self.base_yaml = self.scan_contents(self.data_path)
 
     def initialize_parents(self):
-        parents_path = path.join(self.path, 'parents')
+        parents_path = path.join(self.data_path, 'parents')
         if not path.isdir(parents_path):
             return
         self.parents_yaml = self.scan_contents(parents_path)
 
     def initialize_maps(self):
-        maps_path = path.join(self.path, 'maps')
+        maps_path = path.join(self.data_path, 'maps')
         if not path.isdir(maps_path):
             return
         self.maps_yaml = self.scan_folders(maps_path)
 
     def initialize_templates(self):
-        templates_path = path.join(self.path, 'templates')
+        templates_path = path.join(self.data_path, 'templates')
         if not path.isdir(templates_path):
             return
         self.templates_yaml = self.scan_contents(templates_path)
