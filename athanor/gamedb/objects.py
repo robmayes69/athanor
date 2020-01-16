@@ -82,8 +82,8 @@ class AthanorObject(DefaultObject, AbstractGameEntity):
             pass
 
         if isinstance(destination, str):
-            from athanor.core.engine import ATHANOR_WORLD
-            destination = ATHANOR_WORLD.resolve_room_path(destination)
+            from evennia import GLOBAL_SCRIPTS
+            destination = GLOBAL_SCRIPTS.plugin.resolve_room_path(destination)
 
         # Before the move, call eventual pre-commands.
         if move_hooks:

@@ -1,21 +1,21 @@
 limbo_room:
   northern_limbo:
-    parent: n
+    templates: n
   southern_limbo:
-    parent: s
+    templates: s
   eastern_limbo:
-    parent: e
+    templates: e
   western_limbo:
-    parent: w
+    templates: w
 northern_limbo:
   limbo_room:
-    parent: s
+    templates: s
 southern_limbo:
   limbo_room:
-    parent: n
+    templates: n
 eastern_limbo:
   limbo_room:
-    parent: w
+    templates: w
 western_limbo:
   limbo_room:
-    parent: e
+    templates: e

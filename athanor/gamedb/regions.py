@@ -5,11 +5,11 @@ from athanor.models import RegionBridge, MapBridge
 
 class AthanorRegion(AthanorObject):
 
-    def create_bridge(self, extension, key, data):
+    def create_bridge(self, plugin, key, data):
         if hasattr(self, 'region_bridge'):
             return
         RegionBridge.objects.create(object=self, system_key=key)
-        MapBridge.objects.create(object=self, extension=extension, instance_key=data.get('instance'))
+        MapBridge.objects.create(object=self, plugin=plugin, map_key=data.get('map'))
 
 
     @classmethod

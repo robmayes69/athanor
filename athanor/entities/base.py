@@ -14,7 +14,7 @@ from evennia.objects.objects import ObjectSessionHandler
 
 from athanor.utils.mixins import HasLocks, HasInventory
 from athanor.entities.handlers import GearHandler, ItemHandler, AspectHandler, KeywordHandler, LocationHandler
-from athanor.entities.handlers import LocationHandler, InstanceHandler
+from athanor.entities.handlers import LocationHandler, MapHandler
 from athanor.entities.handlers import FactionHandler, AllianceHandler, DivisionHandler
 from athanor.utils.color import green_yellow_red, red_yellow_green
 from athanor.utils.time import utcnow
@@ -58,8 +58,8 @@ class AbstractGameEntity(HasInventory):
         return AspectHandler(self)
 
     @lazy_property
-    def instance(self):
-        return InstanceHandler(self)
+    def map(self):
+        return MapHandler(self)
 
     @lazy_property
     def gear(self):
@@ -67,7 +67,7 @@ class AbstractGameEntity(HasInventory):
 
     @lazy_property
     def items(self):
-        return InventoryHandler(self)
+        return ItemHandler(self)
 
     @lazy_property
     def factions(self):

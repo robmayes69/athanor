@@ -7,11 +7,11 @@ import yaml, json
 class AthanorPlugin(object):
 
     def __init__(self, module):
-        self.key = getattr(self.module, "KEY", path.split(self.path)[1])
         self.module = module
+        self.path = path.dirname(module.__file__)
+        self.key = getattr(self.module, "KEY", path.split(self.path)[1])
         self.maps = dict()
         self.templates = defaultdict(dict)
-        self.path = path.dirname(module.__file__)
         self.data_path = path.join(self.path, 'data')
         self.SETTINGS = dict()
         self.data = dict()
@@ -33,7 +33,8 @@ class AthanorPlugin(object):
                 data = dict()
                 with open(node, "r") as data_file:
                     if node_name.endswith(".yaml"):
-                        data = yaml.safe_load_all(data_file)
+                        for entry in yaml.safe_load_all(data_file):
+                            data.update(entry)
                     elif node_name.endswith(".json"):
                         data = json.load(data_file)
                 final_data[node_name.split('.', 1)[0]] = data

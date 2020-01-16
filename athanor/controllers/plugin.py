@@ -54,7 +54,7 @@ class AthanorPluginController(AthanorGlobalScript):
         return plugin_path, kind_path, key_path
 
     def get_class(self, kind, path):
-        if not isinstance(path, str):
+        if path and not isinstance(path, str):
             return path
         if not path:
             return class_from_module(settings.DEFAULT_ENTITY_CLASSES[kind])
@@ -89,7 +89,7 @@ class AthanorPluginController(AthanorGlobalScript):
         templates_raw = dict()
 
         for plugin in self.ndb.plugins.values():
-            for template_type, templates in plugin.data.pop("old_templates", dict()).items():
+            for template_type, templates in plugin.data.pop("templates", dict()).items():
                 for template_key, template_data in templates.items():
                     templates_raw[(plugin.key, template_type, template_key)] = template_data
 
@@ -108,7 +108,8 @@ class AthanorPluginController(AthanorGlobalScript):
                 for template_par in resolved:
                     final_data.update(templates_raw[template_par])
                 final_data.update(templates_raw[template])
-                final_data.pop('templates')
+                if "templates" in final_data:
+                    del final_data['templates']
                 final_data['class'] = self.get_class(template[1], final_data.get('class', None))
                 self.ndb.plugins[template[0]].templates[template[1]][template[2]] = final_data
                 loaded_set.add(template)
@@ -117,21 +118,31 @@ class AthanorPluginController(AthanorGlobalScript):
             if start_count == current_count:
                 raise ValueError(f"Unresolveable old_templates detected! Error for template {template} ! Potential endless loop broken! old_templates left: {templates_left}")
 
-    def get_template(self, plugin, kind, key):
-        if not (plugin := self.ndb.plugins.get(plugin, None)):
-            raise ValueError(f"No such Plugin: {plugin}")
+    def get_template(self, plugin_key, kind, key):
+        if not (plugin := self.ndb.plugins.get(plugin_key, None)):
+            raise ValueError(f"No such Plugin: {plugin_key}")
         if not (ki := plugin.templates.get(kind, None)):
-            raise ValueError(f"No Parent Kind: {plugin}/{kind}")
+            raise ValueError(f"No Template Kind: {plugin_key}/{kind}")
         if not (k := ki.get(key, None)):
-            raise ValueError(f"No Parent Key: {plugin}/{kind}/{key}")
+            raise ValueError(f"No Template Key: {plugin_key}/{kind}/{key}")
         return k
+
+    def prepare_data(self, kind, start_data, plugin, no_class=False):
+        data = dict()
+        if (templates := start_data.get('templates', None)):
+            for template in make_iter(templates):
+                data.update(self.get_template(plugin, kind, template))
+            start_data.pop('templates')
+        data.update(start_data)
+        if not no_class:
+            data['class'] = self.get_class(kind, start_data.pop('class', None))
+        return data
 
     def prepare_maps(self):
         for plugin_key, plugin in self.ndb.plugins.items():
             for key, data in plugin.data.pop("maps", dict()).items():
                 map_data = defaultdict(dict)
                 map_data['map'] = self.prepare_data('maps', data.get('map', dict()), plugin_key, no_class=True)
-
                 for kind in ('areas', 'rooms', 'gateways'):
                     for thing_key, thing_data in data.get(kind, dict()).items():
                         map_data[kind][thing_key] = self.prepare_data(kind, thing_data, plugin_key)

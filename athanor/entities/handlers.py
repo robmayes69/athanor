@@ -1,4 +1,5 @@
 from django.conf import settings
+from evennia import GLOBAL_SCRIPTS
 from evennia.utils.utils import class_from_module
 from evennia.objects.objects import ObjectSessionHandler
 
@@ -212,7 +213,7 @@ class GearHandler(object):
         self.owner.items.add(entity, inv_name, run_checks=False)
 
 
-class InstanceHandler(object):
+class MapHandler(object):
 
     def __init__(self, owner):
         self.owner = owner
@@ -227,19 +228,18 @@ class InstanceHandler(object):
         return self.rooms.get(room_key, None)
 
     def load(self):
-        from athanor.core.engine import ATHANOR_WORLD
         if self.loaded:
             return
-        if not hasattr(self.owner, 'instance_bridge'):
+        if not hasattr(self.owner, 'map_bridge'):
             raise ValueError(f"{self.owner} does not support an internal map!")
-        bri = self.owner.instance_bridge
-        if not (ex := ATHANOR_WORLD.data_manager.extensions.get(bri.extension, None)):
-            raise ValueError(f"Cannot load {self.owner} map data: {bri.extension} extension not found.")
-        if not (inst := ex.instances.get(bri.instance_key, None)):
+        bri = self.owner.map_bridge
+        if not (plugin := GLOBAL_SCRIPTS.plugin.ndb.plugins.get(bri.plugin, None)):
+            raise ValueError(f"Cannot load {self.owner} map data: {bri.plugin} extension not found.")
+        if not (inst := plugin.maps.get(bri.map_key, None)):
             raise ValueError(
-                f"Cannot load {self.owner} map data: {bri.extension}/{bri.instance_key} instance not found.")
+                f"Cannot load {self.owner} map data: {bri.plugin}/{bri.map_key} map not found.")
 
-        inst_data = inst.get('instance', dict())
+        inst_data = inst.get('map', dict())
 
         for area_key, area_data in inst.get('areas', dict()).items():
             area_class = area_data.get('class')
@@ -272,13 +272,15 @@ class LocationHandler(object):
         self.z = None
 
     @property
-    def instance(self):
+    def map(self):
         if not self.room:
             return None
-        return self.room.instance
+        return self.room.handler.owner
 
     def set(self, room, save=True):
-        if room and not hasattr(room, 'instance'):
+        if isinstance(room, str):
+            room = GLOBAL_SCRIPTS.plugin.resolve_room_path(room)
+        if room and not hasattr(room, 'map'):
             return
             # raise ValueError(f"{room} is not a valid location for a game entity.")
         if room and room == self.room:
@@ -287,14 +289,14 @@ class LocationHandler(object):
         if old_room:
             old_room.entities.remove(self.owner)
             old_room.at_unregister_entity(self.owner)
-            if not room or room.instance != old_room.instance:
-                old_room.instance.entities.remove(self.owner)
-                old_room.instance.at_unregister_entity(self.owner)
+            if not room or room.handler.owner != old_room.handler.owner:
+                old_room.handler.owner.entities.remove(self.owner)
+                old_room.handler.owner.at_unregister_entity(self.owner)
         self.room = room
         if room:
-            if not old_room or old_room.instance != room.instance:
-                room.instance.entities.add(self.owner)
-                room.instance.at_register_entity(self.owner)
+            if not old_room or old_room.map != room.map:
+                room.handler.owner.entities.add(self.owner)
+                room.handler.owner.at_register_entity(self.owner)
             room.entities.add(self.owner)
             room.at_register_entity(self.owner)
         if room and save and room.fixed:
@@ -308,14 +310,14 @@ class LocationHandler(object):
         if not self.room.fixed:
             raise ValueError("Cannot save to a non-fixed room.")
         if (loc := self.owner.saved_locations.filter(name=name).first()):
-            loc.instance = self.instance
+            loc.map = self.map
             loc.room_key = self.room.unique_key
             loc.x_coordinate = self.x
             loc.y_coordinate = self.y
             loc.z_coordinate = self.z
             loc.save()
         else:
-            self.owner.saved_locations.create(name=name, instance=self.instance, room_key=self.room.unique_key,
+            self.owner.saved_locations.create(name=name, map=self.map, room_key=self.room.unique_key,
                                               x_coordinate=self.x, y_coordinate=self.y, z_coordinate=self.z)
 
     def recall(self, name="logout"):
@@ -323,7 +325,7 @@ class LocationHandler(object):
             return
         if not (loc := self.owner.saved_locations.filter(name=name).first()):
             raise ValueError(f"No saved location for {name}")
-        self.owner.move_to(loc.instance.instance.get_room(loc.room_key))
+        self.owner.move_to(loc.map.map.get_room(loc.room_key))
 
 
 class FactionHandler(object):
