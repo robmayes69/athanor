@@ -1,9 +1,9 @@
 from django.conf import settings
 from evennia import default_cmds
 
-USE_COMMANDS = []
+CMDSETS_LOADED = False
 
-USE_LISTS = [USE_COMMANDS]
+USE_LISTS = []
 
 
 class AthanorUnloggedinCmdSet(default_cmds.UnloggedinCmdSet):
@@ -21,6 +21,13 @@ class AthanorUnloggedinCmdSet(default_cmds.UnloggedinCmdSet):
         #
         # any commands you add below will overload the default ones.
         #
+        global CMDSETS_LOADED, USE_LISTS
+        if not CMDSETS_LOADED:
+            from evennia.utils.utils import class_from_module
+            for cmdset_path in settings.CMDSETS_LOGIN:
+                USE_LISTS.append(class_from_module(cmdset_path))
+            CMDSETS_LOADED = True
+
         for cmdlist in USE_LISTS:
             for cmd in cmdlist:
                 self.add(cmd)
