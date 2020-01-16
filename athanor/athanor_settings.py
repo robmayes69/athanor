@@ -273,6 +273,32 @@ CMDSETS_CHARACTER = athanor.SETTINGS.get("CMDSETS_CHARACTER", list())
 CMDSETS_LOGIN = athanor.SETTINGS.get("CMDSETS_LOGIN", list())
 CMDSETS_SESSION = athanor.SETTINGS.get("CMDSETS_SESSION", list())
 
+# The Mixins contains lists of python classes to be Added to the base Athanor ones. This is DANGEROUS TERRITORY
+# due to the complexities of Multiple Inheritance. Disclaimer here: do not add properties that conflict with others
+# as there is no way to control which plugin's mixins will take priority. Mixins are to be used sparingly and
+# only for adding unique standalone properties such as new @lazy_property handlers.
+
+# Keep in mind that ENTITY refers to AbstractGameEntity, which means anything added to it will ALSO reach
+# OBJECT.
+# Anything that affects OBJECT will also affect CHARACTER, REGION, and STRUCTURE.
+
+# REMEMBER: Multiple Inheritance == HERE BE DRAGONS
+ENTITY_MIXINS = athanor.SETTINGS.get("ENTITY_MIXINS", list())
+OBJECT_MIXINS = athanor.SETTINGS.get("OBJECT_MIXINS", list())
+CHARACTER_MIXINS = athanor.SETTINGS.get("CHARACTER_MIXINS", list())
+REGION_MIXINS = athanor.SETTINGS.get("REGION_MIXINS", list())
+ACCOUNT_MIXINS = athanor.SETTINGS.get("ACCOUNT_MIXINS", list())
+STRUCTURE_MIXINS = athanor.SETTINGS.get("STRUCTURE_MIXINS", list())
+SCRIPT_MIXINS = athanor.SETTINGS.get("SCRIPT_MIXINS", list())
+SESSION_MIXINS = athanor.SETTINGS.get("SESSION_MIXINS", list())
+
+# Remember that anything that hits MapEnt will also affect Rooms, Exits, Gateways, and Areas.
+MAPENT_MIXINS = athanor.SETTINGS.get("MAPENT_MIXINS", list())
+AREA_MIXINS = athanor.SETTINGS.get("AREA_MIXINS", list())
+ROOM_MIXINS = athanor.SETTINGS.get("ROOM_MIXINS", list())
+EXIT_MIXINS = athanor.SETTINGS.get("EXIT_MIXINS", list())
+GATEWAY_MIXINS = athanor.SETTINGS.get("GATEWAY_MIXINS", list())
+
 
 GLOBAL_SCRIPTS.update(athanor.SETTINGS.get("GLOBAL_SCRIPTS", dict()))
 OPTIONS_ACCOUNT_DEFAULT.update(athanor.SETTINGS.get("OPTIONS_ACCOUNT_DEFAULT", dict()))

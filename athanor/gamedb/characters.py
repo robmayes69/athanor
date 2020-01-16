@@ -1,15 +1,19 @@
 import re
 
 from django.conf import settings
-
+from evennia.utils.utils import class_from_module
 from evennia.utils.ansi import ANSIString
 
 from athanor.gamedb.objects import AthanorObject
-from athanor.entities.base import AbstractGameEntity
 from athanor.models import CharacterBridge
 
+CHARACTER_MIXINS = []
 
-class AthanorPlayerCharacter(AthanorObject, AbstractGameEntity):
+for mixin in settings.CHARACTER_MIXINS:
+    CHARACTER_MIXINS.append(class_from_module(mixin))
+
+
+class AthanorPlayerCharacter(*CHARACTER_MIXINS, AthanorObject):
     """
     The basic Athanor Player Character, built atop of Evennia's DefaultObject but modified to co-exist with Entities
     and exist in the Athanor Grid system.

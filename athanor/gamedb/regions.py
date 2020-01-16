@@ -1,9 +1,17 @@
+from django.conf import settings
+
+from evennia.utils.utils import lazy_property, class_from_module
+
 from athanor.gamedb.objects import AthanorObject
-from evennia.utils.utils import lazy_property
 from athanor.models import RegionBridge, MapBridge
 
+REGION_MIXINS = []
 
-class AthanorRegion(AthanorObject):
+for mixin in settings.REGION_MIXINS:
+    REGION_MIXINS.append(class_from_module(mixin))
+
+
+class AthanorRegion(*REGION_MIXINS, AthanorObject):
 
     def create_bridge(self, plugin, key, data):
         if hasattr(self, 'region_bridge'):

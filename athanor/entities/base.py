@@ -4,6 +4,7 @@ from collections import defaultdict
 
 from evennia.utils import ansi
 from evennia.utils.utils import time_format, logger, lazy_property, make_iter, to_str, is_iter, list_to_string
+from evennia.utils.utils import class_from_module
 from evennia.utils.ansi import ANSIString
 from evennia.commands.cmdsethandler import CmdSetHandler
 from evennia.locks.lockhandler import LockHandler
@@ -13,7 +14,7 @@ from evennia.commands import cmdhandler
 from evennia.objects.objects import ObjectSessionHandler
 
 from athanor.utils.mixins import HasLocks, HasInventory
-from athanor.entities.handlers import GearHandler, ItemHandler, AspectHandler, KeywordHandler, LocationHandler
+from athanor.entities.handlers import GearHandler, ItemHandler, AspectHandler, KeywordHandler
 from athanor.entities.handlers import LocationHandler, MapHandler
 from athanor.entities.handlers import FactionHandler, AllianceHandler, DivisionHandler
 from athanor.utils.color import green_yellow_red, red_yellow_green
@@ -25,7 +26,19 @@ from django.utils.translation import ugettext as _
 _PERMISSION_HIERARCHY = [p.lower() for p in settings.PERMISSION_HIERARCHY]
 
 
-class AbstractGameEntity(HasInventory):
+ENTITY_MIXINS = []
+
+for mixin in settings.ENTITY_MIXINS:
+    ENTITY_MIXINS.append(class_from_module(mixin))
+
+
+MAPENT_MIXINS = []
+
+for mixin in settings.MAPENT_MIXINS:
+    MAPENT_MIXINS.append(class_from_module(mixin))
+
+
+class AbstractGameEntity(*ENTITY_MIXINS, HasInventory):
     """
     This class is not meant to be used directly. It forms the foundation for Athanor's Entity system,
     providing new Handlers and additional hook and logics for use by both Athanor Entities and Athanor sub-classes
@@ -229,6 +242,117 @@ class AbstractGameEntity(HasInventory):
             self.gear_location.update(self)
 
 
+    def move_to(self, destination, quiet=False, emit_to_obj=None, use_destination=False, to_none=False, move_hooks=True,
+                **kwargs):
+        """
+        Re-implementation of Evennia's move_to to account for the new grid. See original documentation.
+
+        Destination MUST be in the format of:
+        1. A Room object.
+        2. None
+        3. #DBREF/room_key - For structures. example: #5/docking_bay
+        4. region_key/room_key - For example, limbo_dimension/northern_limbo
+
+        use_destination will be ignored.
+        """
+        def logerr(string="", err=None):
+            """Simple log helper method"""
+            logger.log_trace()
+            self.msg("%s%s" % (string, "" if err is None else " (%s)" % err))
+            return
+
+        errtxt = _("Couldn't perform move ('%s'). Contact an admin.")
+        if not emit_to_obj:
+            emit_to_obj = self
+
+        if not destination:
+            if to_none:
+                # immediately move to None. There can be no hooks called since
+                # there is no destination to call them with.
+                self.location = None
+                return True
+            emit_to_obj.msg(_("The destination doesn't exist."))
+            return False
+        if use_destination and hasattr(destination, 'destination'):
+            # traverse exits
+            # destination = destination.destination
+            pass
+
+        if isinstance(destination, str):
+            from evennia import GLOBAL_SCRIPTS
+            destination = GLOBAL_SCRIPTS.plugin.resolve_room_path(destination)
+
+        # Before the move, call eventual pre-commands.
+        if move_hooks:
+            try:
+                if not self.at_before_move(destination):
+                    return False
+            except Exception as err:
+                logerr(errtxt % "at_before_move()", err)
+                return False
+
+        # Save the old location
+        source_location = self.location
+
+        # Call hook on source location
+        if move_hooks and source_location:
+            try:
+                source_location.at_object_leave(self, destination)
+            except Exception as err:
+                logerr(errtxt % "at_object_leave()", err)
+                return False
+
+        if not quiet:
+            # tell the old room we are leaving
+            try:
+                self.announce_move_from(destination, **kwargs)
+            except Exception as err:
+                logerr(errtxt % "at_announce_move()", err)
+                return False
+
+        # Perform move
+        try:
+            self.location = destination
+        except Exception as err:
+            logerr(errtxt % "location change", err)
+            return False
+
+        if not quiet:
+            # Tell the new room we are there.
+            try:
+                self.announce_move_to(source_location, **kwargs)
+            except Exception as err:
+                logerr(errtxt % "announce_move_to()", err)
+                return False
+
+        if move_hooks:
+            # Perform eventual extra commands on the receiving location
+            # (the object has already arrived at this point)
+            try:
+                destination.at_object_receive(self, source_location)
+            except Exception as err:
+                logerr(errtxt % "at_object_receive()", err)
+                return False
+
+        # Execute eventual extra commands on this object after moving it
+        # (usually calling 'look')
+        if move_hooks:
+            try:
+                self.at_after_move(source_location)
+            except Exception as err:
+                logerr(errtxt % "at_after_move", err)
+                return False
+        return True
+
+    @property
+    def location(self):
+        return self.locations.room
+
+    @location.setter
+    def location(self, value):
+        self.locations.set(value)
+
+
 class AthanorGameEntity(AbstractGameEntity, HasLocks):
     """
     This class builds on AbstractGameEntity, re-implementing much of DefaultObject's features.
@@ -350,13 +474,11 @@ class AthanorGameEntity(AbstractGameEntity, HasLocks):
         __cmdset_storage_get, __cmdset_storage_set, __cmdset_storage_del
     )
 
-    @property
-    def location(self):
-        return self.locations.room
+    @lazy_property
+    def locks(self):
+        return LockHandler(self)
 
-    @location.setter
-    def location(self, value):
-        self.locations.set(value)
+
 
     @property
     def contents(self):
@@ -385,6 +507,33 @@ class AthanorGameEntity(AbstractGameEntity, HasLocks):
     @lazy_property
     def permissions(self):
         return PermissionHandler(self)
+
+    def access(
+        self, accessing_obj, access_type="read", default=False, no_superuser_bypass=False, **kwargs
+    ):
+        """
+        Determines if another object has permission to access this one.
+
+        Args:
+            accessing_obj (str): Object trying to access this one.
+            access_type (str, optional): Type of access sought.
+            default (bool, optional): What to return if no lock of
+                access_type was found
+            no_superuser_bypass (bool, optional): Turn off the
+                superuser lock bypass (be careful with this one).
+
+        Kwargs:
+            kwargs (any): Ignored, but is there to make the api
+                consistent with the object-typeclass method access, which
+                use it to feed to its hook methods.
+
+        """
+        return self.locks.check(
+            accessing_obj,
+            access_type=access_type,
+            default=default,
+            no_superuser_bypass=no_superuser_bypass,
+        )
 
     def check_permstring(self, permstring):
         if hasattr(self, "account"):
@@ -615,134 +764,6 @@ class AthanorGameEntity(AbstractGameEntity, HasLocks):
         for obj in contents:
             func(obj, **kwargs)
 
-    def move_to(self, destination, quiet=False,
-                emit_to_obj=None, use_destination=True, to_none=False, move_hooks=True,
-                **kwargs):
-        """
-        Moves this object to a new location.
-
-        Args:
-            destination (Object): Reference to the object to move to. This
-                can also be an exit object, in which case the
-                destination property is used as destination.
-            quiet (bool): If true, turn off the calling of the emit hooks
-                (announce_move_to/from etc)
-            emit_to_obj (Object): object to receive error messages
-            use_destination (bool): Default is for objects to use the "destination"
-                 property of destinations as the target to move to. Turning off this
-                 keyword allows objects to move "inside" exit objects.
-            to_none (bool): Allow destination to be None. Note that no hooks are run when
-                 moving to a None location. If you want to run hooks, run them manually
-                 (and make sure they can manage None locations).
-            move_hooks (bool): If False, turn off the calling of move-related hooks
-                (at_before/after_move etc) with quiet=True, this is as quiet a move
-                as can be done.
-
-        Kwargs:
-          Passed on to announce_move_to and announce_move_from hooks.
-
-        Returns:
-            result (bool): True/False depending on if there were problems with the move.
-                    This method may also return various error messages to the
-                    `emit_to_obj`.
-
-        Notes:
-            No access checks are done in this method, these should be handled before
-            calling `move_to`.
-
-            The `DefaultObject` hooks called (if `move_hooks=True`) are, in order:
-
-             1. `self.at_before_move(destination)` (if this returns False, move is aborted)
-             2. `source_location.at_object_leave(self, destination)`
-             3. `self.announce_move_from(destination)`
-             4. (move happens here)
-             5. `self.announce_move_to(source_location)`
-             6. `destination.at_object_receive(self, source_location)`
-             7. `self.at_after_move(source_location)`
-        """
-        def logerr(string="", err=None):
-            """Simple log helper method"""
-            logger.log_trace()
-            self.msg("%s%s" % (string, "" if err is None else " (%s)" % err))
-            return
-
-        errtxt = _("Couldn't perform move ('%s'). Contact an admin.")
-        if not emit_to_obj:
-            emit_to_obj = self
-
-        if not destination:
-            if to_none:
-                # immediately move to None. There can be no hooks called since
-                # there is no destination to call them with.
-                self.location = None
-                return True
-            emit_to_obj.msg(_("The destination doesn't exist."))
-            return False
-        if destination.destination and use_destination:
-            # traverse exits
-            destination = destination.destination
-
-        # Before the move, call eventual pre-commands.
-        if move_hooks:
-            try:
-                if not self.at_before_move(destination):
-                    return False
-            except Exception as err:
-                logerr(errtxt % "at_before_move()", err)
-                return False
-
-        # Save the old location
-        source_location = self.location
-
-        # Call hook on source location
-        if move_hooks and source_location:
-            try:
-                source_location.at_object_leave(self, destination)
-            except Exception as err:
-                logerr(errtxt % "at_object_leave()", err)
-                return False
-
-        if not quiet:
-            # tell the old room we are leaving
-            try:
-                self.announce_move_from(destination, **kwargs)
-            except Exception as err:
-                logerr(errtxt % "at_announce_move()", err)
-                return False
-
-        # Perform move
-        try:
-            self.location = destination
-        except Exception as err:
-            logerr(errtxt % "location change", err)
-            return False
-
-        if not quiet:
-            # Tell the new room we are there.
-            try:
-                self.announce_move_to(source_location, **kwargs)
-            except Exception as err:
-                logerr(errtxt % "announce_move_to()", err)
-                return False
-
-        if move_hooks:
-            # Perform eventual extra commands on the receiving location
-            # (the object has already arrived at this point)
-            try:
-                destination.at_object_receive(self, source_location)
-            except Exception as err:
-                logerr(errtxt % "at_object_receive()", err)
-                return False
-
-        # Execute eventual extra commands on this object after moving it
-        # (usually calling 'look')
-        if move_hooks:
-            try:
-                self.at_after_move(source_location)
-            except Exception as err:
-                logerr(errtxt % "at_after_move", err)
-                return False
-        return True
 
     def clear_exits(self):
         """
@@ -1719,13 +1740,13 @@ class AthanorGameEntity(AbstractGameEntity, HasLocks):
                                        mapping=location_mapping)
 
 
-class AbstractMapEntity(AthanorGameEntity):
+class AbstractMapEntity(*MAPENT_MIXINS, AthanorGameEntity):
     """
     A sub-class of AthanorGameEntity that's specialized for being chunks of the map.
     """
 
     def __init__(self, unique_key, handler, data):
-        super().__init__(data)
+        AthanorGameEntity.__init__(self, data)
         self.unique_key = unique_key
         self.handler = handler
         self.instance = handler.owner

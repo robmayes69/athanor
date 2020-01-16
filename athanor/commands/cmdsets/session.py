@@ -1,5 +1,3 @@
-from django.conf import settings
-
 from evennia import default_cmds
 
 CMDSETS_LOADED = False

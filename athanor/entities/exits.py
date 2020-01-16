@@ -1,15 +1,23 @@
-from athanor.entities.base import AbstractMapEntity
+from django.conf import settings
+from evennia.utils.utils import class_from_module
 from evennia.commands import cmdset
 from evennia.objects.objects import ExitCommand
 
+from athanor.entities.base import AbstractMapEntity
 
-class AthanorExit(AbstractMapEntity):
+EXIT_MIXINS = []
+
+for mixin in settings.AREA_MIXINS:
+    EXIT_MIXINS.append(class_from_module(mixin))
+
+
+class AthanorExit(*EXIT_MIXINS, AbstractMapEntity):
     exit_command = ExitCommand
     priority = 101
     default_inventory = 'exits'
 
     def __init__(self, destination_key, handler, data, room):
-        super().__init__(data.get("name"), handler, data)
+        AbstractMapEntity.__init__(self, data.get("name"), handler, data)
         self.location = room
         self.db_destination = self.handler.rooms.get(destination_key, None)
 

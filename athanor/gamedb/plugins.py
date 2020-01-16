@@ -1,10 +1,18 @@
 from collections import defaultdict
-from os import path, getcwd
+from os import path
 from os import scandir
 import yaml, json
 
+from django.conf import settings
+from evennia.utils.utils import class_from_module
 
-class AthanorPlugin(object):
+PLUGIN_MIXINS = []
+
+for mixin in settings.AREA_MIXINS:
+    PLUGIN_MIXINS.append(class_from_module(mixin))
+
+
+class AthanorPlugin(*PLUGIN_MIXINS):
 
     def __init__(self, module):
         self.module = module
@@ -13,13 +21,17 @@ class AthanorPlugin(object):
         self.maps = dict()
         self.templates = defaultdict(dict)
         self.data_path = path.join(self.path, 'data')
-        self.SETTINGS = dict()
         self.data = dict()
+        for mixin in PLUGIN_MIXINS:
+            mixin.__init__(self, module)
 
     def initialize(self):
         if not path.exists(self.data_path):
             return
         self.data = self.load_data(self.data_path)
+        for mixin in PLUGIN_MIXINS:
+            if hasattr(mixin, "mixin_initialize"):
+                mixin.mixin_initialize(self)
 
     def load_data(self, data_path):
         if not path.exists(data_path):

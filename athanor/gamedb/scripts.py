@@ -1,12 +1,19 @@
+from django.conf import settings
+
 from evennia import DefaultScript
 from evennia.utils.optionhandler import OptionHandler
-from evennia.utils.utils import lazy_property
+from evennia.utils.utils import lazy_property, class_from_module
 
 from athanor.utils.online import admin_accounts
-from athanor.utils.submessage import SubMessageMixin
 
 
-class AthanorScript(DefaultScript, SubMessageMixin):
+SCRIPT_MIXINS = []
+
+for mixin in settings.SCRIPT_MIXINS:
+    SCRIPT_MIXINS.append(class_from_module(mixin))
+
+
+class AthanorScript(*SCRIPT_MIXINS, DefaultScript):
     pass
 
 

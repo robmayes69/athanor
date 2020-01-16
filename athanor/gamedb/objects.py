@@ -2,13 +2,18 @@ from django.conf import settings
 from django.utils.translation import ugettext as _
 
 from evennia.objects.objects import DefaultObject
-from evennia.utils.utils import lazy_property, make_iter
+from evennia.utils.utils import lazy_property, make_iter, class_from_module
 from evennia.utils import logger
 
 from athanor.entities.base import AbstractGameEntity
 
+OBJECT_MIXINS = []
 
-class AthanorObject(DefaultObject, AbstractGameEntity):
+for mixin in settings.OBJECT_MIXINS:
+    OBJECT_MIXINS.append(class_from_module(mixin))
+
+
+class AthanorObject(*OBJECT_MIXINS, AbstractGameEntity, DefaultObject):
     """
     This is used as the new 'base' for DefaultRoom, DefaultCharacter, etc. It alters how locations and contents work.
     """
@@ -21,14 +26,6 @@ class AthanorObject(DefaultObject, AbstractGameEntity):
     @lazy_property
     def gear_location(self):
         return None
-
-    @property
-    def location(self):
-        return self.locations.room
-
-    @location.setter
-    def location(self, value):
-        self.locations.set(value)
 
     @property
     def contents(self):
@@ -45,107 +42,6 @@ class AthanorObject(DefaultObject, AbstractGameEntity):
             return self.contents
         return list(set(self.contents) - set(make_iter(exclude)))
 
-    def move_to(self, destination, quiet=False, emit_to_obj=None, use_destination=False, to_none=False, move_hooks=True,
-                **kwargs):
-        """
-        Re-implementation of Evennia's move_to to account for the new grid. See original documentation.
-
-        Destination MUST be in the format of:
-        1. A Room object.
-        2. None
-        3. #DBREF/room_key - For structures. example: #5/docking_bay
-        4. region_key/room_key - For example, limbo_dimension/northern_limbo
-
-        use_destination will be ignored.
-        """
-        def logerr(string="", err=None):
-            """Simple log helper method"""
-            logger.log_trace()
-            self.msg("%s%s" % (string, "" if err is None else " (%s)" % err))
-            return
-
-        errtxt = _("Couldn't perform move ('%s'). Contact an admin.")
-        if not emit_to_obj:
-            emit_to_obj = self
-
-        if not destination:
-            if to_none:
-                # immediately move to None. There can be no hooks called since
-                # there is no destination to call them with.
-                self.location = None
-                return True
-            emit_to_obj.msg(_("The destination doesn't exist."))
-            return False
-        if use_destination and hasattr(destination, 'destination'):
-            # traverse exits
-            # destination = destination.destination
-            pass
-
-        if isinstance(destination, str):
-            from evennia import GLOBAL_SCRIPTS
-            destination = GLOBAL_SCRIPTS.plugin.resolve_room_path(destination)
-
-        # Before the move, call eventual pre-commands.
-        if move_hooks:
-            try:
-                if not self.at_before_move(destination):
-                    return False
-            except Exception as err:
-                logerr(errtxt % "at_before_move()", err)
-                return False
-
-        # Save the old location
-        source_location = self.location
-
-        # Call hook on source location
-        if move_hooks and source_location:
-            try:
-                source_location.at_object_leave(self, destination)
-            except Exception as err:
-                logerr(errtxt % "at_object_leave()", err)
-                return False
-
-        if not quiet:
-            # tell the old room we are leaving
-            try:
-                self.announce_move_from(destination, **kwargs)
-            except Exception as err:
-                logerr(errtxt % "at_announce_move()", err)
-                return False
-
-        # Perform move
-        try:
-            self.location = destination
-        except Exception as err:
-            logerr(errtxt % "location change", err)
-            return False
-
-        if not quiet:
-            # Tell the new room we are there.
-            try:
-                self.announce_move_to(source_location, **kwargs)
-            except Exception as err:
-                logerr(errtxt % "announce_move_to()", err)
-                return False
-
-        if move_hooks:
-            # Perform eventual extra commands on the receiving location
-            # (the object has already arrived at this point)
-            try:
-                destination.at_object_receive(self, source_location)
-            except Exception as err:
-                logerr(errtxt % "at_object_receive()", err)
-                return False
-
-        # Execute eventual extra commands on this object after moving it
-        # (usually calling 'look')
-        if move_hooks:
-            try:
-                self.at_after_move(source_location)
-            except Exception as err:
-                logerr(errtxt % "at_after_move", err)
-                return False
-        return True
 
     def at_pre_puppet(self, account, session=None, **kwargs):
         """

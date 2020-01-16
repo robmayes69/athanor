@@ -1,8 +1,16 @@
 import datetime
+from django.conf import settings
+
+from evennia.utils.utils import class_from_module
 from evennia.accounts.accounts import DefaultAccount
 
+ACCOUNT_MIXINS = []
 
-class AthanorAccount(DefaultAccount):
+for mixin in settings.ACCOUNT_MIXINS:
+    ACCOUNT_MIXINS.append(class_from_module(mixin))
+
+
+class AthanorAccount(*ACCOUNT_MIXINS, DefaultAccount):
 
     def system_msg(self, text=None, system_name=None, enactor=None):
         sysmsg_border = self.options.sys_msg_border
@@ -27,5 +35,3 @@ class AthanorAccount(DefaultAccount):
             return account
         else:
             raise ValueError(errors)
-
-
