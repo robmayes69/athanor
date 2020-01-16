@@ -16,6 +16,7 @@ information.
 
 # Use the defaults from Evennia unless explicitly overridden
 from evennia.settings_default import *
+from collections import defaultdict
 
 ######################################################################
 # Evennia base server config
@@ -239,69 +240,36 @@ PLUGIN_CLASS = "athanor.gamedb.plugins.AthanorPlugin"
 # This basic plugin is provided to grant a starting area if nothing else is installed.
 ATHANOR_PLUGINS = ['athanor.base_plugin']
 
+ATHANOR_PLUGINS_LOADED = list()
+
 try:
     from server.conf.plugin_settings import *
 except ImportError:
     pass
 
-INSTALLED_APPS = list(INSTALLED_APPS)
-INSTALLED_APPS.extend(['athanor'])
 
-import athanor
-athanor._init(ATHANOR_PLUGINS)
-
-LOCK_FUNC_MODULES = list(LOCK_FUNC_MODULES)
-
-SERVER_SERVICES_PLUGIN_MODULES.extend(athanor.SETTINGS.get("SERVER_SERVICES_PLUGIN_MODULES", list()))
-PORTAL_SERVICES_PLUGIN_MODULES.extend(athanor.SETTINGS.get("PORTAL_SERVICES_PLUGIN_MODULES", list()))
-INSTALLED_APPS.extend(athanor.SETTINGS.get("INSTALLED_APPS", list()))
-LOCK_FUNC_MODULES.extend(athanor.SETTINGS.get("LOCK_FUNC_MODULES", list()))
-INPUT_FUNC_MODULES.extend(athanor.SETTINGS.get("INPUT_FUNC_MODULES", list()))
-INLINEFUNC_MODULES.extend(athanor.SETTINGS.get("INLINEFUNC_MODULES", list()))
-PROTOTYPE_MODULES.extend(athanor.SETTINGS.get("PROTOTYPE_MODULES", list()))
-PROTOTYPEFUNC_MODULES.extend(athanor.SETTINGS.get("PROTOTYPEFUNC_MODULES", list()))
-PROT_FUNC_MODULES.extend(athanor.SETTINGS.get("PROT_FUNC_MODULES", list()))
-CMDSET_PATHS.extend(athanor.SETTINGS.get("CMDSET_PATHS", list()))
-TYPECLASS_PATHS.extend(athanor.SETTINGS.get("TYPECLASS_PATHS", list()))
-OPTION_CLASS_MODULES.extend(athanor.SETTINGS.get("OPTION_CLASS_MODULES", list()))
-VALIDATOR_FUNC_MODULES.extend(athanor.SETTINGS.get("VALIDATOR_FUNC_MODULES", list()))
-BASE_BATCHPROCESS_PATHS.extend(athanor.SETTINGS.get("BASE_BATCHPROCESS_PATHS", list()))
-STATICFILES_DIRS.extend(athanor.SETTINGS.get("STATICFILES_DIRS", list()))
-
-CMDSETS_ACCOUNT = athanor.SETTINGS.get("CMDSETS_ACCOUNT", list())
-CMDSETS_CHARACTER = athanor.SETTINGS.get("CMDSETS_CHARACTER", list())
-CMDSETS_LOGIN = athanor.SETTINGS.get("CMDSETS_LOGIN", list())
-CMDSETS_SESSION = athanor.SETTINGS.get("CMDSETS_SESSION", list())
 
 # The Mixins contains lists of python classes to be Added to the base Athanor ones. This is DANGEROUS TERRITORY
 # due to the complexities of Multiple Inheritance. Disclaimer here: do not add properties that conflict with others
 # as there is no way to control which plugin's mixins will take priority. Mixins are to be used sparingly and
 # only for adding unique standalone properties such as new @lazy_property handlers.
 
-# Keep in mind that ENTITY refers to AbstractGameEntity, which means anything added to it will ALSO reach
-# OBJECT.
+# Keep in mind that BASE refers to AbstractGameEntity, which means anything added to it will ALSO reach
+# OBJECT and ENTITY.
 # Anything that affects OBJECT will also affect CHARACTER, REGION, and STRUCTURE.
 
 # REMEMBER: Multiple Inheritance == HERE BE DRAGONS
-ENTITY_MIXINS = athanor.SETTINGS.get("ENTITY_MIXINS", list())
-OBJECT_MIXINS = athanor.SETTINGS.get("OBJECT_MIXINS", list())
-CHARACTER_MIXINS = athanor.SETTINGS.get("CHARACTER_MIXINS", list())
-REGION_MIXINS = athanor.SETTINGS.get("REGION_MIXINS", list())
-ACCOUNT_MIXINS = athanor.SETTINGS.get("ACCOUNT_MIXINS", list())
-STRUCTURE_MIXINS = athanor.SETTINGS.get("STRUCTURE_MIXINS", list())
-SCRIPT_MIXINS = athanor.SETTINGS.get("SCRIPT_MIXINS", list())
-SESSION_MIXINS = athanor.SETTINGS.get("SESSION_MIXINS", list())
+MIXINS = defaultdict(list)
 
-# Remember that anything that hits MapEnt will also affect Rooms, Exits, Gateways, and Areas.
-MAPENT_MIXINS = athanor.SETTINGS.get("MAPENT_MIXINS", list())
-AREA_MIXINS = athanor.SETTINGS.get("AREA_MIXINS", list())
-ROOM_MIXINS = athanor.SETTINGS.get("ROOM_MIXINS", list())
-EXIT_MIXINS = athanor.SETTINGS.get("EXIT_MIXINS", list())
-GATEWAY_MIXINS = athanor.SETTINGS.get("GATEWAY_MIXINS", list())
+CMDSETS = defaultdict(list)
 
+INSTALLED_APPS = list(INSTALLED_APPS)
+INSTALLED_APPS.extend(['athanor'])
+LOCK_FUNC_MODULES = list(LOCK_FUNC_MODULES)
 
-GLOBAL_SCRIPTS.update(athanor.SETTINGS.get("GLOBAL_SCRIPTS", dict()))
-OPTIONS_ACCOUNT_DEFAULT.update(athanor.SETTINGS.get("OPTIONS_ACCOUNT_DEFAULT", dict()))
+import athanor, sys
+athanor._init(sys.modules[__name__])
+
 
 INSTALLED_APPS = tuple(INSTALLED_APPS)
 LOCK_FUNC_MODULES = tuple(LOCK_FUNC_MODULES)
