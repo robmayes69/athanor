@@ -116,16 +116,6 @@ OPTIONS_ACCOUNT_DEFAULT['border_color'] = ("Headers, footers, table borders, etc
 OPTIONS_ACCOUNT_DEFAULT['header_star_color'] = ("* inside Header lines.", "Color", "m")
 OPTIONS_ACCOUNT_DEFAULT['column_names_color'] = ("Table column header text.", "Color", "G")
 
-
-######################################################################
-# Command Settings
-######################################################################
-
-# Turn this on if your game uses North, Northeast, South, Southeast, In, Out, Up, Down, etc.
-# It will add default errors for when these directions are attempted but no exit
-# exists.
-DIRECTIONAL_EXIT_ERRORS = False
-
 ######################################################################
 # Channel Settings
 ######################################################################
@@ -207,19 +197,6 @@ GENDER_SUBSTITUTIONS = {
 BASE_INVENTORY_CLASS = "athanor.entities.inventory.Inventory"
 
 SPECIAL_INVENTORY_CLASSES = dict()
-
-
-######################################################################
-# RP Event Settings
-######################################################################
-
-
-######################################################################
-# Misc Settings
-######################################################################
-# Definitely want these OFF in Production.
-DEBUG = True
-IN_GAME_ERRORS = True
 
 
 ######################################################################

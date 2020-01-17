@@ -1,7 +1,6 @@
 from django.conf import settings
 
 from evennia import default_cmds
-from athanor.commands.exit_errors import ExitErrorCmdSet
 
 CMDSETS_LOADED = False
 
@@ -29,8 +28,6 @@ class AthanorCharacterCmdSet(default_cmds.CharacterCmdSet):
             from evennia.utils.utils import class_from_module
             for cmdset_path in settings.CMDSETS["CHARACTER"]:
                 USE_LISTS.append(class_from_module(cmdset_path))
-            if settings.DIRECTIONAL_EXIT_ERRORS:
-                USE_LISTS.append(ExitErrorCmdSet)
             CMDSETS_LOADED = True
 
         for cmdlist in USE_LISTS:
