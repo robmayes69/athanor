@@ -8,10 +8,15 @@ import athanor
 from athanor.gamedb.objects import AthanorObject
 from athanor.gamedb.scripts import AthanorGlobalScript
 from athanor.gamedb.plugins import AthanorPlugin
-from athanor.gamedb.regions import AthanorRegion
+from athanor_entity.gamedb.regions import AthanorRegion
 
+MIXINS = []
 
-class AthanorPluginController(AthanorGlobalScript):
+for mixin in settings.MIXINS["CONTROLLERS_PLUGIN"]:
+    MIXINS.append(class_from_module(mixin))
+MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
+
+class AthanorPluginController(*MIXINS, AthanorGlobalScript):
     system_name = 'PLUGIN'
     
     def at_start(self):
@@ -35,7 +40,7 @@ class AthanorPluginController(AthanorGlobalScript):
         self.load_regions()
 
     def load_plugins(self):
-        for plugin_module in athanor.PLUGINS:
+        for plugin_module in settings.ATHANOR_PLUGINS_LOADED:
             loaded_plugin = self.ndb.plugin_class(plugin_module)
             loaded_plugin.initialize()
             self.ndb.plugins[loaded_plugin.key] = loaded_plugin
