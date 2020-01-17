@@ -1,2 +1,1 @@
-django-helpdesk
-arango_orm
+evennia = 0.9.0

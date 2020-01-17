@@ -17,6 +17,7 @@ information.
 # Use the defaults from Evennia unless explicitly overridden
 from evennia.settings_default import *
 from collections import defaultdict
+import athanor, sys
 
 ######################################################################
 # Evennia base server config
@@ -149,11 +150,6 @@ BASE_CHARACTER_TYPECLASS = "athanor.gamedb.characters.AthanorPlayerCharacter"
 # Instead, they'll see something generic.
 NAME_DUB_SYSTEM = False
 
-
-#DEFAULT_HOME = "limbo/limbo"
-START_LOCATION = "limbo/limbo_room"
-
-
 MAX_NR_CHARACTERS = 10000
 
 GENDER_SUBSTITUTIONS = {
@@ -229,25 +225,16 @@ IN_GAME_ERRORS = True
 ######################################################################
 # Plugins
 ######################################################################
+ATHANOR_PLUGINS = []
 
-GLOBAL_SCRIPTS['plugin'] = {
-    'typeclass': 'athanor.controllers.plugin.AthanorPluginController',
-    'repeats': -1, 'interval': 50, 'desc': 'Controller for Plugin System'
-}
-
-PLUGIN_CLASS = "athanor.gamedb.plugins.AthanorPlugin"
-
-# This basic plugin is provided to grant a starting area if nothing else is installed.
-ATHANOR_PLUGINS = ['athanor.base_plugin']
-
-ATHANOR_PLUGINS_LOADED = list()
-
+# This file needs to be created if it doesn't exist. ATHANOR_PLUGINS should be imported from it, containing a list of
+# python paths to desired plugins.
 try:
     from server.conf.plugin_settings import *
 except ImportError:
     pass
 
-
+ATHANOR_PLUGINS_LOADED = list()
 
 # The Mixins contains lists of python classes to be Added to the base Athanor ones. This is DANGEROUS TERRITORY
 # due to the complexities of Multiple Inheritance. Disclaimer here: do not add properties that conflict with others
@@ -267,8 +254,11 @@ INSTALLED_APPS = list(INSTALLED_APPS)
 INSTALLED_APPS.extend(['athanor'])
 LOCK_FUNC_MODULES = list(LOCK_FUNC_MODULES)
 
-import athanor, sys
+
 athanor.load(sys.modules[__name__])
 
 INSTALLED_APPS = tuple(INSTALLED_APPS)
 LOCK_FUNC_MODULES = tuple(LOCK_FUNC_MODULES)
+
+del athanor
+del sys
