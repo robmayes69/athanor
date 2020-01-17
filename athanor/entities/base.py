@@ -26,19 +26,28 @@ from django.utils.translation import ugettext as _
 _PERMISSION_HIERARCHY = [p.lower() for p in settings.PERMISSION_HIERARCHY]
 
 
+BASE_MIXINS = []
+
+for mixin in settings.MIXINS["BASE"]:
+    BASE_MIXINS.append(class_from_module(mixin))
+BASE_MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
+
+
 ENTITY_MIXINS = []
 
-for mixin in settings.ENTITY_MIXINS:
+for mixin in settings.MIXINS["ENTITY"]:
     ENTITY_MIXINS.append(class_from_module(mixin))
+ENTITY_MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
 
 MAPENT_MIXINS = []
 
-for mixin in settings.MAPENT_MIXINS:
+for mixin in settings.MIXINS["MAPENT"]:
     MAPENT_MIXINS.append(class_from_module(mixin))
+MAPENT_MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
 
-class AbstractGameEntity(*ENTITY_MIXINS, HasInventory):
+class AbstractGameEntity(*BASE_MIXINS, HasInventory):
     """
     This class is not meant to be used directly. It forms the foundation for Athanor's Entity system,
     providing new Handlers and additional hook and logics for use by both Athanor Entities and Athanor sub-classes
@@ -353,7 +362,7 @@ class AbstractGameEntity(*ENTITY_MIXINS, HasInventory):
         self.locations.set(value)
 
 
-class AthanorGameEntity(AbstractGameEntity, HasLocks):
+class AthanorGameEntity(*ENTITY_MIXINS, HasLocks, AbstractGameEntity):
     """
     This class builds on AbstractGameEntity, re-implementing much of DefaultObject's features.
     """

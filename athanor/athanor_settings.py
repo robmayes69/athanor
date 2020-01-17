@@ -268,8 +268,7 @@ INSTALLED_APPS.extend(['athanor'])
 LOCK_FUNC_MODULES = list(LOCK_FUNC_MODULES)
 
 import athanor, sys
-athanor._init(sys.modules[__name__])
-
+athanor.load(sys.modules[__name__])
 
 INSTALLED_APPS = tuple(INSTALLED_APPS)
 LOCK_FUNC_MODULES = tuple(LOCK_FUNC_MODULES)

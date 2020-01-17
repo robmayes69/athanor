@@ -7,13 +7,14 @@ from evennia.utils import logger
 
 from athanor.entities.base import AbstractGameEntity
 
-OBJECT_MIXINS = []
+MIXINS = []
 
-for mixin in settings.OBJECT_MIXINS:
-    OBJECT_MIXINS.append(class_from_module(mixin))
+for mixin in settings.MIXINS["OBJECT"]:
+    MIXINS.append(class_from_module(mixin))
+MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
 
-class AthanorObject(*OBJECT_MIXINS, AbstractGameEntity, DefaultObject):
+class AthanorObject(*MIXINS, AbstractGameEntity, DefaultObject):
     """
     This is used as the new 'base' for DefaultRoom, DefaultCharacter, etc. It alters how locations and contents work.
     """

@@ -24,7 +24,7 @@ class AthanorUnloggedinCmdSet(default_cmds.UnloggedinCmdSet):
         global CMDSETS_LOADED, USE_LISTS
         if not CMDSETS_LOADED:
             from evennia.utils.utils import class_from_module
-            for cmdset_path in settings.CMDSETS_LOGIN:
+            for cmdset_path in settings.CMDSETS["LOGIN"]:
                 USE_LISTS.append(class_from_module(cmdset_path))
             CMDSETS_LOADED = True
 

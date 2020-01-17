@@ -27,7 +27,7 @@ class AthanorCharacterCmdSet(default_cmds.CharacterCmdSet):
         global CMDSETS_LOADED, USE_LISTS
         if not CMDSETS_LOADED:
             from evennia.utils.utils import class_from_module
-            for cmdset_path in settings.CMDSETS_CHARACTER:
+            for cmdset_path in settings.CMDSETS["CHARACTER"]:
                 USE_LISTS.append(class_from_module(cmdset_path))
             if settings.DIRECTIONAL_EXIT_ERRORS:
                 USE_LISTS.append(ExitErrorCmdSet)

@@ -28,7 +28,7 @@ class AthanorSessionCmdSet(default_cmds.SessionCmdSet):
         if not CMDSETS_LOADED:
             from django.conf import settings
             from evennia.utils.utils import class_from_module
-            for cmdset_path in settings.CMDSETS_SESSION:
+            for cmdset_path in settings.CMDSETS["SESSION"]:
                 USE_LISTS.append(class_from_module(cmdset_path))
             CMDSETS_LOADED = True
 

@@ -3,13 +3,14 @@ from evennia.server.serversession import ServerSession
 from evennia.utils.utils import class_from_module
 
 
-SESSION_MIXINS = []
+MIXINS = []
 
-for mixin in settings.SESSION_MIXINS:
-    SESSION_MIXINS.append(class_from_module(mixin))
+for mixin in settings.MIXINS["SESSION"]:
+    MIXINS.append(class_from_module(mixin))
+MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
 
-class AthanorSession(*SESSION_MIXINS, ServerSession):
+class AthanorSession(*MIXINS, ServerSession):
 
     def at_sync(self):
         super().at_sync()

@@ -7,13 +7,14 @@ from evennia.utils.utils import lazy_property, class_from_module
 from athanor.utils.online import admin_accounts
 
 
-SCRIPT_MIXINS = []
+MIXINS = []
 
-for mixin in settings.SCRIPT_MIXINS:
-    SCRIPT_MIXINS.append(class_from_module(mixin))
+for mixin in settings.MIXINS["SCRIPT"]:
+    MIXINS.append(class_from_module(mixin))
+MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
 
-class AthanorScript(*SCRIPT_MIXINS, DefaultScript):
+class AthanorScript(*MIXINS, DefaultScript):
     pass
 
 

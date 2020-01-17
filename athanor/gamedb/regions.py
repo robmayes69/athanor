@@ -5,13 +5,14 @@ from evennia.utils.utils import lazy_property, class_from_module
 from athanor.gamedb.objects import AthanorObject
 from athanor.models import RegionBridge, MapBridge
 
-REGION_MIXINS = []
+MIXINS = []
 
-for mixin in settings.REGION_MIXINS:
-    REGION_MIXINS.append(class_from_module(mixin))
+for mixin in settings.MIXINS["REGION"]:
+    MIXINS.append(class_from_module(mixin))
+MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
 
-class AthanorRegion(*REGION_MIXINS, AthanorObject):
+class AthanorRegion(*MIXINS, AthanorObject):
 
     def create_bridge(self, plugin, key, data):
         if hasattr(self, 'region_bridge'):

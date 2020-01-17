@@ -6,13 +6,14 @@ import yaml, json
 from django.conf import settings
 from evennia.utils.utils import class_from_module
 
-PLUGIN_MIXINS = []
+MIXINS = []
 
-for mixin in settings.AREA_MIXINS:
-    PLUGIN_MIXINS.append(class_from_module(mixin))
+for mixin in settings.MIXINS["PLUGIN"]:
+    MIXINS.append(class_from_module(mixin))
+MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
 
-class AthanorPlugin(*PLUGIN_MIXINS):
+class AthanorPlugin(*MIXINS):
 
     def __init__(self, module):
         self.module = module
@@ -22,14 +23,14 @@ class AthanorPlugin(*PLUGIN_MIXINS):
         self.templates = defaultdict(dict)
         self.data_path = path.join(self.path, 'data')
         self.data = dict()
-        for mixin in PLUGIN_MIXINS:
+        for mixin in MIXINS:
             mixin.__init__(self, module)
 
     def initialize(self):
         if not path.exists(self.data_path):
             return
         self.data = self.load_data(self.data_path)
-        for mixin in PLUGIN_MIXINS:
+        for mixin in MIXINS:
             if hasattr(mixin, "mixin_initialize"):
                 mixin.mixin_initialize(self)
 

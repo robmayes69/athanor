@@ -3,11 +3,12 @@ from django.conf import settings
 from evennia.utils.utils import class_from_module
 from athanor.gamedb.objects import AthanorObject
 
-STRUCTURE_MIXINS = []
+MIXINS = []
 
-for mixin in settings.STRUCTURE_MIXINS:
-    STRUCTURE_MIXINS.append(class_from_module(mixin))
+for mixin in settings.MIXINS["STRUCTURE"]:
+    MIXINS.append(class_from_module(mixin))
+MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
 
-class AthanorStructure(*STRUCTURE_MIXINS, AthanorObject):
+class AthanorStructure(*MIXINS, AthanorObject):
     pass

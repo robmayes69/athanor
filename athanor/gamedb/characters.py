@@ -7,13 +7,14 @@ from evennia.utils.ansi import ANSIString
 from athanor.gamedb.objects import AthanorObject
 from athanor.models import CharacterBridge
 
-CHARACTER_MIXINS = []
+MIXINS = []
 
-for mixin in settings.CHARACTER_MIXINS:
-    CHARACTER_MIXINS.append(class_from_module(mixin))
+for mixin in settings.MIXINS["CHARACTER"]:
+    MIXINS.append(class_from_module(mixin))
+MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
 
-class AthanorPlayerCharacter(*CHARACTER_MIXINS, AthanorObject):
+class AthanorPlayerCharacter(*MIXINS, AthanorObject):
     """
     The basic Athanor Player Character, built atop of Evennia's DefaultObject but modified to co-exist with Entities
     and exist in the Athanor Grid system.

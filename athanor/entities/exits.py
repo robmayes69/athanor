@@ -5,13 +5,14 @@ from evennia.objects.objects import ExitCommand
 
 from athanor.entities.base import AbstractMapEntity
 
-EXIT_MIXINS = []
+MIXINS = []
 
-for mixin in settings.AREA_MIXINS:
-    EXIT_MIXINS.append(class_from_module(mixin))
+for mixin in settings.MIXINS["EXIT"]:
+    MIXINS.append(class_from_module(mixin))
+MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
 
-class AthanorExit(*EXIT_MIXINS, AbstractMapEntity):
+class AthanorExit(*MIXINS, AbstractMapEntity):
     exit_command = ExitCommand
     priority = 101
     default_inventory = 'exits'

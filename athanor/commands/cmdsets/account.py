@@ -26,7 +26,7 @@ class AthanorAccountCmdSet(default_cmds.AccountCmdSet):
         if not CMDSETS_LOADED:
             from django.conf import settings
             from evennia.utils.utils import class_from_module
-            for cmdset_path in settings.CMDSETS_ACCOUNT:
+            for cmdset_path in settings.CMDSETS["ACCOUNT"]:
                 USE_LISTS.append(class_from_module(cmdset_path))
             CMDSETS_LOADED = True
 
