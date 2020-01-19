@@ -1,8 +1,8 @@
+from django.conf import settings
+from evennia.utils.utils import class_from_module
 from evennia import default_cmds
 
-CMDSETS_LOADED = False
-
-USE_LISTS = []
+CMDSETS = [class_from_module(cmdset) for cmdset in settings.CMDSETS["ACCOUNT"]]
 
 
 class AthanorAccountCmdSet(default_cmds.AccountCmdSet):
@@ -22,14 +22,7 @@ class AthanorAccountCmdSet(default_cmds.AccountCmdSet):
         #
         # any commands you add below will overload the default ones.
         #
-        global CMDSETS_LOADED, USE_LISTS
-        if not CMDSETS_LOADED:
-            from django.conf import settings
-            from evennia.utils.utils import class_from_module
-            for cmdset_path in settings.CMDSETS["ACCOUNT"]:
-                USE_LISTS.append(class_from_module(cmdset_path))
-            CMDSETS_LOADED = True
-
-        for cmdlist in USE_LISTS:
-            for cmd in cmdlist:
-                self.add(cmd)
+        for cmdset in CMDSETS:
+            if hasattr(cmdset, "setup"):
+                cmdset.setup(self)
+            self.add(cmdset)

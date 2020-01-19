@@ -15,7 +15,7 @@ def load(settings):
     plugins.sort(key=lambda x: getattr(x, "LOAD_PRIORITY", 0))
 
     for plugin in plugins:
-        if hasattr(plugin, "load"):
-            plugin.load(settings)
+        if hasattr(plugin, "init_settings"):
+            plugin.init_settings(settings)
 
     settings.ATHANOR_PLUGINS_LOADED.extend(plugins)

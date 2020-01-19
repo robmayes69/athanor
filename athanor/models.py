@@ -16,5 +16,3 @@ class CharacterBridge(SharedMemoryModel):
         verbose_name = 'Character'
         verbose_name_plural = 'Characters'
         unique_together = (('db_namespace', 'db_iname'),)
-
-
