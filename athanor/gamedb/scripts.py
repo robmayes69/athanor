@@ -6,11 +6,7 @@ from evennia.utils.utils import lazy_property, class_from_module
 
 from athanor.utils.online import admin_accounts
 
-
-MIXINS = []
-
-for mixin in settings.MIXINS["SCRIPT"]:
-    MIXINS.append(class_from_module(mixin))
+MIXINS = [class_from_module(mixin) for mixin in settings.MIXINS["SCRIPT"]]
 MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
 

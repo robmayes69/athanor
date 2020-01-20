@@ -202,6 +202,11 @@ SPECIAL_INVENTORY_CLASSES = dict()
 ######################################################################
 # Plugins
 ######################################################################
+GLOBAL_SCRIPTS['gamedata'] = {
+    'typeclass': 'athanor.controllers.gamedata.AthanorGameDataController',
+    'repeats': -1, 'interval': 50, 'desc': 'Controller for GameData System'
+}
+
 ATHANOR_PLUGINS = []
 
 # This file needs to be created if it doesn't exist. ATHANOR_PLUGINS should be imported from it, containing a list of
@@ -228,9 +233,8 @@ MIXINS = defaultdict(list)
 CMDSETS = defaultdict(list)
 
 INSTALLED_APPS = list(INSTALLED_APPS)
-INSTALLED_APPS.extend(['athanor'])
+INSTALLED_APPS.append('athanor')
 LOCK_FUNC_MODULES = list(LOCK_FUNC_MODULES)
-
 
 athanor.load(sys.modules[__name__])
 

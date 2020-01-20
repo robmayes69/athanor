@@ -6,8 +6,7 @@ from evennia.utils.utils import class_from_module, make_iter
 
 from athanor.gamedb.objects import AthanorObject
 from athanor.gamedb.scripts import AthanorGlobalScript
-from athanor_entity.datamodule import AthanorDataModule
-from athanor_entity.gamedb.regions import AthanorRegion
+from athanor.datamodule import AthanorDataModule
 
 MIXINS = [class_from_module(mixin) for mixin in settings.MIXINS["CONTROLLERS_GAMEDATA"]]
 MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
