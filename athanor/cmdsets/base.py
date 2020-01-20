@@ -23,5 +23,6 @@ class AthanorCmdSet(CmdSet):
         cls.remove_commands(other_cmdset)
 
     def at_cmdset_creation(self):
+        super().at_cmdset_creation()
         for cmd in self.to_add:
             self.add(cmd)

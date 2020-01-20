@@ -70,9 +70,9 @@ SERVER_SESSION_CLASS = "athanor.gamedb.sessions.AthanorSession"
 
 
 # Command set used on session before account has logged in
-CMDSET_UNLOGGEDIN = "athanor.commands.cmdsets.login.AthanorUnloggedinCmdSet"
+CMDSET_UNLOGGEDIN = "athanor.cmdsets.login.AthanorUnloggedinCmdSet"
 # Command set used on the logged-in session
-CMDSET_SESSION = "athanor.commands.cmdsets.session.AthanorSessionCmdSet"
+CMDSET_SESSION = "athanor.cmdsets.session.AthanorSessionCmdSet"
 
 
 ######################################################################
@@ -107,7 +107,7 @@ GLOBAL_SCRIPTS['account'] = {
 BASE_ACCOUNT_TYPECLASS = "athanor.gamedb.accounts.AthanorAccount"
 
 # Command set for accounts without a character (ooc)
-CMDSET_ACCOUNT = "athanor.commands.cmdsets.account.AthanorAccountCmdSet"
+CMDSET_ACCOUNT = "athanor.cmdsets.account.AthanorAccountCmdSet"
 
 
 OPTIONS_ACCOUNT_DEFAULT['sys_msg_border'] = ('For -=<>=-', 'Color', 'm')
@@ -132,7 +132,7 @@ GLOBAL_SCRIPTS['characters'] = {
 }
 
 # Default set for logged in account with characters (fallback)
-CMDSET_CHARACTER = "athanor.commands.cmdsets.character.AthanorCharacterCmdSet"
+CMDSET_CHARACTER = "athanor.cmdsets.character.AthanorCharacterCmdSet"
 
 BASE_CHARACTER_TYPECLASS = "athanor.gamedb.characters.AthanorPlayerCharacter"
 

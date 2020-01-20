@@ -3,6 +3,7 @@ from evennia.utils.utils import class_from_module, lazy_property
 from evennia.utils.logger import log_trace
 
 from athanor.gamedb.scripts import AthanorGlobalScript
+from athanor.gamedb.characters import AthanorPlayerCharacter
 from athanor.utils.text import partial_match
 
 class AthanorCharacterController(AthanorGlobalScript):
