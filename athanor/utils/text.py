@@ -104,12 +104,9 @@ def mxp(text="", command="", hints=""):
         return ANSIString("|lc%s|lt%s|le" % (command, command))
 
 
-RE_SPEECH = re.compile(r'(?s)"(?P<found>.*?)"')
-
-
 class Speech(object):
     """
-    This class is similar to the Evennia Msg in that it represents an entity speaking.
+    This class is used for rendering an entity's speech to other viewers.
     It is meant to render speech from a player or character. The output replicates MUSH-style
     speech from varying input. Intended output:
 
@@ -119,17 +116,23 @@ class Speech(object):
     If input = 'blah.', output = 'Character says, "Blah,"'
 
     """
+    re_speech = re.compile(r'(?s)"(?P<found>.*?)"')
     speech_dict = {':': 1, ';': 2, '|': 3, '"': 0, "'": 0}
 
-    def __init__(self, speaker=None, speech_text=None, alternate_name=None, title=None, mode='ooc', system_name=None, targets=None, rendered_text=None):
-        self.name_dict = SYSTEMS['character'].ndb.name_map
+    def __init__(self, speaker=None, speech_text=None, alternate_name=None, title=None, mode='ooc', targets=None,
+                 rendered_text=None, action_string="says", func_call="charactername", name_dict=None):
+        if name_dict is None:
+            name_dict = dict()
+        self.name_dict = name_dict
         if targets:
-            self.targets = ['$charactername(%s,%s)' % (char.id, char.key) for char in targets]
+            self.targets = [f'${func_call}({char.id},{char.key})' for char in targets]
         else:
             self.targets = []
         self.mode = mode
         self.title = title
         self.speaker = speaker
+        self.action_string = action_string
+        self.func_call = func_call
 
         if alternate_name:
             self.alternate_name = alternate_name
@@ -138,7 +141,7 @@ class Speech(object):
         else:
             self.display_name = str(speaker)
             self.alternate_name = False
-            self.markup_name = '$charactername(%s,%s)' % (speaker.id, speaker.key)
+            self.markup_name = f'${self.func_call}({speaker.id},{speaker.key})'
 
         speech_text = ANSIString(speech_text)
         speech_first = speech_text[:1]
@@ -161,13 +164,10 @@ class Speech(object):
 
     def markup_names(self, match):
         found = match.group('found')
-        return '$charactername(%s,%s)' % (self.name_dict[found.upper()], found)
+        return f'${self.func_call}({self.name_dict[found.upper()]},{found})'
 
     def __str__(self):
-        str(self)
-
-    def __unicode__(self):
-        return str(self.demarkup())
+        str(self.demarkup())
 
     def monitor_display(self, viewer=None):
         if not viewer:
@@ -176,15 +176,15 @@ class Speech(object):
             return self.render(viewer)
         return_string = None
         if self.special_format == 0:
-            return_string = '(%s)%s says, "%s"' % (self.markup_name, self.alternate_name, self.markup_string)
+            return_string = f'({self.markup_name}){self.alternate_name} {self.action_string}, "{self.markup_string}"'
         elif self.special_format == 1:
-            return_string = '(%s)%s %s' % (self.markup_name, self.alternate_name, self.markup_string)
+            return_string = f'({self.markup_name}){self.alternate_name} {self.markup_string}'
         elif self.special_format == 2:
-            return_string = '(%s)%s%s' % (self.markup_name, self.alternate_name, self.markup_string)
+            return_string = f'({self.markup_name}){self.alternate_name}{self.markup_string}'
         elif self.special_format == 3:
-            return_string = '(%s)%s' % (self.markup_name, self.markup_string)
+            return_string = f'({self.markup_name}){self.markup_string}'
         if self.title:
-            return_string = '%s %s' % (self.title, return_string)
+            return_string = f'{self.title} {return_string}'
 
         return self.colorize(return_string, viewer)
 
@@ -193,68 +193,68 @@ class Speech(object):
             return ANSIString(self.demarkup())
         return_string = None
         if self.special_format == 0:
-            return_string = '%s says, "%s|n"' % (self.markup_name, self.markup_string)
+            return_string = f'{self.markup_name} {self.action_string}, "{self.markup_string}|n"'
         elif self.special_format == 1:
-            return_string = '%s %s' % (self.markup_name, self.markup_string)
+            return_string = f'{self.markup_name} {self.markup_string}'
         elif self.special_format == 2:
-            return_string = '%s%s' % (self.markup_name, self.markup_string)
+            return_string = f'{self.markup_name}{self.markup_string}'
         elif self.special_format == 3:
             return_string = self.markup_string
         if self.title:
-            return_string = '%s %s' % (self.title, return_string)
+            return_string = f'{self.title} {return_string}'
         if self.mode == 'page' and len(self.targets) > 1:
-            pref = '(To %s)' % (', '.join(self.targets))
-            return_string = '%s %s' % (pref, return_string)
+            pref = f'(To {", ".join(self.targets)})'
+            return_string = f'{pref} {return_string}'
 
         return self.colorize(return_string, viewer)
 
     def log(self):
         return_string = None
         if self.special_format == 0:
-            return_string = '%s says, "%s|n"' % (self.markup_name, self.markup_string)
+            return_string = f'{self.markup_name} {self.action_string}, "{self.markup_string}|n"'
         elif self.special_format == 1:
-            return_string = '%s %s' % (self.markup_name, self.markup_string)
+            return_string = f'{self.markup_name} {self.markup_string}'
         elif self.special_format == 2:
-            return_string = '%s%s' % (self.markup_name, self.markup_string)
+            return_string = f'{self.markup_name}{self.markup_string}'
         elif self.special_format == 3:
             return_string = self.markup_string
         if self.title:
-            return_string = '%s %s' % (self.title, return_string)
+            return_string = f'{self.title} {return_string}'
         if self.mode == 'page' and len(self.targets) > 1:
-            pref = '(To %s)' % (', '.join(self.targets))
-            return_string = '%s %s' % (pref, return_string)
+            pref = f'(To {", ".join(self.targets)}'
+            return_string = f'{pref} {return_string}'
         return return_string
 
     def demarkup(self):
         return_string = None
         if self.special_format == 0:
-            return_string = '%s says, "%s|n"' % (self.display_name, self.speech_string)
+            return_string = f'{self.display_name} {self.action_string}, "{self.speech_string}|n"'
         elif self.special_format == 1:
-            return_string = '%s %s' % (self.display_name, self.speech_string)
+            return_string = f'{self.display_name} {self.speech_string}'
         elif self.special_format == 2:
-            return_string = '%s%s' % (self.display_name, self.speech_string)
+            return_string = f'{self.display_name}{self.speech_string}'
         elif self.special_format == 3:
             return_string = self.speech_string
         if self.title:
-            return_string = '%s %s' % (self.title, return_string)
+            return_string = f'{self.title} {return_string}'
         return ANSIString(return_string)
 
     def colorize(self, message, viewer):
-        quotes = 'quotes_%s' % self.mode
-        speech = 'speech_%s' % self.mode
+        quotes = f'quotes_{self.mode}'
+        speech = f'speech_{self.mode}'
         colors = viewer.account.ath['color'].get_settings()
         quote_color = colors[quotes].value
         speech_color = colors[speech].value
 
         def color_speech(found):
             if not quote_color and not speech_color:
-                return '"%s"' % found.group('found')
+                return f'"{found.group("found")}"'
             if quote_color and not speech_color:
-                return '|%s"|n%s|n|%s"|n' % (quote_color, found.group('found'), quote_color)
+                return f'|{quote_color}"|n{found.group("found")}|n|{quote_color}"|n'
             if speech_color and not quote_color:
-                return '"|n|%s%s|n"' % (speech_color, found.group('found'))
+                return f'"|n|{speech_color}{found.group("found")}|n"'
             if quote_color and speech_color:
-                return '|%s"|n|%s%s|n|%s"|n' % (quote_color, speech_color, found.group('found'), quote_color)
+                return f'|{quote_color}"|n|{speech_color}{found.group("found")}|n|{quote_color}"|n'
 
-        colorized_string = RE_SPEECH.sub(color_speech, message)
+        colorized_string = self.re_speech.sub(color_speech, message)
         return colorized_string
