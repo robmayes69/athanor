@@ -1,5 +1,6 @@
 from django.dispatch import Signal
 from athanor.utils.time import utcnow
+from evennia.utils.utils import lazy_property
 
 
 class EventManager(object):
@@ -29,8 +30,9 @@ EVENT_MANAGER = EventManager()
 class EventEmitter(object):
     _global_event_manager = EVENT_MANAGER
 
-    def __init__(self, *args, **kwargs):
-        self._local_event_manager = EventManager()
+    @lazy_property
+    def _local_event_manager(self):
+        return EventManager()
 
     def on_global(self, event, callback):
         return self._global_event_manager.on(self, event, callback)

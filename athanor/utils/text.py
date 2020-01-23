@@ -75,7 +75,7 @@ def penn_substitutions(input=None):
     return input
 
 
-SYSTEM_CHARACTERS = ('/','|','=',',')
+SYSTEM_CHARACTERS = ('/', '|', '=', ',')
 
 
 def sanitize_name(name, system_name):
@@ -160,7 +160,10 @@ class Speech(object):
         else:
             escape_names = [re.escape(name) for name in self.name_dict.keys()]
             all_names = '|'.join(escape_names)
-            self.markup_string = re.sub(r"(?i)\b(?P<found>%s)\b" % all_names, self.markup_names, self.speech_string)
+            if all_names:
+                self.markup_string = re.sub(r"(?i)\b(?P<found>%s)\b" % all_names, self.markup_names, self.speech_string)
+            else:
+                self.markup_string = self.speech_string
 
     def markup_names(self, match):
         found = match.group('found')
@@ -192,6 +195,9 @@ class Speech(object):
         if not viewer:
             return ANSIString(self.demarkup())
         return_string = None
+        print(self.markup_name)
+        print(self.action_string)
+        print(self.markup_string)
         if self.special_format == 0:
             return_string = f'{self.markup_name} {self.action_string}, "{self.markup_string}|n"'
         elif self.special_format == 1:
@@ -242,9 +248,11 @@ class Speech(object):
     def colorize(self, message, viewer):
         quotes = f'quotes_{self.mode}'
         speech = f'speech_{self.mode}'
-        colors = viewer.account.ath['color'].get_settings()
-        quote_color = colors[quotes].value
-        speech_color = colors[speech].value
+        #colors = viewer.account.ath['color'].get_settings()
+        #quote_color = colors[quotes].value
+        #speech_color = colors[speech].value
+        quote_color = 'r'
+        speech_color = 'y'
 
         def color_speech(found):
             if not quote_color and not speech_color:

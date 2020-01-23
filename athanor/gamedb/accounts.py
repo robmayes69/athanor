@@ -4,14 +4,21 @@ from django.conf import settings
 from evennia.utils.utils import class_from_module
 from evennia.accounts.accounts import DefaultAccount
 
-MIXINS = []
+from athanor.utils.events import EventEmitter
 
-for mixin in settings.MIXINS["ACCOUNT"]:
-    MIXINS.append(class_from_module(mixin))
+MIXINS = [class_from_module(mixin) for mixin in settings.MIXINS["ACCOUNT"]]
 MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
 
-class AthanorAccount(*MIXINS, DefaultAccount):
+class AthanorAccount(*MIXINS, DefaultAccount, EventEmitter):
+    """
+    AthanorAccount adds the EventEmitter to DefaultAccount and supports Mixins.
+    Please read Evennia's documentation for its normal API.
+
+    Triggers Global Events:
+        account_login (session): Fired whenever an account is properly authenticated.
+        account_logout (session): Triggered whenever a player leaves the game.
+    """
 
     def system_msg(self, text=None, system_name=None, enactor=None):
         sysmsg_border = self.options.sys_msg_border

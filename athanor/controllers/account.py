@@ -18,8 +18,17 @@ class AthanorAccountController(AthanorGlobalScript):
             log_trace()
             self.ndb.account_typeclass = AthanorAccount
 
+        self.update_cache()
+
+    def update_cache(self):
+        accounts = AthanorAccount.objects.filter_family()
+        self.ndb.id_map = {acc.id: acc for acc in accounts}
+        self.ndb.name_map = {acc.username.upper(): acc for acc in accounts}
+
     def create_account(self, session, username, email, password, show_password=False):
         new_account = self.ndb.account_typeclass.create_account(username=username, email=email, password=password)
+        self.ndb.id_map[new_account.id] = new_account
+        self.ndb.name_map[new_account.username.upper()] = new_account
         return new_account
 
     def rename_account(self, session, account, new_name):
