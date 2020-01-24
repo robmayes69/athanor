@@ -7,7 +7,7 @@ from evennia.utils.ansi import ANSIString
 from athanor.gamedb.objects import AthanorObject
 from athanor.models import CharacterBridge
 
-MIXINS = [class_from_module(mixin) for mixin in settings.MIXINS["CHARACTER"]]
+MIXINS = [class_from_module(mixin) for mixin in settings.GAMEDB_MIXINS["CHARACTER"]]
 MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
 

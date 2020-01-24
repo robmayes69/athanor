@@ -1,3 +1,5 @@
+from django.conf import settings
+
 from evennia.utils.utils import class_from_module, lazy_property
 from evennia.utils.logger import log_trace
 
@@ -5,8 +7,10 @@ from athanor.gamedb.scripts import AthanorGlobalScript
 from athanor.gamedb.characters import AthanorPlayerCharacter
 from athanor.utils.text import partial_match
 
+MIXINS = [class_from_module(mixin) for mixin in settings.CONTROLLER_MIXINS["CHARACTER"]]
+MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
-class AthanorCharacterController(AthanorGlobalScript):
+class AthanorCharacterController(*MIXINS, AthanorGlobalScript):
     system_name = 'CHARACTERS'
 
     def at_start(self):
@@ -22,13 +26,13 @@ class AthanorCharacterController(AthanorGlobalScript):
         self.load()
 
     def do_load(self):
-        self.on_global("character_online", self.when_character_online)
-        self.on_global("character_offline", self.when_character_offline)
+        self.on_global("character_online", self.at_character_online)
+        self.on_global("character_offline", self.at_character_offline)
 
-    def when_character_online(self, sender, **kwargs):
+    def at_character_online(self, sender, **kwargs):
         self.ndb.online.add(sender)
 
-    def when_character_offline(self, sender, **kwargs):
+    def at_character_offline(self, sender, **kwargs):
         self.ndb.online.remove(sender)
 
     def update_cache(self):

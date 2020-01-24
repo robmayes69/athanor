@@ -8,7 +8,7 @@ from athanor.gamedb.objects import AthanorObject
 from athanor.gamedb.scripts import AthanorGlobalScript
 from athanor.datamodule import AthanorDataModule
 
-MIXINS = [class_from_module(mixin) for mixin in settings.MIXINS["CONTROLLERS_GAMEDATA"]]
+MIXINS = [class_from_module(mixin) for mixin in settings.CONTROLLER_MIXINS["GAMEDATA"]]
 MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
 
@@ -28,6 +28,7 @@ class AthanorGameDataController(*MIXINS, AthanorGlobalScript):
 
     def load(self):
         self.ndb.plugins = dict()
+        self.ndb.plugins_sorted = list()
         self.load_plugins()
         self.ndb.class_cache = defaultdict(dict)
         self.prepare_templates()
@@ -40,6 +41,7 @@ class AthanorGameDataController(*MIXINS, AthanorGlobalScript):
             loaded_plugin = self.ndb.plugin_class(plugin_module)
             loaded_plugin.initialize()
             self.ndb.plugins[loaded_plugin.key] = loaded_plugin
+            self.ndb.plugins_sorted.append(loaded_plugin)
 
     def resolve_path(self, path, plugin, kind):
         split_path = path.split('/')

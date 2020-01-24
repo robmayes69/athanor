@@ -228,7 +228,71 @@ ATHANOR_PLUGINS_LOADED = list()
 # Anything that affects OBJECT will also affect CHARACTER, REGION, and STRUCTURE.
 
 # REMEMBER: Multiple Inheritance == HERE BE DRAGONS
+CONTOLLER_MIXINS = defaultdict(list)
+GAMEDB_MIXINS = defaultdict(list)
 MIXINS = defaultdict(list)
+
+# PRIVILEGES are the pieces-of-Roles that govern access to various parts of the Athanor
+# API. Privileges are auto-granted by the stated Permission. Bereft of an included Permission,
+# Developers and Superusers are assumed to have all Privileges.
+PRIVILEGES = {
+    "account_kick": {
+        "description": "Can forcibly disconnect a Player from the game.",
+        "permission": "Admin"
+    },
+    "account_ban": {
+        "description": "Has the ability to ban/unban accounts.",
+        "permission": "Admin"
+    },
+    "account_create": {
+        "description": "Is allowed to create Accounts wholesale. Does not apply to creating at login screen.",
+        "permission": "Admin"
+    },
+    "account_password": {
+        "description": "Is able to change another Account's password.",
+        "permission": "Admin"
+    },
+    "account_disable": {
+        "description": "Can indefinitely disable/shelve an account, or restore such accounts. Aka: soft deletion.",
+        "permission": "Admin"
+    },
+    "account_email": {
+        "description": "Can change an Account's email other than your own.",
+        "permission": "Admin"
+    },
+    "account_details": {
+        "description": "Can view all details for all Accounts.",
+        "permission": "Admin"
+    },
+    "character_create": {
+        "description": "Can create Characters wholesale, ignoring normal creation restrictions/procedures.",
+        "permission": "Admin"
+    },
+    "character_delete": {
+        "description": "Can delete Characters completely. Very dangerous as it may screw witht he database.",
+        "permission": "Developer"
+    },
+    "character_rename": {
+        "description": "Can rename Characters.",
+        "permission": "Admin"
+    },
+    "character_transfer": {
+        "description": "Can transfer a Character from one Account to another.",
+        "permission": "Admin"
+    },
+    "character_details": {
+        "description": "Can view all details for all Characters.",
+        "permission": "Admin"
+    },
+    "session_details": {
+        "description": "Can view all Sessions and their connection details. Can ignore Hidden Sessions.",
+        "permission": "Admin"
+    },
+    "session_kick": {
+        "description": "Can forcibly close a Session.",
+        "permission": "Admin"
+    }
+}
 
 CMDSETS = defaultdict(list)
 
