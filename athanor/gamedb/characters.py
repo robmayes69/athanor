@@ -7,10 +7,7 @@ from evennia.utils.ansi import ANSIString
 from athanor.gamedb.objects import AthanorObject
 from athanor.models import CharacterBridge
 
-MIXINS = []
-
-for mixin in settings.MIXINS["CHARACTER"]:
-    MIXINS.append(class_from_module(mixin))
+MIXINS = [class_from_module(mixin) for mixin in settings.MIXINS["CHARACTER"]]
 MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
 
@@ -18,11 +15,27 @@ class AthanorPlayerCharacter(*MIXINS, AthanorObject):
     """
     The basic Athanor Player Character, built atop of Evennia's DefaultObject but modified to co-exist with Entities
     and exist in the Athanor Grid system.
+
+    Connect/Puppet Trigger prefixes are 'object' and 'character'.
     """
     lockstring = "puppet:id({character_id}) or pid({account_id}) or perm(Developer) or pperm(Developer);delete:id({account_id}) or perm(Admin)"
     re_name = re.compile(r"(?i)^([A-Z]|[0-9]|\.|-|')+( ([A-Z]|[0-9]|\.|-|')+)*$")
+    hook_prefixes = ['object', 'character']
 
     def create_bridge(self, account, key, clean_key, namespace):
+        """
+        Creates the Django Model that will hold extra information about Player Characters.
+
+        Args:
+            account (AccountDB): The Account that owns this character.
+            key (str): The character's name, possibly including color codes.
+            clean_key (str): The character's name without color codes.
+            namespace (int or None): Characters of a matching namespace have enforced name uniqueness.
+                Enter None to disable namespace checking, but this is intended for retired/soft deleted.
+
+        Returns:
+            None
+        """
         if hasattr(self, 'character_bridge'):
             return
         CharacterBridge.objects.get_or_create(db_object=self, db_account=account, db_name=clean_key, db_cname=key,
@@ -39,7 +52,7 @@ class AthanorPlayerCharacter(*MIXINS, AthanorObject):
             account (AccountDB): The account that will own the character.
             namespace (int or None): Characters that belong to the same namespace will check for name
                 uniqueness, case insensitive. If namespace is None, then there is no integrity checking.
-            **kwargs:
+            **kwargs: Will be passed through to cls.create()
 
         Returns:
             Character (ObjectDB)
@@ -60,6 +73,15 @@ class AthanorPlayerCharacter(*MIXINS, AthanorObject):
         return character
 
     def rename(self, key):
+        """
+        Renames a character and updates all relevant fields.
+
+        Args:
+            key (str): The character's new name. Can include ANSI codes.
+
+        Returns:
+            key (ANSIString): The successful key set.
+        """
         key = ANSIString(key)
         clean_key = str(key.clean())
         if '|' in clean_key:
@@ -73,8 +95,15 @@ class AthanorPlayerCharacter(*MIXINS, AthanorObject):
         bridge.db_name = clean_key
         bridge.db_iname = clean_key.lower()
         bridge.db_cname = key
+        return key
 
     def basetype_setup(self):
+        """
+        Mostly just re-implementing DefaultCharacter's BaseType setup from Evennia.
+
+        Returns:
+            None
+        """
         AthanorObject.basetype_setup(self)
         self.locks.add(
             ";".join(["get:false()", "call:false()"])  # noone can pick up the character
@@ -85,9 +114,6 @@ class AthanorPlayerCharacter(*MIXINS, AthanorObject):
     def at_after_move(self, source_location, **kwargs):
         """
         We make sure to look around after a move.
-
         """
         if self.location.access(self, "view"):
-            self.msg(self.at_look(self.location))
-
-
+            self.msg((self.at_look(self.location), {"type": "look"}), options=None)

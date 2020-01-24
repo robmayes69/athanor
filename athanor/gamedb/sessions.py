@@ -10,7 +10,14 @@ MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 class AthanorSession(*MIXINS, ServerSession, EventEmitter):
 
     def at_sync(self):
-        super().at_sync()
+        """
+        This one's a little tricky. It will call methods on the Mixins...
+        Used as special hooks for very special plugins.
+
+        Returns:
+            None
+        """
+        ServerSession.at_sync(self)
         for mixin in MIXINS:
             if hasattr(mixin, "mixin_at_sync"):
                 mixin.mixin_at_sync(self)

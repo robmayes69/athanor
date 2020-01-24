@@ -1,5 +1,5 @@
-
 import evennia
+
 
 def sessions():
     """
@@ -20,6 +20,7 @@ def accounts():
     """
     return sorted([acc for acc in evennia.SESSION_HANDLER.all_connected_accounts()], key=lambda acc: acc.key)
 
+
 def puppets():
     """
     Uses the current online sessions to derive a list of connected characters.
@@ -27,7 +28,7 @@ def puppets():
     Returns:
         list
     """
-    characters = {session.get_puppet() for session in sessions() if session.get_puppet()}
+    characters = {puppet for session in sessions() if (puppet := session.get_puppet())}
     return sorted(list(characters), key=lambda char: char.key)
 
 

@@ -1,6 +1,7 @@
 import datetime, re, pytz
 from django.utils.timezone import utc
 
+
 def utcnow():
     """
     Simply returns a datetime of the current instant in UTC.

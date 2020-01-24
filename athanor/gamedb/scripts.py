@@ -12,6 +12,9 @@ MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
 
 class AthanorScript(*MIXINS, DefaultScript, EventEmitter):
+    """
+    Really just a Script class that accepts the Mixin framework and supports Events.
+    """
     pass
 
 
@@ -31,6 +34,13 @@ class AthanorOptionScript(AthanorScript):
 class AthanorGlobalScript(AthanorOptionScript):
     system_name = 'SYSTEM'
 
+    def alert(self, message, enactor=None):
+        for acc in admin_accounts():
+            acc.system_msg(message, system_name=self.system_name, enactor=enactor)
+
+    def msg_target(self, message, target):
+        target.msg(message, system_alert=self.system_name)
+
     @lazy_property
     def loaded(self):
         """
@@ -39,20 +49,19 @@ class AthanorGlobalScript(AthanorOptionScript):
         """
         return False
 
-    def alert(self, message, enactor=None):
-        for acc in admin_accounts():
-            acc.system_msg(message, system_name=self.system_name, enactor=enactor)
-
-    def msg_target(self, message, target):
-        target.msg(message, system_alert=self.system_name)
-
     def load(self):
+        """
+        This is a wrapper around do_load that prevents it from being called twice.
+
+        Returns:
+            None
+        """
         if self.loaded:
-           return
-        self.at_load()
+            return
+        self.do_load()
         self.loaded = True
 
-    def at_load(self):
+    def do_load(self):
         """
         Implements the actual logic of loading. Meant to be overloaded.
         """

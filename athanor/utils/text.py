@@ -195,9 +195,6 @@ class Speech(object):
         if not viewer:
             return ANSIString(self.demarkup())
         return_string = None
-        print(self.markup_name)
-        print(self.action_string)
-        print(self.markup_string)
         if self.special_format == 0:
             return_string = f'{self.markup_name} {self.action_string}, "{self.markup_string}|n"'
         elif self.special_format == 1:

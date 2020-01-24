@@ -21,15 +21,21 @@ class AthanorCharacterController(AthanorGlobalScript):
         self.update_cache()
         self.load()
 
-    def at_load(self):
-        pass
+    def do_load(self):
+        self.on_global("character_online", self.when_character_online)
+        self.on_global("character_offline", self.when_character_offline)
 
+    def when_character_online(self, sender, **kwargs):
+        self.ndb.online.add(sender)
+
+    def when_character_offline(self, sender, **kwargs):
+        self.ndb.online.remove(sender)
 
     def update_cache(self):
         chars = AthanorPlayerCharacter.objects.filter_family(character_bridge__db_namespace=0)
         self.ndb.id_map = {char.id: char for char in chars}
         self.ndb.name_map = {char.key.upper(): char for char in chars}
-        self.ndb.online = chars.exclude(db_account=None)
+        self.ndb.online = set(chars.exclude(db_account=None))
 
     def find_character(self, character):
         if isinstance(character, AthanorPlayerCharacter):

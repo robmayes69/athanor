@@ -7,9 +7,13 @@ from evennia.utils.utils import lazy_property
 _PERMISSION_HIERARCHY = [p.lower() for p in settings.PERMISSION_HIERARCHY]
 
 
-
-
 class HasLocks(object):
+    """
+    Implements the bare minimum of Evennia's Typeclass API to give any sort of class
+    access to the Lock system.
+
+    Keep in mind that for this to work, the object must have a (str) property called db_lock_storage
+    """
     lockstring = ""
 
     @lazy_property

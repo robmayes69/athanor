@@ -1,4 +1,3 @@
-from collections import defaultdict
 from os import path
 from os import scandir
 import yaml, json
@@ -11,19 +10,31 @@ MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
 
 class AthanorDataModule(*MIXINS):
+    """
+    This class is a wrapper around an imported module used for importing game data and caching it
+    for later processing.
+    """
 
     def __init__(self, module):
+        """
+        Creates the DataModule.
+
+        Args:
+            module (module): A module imported via importlib.import_module(). In short, an Athanor plugin.
+        """
         self.module = module
         self.path = path.dirname(module.__file__)
         self.key = getattr(self.module, "KEY", path.split(self.path)[1])
-        self.maps = dict()
-        self.templates = defaultdict(dict)
         self.data_path = path.join(self.path, 'data')
         self.data = dict()
-        for mixin in MIXINS:
-            mixin.__init__(self, module)
 
     def initialize(self):
+        """
+        Loads data from the DataModule's "data" directory and calls extra processors.
+
+        Returns:
+            None
+        """
         if not path.exists(self.data_path):
             return
         self.data = self.load_data(self.data_path)
@@ -32,6 +43,16 @@ class AthanorDataModule(*MIXINS):
                 mixin.mixin_initialize(self)
 
     def load_data(self, data_path):
+        """
+        This recursively scans the "data" directory for directories and YAML/JSON files,
+        creating a dictionary from the results.
+
+        Args:
+            data_path (Path): The directory to begin scanning.
+
+        Returns:
+            final_data (dict): The obtained data.
+        """
         if not path.exists(data_path):
             return
         final_data = dict()

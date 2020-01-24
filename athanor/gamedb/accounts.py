@@ -16,8 +16,10 @@ class AthanorAccount(*MIXINS, DefaultAccount, EventEmitter):
     Please read Evennia's documentation for its normal API.
 
     Triggers Global Events:
-        account_login (session): Fired whenever an account is properly authenticated.
-        account_logout (session): Triggered whenever a player leaves the game.
+        account_connect (session): Fired whenever a Session authenticates to this account.
+        account_disconnect (session): Triggered whenever a Session disconnects from this account.
+        account_online (session): Fired whenever an account comes online from being completely offline.
+        account_offline (session): Triggered when an account's final session closes.
     """
 
     def system_msg(self, text=None, system_name=None, enactor=None):
@@ -43,3 +45,15 @@ class AthanorAccount(*MIXINS, DefaultAccount, EventEmitter):
             return account
         else:
             raise ValueError(errors)
+
+    def at_post_disconnect(self, **kwargs):
+        super().at_post_disconnect(**kwargs)
+        self.emit_global("account_disconnect")
+        if not self.sessions.all():
+            self.emit_global("account_offline")
+
+    def at_post_login(self, session=None, **kwargs):
+        super().at_post_login(session, **kwargs)
+        self.emit_global("account_connect", session=session)
+        if len(self.sessions.all()) == 1:
+            self.emit_global("account_online", session=session)

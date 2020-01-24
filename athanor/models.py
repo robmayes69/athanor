@@ -3,6 +3,10 @@ from evennia.typeclasses.models import SharedMemoryModel
 
 
 class CharacterBridge(SharedMemoryModel):
+    """
+    A Django Model for storing data particular to Player Characters. Mostly a unique namespace enforce.
+    It also tracks which Account a character belongs to.
+    """
     db_object = models.OneToOneField('objects.ObjectDB', related_name='character_bridge', primary_key=True,
                                      on_delete=models.CASCADE)
     db_name = models.CharField(max_length=255, null=False, blank=False)

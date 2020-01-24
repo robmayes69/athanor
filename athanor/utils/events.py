@@ -1,3 +1,4 @@
+from collections import defaultdict
 from django.dispatch import Signal
 from athanor.utils.time import utcnow
 from evennia.utils.utils import lazy_property
@@ -6,11 +7,9 @@ from evennia.utils.utils import lazy_property
 class EventManager(object):
 
     def __init__(self):
-        self.events = dict()
+        self.events = defaultdict(Signal)
 
     def get_event(self, event):
-        if event not in self.events.keys():
-            self.events[event] = Signal()
         return self.events[event]
 
     def on(self, obj, event, callback):
