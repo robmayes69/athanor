@@ -2,6 +2,7 @@
 Core of the Athanor API.
 
 """
+CONTROLLER_MANAGER = None
 
 
 def load(settings):

@@ -64,7 +64,7 @@ WEBSOCKET_ENABLED = True
 INLINEFUNC_ENABLED = True
 
 AT_INITIAL_SETUP_HOOK_MODULE = "athanor.at_initial_setup"
-
+AT_SERVER_STARTSTOP_MODULE = "athanor.at_server_startstop"
 
 SERVER_SESSION_CLASS = "athanor.gamedb.sessions.AthanorSession"
 
@@ -73,6 +73,24 @@ SERVER_SESSION_CLASS = "athanor.gamedb.sessions.AthanorSession"
 CMDSET_UNLOGGEDIN = "athanor.cmdsets.login.AthanorUnloggedinCmdSet"
 # Command set used on the logged-in session
 CMDSET_SESSION = "athanor.cmdsets.session.AthanorSessionCmdSet"
+
+
+
+######################################################################
+# Controllers
+######################################################################
+CONTROLLER_MANAGER_CLASS = "athanor.controllers.base.ControllerManager"
+BASE_CONTROLLER_CLASS = "athanor.controlers.base.AthanorController"
+
+CONTROLLERS = dict()
+
+
+######################################################################
+# Game Data System
+######################################################################
+CONTROLLERS['gamedata'] = {
+    'class': 'athanor.controllers.gamedata.AthanorGameDataController',
+}
 
 
 ######################################################################
@@ -99,9 +117,8 @@ DEFAULT_ENTITY_CLASSES = {
 ######################################################################
 # Account Options
 ######################################################################
-GLOBAL_SCRIPTS['account'] = {
-    'typeclass': 'athanor.controllers.account.AthanorAccountController',
-    'repeats': -1, 'interval': 50, 'desc': 'Controller for Account System'
+CONTROLLERS['account'] = {
+    'class': 'athanor.controllers.account.AthanorAccountController',
 }
 
 BASE_ACCOUNT_TYPECLASS = "athanor.gamedb.accounts.AthanorAccount"
@@ -116,19 +133,12 @@ OPTIONS_ACCOUNT_DEFAULT['border_color'] = ("Headers, footers, table borders, etc
 OPTIONS_ACCOUNT_DEFAULT['header_star_color'] = ("* inside Header lines.", "Color", "m")
 OPTIONS_ACCOUNT_DEFAULT['column_names_color'] = ("Table column header text.", "Color", "G")
 
-######################################################################
-# Channel Settings
-######################################################################
-#BASE_CHANNEL_TYPECLASS = "typeclasses.channels.Channel"
-
-#CHANNEL_COMMAND_CLASS = "evennia.comms.channelhandler.ChannelCommand"
 
 ######################################################################
 # Character Settings
 ######################################################################
-GLOBAL_SCRIPTS['characters'] = {
-    'typeclass': 'athanor.controllers.character.AthanorCharacterController',
-    'repeats': -1, 'interval': 50, 'desc': 'Controller for Character System'
+CONTROLLERS['characters'] = {
+    'class': 'athanor.controllers.character.AthanorCharacterController',
 }
 
 # Default set for logged in account with characters (fallback)
@@ -202,11 +212,6 @@ SPECIAL_INVENTORY_CLASSES = dict()
 ######################################################################
 # Plugins
 ######################################################################
-GLOBAL_SCRIPTS['gamedata'] = {
-    'typeclass': 'athanor.controllers.gamedata.AthanorGameDataController',
-    'repeats': -1, 'interval': 50, 'desc': 'Controller for GameData System'
-}
-
 ATHANOR_PLUGINS = []
 
 # This file needs to be created if it doesn't exist. ATHANOR_PLUGINS should be imported from it, containing a list of
@@ -228,14 +233,20 @@ ATHANOR_PLUGINS_LOADED = list()
 # Anything that affects OBJECT will also affect CHARACTER, REGION, and STRUCTURE.
 
 # REMEMBER: Multiple Inheritance == HERE BE DRAGONS
-CONTOLLER_MIXINS = defaultdict(list)
+CONTROLLER_MIXINS = defaultdict(list)
 GAMEDB_MIXINS = defaultdict(list)
 MIXINS = defaultdict(list)
+
+# This is the Evennia Permission used as a fallback for deciding who can grant roles,
+# if the role itself does not define a Permission.
+ACCOUNT_ROLE_PERMISSION = "Developer"
 
 # PRIVILEGES are the pieces-of-Roles that govern access to various parts of the Athanor
 # API. Privileges are auto-granted by the stated Permission. Bereft of an included Permission,
 # Developers and Superusers are assumed to have all Privileges.
-PRIVILEGES = {
+PRIVILEGES = defaultdict(dict)
+
+PRIVILEGES["ACCOUNT"] = {
     "account_kick": {
         "description": "Can forcibly disconnect a Player from the game.",
         "permission": "Admin"

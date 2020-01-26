@@ -1,10 +1,11 @@
 import datetime
 from django.conf import settings
 
-from evennia.utils.utils import class_from_module
+from evennia.utils.utils import class_from_module, lazy_property
 from evennia.accounts.accounts import DefaultAccount
 
 from athanor.utils.events import EventEmitter
+from athanor.gamedb.handlers import RoleHandler, PrivilegeHandler
 
 MIXINS = [class_from_module(mixin) for mixin in settings.GAMEDB_MIXINS["ACCOUNT"]]
 MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
@@ -57,3 +58,11 @@ class AthanorAccount(*MIXINS, DefaultAccount, EventEmitter):
         self.emit_global("account_connect", session=session)
         if len(self.sessions.all()) == 1:
             self.emit_global("account_online", session=session)
+
+    @lazy_property
+    def privileges(self):
+        return PrivilegeHandler(self, "ACCOUNT")
+
+    @lazy_property
+    def roles(self):
+        return RoleHandler(self)

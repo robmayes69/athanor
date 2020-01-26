@@ -70,3 +70,6 @@ class AthanorDataModule(*MIXINS):
                         data = json.load(data_file)
                 final_data[node_name.split('.', 1)[0]] = data
         return final_data
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__}: {self.key}>"
