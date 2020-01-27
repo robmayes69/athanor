@@ -158,6 +158,10 @@ BASE_CHARACTER_TYPECLASS = "athanor.gamedb.characters.AthanorPlayerCharacter"
 # Instead, they'll see something generic.
 NAME_DUB_SYSTEM = False
 
+######################################################################
+# Room Settings
+######################################################################
+BASE_ROOM_TYPECLASS = "athanor.gamedb.objects.AthanorRoom"
 
 ######################################################################
 # Plugins
