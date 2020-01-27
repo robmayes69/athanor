@@ -21,3 +21,21 @@ class AthanorSession(*MIXINS, ServerSession, EventEmitter):
         for mixin in MIXINS:
             if hasattr(mixin, "mixin_at_sync"):
                 mixin.mixin_at_sync(self)
+
+    def generate_substitutions(self, viewer):
+        return {
+            "name": str(self),
+            "address": self.address
+        }
+
+    def system_msg(self, text=None, system_name=None, enactor=None):
+        sysmsg_border = settings.OPTIONS_ACCOUNT_DEFAULT.get('sys_msg_border')[2]
+        sysmsg_text = settings.OPTIONS_ACCOUNT_DEFAULT.get('sys_msg_text')[2]
+        formatted_text = f"|{sysmsg_border}-=<|n|{sysmsg_text}{system_name.upper()}|n|{sysmsg_border}>=-|n {text}"
+        self.msg(text=formatted_text, system_name=system_name, original_text=text)
+
+    def __str__(self):
+        account = self.get_account()
+        puppet = self.get_puppet()
+        address = self.address
+        return f"{account.username if account else 'None'}:{puppet.key if puppet else 'None'}@{address}"

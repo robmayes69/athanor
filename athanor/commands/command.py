@@ -1,14 +1,17 @@
 from evennia.commands.default.muxcommand import MuxCommand
-from evennia.utils.search import object_search
-from athanor.gamedb.characters import AthanorPlayerCharacter
 from evennia.utils.utils import lazy_property
+from evennia.utils.search import object_search
 
 import athanor
 
 
 class AthanorCommand(MuxCommand):
     locks = 'cmd:all();admin:perm(Admin)'
-    controllers = athanor.CONTROLLER_MANAGER
+    system_name = None
+
+    @property
+    def controllers(self):
+        return athanor.CONTROLLER_MANAGER
 
     @lazy_property
     def _column_color(self):
@@ -40,17 +43,6 @@ class AthanorCommand(MuxCommand):
             self.msg(f"ERROR: {str(err)}")
             return
 
-    def search_characters(self, name, exact=False):
-        return object_search(name, exact=exact, candidates=AthanorPlayerCharacter.objects.filter_family())
-
-    def search_one_character(self, name, exact=False):
-        results = self.search_characters(name, exact)
-        if not results:
-            raise ValueError(f"Cannot locate character named {name}!")
-        if len(results) == 1:
-            return results[0]
-        raise ValueError(f"That matched: {results}")
-
     def sys_msg(self, msg, target=None):
         if not target:
             target = self.caller
@@ -58,3 +50,33 @@ class AthanorCommand(MuxCommand):
 
     def error(self, msg, target=None):
         self.sys_msg(f"ERROR: {msg}", target=target)
+
+    def parse(self):
+        super().parse()
+        self.argscomma = [arg.strip() for arg in self.args.split(',')]
+
+    def select_character(self, char_name, exact=False):
+        """
+        Select a character owned by the Account using this command.
+
+        Args:
+            char_name (str): The character name to search for.
+            exact (bool): Search using exact name or not.
+
+        Returns:
+            discovered character (AthanorPlayerCharacter)
+        """
+        if not self.account:
+            raise ValueError("Must be logged in to use this feature!")
+        candidates = self.controllers.get('character').all().filter(character_bridge__db_account=self.account,
+                                                                   character_bridge__db_namespace=0)
+        if not candidates:
+            raise ValueError("No characters to select from!")
+
+        results = object_search(char_name, exact=exact, candidates=candidates)
+
+        if not results:
+            raise ValueError(f"Cannot locate character named {char_name}!")
+        if len(results) == 1:
+            return results[0]
+        raise ValueError(f"That matched: {results}")

@@ -1,11 +1,20 @@
+from django.conf import settings
 from athanor.commands.command import AthanorCommand
 
 
-class CmdAccount(AthanorCommand):
-
-    key = '@account'
+class AdministrationCommand(AthanorCommand):
     help_category = "Administration"
-    switch_options = ('list', 'create', 'disable', 'enable', 'rename', 'ban', 'password', 'email', 'addperm', 'delperm')
+
+
+class CmdAccount(AdministrationCommand):
+    """
+    Coming soon!
+    """
+    key = '@account'
+    locks = "cmd:pperm(Helper)"
+    switch_options = ('list', 'create', 'disable', 'enable', 'rename', 'ban', 'password', 'email', 'addperm',
+                      'delperm', 'examine')
+    account_caller = True
 
     def switch_main(self):
         pass
@@ -53,4 +62,169 @@ class CmdAccount(AthanorCommand):
         pass
 
     def switch_delperm(self):
+        pass
+
+
+class CmdCharacter(AdministrationCommand):
+    """
+    Help coming soon.
+    """
+    key = '@character'
+    locks = "cmd:pperm(Helper)"
+    switch_options = ('list', 'search', 'enable', 'disable', 'shelf', 'unshelf', 'ban', 'unban', 'lock',
+                      'typeclass', 'status', 'puppet', 'cost', 'create', 'account', 'shelved', 'examine')
+
+    def switch_main(self):
+        pass
+
+    def switch_search(self):
+        pass
+
+    def switch_enable(self):
+        pass
+
+    def switch_disable(self):
+        pass
+
+    def switch_shelf(self):
+        pass
+
+    def switch_unshelf(self):
+        pass
+
+    def switch_ban(self):
+        pass
+
+    def switch_unban(self):
+        pass
+
+    def switch_lock(self):
+        pass
+
+    def switch_status(self):
+        pass
+
+    def switch_typeclass(self):
+        pass
+
+    def switch_puppet(self):
+        pass
+
+    def switch_cost(self):
+        pass
+
+    def switch_create(self):
+        pass
+
+    def switch_account(self):
+        pass
+
+    def switch_shelved(self):
+        pass
+
+
+class CmdAccRename(AdministrationCommand):
+    """
+    Change your Username!
+
+    Usage:
+        @username <new name>
+    """
+    key = '@username'
+    locks = 'cmd:%s' % 'pperm(Admin)' if settings.RESTRICTED_ACCOUNT_RENAME else 'all()'
+    account_caller = True
+
+    def switch_main(self):
+        self.controllers.get('account').rename_account(self.session, self.caller, self.args, ignore_priv=True)
+
+
+class CmdAccEmail(AdministrationCommand):
+    """
+    Change your Account Email address!
+
+    Usage:
+        @email <new email>
+    """
+    key = '@email'
+    locks = 'cmd:%s' % 'pperm(Admin)' if settings.RESTRICTED_ACCOUNT_EMAIL else 'all()'
+    account_caller = True
+
+    def switch_main(self):
+        self.controllers.get('account').change_email(self.session, self.caller, self.args, ignore_priv=True)
+
+
+class CmdAccPassword(AdministrationCommand):
+    """
+    Change your login password!
+
+    Usage:
+        @password <old>=<new>
+    """
+    key = '@password'
+    locks = 'cmd:%s' % 'pperm(Admin)' if settings.RESTRICTED_ACCOUNT_PASSWORD else 'all()'
+    account_caller = True
+
+    def switch_main(self):
+        if not self.rhs and self.lhs:
+            raise ValueError(f"Usage: @password <old>=<new>")
+        self.controllers.get('account').reset_password(self.session, self.caller, self.rhs, ignore_priv=True,
+                                                       old_password=self.lhs)
+
+
+class CmdCharCreate(AdministrationCommand):
+    key = '@charcreate'
+    locks = 'cmd:%s' % 'pperm(Admin)' if settings.RESTRICTED_CHARACTER_CREATION else 'all()'
+    account_caller = True
+
+    def switch_main(self):
+        self.controllers.get('character').create_character(self.session, self.caller, self.args, ignore_priv=True)
+
+
+class CmdCharRename(AdministrationCommand):
+    key = "@charrename"
+    locks = 'cmd:%s' % 'pperm(Admin)' if settings.RESTRICTED_CHARACTER_RENAME else 'all()'
+    account_caller = True
+
+    def switch_main(self):
+        character = self.select_character(self.lhs)
+        self.controllers.get('character').rename_character(self.session, character, self.rhs)
+
+
+class CmdCharDelete(AdministrationCommand):
+    key = '@chardelete'
+    locks = 'cmd:%s' % 'pperm(Admin)' if settings.RESTRICTED_CHARACTER_DELETION else 'all()'
+    account_caller = True
+
+    def switch_main(self):
+        character = self.select_character(self.lhs)
+        self.controllers.get('character').delete_character(self.session, character, self.rhs, ignore_priv=True)
+
+
+class CmdCharPuppet(AdministrationCommand):
+    key = "@ic"
+    locks = "cmd:all()"
+    account_caller = True
+
+    def switch_main(self):
+        character = self.select_character(self.lhs)
+        self.caller.puppet_object(self.session, character)
+
+
+class CmdCharUnpuppet(AdministrationCommand):
+    key = "@ooc"
+    locks = "cmd:all()"
+    account_caller = True
+
+    def switch_main(self):
+        if not (character := self.session.get_puppet()):
+            raise ValueError("Can only use this while @ic!")
+        self.caller.unpuppet_object(self.session)
+
+
+class CmdOOCLook(AdministrationCommand):
+    key = "look"
+    aliases = ('l')
+    account_caller = True
+
+    def switch_main(self):
         pass

@@ -133,13 +133,22 @@ OPTIONS_ACCOUNT_DEFAULT['border_color'] = ("Headers, footers, table borders, etc
 OPTIONS_ACCOUNT_DEFAULT['header_star_color'] = ("* inside Header lines.", "Color", "m")
 OPTIONS_ACCOUNT_DEFAULT['column_names_color'] = ("Table column header text.", "Color", "G")
 
+RESTRICTED_ACCOUNT_RENAME = False
+RESTRICTED_ACCOUNT_EMAIL = False
+RESTRICTED_ACCOUNT_PASSWORD = False
 
 ######################################################################
 # Character Settings
 ######################################################################
-CONTROLLERS['characters'] = {
+CONTROLLERS['character'] = {
     'class': 'athanor.controllers.character.AthanorCharacterController',
 }
+
+# These restrict a player's ability to create/modify their own characters.
+# If True, only staff can perform these operations (if allowed by the privileges system)
+RESTRICTED_CHARACTER_CREATION = False
+RESTRICTED_CHARACTER_DELETION = False
+RESTRICTED_CHARACTER_RENAME = False
 
 # Default set for logged in account with characters (fallback)
 CMDSET_CHARACTER = "athanor.cmdsets.character.AthanorCharacterCmdSet"
@@ -212,6 +221,8 @@ SPECIAL_INVENTORY_CLASSES = dict()
 ######################################################################
 # Plugins
 ######################################################################
+GAMEDATA_MODULE_CLASS = "athanor.datamodule.AthanorDataModule"
+
 ATHANOR_PLUGINS = []
 
 # This file needs to be created if it doesn't exist. ATHANOR_PLUGINS should be imported from it, containing a list of
@@ -310,6 +321,7 @@ CMDSETS = defaultdict(list)
 INSTALLED_APPS = list(INSTALLED_APPS)
 INSTALLED_APPS.append('athanor')
 LOCK_FUNC_MODULES = list(LOCK_FUNC_MODULES)
+LOCK_FUNC_MODULES.append("athanor.lockfuncs")
 
 athanor.load(sys.modules[__name__])
 

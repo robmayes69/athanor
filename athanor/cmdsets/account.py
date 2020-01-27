@@ -1,6 +1,8 @@
 from django.conf import settings
 from evennia.utils.utils import class_from_module
 from evennia import default_cmds
+from evennia.commands.default import account, admin, building
+from athanor.commands import accounts as ath_account
 
 CMDSETS = [class_from_module(cmdset) for cmdset in settings.CMDSETS["ACCOUNT"]]
 
@@ -22,6 +24,28 @@ class AthanorAccountCmdSet(default_cmds.AccountCmdSet):
         #
         # any commands you add below will overload the default ones.
         #
+        self.remove(account.CmdCharCreate)
+        self.remove(account.CmdCharDelete)
+        self.remove(account.CmdIC)
+        self.remove(account.CmdOOC)
+        self.remove(account.CmdOOCLook)
+        self.remove(admin.CmdNewPassword)
+        #self.remove(building.CmdExamine)
+
+        self.add(ath_account.CmdAccount)
+        self.add(ath_account.CmdCharacter)
+
+        self.add(ath_account.CmdAccRename)
+        self.add(ath_account.CmdAccEmail)
+        self.add(ath_account.CmdAccPassword)
+
+        self.add(ath_account.CmdCharCreate)
+        self.add(ath_account.CmdCharDelete)
+        self.add(ath_account.CmdCharRename)
+        self.add(ath_account.CmdCharPuppet)
+        self.add(ath_account.CmdCharUnpuppet)
+        self.add(ath_account.CmdOOCLook)
+
         for cmdset in CMDSETS:
             if hasattr(cmdset, "setup"):
                 cmdset.setup(self)

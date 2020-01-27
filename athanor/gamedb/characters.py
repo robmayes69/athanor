@@ -18,7 +18,7 @@ class AthanorPlayerCharacter(*MIXINS, AthanorObject):
 
     Connect/Puppet Trigger prefixes are 'object' and 'character'.
     """
-    lockstring = "puppet:id({character_id}) or pid({account_id}) or perm(Developer) or pperm(Developer);delete:id({account_id}) or perm(Admin)"
+    lockstring = "puppet:pid({account_id}) or pperm(Developer);delete:pperm(Developer)"
     re_name = re.compile(r"(?i)^([A-Z]|[0-9]|\.|-|')+( ([A-Z]|[0-9]|\.|-|')+)*$")
     hook_prefixes = ['object', 'character']
 

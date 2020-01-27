@@ -66,3 +66,22 @@ class AthanorAccount(*MIXINS, DefaultAccount, EventEmitter):
     @lazy_property
     def roles(self):
         return RoleHandler(self)
+
+    def set_email(self, new_email):
+        new_email = self.__class__.objects.normalize_email(new_email)
+        self.email = new_email
+        return new_email
+
+    def rename(self, new_name):
+        new_name = self.normalize_username(new_name)
+        self.username = new_name
+        return new_name
+
+    def generate_substitutions(self, viewer):
+        return {
+            "name": self.get_display_name(viewer),
+            "email": self.email
+        }
+
+    def get_account(self):
+        return self

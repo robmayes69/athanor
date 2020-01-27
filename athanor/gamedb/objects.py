@@ -19,6 +19,11 @@ class AthanorObject(*MIXINS, DefaultObject, EventEmitter):
     """
     hook_prefixes = ['object']
 
+    def generate_substitutions(self, viewer):
+        return {
+            "name": self.get_display_name(viewer),
+        }
+
     def at_post_puppet(self, **kwargs):
         """
         Calls the superclass at_post_puppet and also is sure to trigger relevant Events.
@@ -58,3 +63,19 @@ class AthanorObject(*MIXINS, DefaultObject, EventEmitter):
         if not self.sessions.all():
             for pref in self.hook_prefixes:
                 self.emit_global(f"{pref}_offline")
+
+    def system_msg(self, text=None, system_name=None, enactor=None):
+        if self.account:
+            sysmsg_border = self.account.options.sys_msg_border
+            sysmsg_text = self.account.options.sys_msg_text
+        else:
+            sysmsg_border = settings.OPTIONS_ACCOUNT_DEFAULT.get('sys_msg_border')[2]
+            sysmsg_text = settings.OPTIONS_ACCOUNT_DEFAULT.get('sys_msg_text')[2]
+        formatted_text = f"|{sysmsg_border}-=<|n|{sysmsg_text}{system_name.upper()}|n|{sysmsg_border}>=-|n {text}"
+        self.msg(text=formatted_text, system_name=system_name, original_text=text)
+
+    def get_puppet(self):
+        return self
+
+    def get_account(self):
+        return self.account

@@ -1,26 +1,4 @@
-from athanor.utils.online import admin_chars
-from django.conf import settings
-
-
-class SubMessageMixin(object):
-    gender_pack = settings.GENDER_SUBSTITUTIONS
-
-    def get_gender(self, looker):
-        return 'neuter'
-
-    def generate_substitutions(self, viewer):
-        response = dict()
-        name = self.get_display_name(looker=viewer)
-        response['name'] = name
-        gender = self.get_gender(looker=viewer)
-        response.update(self.gender_pack[gender])
-        if viewer == self:
-            response.update(self.gender_pack['self'])
-        capitalized_response = {k.capitalize(): v.capitalize() for k, v in response.items()}
-        upper_response = {k.upper(): v.upper() for k, v in response.items()}
-        response.update(capitalized_response)
-        response.update(upper_response)
-        return response
+from athanor.utils.online import admin_accounts
 
 
 class SubMessage(object):
@@ -38,7 +16,7 @@ class SubMessage(object):
         self.source = source
         self.target = target
         self.location = location
-        if self.location is None:
+        if self.location is None and hasattr(source, 'location'):
             self.location = source.location
         self.extra_parameters = dict()
         self.extra_messages = extra_messages
@@ -60,10 +38,11 @@ class SubMessage(object):
                 self.witnesses.remove(ent)
 
     def send(self):
-        self.send_source()
-        if self.target:
+        if self.source and (self.source_message or self.override_source_message):
+            self.send_source()
+        if self.target and (self.target_message or self.override_target_message):
             self.send_target()
-        if self.use_witness:
+        if self.use_witness and (self.witness_message or self.override_others_message):
             self.send_others()
         if self.admin_message or self.override_admin_message:
             self.send_admin()
@@ -128,7 +107,7 @@ class SubMessage(object):
             preformatted = self.override_admin_message
         if not preformatted.endswith('|n'):
             preformatted += '|n'
-        for adm in set(admin_chars()):
+        for adm in set(admin_accounts()):
             if adm in (self.source, self.target):
                 continue
             packvars = self.generate_perspective(adm)

@@ -23,21 +23,6 @@ def get_requirements():
     return reqs
 
 
-def get_scripts():
-    """
-    Determine which executable scripts should be added. For Windows,
-    this means creating a .bat file.
-    """
-    if OS_WINDOWS:
-        batpath = os.path.join("bin", "windows", "evennia.bat")
-        scriptpath = os.path.join(sys.prefix, "Scripts", "evennia_launcher.py")
-        with open(batpath, "w") as batfile:
-            batfile.write('@"%s" "%s" %%*' % (sys.executable, scriptpath))
-        return [batpath, os.path.join("bin", "windows", "evennia_launcher.py")]
-    else:
-        return [os.path.join("bin", "unix", "evennia")]
-
-
 def get_version():
     """
     When updating the Evennia package for release, remember to increment the
@@ -75,7 +60,7 @@ setup(
     long_description="""
     Athanor is an open-source library and toolkit built atop of Evennia for
     the purpose of easing the process of building all sorts of multi-player
-    online text games (MUD, MUX, MUSH, MUCK and other MU*). Modules are provided
+    online text games (MUD, MUX, MUSH, MUCK and other MU*). Plugins are provided
     that make the experience much more similar to traditional MUDs and MUSHes than
     the tools Evennia provides out of the box, from communication tools to common
     RPG design patterns such as Equipment slots and Inventory control. Athanor gets
@@ -90,7 +75,7 @@ setup(
     zip_safe=False,
     classifiers=[
         "Programming Language :: Python :: 3 :: Only",
-        "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
         "Programming Language :: JavaScript",
         "Development Status :: 4 - Beta",
         "License :: OSI Approved :: BSD License",
@@ -113,14 +98,11 @@ setup(
         "Topic :: Software Development :: Libraries :: Application Frameworks",
         "Topic :: Internet :: WWW/HTTP :: WSGI :: Server",
     ],
-    python_requires=">=3.7",
+    python_requires=">=3.8",
     project_urls={
         "Source": "https://github.com/volundmush/athanor",
         "For": "https://github.com/evennia/evennia",
-        "Issue tracker": "https://github.com/evennia/evennia/issues",
-        "Chat": "http://www.evennia.com/chat-redirect-3",
-        "Forum": "https://groups.google.com/forum/#%21forum/evennia",
-        "Dev Blog": "http://evennia.blogspot.com/",
+        "Issue tracker": "https://github.com/volundmush/athanor/issues",
         "Patreon": "https://www.patreon.com/volund",
     },
 )
