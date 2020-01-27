@@ -117,3 +117,6 @@ class AthanorPlayerCharacter(*MIXINS, AthanorObject):
         """
         if self.location.access(self, "view"):
             self.msg((self.at_look(self.location), {"type": "look"}), options=None)
+
+    def render_character_menu_line(self, cmd):
+        return self.key

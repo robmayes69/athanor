@@ -206,7 +206,7 @@ class CmdCharPuppet(AdministrationCommand):
     account_caller = True
 
     def switch_main(self):
-        character = self.select_character(self.lhs)
+        character = self.select_character(self.args)
         self.caller.puppet_object(self.session, character)
 
 
@@ -216,9 +216,10 @@ class CmdCharUnpuppet(AdministrationCommand):
     account_caller = True
 
     def switch_main(self):
-        if not (character := self.session.get_puppet()):
+        if not self.session.get_puppet():
             raise ValueError("Can only use this while @ic!")
         self.caller.unpuppet_object(self.session)
+        self.msg(self.caller.render_character_menu(self))
 
 
 class CmdOOCLook(AdministrationCommand):
@@ -227,4 +228,4 @@ class CmdOOCLook(AdministrationCommand):
     account_caller = True
 
     def switch_main(self):
-        pass
+        self.msg(self.caller.render_character_menu(self))

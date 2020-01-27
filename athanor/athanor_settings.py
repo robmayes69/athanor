@@ -98,7 +98,6 @@ CONTROLLERS['gamedata'] = {
 ######################################################################
 
 
-
 # KINDS CLASSES
 DEFAULT_ENTITY_CLASSES = {
     'areas': "athanor.entities.areas.AthanorArea",
@@ -159,64 +158,6 @@ BASE_CHARACTER_TYPECLASS = "athanor.gamedb.characters.AthanorPlayerCharacter"
 # Instead, they'll see something generic.
 NAME_DUB_SYSTEM = False
 
-MAX_NR_CHARACTERS = 10000
-
-GENDER_SUBSTITUTIONS = {
-        'male': {
-            'gender': 'male',
-            'child': 'boy',
-            'young': 'young man',
-            'adult': 'man',
-            'elder': 'old man',
-            'prefix': 'Mr. ',
-            'prefix_married': 'Mr.',
-            'polite': 'sir',
-            'subjective': 'he',
-            'objective': 'him',
-            'possessive': 'his',
-        },
-        'female': {
-            'gender': 'female',
-            'child': 'girl',
-            'young': 'young woman',
-            'adult': 'woman',
-            'elder': 'old woman',
-            'prefix': 'Ms. ',
-            'prefix_married': 'Mrs.',
-            'polite': 'miss',
-            'subjective': 'she',
-            'objective': 'her',
-            'possessive': 'hers',
-        },
-        'neuter': {
-            'gender': 'neuter',
-            'child': 'being',
-            'young': 'young being',
-            'adult': 'being',
-            'elder': 'old being',
-            'prefix': 'Mr. ',
-            'prefix_married': 'Mr.',
-            'polite': 'sir',
-            'subjective': 'it',
-            'objective': 'it',
-            'possessive': 'its',
-        },
-        'self': {
-            'subjective': 'you',
-            'objective': 'you',
-            'possessive': 'your',
-        }
-}
-
-######################################################################
-# Entity Settings
-######################################################################
-# The following Inventory class is the general/fallback for if an inventory type is requested
-# that isn't defined in SPECIAL_INVENTORY_CLASSES.
-BASE_INVENTORY_CLASS = "athanor.entities.inventory.Inventory"
-
-SPECIAL_INVENTORY_CLASSES = dict()
-
 
 ######################################################################
 # Plugins
@@ -232,6 +173,7 @@ try:
 except ImportError:
     pass
 
+# This property will be filled in by the load process. Don't alter it directly!
 ATHANOR_PLUGINS_LOADED = list()
 
 # The Mixins contains lists of python classes to be Added to the base Athanor ones. This is DANGEROUS TERRITORY
@@ -323,6 +265,8 @@ INSTALLED_APPS.append('athanor')
 LOCK_FUNC_MODULES = list(LOCK_FUNC_MODULES)
 LOCK_FUNC_MODULES.append("athanor.lockfuncs")
 
+# Redirect the load process through the plugins, passing this module as settings to be further modified.
+# This is where most of the Plugin system's magic happens.
 athanor.load(sys.modules[__name__])
 
 INSTALLED_APPS = tuple(INSTALLED_APPS)

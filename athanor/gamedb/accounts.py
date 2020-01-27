@@ -6,6 +6,7 @@ from evennia.accounts.accounts import DefaultAccount
 
 from athanor.utils.events import EventEmitter
 from athanor.gamedb.handlers import RoleHandler, PrivilegeHandler
+from athanor.gamedb.characters import AthanorPlayerCharacter
 
 MIXINS = [class_from_module(mixin) for mixin in settings.GAMEDB_MIXINS["ACCOUNT"]]
 MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
@@ -85,3 +86,49 @@ class AthanorAccount(*MIXINS, DefaultAccount, EventEmitter):
 
     def get_account(self):
         return self
+
+    def characters(self):
+        return AthanorPlayerCharacter.objects.filter_family(character_bridge__db_namespace=0,
+                                                            character_bridge__db_account=self)
+
+    def render_character_menu(self, cmd):
+        """
+        Displays the character menu for the Account's 'Look' command.
+
+        Args:
+            cmd (AthanorCommand): The running command for CmdOOCLook or etc.
+
+        Returns:
+            Display (str): What to display to the looker.
+        """
+        message = list()
+        message.append(cmd.styled_header(f"Account: {self.username}"))
+        message.append(f"|wEmail:|n {self.email}")
+        if (sessions := self.sessions.all()):
+            message.append(cmd.styled_separator("Sessions"))
+            for sess in sessions:
+                message.append(sess.render_character_menu_line(cmd))
+        if (characters := self.characters()):
+            message.append(cmd.styled_separator("Characters"))
+            for char in characters:
+                message.append(char.render_character_menu_line(cmd))
+        caller_admin = cmd.caller.locks.check_lockstring(cmd.caller, "dummy:pperm(Admin)")
+        message.append(cmd.styled_separator("Commands"))
+        if not settings.RESTRICTED_CHARACTER_CREATION or caller_admin:
+            message.append("|w@charcreate <name>|n to create a Character.")
+        if not settings.RESTRICTED_CHARACTER_DELETION or caller_admin:
+            message.append("|w@chardelete <name>=<verify name>|n to delete a character.")
+        if not settings.RESTRICTED_CHARACTER_RENAME or caller_admin:
+            message.append("|w@charrename <character>=<new name>|n to rename a character.")
+        if not settings.RESTRICTED_ACCOUNT_RENAME or caller_admin:
+            message.append("|w@username <name>|n to change your Account username.")
+        if not settings.RESTRICTED_ACCOUNT_EMAIL or caller_admin:
+            message.append("|w@email <new email>|n to change your Email")
+        if not settings.RESTRICTED_ACCOUNT_PASSWORD or caller_admin:
+            message.append("|w@password <old>=<new>|n to change your password.")
+        message.append("|w@ic <name>|n to enter the game as a Character.")
+        message.append("|w@ooc|n to return here again.")
+        message.append("|whelp|n for more information.")
+        message.append("|wQUIT|n to disconnect.")
+        message.append(cmd._blank_footer)
+        return '\n'.join(str(l) for l in message)

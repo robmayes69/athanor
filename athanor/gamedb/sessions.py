@@ -39,3 +39,6 @@ class AthanorSession(*MIXINS, ServerSession, EventEmitter):
         puppet = self.get_puppet()
         address = self.address
         return f"{account.username if account else 'None'}:{puppet.key if puppet else 'None'}@{address}"
+
+    def render_character_menu_line(self, cmd):
+        return f"({self.sessid}) {self.protocol_key} from {self.address}"
