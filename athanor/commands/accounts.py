@@ -13,20 +13,14 @@ class CmdAccount(AdministrationCommand):
     key = '@account'
     locks = "cmd:pperm(Helper)"
     switch_options = ('list', 'create', 'disable', 'enable', 'rename', 'ban', 'password', 'email', 'addperm',
-                      'delperm', 'examine')
+                      'delperm', 'examine', 'grant', 'revoke')
     account_caller = True
 
     def switch_main(self):
         pass
 
     def switch_list(self):
-        if not self.caller.locks.check_lockstring(self.caller, "dummy:apriv(account_examine)"):
-            raise ValueError("Permission denied.")
-        if not (visible_accounts := self.controllers.get('account').visible_accounts()):
-            raise ValueError("No accounts to list!")
-        message = list()
-        for account in visible_accounts:
-            pass
+        self.controllers.account.list_accounts(self.session)
 
     def switch_create(self):
         if not len(self.arglist) == 3:
@@ -65,10 +59,29 @@ class CmdAccount(AdministrationCommand):
         self.controllers.account.change_email(self.session, self.lhs, self.rhs)
 
     def switch_addperm(self):
-        pass
+        if not self.lhs and self.rhs:
+            raise ValueError("Usage: @account/addperm <account>=<new permission>")
+        self.controllers.account.add_permission(self.session, self.lhs, self.rhs)
 
     def switch_delperm(self):
-        pass
+        if not self.lhs and self.rhs:
+            raise ValueError("Usage: @account/delperm <account>=<delete permission>")
+        self.controllers.account.delete_permission(self.session, self.lhs, self.rhs)
+
+    def switch_grant(self):
+        if not self.lhs and self.rhs:
+            raise ValueError("Usage: @account/grant <account>=<new role>")
+        self.controllers.account.grant_role(self.session, self.lhs, self.rhs)
+
+    def switch_revoke(self):
+        if not self.lhs and self.rhs:
+            raise ValueError("Usage: @account/revoke <account>=<role to remove>")
+        self.controllers.account.revoke_role(self.session, self.lhs, self.rhs)
+
+    def switch_examine(self):
+        if not self.args:
+            raise ValueError("Usage: @account/examine <account>")
+        self.controllers.get('account').examine_account(self.args)
 
 
 class CmdCharacter(AdministrationCommand):
@@ -77,11 +90,11 @@ class CmdCharacter(AdministrationCommand):
     """
     key = '@character'
     locks = "cmd:pperm(Helper)"
-    switch_options = ('list', 'search', 'enable', 'disable', 'shelf', 'unshelf', 'ban', 'unban', 'lock',
+    switch_options = ('list', 'search', 'enable', 'disable', 'lock',
                       'typeclass', 'status', 'puppet', 'cost', 'create', 'account', 'shelved', 'examine')
 
     def switch_main(self):
-        pass
+        self.controllers.get('character').account_list(self.session, self.args)
 
     def switch_search(self):
         pass
@@ -90,18 +103,6 @@ class CmdCharacter(AdministrationCommand):
         pass
 
     def switch_disable(self):
-        pass
-
-    def switch_shelf(self):
-        pass
-
-    def switch_unshelf(self):
-        pass
-
-    def switch_ban(self):
-        pass
-
-    def switch_unban(self):
         pass
 
     def switch_lock(self):
@@ -122,10 +123,13 @@ class CmdCharacter(AdministrationCommand):
     def switch_create(self):
         pass
 
-    def switch_account(self):
+    def switch_rename(self):
         pass
 
-    def switch_shelved(self):
+    def switch_transfer(self):
+        pass
+
+    def switch_old(self):
         pass
 
 
