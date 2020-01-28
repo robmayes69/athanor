@@ -1,3 +1,4 @@
+from django.conf import settings
 from evennia.commands.default.muxcommand import MuxCommand
 from evennia.utils.utils import lazy_property
 from evennia.utils.search import object_search
@@ -80,3 +81,11 @@ class AthanorCommand(MuxCommand):
         if len(results) == 1:
             return results[0]
         raise ValueError(f"That matched: {results}")
+
+    def client_width(self):
+        """
+        Get the client screenwidth for the session using this command.
+        Returns:
+            client width (int): The width (in characters) of the client window.
+        """
+        return self.session.get_client_size()[0] if self.session else settings.CLIENT_DEFAULT_WIDTH

@@ -3,7 +3,7 @@ from django.conf import settings
 from collections import defaultdict
 from evennia.objects.objects import DefaultObject
 from evennia.utils.utils import lazy_property, make_iter, class_from_module, list_to_string
-from evennia.utils.ansi import ANSIString
+from athanor.utils.color import ANSIString
 
 from athanor.utils.events import EventEmitter
 from athanor.utils.text import tabular_table

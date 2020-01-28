@@ -24,6 +24,7 @@ class AthanorCharacterController(*MIXINS, AthanorController):
         self.online = set()
         self.on_global("character_online", self.at_character_online)
         self.on_global("character_offline", self.at_character_offline)
+        self.load()
 
     def do_load(self):
         try:
@@ -91,6 +92,7 @@ class AthanorCharacterController(*MIXINS, AthanorController):
         account = character.bridge.account
         old_name = character.key
         new_name = character.rename(new_name)
+        cmsg.RenameMessage(source=enactor, target=character, old_name=old_name, account_name=account.username).send()
 
     def transfer_character(self, session, character, new_account, ignore_priv=False):
         if not (enactor := session.get_account()) or (
@@ -99,3 +101,6 @@ class AthanorCharacterController(*MIXINS, AthanorController):
         character = self.find_character(character)
         account = character.bridge.account
         new_account = self.manager.get('account').find_account(new_account)
+        character.set_account(new_account)
+        cmsg.TransferMessage(source=enactor, target=character, account_username=account.username,
+                             new_account=new_account.username).send()

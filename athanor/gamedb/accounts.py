@@ -132,3 +132,7 @@ class AthanorAccount(*MIXINS, DefaultAccount, EventEmitter):
         message.append("|wQUIT|n to disconnect.")
         message.append(cmd._blank_footer)
         return '\n'.join(str(l) for l in message)
+
+    def at_look(self, target=None, session=None, **kwargs):
+        if session:
+            session.execute_cmd("look")

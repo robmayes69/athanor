@@ -2,7 +2,7 @@ import re
 
 from django.conf import settings
 from evennia.utils.utils import class_from_module
-from evennia.utils.ansi import ANSIString
+from athanor.utils.color import ANSIString
 
 from athanor.gamedb.objects import AthanorObject
 from athanor.models import CharacterBridge
