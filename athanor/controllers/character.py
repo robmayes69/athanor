@@ -64,14 +64,11 @@ class AthanorCharacterController(*MIXINS, AthanorController):
             return results[0]
         raise ValueError(f"That matched: {results}")
 
-    def create_character(self, session, account, character_name, namespace=0, ignore_priv=False, location=None):
+    def create_character(self, session, account, character_name, namespace=0, ignore_priv=False):
         if not (enactor := session.get_account()) or (not ignore_priv and not enactor.check_lock("apriv(character_create)")):
             raise ValueError("Permission denied.")
-        if location is None:
-            location = settings.DEFAULT_HOME
         account = self.manager.get('account').find_account(account)
-        new_character = self.character_typeclass.create_character(character_name, account, namespace=namespace,
-                                                                  location=location)
+        new_character = self.character_typeclass.create_character(character_name, account, namespace=namespace)
         new_character.db.account = account
         if namespace == 0:
             self.id_map[new_character.id] = new_character

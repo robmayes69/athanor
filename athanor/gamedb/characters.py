@@ -6,12 +6,13 @@ from evennia.utils.ansi import ANSIString
 
 from athanor.gamedb.objects import AthanorObject
 from athanor.models import CharacterBridge
+from athanor.gamedb.base import AthanorBasePlayerMixin
 
 MIXINS = [class_from_module(mixin) for mixin in settings.GAMEDB_MIXINS["CHARACTER"]]
 MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
 
-class AthanorPlayerCharacter(*MIXINS, AthanorObject):
+class AthanorPlayerCharacter(*MIXINS, AthanorBasePlayerMixin, AthanorObject):
     """
     The basic Athanor Player Character, built atop of Evennia's DefaultObject but modified to co-exist with Entities
     and exist in the Athanor Grid system.
@@ -20,8 +21,6 @@ class AthanorPlayerCharacter(*MIXINS, AthanorObject):
     """
     lockstring = "puppet:pid({account_id}) or pperm(Developer);delete:pperm(Developer)"
     re_name = re.compile(r"(?i)^([A-Z]|[0-9]|\.|-|')+( ([A-Z]|[0-9]|\.|-|')+)*$")
-    hook_prefixes = ['object', 'character']
-    object_types = ['character']
 
     def create_bridge(self, account, key, clean_key, namespace):
         """
@@ -111,6 +110,3 @@ class AthanorPlayerCharacter(*MIXINS, AthanorObject):
         )  # no commands can be called on character from outside
         # add the default cmdset
         self.cmdset.add_default(settings.CMDSET_CHARACTER, permanent=True)
-
-    def render_character_menu_line(self, cmd):
-        return self.key
