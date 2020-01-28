@@ -1,9 +1,7 @@
 from django.conf import settings
 from evennia.utils.utils import class_from_module
 from evennia import default_cmds
-from evennia.commands.default import general
 
-from athanor.commands import character
 
 CMDSETS = [class_from_module(cmdset) for cmdset in settings.CMDSETS["CHARACTER"]]
 
@@ -24,8 +22,6 @@ class AthanorCharacterCmdSet(default_cmds.CharacterCmdSet):
         #
         # any commands you add below will overload the default ones.
         #
-        self.remove(general.CmdLook)
-        self.add(character.CmdLook)
 
         for cmdset in CMDSETS:
             if hasattr(cmdset, "setup"):

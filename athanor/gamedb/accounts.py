@@ -8,6 +8,8 @@ from athanor.utils.events import EventEmitter
 from athanor.gamedb.handlers import RoleHandler, PrivilegeHandler
 from athanor.gamedb.characters import AthanorPlayerCharacter
 
+from athanor.utils import styling
+
 MIXINS = [class_from_module(mixin) for mixin in settings.GAMEDB_MIXINS["ACCOUNT"]]
 MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
@@ -91,7 +93,7 @@ class AthanorAccount(*MIXINS, DefaultAccount, EventEmitter):
         return AthanorPlayerCharacter.objects.filter_family(character_bridge__db_namespace=0,
                                                             character_bridge__db_account=self)
 
-    def render_character_menu(self, cmd):
+    def at_look(self, target=None, session=None, **kwargs):
         """
         Displays the character menu for the Account's 'Look' command.
 
@@ -101,19 +103,20 @@ class AthanorAccount(*MIXINS, DefaultAccount, EventEmitter):
         Returns:
             Display (str): What to display to the looker.
         """
+        viewer = kwargs.pop('viewer', self)
         message = list()
-        message.append(cmd.styled_header(f"Account: {self.username}"))
+        message.append(styling.styled_header(viewer, f"Account: {self.username}"))
         message.append(f"|wEmail:|n {self.email}")
         if (sessions := self.sessions.all()):
-            message.append(cmd.styled_separator("Sessions"))
+            message.append(styling.styled_separator(viewer, "Sessions"))
             for sess in sessions:
-                message.append(sess.render_character_menu_line(cmd))
+                message.append(sess.render_character_menu_line(viewer))
         if (characters := self.characters()):
-            message.append(cmd.styled_separator("Characters"))
+            message.append(styling.styled_separator(viewer, "Characters"))
             for char in characters:
-                message.append(char.render_character_menu_line(cmd))
-        caller_admin = cmd.caller.locks.check_lockstring(cmd.caller, "dummy:pperm(Admin)")
-        message.append(cmd.styled_separator("Commands"))
+                message.append(char.render_character_menu_line(viewer))
+        caller_admin = viewer.locks.check_lockstring(viewer, "dummy:pperm(Admin)")
+        message.append(styling.styled_separator(viewer, "Commands"))
         if not settings.RESTRICTED_CHARACTER_CREATION or caller_admin:
             message.append("|w@charcreate <name>|n to create a Character.")
         if not settings.RESTRICTED_CHARACTER_DELETION or caller_admin:
@@ -130,9 +133,5 @@ class AthanorAccount(*MIXINS, DefaultAccount, EventEmitter):
         message.append("|w@ooc|n to return here again.")
         message.append("|whelp|n for more information.")
         message.append("|wQUIT|n to disconnect.")
-        message.append(cmd._blank_footer)
+        message.append(styling.styled_footer(viewer))
         return '\n'.join(str(l) for l in message)
-
-    def at_look(self, target=None, session=None, **kwargs):
-        if session:
-            session.execute_cmd("look")

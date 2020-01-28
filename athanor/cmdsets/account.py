@@ -4,6 +4,7 @@ from evennia import default_cmds
 from evennia.commands.default import account, admin, building
 from athanor.commands import accounts as ath_account
 
+
 CMDSETS = [class_from_module(cmdset) for cmdset in settings.CMDSETS["ACCOUNT"]]
 
 
@@ -28,9 +29,8 @@ class AthanorAccountCmdSet(default_cmds.AccountCmdSet):
         self.remove(account.CmdCharDelete)
         self.remove(account.CmdIC)
         self.remove(account.CmdOOC)
-        self.remove(account.CmdOOCLook)
         self.remove(admin.CmdNewPassword)
-        #self.remove(building.CmdExamine)
+        self.remove(building.CmdExamine)
 
         self.add(ath_account.CmdAccount)
         self.add(ath_account.CmdCharacter)
@@ -44,7 +44,6 @@ class AthanorAccountCmdSet(default_cmds.AccountCmdSet):
         self.add(ath_account.CmdCharRename)
         self.add(ath_account.CmdCharPuppet)
         self.add(ath_account.CmdCharUnpuppet)
-        self.add(ath_account.CmdOOCLook)
 
         for cmdset in CMDSETS:
             if hasattr(cmdset, "setup"):

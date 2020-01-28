@@ -3,10 +3,11 @@ from django.conf import settings
 from collections import defaultdict
 from evennia.objects.objects import DefaultObject
 from evennia.utils.utils import lazy_property, make_iter, class_from_module, list_to_string
-from athanor.utils.color import ANSIString
+from evennia.utils.ansi import ANSIString
 
 from athanor.utils.events import EventEmitter
 from athanor.utils.text import tabular_table
+from athanor.utils import styling
 
 MIXINS = [class_from_module(mixin) for mixin in settings.GAMEDB_MIXINS["OBJECT"]]
 MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
@@ -21,6 +22,29 @@ class AthanorObject(*MIXINS, DefaultObject, EventEmitter):
         object_offline (session): Triggered when an account's final session closes.
     """
     hook_prefixes = ['object']
+    object_types = ['object']
+
+    @lazy_property
+    def contents_index(self):
+        indexed = defaultdict(list)
+        for obj in self.contents:
+            for obj_type in obj.object_types:
+                indexed[obj_type].append(obj)
+        return indexed
+
+    def register_index(self, obj):
+        index = self.contents_index
+        for obj_type in obj.object_types:
+            if obj in index[obj_type]:
+                continue
+            index[obj_type].append(obj)
+
+    def unregister_index(self, obj):
+        index = self.contents_index
+        for obj_type in obj.object_types:
+            if obj not in index[obj_type]:
+                continue
+            index[obj_type].remove(obj)
 
     def generate_substitutions(self, viewer):
         return {
@@ -82,46 +106,46 @@ class AthanorObject(*MIXINS, DefaultObject, EventEmitter):
     def get_account(self):
         return self.account
 
-    def get_exit_formatted(self, looker, cmd, **kwargs):
+    def get_exit_formatted(self, looker, **kwargs):
         aliases = self.aliases.all()
         alias = aliases[0] if aliases else ''
         alias = ANSIString(f"<|w{alias}|n>")
         display = f"{self.key} to {self.destination.key}"
         return f"""{alias:<6} {display}"""
 
-    def return_appearance_exits(self, looker, cmd, **kwargs):
-        exits = sorted([ex for ex in self.contents if ex != looker and ex.access(looker, "view") and ex.destination],
+    def return_appearance_exits(self, looker, **kwargs):
+        exits = sorted([ex for ex in self.contents_index['exit'] if ex.access(looker, "view")],
                        key=lambda ex: ex.key)
         message = list()
         if not exits:
             return message
-        message.append(cmd.styled_separator("Exits"))
-        exits_formatted = [ex.get_exit_formatted(looker, cmd, **kwargs) for ex in exits]
+        message.append(styling.styled_separator(looker, "Exits"))
+        exits_formatted = [ex.get_exit_formatted(looker, **kwargs) for ex in exits]
 
         message.append(tabular_table(exits_formatted, field_width=37, line_length=78))
 
-    def return_appearance_users(self, looker, cmd, **kwargs):
-        users = sorted([user for user in self.contents if user != looker and user.access(looker, "view") and user.has_account],
+    def return_appearance_characters(self, looker, **kwargs):
+        users = sorted([user for user in self.contents_index['character'] if user.access(looker, "view")],
                        key=lambda user: user.get_display_name(looker))
         message = list()
         if not users:
             return message
-        message.append(cmd.styled_separator("Characters"))
-        message.extend([user.get_room_appearance(looker, cmd, **kwargs) for user in users])
+        message.append(styling.styled_separator(looker, "Characters"))
+        message.extend([user.get_room_appearance(looker, **kwargs) for user in users])
         return message
 
-    def get_room_appearance(self, looker, cmd, **kwargs):
+    def get_room_appearance(self, looker, **kwargs):
         return self.get_display_name(looker, **kwargs)
 
-    def return_appearance_things(self, looker, cmd, **kwargs):
-        visible = (con for con in self.contents if con != looker and con.access(looker, "view") and not (con.has_account or con.destination))
+    def return_appearance_items(self, looker, **kwargs):
+        visible = (con for con in self.contents_index['item'] if con.access(looker, "view"))
         things = defaultdict(list)
         for con in visible:
             things[con.get_display_name(looker)].append(con)
         message = list()
         if not things:
             return message
-        message.append(cmd.styled_separator("Items"))
+        message.append(styling.styled_separator(looker, "Items"))
         for key, itemlist in sorted(things.items()):
             nitem = len(itemlist)
             if nitem == 1:
@@ -133,43 +157,32 @@ class AthanorObject(*MIXINS, DefaultObject, EventEmitter):
             message.append(key)
         return message
 
-    def return_appearance_description(self, looker, cmd, **kwargs):
+    def return_appearance_description(self, looker, **kwargs):
         message = list()
         if (desc := self.db.desc):
             message.append(desc)
         return message
 
-    def return_appearance_header(self, looker, cmd, **kwargs):
-        return [cmd.styled_header(self.get_display_name(looker))]
+    def return_appearance_header(self, looker, **kwargs):
+        return [styling.styled_header(looker, self.get_display_name(looker))]
 
-    def return_appearance(self, looker, cmd, **kwargs):
+    def return_appearance(self, looker, **kwargs):
         if not looker:
             return ""
         message = list()
-        message.extend(self.return_appearance_header(looker, cmd, **kwargs))
-        message.extend(self.return_appearance_description(looker, cmd, **kwargs))
-        message.extend(self.return_appearance_things(looker, cmd, **kwargs))
-        message.extend(self.return_appearance_users(looker, cmd, **kwargs))
-        message.extend(self.return_appearance_exits(looker, cmd, **kwargs))
-        message.append(cmd._blank_footer)
+        message.extend(self.return_appearance_header(looker, **kwargs))
+        message.extend(self.return_appearance_description(looker, **kwargs))
+        message.extend(self.return_appearance_items(looker, **kwargs))
+        message.extend(self.return_appearance_characters(looker, **kwargs))
+        message.extend(self.return_appearance_exits(looker, **kwargs))
+        message.append(styling.styled_footer(looker))
 
         return '\n'.join(str(l) for l in message)
 
-    def at_look(self, target, cmd, **kwargs):
-        if not target.access(self, "view"):
-            try:
-                return "Could not view '%s'." % target.get_display_name(self, **kwargs)
-            except AttributeError:
-                return "Could not view '%s'." % target.key
-
-        description = target.return_appearance(self, cmd, **kwargs)
-
-        # the target's at_desc() method.
-        # this must be the last reference to target so it may delete itself when acted on.
-        target.at_desc(looker=self, **kwargs)
-
-        return description
-
 
 class AthanorRoom(AthanorObject):
-    pass
+    object_types = ['room']
+
+
+class AthanorExit(AthanorObject):
+    object_types = ['exit']

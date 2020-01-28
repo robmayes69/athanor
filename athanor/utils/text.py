@@ -1,6 +1,6 @@
 import re
 from evennia.utils.ansi import ANSI_PARSER
-from athanor.utils.color import ANSIString
+from evennia.utils.ansi import ANSIString
 
 def tabular_table(word_list=None, field_width=26, line_length=78, output_separator=" ", truncate_elements=True):
     """

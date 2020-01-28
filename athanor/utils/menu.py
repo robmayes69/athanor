@@ -1,4 +1,4 @@
-from athanor.utils.color import ANSIString
+from evennia.utils.ansi import ANSIString
 from evennia.utils.evmenu import EvMenu, EvMenuError, _HELP_FULL, _HELP_NO_QUIT, _HELP_NO_OPTIONS_NO_QUIT, _HELP_NO_OPTIONS
 from evennia.utils.evmenu import _ERR_GENERAL, _ERR_NOT_IMPLEMENTED
 from evennia.utils.evtable import EvTable

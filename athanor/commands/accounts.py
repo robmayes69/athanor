@@ -220,12 +220,3 @@ class CmdCharUnpuppet(AdministrationCommand):
             raise ValueError("Can only use this while @ic!")
         self.caller.unpuppet_object(self.session)
         self.msg(self.caller.render_character_menu(self))
-
-
-class CmdOOCLook(AdministrationCommand):
-    key = "look"
-    aliases = ('l')
-    account_caller = True
-
-    def switch_main(self):
-        self.msg(self.caller.render_character_menu(self))

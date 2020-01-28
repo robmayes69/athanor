@@ -2,7 +2,7 @@ import re
 
 from django.conf import settings
 from evennia.utils.utils import class_from_module
-from athanor.utils.color import ANSIString
+from evennia.utils.ansi import ANSIString
 
 from athanor.gamedb.objects import AthanorObject
 from athanor.models import CharacterBridge
@@ -21,6 +21,7 @@ class AthanorPlayerCharacter(*MIXINS, AthanorObject):
     lockstring = "puppet:pid({account_id}) or pperm(Developer);delete:pperm(Developer)"
     re_name = re.compile(r"(?i)^([A-Z]|[0-9]|\.|-|')+( ([A-Z]|[0-9]|\.|-|')+)*$")
     hook_prefixes = ['object', 'character']
+    object_types = ['character']
 
     def create_bridge(self, account, key, clean_key, namespace):
         """
@@ -110,13 +111,6 @@ class AthanorPlayerCharacter(*MIXINS, AthanorObject):
         )  # no commands can be called on character from outside
         # add the default cmdset
         self.cmdset.add_default(settings.CMDSET_CHARACTER, permanent=True)
-
-    def at_after_move(self, source_location, **kwargs):
-        """
-        We make sure to look around after a move.
-        """
-        if self.location.access(self, "view"):
-            self.msg((self.at_look(self.location), {"type": "look"}), options=None)
 
     def render_character_menu_line(self, cmd):
         return self.key
