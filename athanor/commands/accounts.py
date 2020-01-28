@@ -1,6 +1,6 @@
 from django.conf import settings
 from athanor.commands.command import AthanorCommand
-
+from athanor.utils import styling
 
 class AdministrationCommand(AthanorCommand):
     help_category = "Administration"
@@ -20,7 +20,13 @@ class CmdAccount(AdministrationCommand):
         pass
 
     def switch_list(self):
-        pass
+        if not self.caller.locks.check_lockstring(self.caller, "dummy:apriv(account_examine)"):
+            raise ValueError("Permission denied.")
+        if not (visible_accounts := self.controllers.get('account').visible_accounts()):
+            raise ValueError("No accounts to list!")
+        message = list()
+        for account in visible_accounts:
+            pass
 
     def switch_create(self):
         if not len(self.arglist) == 3:

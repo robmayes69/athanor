@@ -2,8 +2,8 @@ import time
 from django.conf import settings
 
 from collections import defaultdict
-
-from evennia.utils.utils import lazy_property
+import evennia
+from evennia.utils.utils import lazy_property, dbid_to_obj, make_iter
 from evennia.utils.ansi import ANSIString
 from evennia.utils import logger
 
@@ -24,19 +24,20 @@ class AthanorBaseObjectMixin(EventEmitter):
     def contents_index(self):
         indexed = defaultdict(list)
         for obj in self.contents:
-            for obj_type in obj.object_types:
-                indexed[obj_type].append(obj)
+            self.register_index(obj, index=indexed)
         return indexed
 
-    def register_index(self, obj):
-        index = self.contents_index
+    def register_index(self, obj, index=None):
+        if index is None:
+            index = self.contents_index
         for obj_type in obj.object_types:
             if obj in index[obj_type]:
                 continue
             index[obj_type].append(obj)
 
-    def unregister_index(self, obj):
-        index = self.contents_index
+    def unregister_index(self, obj, index=None):
+        if index is None:
+            index = self.contents_index
         for obj_type in obj.object_types:
             if obj not in index[obj_type]:
                 continue
@@ -54,6 +55,18 @@ class AthanorBaseObjectMixin(EventEmitter):
         return {
             "name": self.get_display_name(viewer),
         }
+
+    @lazy_property
+    def locations(self):
+        if not self.attributes.has(key='location_storage'):
+            self.attributes.add(key='location_storage', value=dict())
+        return self.attributes.get(key='location_storage')
+
+    def serialize_location(self):
+        """
+        Returns what ought to be stored in the Object's .locations dictionary if they're saving THIS as a location.
+        """
+        return self
 
     def at_post_puppet(self, **kwargs):
         """
@@ -203,15 +216,27 @@ class AthanorBaseObjectMixin(EventEmitter):
             return time.time() - float(min(conn))
         return None
 
+    def parse_destination(self, destination):
+        """
+        Called by move_to to figure out where we are going.
+        """
+        if hasattr(destination, 'contents'):
+            return destination
+        if isinstance(destination, str):
+            return dbid_to_obj(destination, evennia.ObjectDB, raise_errors=False)
+
     def move_to(self, destination, quiet=False, emit_to_obj=None, use_destination=True, to_none=False, move_hooks=True,
-                arbitrary=False, **kwargs):
+                save_keys='last_good', **kwargs):
         """
         Same as DefaultObject move_to but with some additions and tweaks. You should ALWAYS use this when
-        writing code and not obj.location.
+        writing code and not obj.location = <somewhere else>
 
-        Args:
-            (see original)
-            arbitrary: This move is happening, period, as long as the destination is valid. It cannot be stopped.
+        Kwargs:
+            save_keys (str, list of str, or None): The .locations key that the destination (if successful) will be saved to.
+                Nothing will be saved if it's None.
+
+        Major difference: move_hooks now only affects calling hooks that would limit movement.
+        at_object_leave() and at_object_receive() will always be called, if relevant.
         """
 
         def logerr(string="", err=None):
@@ -224,6 +249,16 @@ class AthanorBaseObjectMixin(EventEmitter):
         if not emit_to_obj:
             emit_to_obj = self
 
+        # Call parse destination if destination isn't None. This will convert a string target into an
+        # object.
+        if destination:
+            orig_dest = destination
+            destination = self.parse_destination(destination)
+            # if a destination was provided, but could not be resolved. We should error out and do nothing further.
+            if not destination:
+                emit_to_obj.msg(errtxt % f"{orig_dest} could not be resolved.")
+                return False
+
         if destination and destination.destination and use_destination:
             # traverse exits
             destination = destination.destination
@@ -231,7 +266,7 @@ class AthanorBaseObjectMixin(EventEmitter):
         # Before the move, call eventual pre-commands.
         if move_hooks:
             try:
-                if not self.at_before_move(destination) and not arbitrary:
+                if not self.at_before_move(destination):
                     return False
             except Exception as err:
                 logerr(errtxt % "at_before_move()", err)
@@ -241,7 +276,7 @@ class AthanorBaseObjectMixin(EventEmitter):
         source_location = self.location
 
         # Call hook on source location
-        if move_hooks and source_location:
+        if source_location:
             try:
                 source_location.at_object_leave(self, destination)
             except Exception as err:
@@ -258,7 +293,7 @@ class AthanorBaseObjectMixin(EventEmitter):
 
         if not destination:
             if to_none:
-                # immediately move to None. There can be no hooks called since
+                # immediately move to None. There can be no further hooks called since
                 # there is no destination to call them with.
                 self.location = None
                 return True
@@ -280,7 +315,7 @@ class AthanorBaseObjectMixin(EventEmitter):
                 logerr(errtxt % "announce_move_to()", err)
                 return False
 
-        if move_hooks:
+        if destination:
             # Perform eventual extra commands on the receiving location
             # (the object has already arrived at this point)
             try:
@@ -288,6 +323,10 @@ class AthanorBaseObjectMixin(EventEmitter):
             except Exception as err:
                 logerr(errtxt % "at_object_receive()", err)
                 return False
+            if save_keys:
+                save_keys = make_iter(save_keys)
+                for save_key in save_keys:
+                    self.save_location(save_key)
 
         # Execute eventual extra commands on this object after moving it
         # (usually calling 'look')
@@ -298,6 +337,14 @@ class AthanorBaseObjectMixin(EventEmitter):
                 logerr(errtxt % "at_after_move", err)
                 return False
         return True
+
+    def save_location(self, save_key):
+        if not self.location:
+            return False
+        if (serialized := self.location.serialize_location()):
+            self.locations[save_key] = serialized
+            return serialized
+
 
 class AthanorBasePlayerMixin(object):
     hook_prefixes = ['object', 'character']
@@ -313,10 +360,7 @@ class AthanorBasePlayerMixin(object):
         super().at_pre_puppet(account, session=session, **kwargs)
         if self.location is None:  # Make sure character's location is never None before being puppeted.
             # Return to last location (or home, which should always exist),
-            self.location = self.db.prelogout_location if self.db.prelogout_location else self.home
-            self.location.at_object_receive(self, None)  # and trigger the location's reception hook.
-        if self.location:  # If the character is verified to be somewhere,
-            self.db.prelogout_location = self.location  # save location again to be sure.
+            self.move_to(self.locations.get('logout', self.home), quiet=True)
         else:
             account.msg(
                 "|r%s has no location and no home is set.|n" % self, session=session
@@ -340,5 +384,5 @@ class AthanorBasePlayerMixin(object):
                     obj.msg("%s has left the game." % self.get_display_name(obj), from_obj=from_obj)
 
                 self.location.for_contents(message, exclude=[self], from_obj=self)
-                self.db.prelogout_location = self.location
-                self.location = None
+                self.save_location('logout')
+                self.move_to(None, to_none=True, quiet=True, save_keys=None)
