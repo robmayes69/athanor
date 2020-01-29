@@ -135,15 +135,15 @@ class AthanorBaseObjectMixin(EventEmitter):
         return f"""{alias:<6} {display}"""
 
     def return_appearance_exits(self, looker, **kwargs):
-        exits = sorted([ex for ex in self.contents_index['exit'] if ex.access(looker, "view")],
+        exits = sorted([ex for ex in self.exits if ex.access(looker, "view")],
                        key=lambda ex: ex.key)
         message = list()
         if not exits:
             return message
         message.append(styling.styled_separator(looker, "Exits"))
         exits_formatted = [ex.get_exit_formatted(looker, **kwargs) for ex in exits]
-
         message.append(tabular_table(exits_formatted, field_width=37, line_length=78))
+        return message
 
     def return_appearance_characters(self, looker, **kwargs):
         users = sorted([user for user in self.contents_index['character'] if user.access(looker, "view")],
