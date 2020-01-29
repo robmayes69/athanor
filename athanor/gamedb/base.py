@@ -384,12 +384,11 @@ class AthanorBasePlayerMixin(object):
             self.location.for_contents(message, exclude=[self], from_obj=self)
 
     def at_post_unpuppet(self, account, session=None, **kwargs):
+        def message(obj, from_obj):
+            obj.msg("%s has left the game." % self.get_display_name(obj), from_obj=from_obj)
+
         if not self.sessions.count():
             if self.location:
-
-                def message(obj, from_obj):
-                    obj.msg("%s has left the game." % self.get_display_name(obj), from_obj=from_obj)
-
                 self.location.for_contents(message, exclude=[self], from_obj=self)
                 self.save_location('logout')
                 self.move_to(None, to_none=True, quiet=True, save_keys=None)
