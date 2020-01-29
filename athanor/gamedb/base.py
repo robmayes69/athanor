@@ -375,12 +375,13 @@ class AthanorBasePlayerMixin(object):
     def at_post_puppet(self, **kwargs):
         super().at_post_puppet(**kwargs)
         self.msg("\nYou become |c%s|n.\n" % self.name)
-        self.msg((self.at_look(self.location), {"type": "look"}), options=None)
 
         def message(obj, from_obj):
             obj.msg("%s has entered the game." % self.get_display_name(obj), from_obj=from_obj)
 
-        self.location.for_contents(message, exclude=[self], from_obj=self)
+        if self.location:
+            self.msg((self.at_look(self.location), {"type": "look"}), options=None)
+            self.location.for_contents(message, exclude=[self], from_obj=self)
 
     def at_post_unpuppet(self, account, session=None, **kwargs):
         if not self.sessions.count():
