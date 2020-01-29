@@ -9,6 +9,7 @@ import athanor
 class AthanorCommand(MuxCommand):
     locks = 'cmd:all();admin:perm(Admin)'
     system_name = None
+    arg_regex = r"(?:^(?:\s+|\/).*$)|^$"
 
     @property
     def controllers(self):

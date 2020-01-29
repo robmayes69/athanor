@@ -1,3 +1,4 @@
+import re
 from django.conf import settings
 
 from evennia.utils.utils import class_from_module
@@ -24,7 +25,9 @@ class AthanorCharacterController(*MIXINS, AthanorController):
         self.online = set()
         self.on_global("character_online", self.at_character_online)
         self.on_global("character_offline", self.at_character_offline)
+        self.reg_names = None
         self.load()
+
 
     def do_load(self):
         try:
@@ -35,6 +38,10 @@ class AthanorCharacterController(*MIXINS, AthanorController):
             self.character_typeclass = AthanorPlayerCharacter
 
         self.update_cache()
+
+    def update_regex(self):
+        escape_names = [re.escape(name) for name in self.name_map.keys()]
+        self.reg_names = re.compile(r"(?i)\b(?P<found>%s)\b" % '|'.join(escape_names))
 
     def at_character_online(self, sender, **kwargs):
         self.online.add(sender)

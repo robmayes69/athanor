@@ -1,7 +1,9 @@
 import time
-from django.conf import settings
-
 from collections import defaultdict
+
+from django.conf import settings
+from django.utils.translation import ugettext as _
+
 import evennia
 from evennia.utils.utils import lazy_property, dbid_to_obj, make_iter
 from evennia.utils.ansi import ANSIString
@@ -361,7 +363,7 @@ class AthanorBasePlayerMixin(object):
         if self.location is None:  # Make sure character's location is never None before being puppeted.
             # Return to last location (or home, which should always exist),
             self.move_to(self.locations.get('logout', self.home), quiet=True)
-        else:
+        if not self.location:
             account.msg(
                 "|r%s has no location and no home is set.|n" % self, session=session
             )  # Note to set home.

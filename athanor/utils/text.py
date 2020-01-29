@@ -1,6 +1,11 @@
 import re
+
+from django.conf import settings
+
 from evennia.utils.ansi import ANSI_PARSER
 from evennia.utils.ansi import ANSIString
+
+import athanor
 
 def tabular_table(word_list=None, field_width=26, line_length=78, output_separator=" ", truncate_elements=True):
     """
@@ -117,22 +122,22 @@ class Speech(object):
 
     """
     re_speech = re.compile(r'(?s)"(?P<found>.*?)"')
-    speech_dict = {':': 1, ';': 2, '|': 3, '"': 0, "'": 0}
+    re_name = re.compile(r"\^\^\^(?P<thing_id>\d+)\:(?P<thing_name>[^^]+)\^\^\^")
+    speech_dict = {':': 1, ';': 2, '^': 3, '"': 0, "'": 0}
 
     def __init__(self, speaker=None, speech_text=None, alternate_name=None, title=None, mode='ooc', targets=None,
-                 rendered_text=None, action_string="says", func_call="charactername", name_dict=None):
-        if name_dict is None:
-            name_dict = dict()
-        self.name_dict = name_dict
+                 rendered_text=None, action_string="says", controller="character", color_mode='channel'):
+
+        self.controller = athanor.CONTROLLER_MANAGER.get(controller)
         if targets:
-            self.targets = [f'${func_call}({char.id},{char.key})' for char in targets]
+            self.targets = [f'^^^{char.id}:{char.key}^^^' for char in targets]
         else:
             self.targets = []
         self.mode = mode
+        self.color_mode = color_mode
         self.title = title
         self.speaker = speaker
         self.action_string = action_string
-        self.func_call = func_call
 
         if alternate_name:
             self.alternate_name = alternate_name
@@ -141,9 +146,8 @@ class Speech(object):
         else:
             self.display_name = str(speaker)
             self.alternate_name = False
-            self.markup_name = f'${self.func_call}({speaker.id},{speaker.key})'
+            self.markup_name = f'^^^{speaker.id}:{speaker.key}^^^'
 
-        speech_text = ANSIString(speech_text)
         speech_first = speech_text[:1]
         if speech_first in self.speech_dict:
             special_format = self.speech_dict[speech_first]
@@ -153,21 +157,16 @@ class Speech(object):
             speech_string = speech_text
 
         self.special_format = special_format
-        self.speech_string = ANSIString(speech_string)
+        self.speech_string = speech_string
 
         if rendered_text:
             self.markup_string = rendered_text
         else:
-            escape_names = [re.escape(name) for name in self.name_dict.keys()]
-            all_names = '|'.join(escape_names)
-            if all_names:
-                self.markup_string = re.sub(r"(?i)\b(?P<found>%s)\b" % all_names, self.markup_names, self.speech_string)
-            else:
-                self.markup_string = self.speech_string
+            self.markup_string = self.controller.reg_names.sub(self.markup_names, self.speech_string)
 
     def markup_names(self, match):
         found = match.group('found')
-        return f'${self.func_call}({self.name_dict[found.upper()]},{found})'
+        return f'$^^^{self.controller.name_map[found.upper()].id}:{found}^^^'
 
     def __str__(self):
         str(self.demarkup())
@@ -243,13 +242,17 @@ class Speech(object):
         return ANSIString(return_string)
 
     def colorize(self, message, viewer):
-        quotes = f'quotes_{self.mode}'
-        speech = f'speech_{self.mode}'
-        #colors = viewer.account.ath['color'].get_settings()
-        #quote_color = colors[quotes].value
-        #speech_color = colors[speech].value
-        quote_color = 'r'
-        speech_color = 'y'
+        viewer = viewer.get_account() if viewer and hasattr(viewer, 'get_account') else None
+        quotes = f'quotes_{self.color_mode}'
+        speech = f'speech_{self.color_mode}'
+
+        default_style = settings.OPTIONS_ACCOUNT_DEFAULT
+        quote_color = viewer.options.get(quotes) if viewer else default_style[quotes][2]
+        speech_color = viewer.options.get(speech) if viewer else default_style[speech][2]
+        if quote_color == 'n':
+            quote_color = ''
+        if speech_color == 'n':
+            speech_color = ''
 
         def color_speech(found):
             if not quote_color and not speech_color:

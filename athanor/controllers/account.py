@@ -1,3 +1,4 @@
+import re
 from django.conf import settings
 
 from evennia.utils.utils import class_from_module
@@ -22,6 +23,7 @@ class AthanorAccountController(*MIXINS, AthanorController):
         self.id_map = dict()
         self.name_map = dict()
         self.roles = dict()
+        self.reg_names = None
     
     def do_load(self):
         try:
@@ -34,10 +36,15 @@ class AthanorAccountController(*MIXINS, AthanorController):
         self.update_cache()
         self.update_roles()
 
+    def update_regex(self):
+        escape_names = [re.escape(name) for name in self.name_map.keys()]
+        self.reg_names = re.compile(r"(?i)\b(?P<found>%s)\b" % '|'.join(escape_names))
+
     def update_cache(self):
         accounts = AthanorAccount.objects.filter_family()
         self.id_map = {acc.id: acc for acc in accounts}
         self.name_map = {acc.username.upper(): acc for acc in accounts}
+        self.update_regex()
 
     def update_roles(self):
         for plugin in athanor.CONTROLLER_MANAGER.get('gamedata').plugins_sorted:
@@ -51,6 +58,7 @@ class AthanorAccountController(*MIXINS, AthanorController):
                                                                 session=session, ip=session.address)
         self.id_map[new_account.id] = new_account
         self.name_map[new_account.username.upper()] = new_account
+        self.update_regex()
         if login_screen:
             amsg.CreateMessage(source=session, target=new_account).send()
         else:
