@@ -12,8 +12,8 @@ class CmdAccount(AdministrationCommand):
     Note that <account> accepts either username or email address.
 
     Usage:
-        @account <account>
-            Display a breakdown of information all about an Account.
+        @account [<account>]
+            Display a breakdown of information all about an Account. Your own, if not targeted.
 
         @account/list
             Show all accounts in the system.
@@ -40,19 +40,8 @@ class CmdAccount(AdministrationCommand):
         @account/password <account>=<new password>
             Re-set an Account's password.
 
-        @account/grant <account>=<role>
-            Grant a Role to an Account. See @role to know which are available.
-            Use @account/revoke <account>=<role> to remove one.
-
-        @account/addperm <account>=<permission>
-            Grant an Evennia Permission to an Account. (Superuser only.)
-            Use @account/delperm <account>=<permission> to remove it.
-
         @account/boot <account>=<reason>
             Forcibly disconnect an Account.
-
-        @account/super <account>
-            Promote an Account to Superuser status. (Superuser only.) Use again to demote. |rDANGEROUS.|n
     """
     key = '@account'
     locks = "cmd:pperm(Helper)"
@@ -62,7 +51,7 @@ class CmdAccount(AdministrationCommand):
 
     def switch_main(self):
         if not self.args:
-            raise ValueError("Usage: @account <account>")
+            self.args = self.account
         self.controllers.get('account').examine_account(self.args)
 
     def switch_list(self):
@@ -108,6 +97,38 @@ class CmdAccount(AdministrationCommand):
         if not self.lhs and self.rhs:
             raise ValueError("Usage: @account/email <account>=<new email>")
         self.controllers.get('account').change_email(self.session, self.lhs, self.rhs)
+
+
+class CmdAccess(AdministrationCommand):
+    """
+    Displays and manages information about Account access permissions.
+
+    Usage:
+        @access [<account>]
+            Show the target's access details. Your own, if none is provided.
+
+        @access/grant <account>=<role>
+            Grant a Role to an Account. See @role to know which are available.
+            Use @access/revoke <account>=<role> to remove one.
+
+        @access/breakdown
+            Display all Roles and which Accounts hold them. Could be very spammy.
+
+        @access/addperm <account>=<permission>
+            Grant an Evennia Permission to an Account. (Superuser only.)
+            Use @access/delperm <account>=<permission> to remove it.
+
+        @access/super <account>
+            Promote an Account to Superuser status. (Superuser only.) Use again to demote. |rDANGEROUS.|n
+    """
+    key = "@access"
+    locks = "cmd:pperm(Helper)"
+    switch_options = ("roles", "privileges", "addperm", "delperm", "grant", "revoke", "super", 'breakdown')
+
+    def switch_main(self):
+        if not self.args:
+            self.args = self.account
+        self.controllers.get('account').access_account(self.args)
 
     def switch_addperm(self):
         if not self.lhs and self.rhs:

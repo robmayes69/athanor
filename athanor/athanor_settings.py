@@ -165,6 +165,8 @@ NAME_DUB_SYSTEM = False
 ######################################################################
 BASE_ROOM_TYPECLASS = "athanor.gamedb.objects.AthanorRoom"
 
+BASE_EXIT_TYPECLASS = "athanor.gamedb.objects.AthanorExit"
+
 ######################################################################
 # Plugins
 ######################################################################
