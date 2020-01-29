@@ -58,6 +58,10 @@ class AthanorBaseObjectMixin(EventEmitter):
             "name": self.get_display_name(viewer),
         }
 
+    @property
+    def exits(self):
+        return self.contents_index['exit']
+
     @lazy_property
     def locations(self):
         if not self.attributes.has(key='location_storage'):
