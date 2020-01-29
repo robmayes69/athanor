@@ -1,87 +1,133 @@
 from django.conf import settings
 from athanor.commands.command import AthanorCommand
-from athanor.utils import styling
+
 
 class AdministrationCommand(AthanorCommand):
-    help_category = "Administration"
+    help_category = "Account Management"
 
 
 class CmdAccount(AdministrationCommand):
     """
-    Coming soon!
+    General command for controlling game accounts.
+    Note that <account> accepts either username or email address.
+
+    Usage:
+        @account <account>
+            Display a breakdown of information all about an Account.
+
+        @account/list
+            Show all accounts in the system.
+
+        @account/create <username>,<email>,<password>
+            Create a new account.
+
+        @account/disable <account>=<reason>
+            Indefinitely disable an Account. The stated reason will be shown to all parties and recorded.
+            If the account is currently online, it will be booted.
+            Use @account/enable <account>=<reason> to re-enable the account.
+
+        @account/ban <account>=<duration>,<reason>
+            Temporarily disable an account until the timer's up. <duration> must be a time period such as
+            7d (7 days), 2w (2 weeks), etc. Reason will be shown to the account and staff and recorded.
+            Use @account/unban <account>=<reason> to lift it early.
+
+        @account/rename <account>=<new name>
+            Change an account's Username.
+
+        @account/email <account>=<new email>
+            Change an Account's email address.
+
+        @account/password <account>=<new password>
+            Re-set an Account's password.
+
+        @account/grant <account>=<role>
+            Grant a Role to an Account. See @role to know which are available.
+            Use @account/revoke <account>=<role> to remove one.
+
+        @account/addperm <account>=<permission>
+            Grant an Evennia Permission to an Account. (Superuser only.)
+            Use @account/delperm <account>=<permission> to remove it.
+
+        @account/boot <account>=<reason>
+            Forcibly disconnect an Account.
+
+        @account/super <account>
+            Promote an Account to Superuser status. (Superuser only.) Use again to demote. |rDANGEROUS.|n
     """
     key = '@account'
     locks = "cmd:pperm(Helper)"
-    switch_options = ('list', 'create', 'disable', 'enable', 'rename', 'ban', 'password', 'email', 'addperm',
-                      'delperm', 'examine', 'grant', 'revoke')
+    switch_options = ('list', 'create', 'disable', 'enable', 'rename', 'ban', 'unban', 'password', 'email', 'addperm',
+                      'delperm', 'grant', 'revoke', 'super', 'boot')
     account_caller = True
 
     def switch_main(self):
-        pass
+        if not self.args:
+            raise ValueError("Usage: @account <account>")
+        self.controllers.get('account').examine_account(self.args)
 
     def switch_list(self):
-        self.controllers.account.list_accounts(self.session)
+        self.controllers.get('account').list_accounts(self.session)
 
     def switch_create(self):
         if not len(self.arglist) == 3:
             raise ValueError("Usage: @account/create <username>,<email>,<password>")
         username, email, password = self.arglist
-        self.controllers.account.create_account(self.session, username, email, password)
+        self.controllers.get('account').create_account(self.session, username, email, password)
 
     def switch_disable(self):
         if not self.lhs and self.rhs:
             raise ValueError("Usage: @account/disable <account>=<reason>")
-        self.controllers.account.disable_account(self.session, self.lhs, self.rhs)
+        self.controllers.get('account').disable_account(self.session, self.lhs, self.rhs)
 
     def switch_enable(self):
         if not self.lhs and self.rhs:
             raise ValueError("Usage: @account/enable <account>=<reason>")
-        self.controllers.account.enable_account(self.session, self.lhs, self.rhs)
+        self.controllers.get('account').enable_account(self.session, self.lhs, self.rhs)
 
     def switch_rename(self):
         if not self.lhs and self.rhs:
             raise ValueError("Usage: @account/rename <account>=<new name>")
-        self.controllers.account.rename_account(self.session, self.lhs, self.rhs)
+        self.controllers.get('account').rename_account(self.session, self.lhs, self.rhs)
 
     def switch_ban(self):
+        if not (self.lhs and self.rhs) or not len(self.rhslist) == 2:
+            raise ValueError("Usage: @account/ban <account>=<duration>,<reason>")
+        self.controllers.get('account').ban_account(self.session, self.lhs, self.rhslist[0], self.rhslist[1])
+
+    def switch_unban(self):
         if not self.lhs and self.rhs:
-            raise ValueError("Usage: @account/ban <account>=<duration>")
-        self.controllers.account.ban_account(self.session, self.lhs, self.rhs)
+            raise ValueError("Usage: @account/ban <account>=<reason>")
+        self.controllers.get('account').unban_account(self.session, self.lhs, self.rhs)
 
     def switch_password(self):
         if not self.lhs and self.rhs:
             raise ValueError("Usage: @account/password <account>=<new password>")
-        self.controllers.account.reset_password(self.session, self.lhs, self.rhs)
+        self.controllers.get('account').reset_password(self.session, self.lhs, self.rhs)
 
     def switch_email(self):
         if not self.lhs and self.rhs:
             raise ValueError("Usage: @account/email <account>=<new email>")
-        self.controllers.account.change_email(self.session, self.lhs, self.rhs)
+        self.controllers.get('account').change_email(self.session, self.lhs, self.rhs)
 
     def switch_addperm(self):
         if not self.lhs and self.rhs:
             raise ValueError("Usage: @account/addperm <account>=<new permission>")
-        self.controllers.account.add_permission(self.session, self.lhs, self.rhs)
+        self.controllers.get('account').add_permission(self.session, self.lhs, self.rhs)
 
     def switch_delperm(self):
         if not self.lhs and self.rhs:
             raise ValueError("Usage: @account/delperm <account>=<delete permission>")
-        self.controllers.account.delete_permission(self.session, self.lhs, self.rhs)
+        self.controllers.get('account').delete_permission(self.session, self.lhs, self.rhs)
 
     def switch_grant(self):
         if not self.lhs and self.rhs:
             raise ValueError("Usage: @account/grant <account>=<new role>")
-        self.controllers.account.grant_role(self.session, self.lhs, self.rhs)
+        self.controllers.get('account').grant_role(self.session, self.lhs, self.rhs)
 
     def switch_revoke(self):
         if not self.lhs and self.rhs:
             raise ValueError("Usage: @account/revoke <account>=<role to remove>")
-        self.controllers.account.revoke_role(self.session, self.lhs, self.rhs)
-
-    def switch_examine(self):
-        if not self.args:
-            raise ValueError("Usage: @account/examine <account>")
-        self.controllers.get('account').examine_account(self.args)
+        self.controllers.get('account').revoke_role(self.session, self.lhs, self.rhs)
 
 
 class CmdCharacter(AdministrationCommand):

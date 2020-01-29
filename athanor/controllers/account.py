@@ -10,6 +10,8 @@ from athanor.controllers.base import AthanorController
 from athanor.gamedb.accounts import AthanorAccount
 from athanor.messages import account as amsg
 
+from athanor.utils import styling
+
 MIXINS = [class_from_module(mixin) for mixin in settings.CONTROLLER_MIXINS["ACCOUNT"]]
 MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
@@ -160,3 +162,7 @@ class AthanorAccountController(*MIXINS, AthanorController):
             raise ValueError("Permission denied.")
         account.roles.remove(role_key)
         amsg.RevokeMessage(source=enactor, target=account, role=role)
+
+    def list_accounts(self, session):
+        if not (enactor := session.get_account()) or not enactor.check_lock("apriv(account_examine)"):
+            raise ValueError("Permission denied.")
