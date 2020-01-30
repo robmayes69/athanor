@@ -266,3 +266,7 @@ class Speech(object):
 
         colorized_string = self.re_speech.sub(color_speech, message)
         return colorized_string
+
+
+def iter_to_string(iter):
+    return ', '.join(str(i) for i in iter)

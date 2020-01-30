@@ -3,7 +3,7 @@ from collections import defaultdict
 
 from django.conf import settings
 
-from evennia.utils.utils import class_from_module
+from evennia.utils.utils import class_from_module, make_iter
 from evennia.utils.logger import log_trace
 from evennia.utils.search import search_account
 
@@ -11,7 +11,7 @@ import athanor
 from athanor.controllers.base import AthanorController
 from athanor.gamedb.accounts import AthanorAccount
 from athanor.messages import account as amsg
-from athanor.utils.text import partial_match
+from athanor.utils.text import partial_match, iter_to_string
 
 from athanor.utils import styling
 
@@ -160,36 +160,48 @@ class AthanorAccountController(*MIXINS, AthanorController):
             raise ValueError("Permission denied.")
         account = self.find_account(account)
         perm = self.find_permission(perm)
-        perm_lock = perm.get("permission", None)
+        perm_data = settings.PERMISSIONS.get(perm, dict())
+        perm_lock = perm_data.get("permission", None)
         if not perm_lock:
             if not enactor.is_superuser:
                 raise ValueError("Permission denied. Only a Superuser can grant this.")
-        if perm_lock and not enactor.check_lock(perm_lock):
-            raise ValueError(f"Permission denied. Requires {perm_lock} or better.")
-        if perm in account.permissions.all():
+        if perm_lock:
+            passed = False
+            for lock in make_iter(perm_lock):
+                if (passed := enactor.check_lock(f"pperm({lock})")):
+                    break
+            if not passed:
+                raise ValueError(f"Permission denied. Requires {perm_lock} or better.")
+        if perm.lower() in account.permissions.all():
             raise ValueError(f"{account} already has that Permission!")
         account.permissions.add(perm)
-        self.permissions[perm].add(account)
-        account.operations.clear()
-        amsg.GrantMessage(source=enactor, target=account, perm=perm)
+        self.permissions[perm.lower()].add(account)
+        account.operations.clear_cache()
+        amsg.GrantMessage(source=enactor, target=account, perm=perm).send()
 
     def revoke_permission(self, session, account, perm):
         if not (enactor := session.get_account()):
             raise ValueError("Permission denied.")
         account = self.find_account(account)
         perm = self.find_permission(perm)
-        perm_lock = perm.get("permission", None)
+        perm_data = settings.PERMISSIONS.get(perm, dict())
+        perm_lock = perm_data.get("permission", None)
         if not perm_lock:
             if not enactor.is_superuser:
                 raise ValueError("Permission denied. Only a Superuser can grant this.")
-        if perm_lock and not enactor.check_lock(perm_lock):
-            raise ValueError(f"Permission denied. Requires {perm_lock} or better.")
-        if perm not in account.permissions.all():
+        if perm_lock:
+            passed = False
+            for lock in make_iter(perm_lock):
+                if (passed := enactor.check_lock(f"pperm({lock})")):
+                    break
+            if not passed:
+                raise ValueError(f"Permission denied. Requires {perm_lock} or better.")
+        if perm.lower() not in account.permissions.all():
             raise ValueError(f"{account} does not have that Permission!")
         account.permissions.remove(perm)
-        self.permissions[perm].remove(account)
-        account.operations.clear()
-        amsg.RevokeMessage(source=enactor, target=account, perm=perm)
+        self.permissions[perm.lower()].remove(account)
+        account.operations.clear_cache()
+        amsg.RevokeMessage(source=enactor, target=account, perm=perm).send()
 
     def toggle_super(self, session, account):
         if not (enactor := session.get_account()) or not enactor.is_superuser:
@@ -215,8 +227,8 @@ class AthanorAccountController(*MIXINS, AthanorController):
         account = self.find_account(account)
         message = list()
         message.append(styling.styled_header(enactor, f"Access Levels: {account}"))
-        message.append(f"PERMISSION HIERARCHY: {settings.PERMISSION_HIERARCHY} <<<< SUPERUSER")
-        message.append(f"HELD PERMISSIONS: {account.permissions.all()} ; SUPERUSER: {account.is_superuser}")
+        message.append(f"PERMISSION HIERARCHY: {iter_to_string(settings.PERMISSION_HIERARCHY)} <<<< SUPERUSER")
+        message.append(f"HELD PERMISSIONS: {iter_to_string(account.permissions.all())} ; SUPERUSER: {account.is_superuser}")
         message.append(styling.styled_footer(enactor))
         return '\n'.join(str(l) for l in message)
 
@@ -225,22 +237,19 @@ class AthanorAccountController(*MIXINS, AthanorController):
             raise ValueError("Permission denied.")
         # Create a COPY of the permissions since we're going to mutilate it a lot...
 
-        def stringify(users):
-            return ', '.join(str(u) for u in users)
-
         perms = dict(self.permissions)
         message = list()
         message.append(styling.styled_header(enactor, "Permissions Hierarchy"))
-        message.append(f"|rSUPERUSERS:|n {stringify(perms.pop('_super', list()))}")
+        message.append(f"|rSUPERUSERS:|n {iter_to_string(perms.pop('_super', list()))}")
         for perm in reversed(settings.PERMISSION_HIERARCHY):
             if perm.lower() in perms:
-                message.append(f"{perm:>10}: {stringify(perms.pop(perm.lower(), list()))}")
+                message.append(f"{perm:>10}: {iter_to_string(perms.pop(perm.lower(), list()))}")
         if perms:
             message.append(styling.styled_separator(enactor, "Non-Hierarchial Permissions"))
             for perm, holders in perms.items():
                 if not holders:
                     continue
-                message.append(f"{perm}: {stringify(holders)}")
+                message.append(f"{perm}: {iter_to_string(holders)}")
         message.append(styling.styled_footer(enactor))
         return '\n'.join(str(l) for l in message)
 
