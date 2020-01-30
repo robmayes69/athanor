@@ -76,6 +76,10 @@ CMDSET_SESSION = "athanor.cmdsets.session.AthanorSessionCmdSet"
 
 CMD_IGNORE_PREFIXES = ""
 
+# The Styler is an object that generates commonly-used formatting, like
+# headers and tables.
+STYLER_CLASS = "athanor.utils.styling.Styler"
+
 ######################################################################
 # Controllers
 ######################################################################
@@ -205,11 +209,7 @@ MIXINS = defaultdict(list)
 # can perform this operation. Operations are at the Account level.
 
 OPERATIONS = {
-    "account_examine": {
-        "description": "Can see all details about Accounts.",
-        "permission": "Admin"
-    },
-    "account_kick": {
+    "account_boot": {
         "description": "Can forcibly disconnect a Player from the game.",
         "permission": "Admin"
     },
@@ -261,7 +261,7 @@ OPERATIONS = {
         "description": "Can view all Sessions and their connection details. Can ignore Hidden Sessions.",
         "permission": "Admin"
     },
-    "session_kick": {
+    "session_boot": {
         "description": "Can forcibly close a Session.",
         "permission": "Admin"
     }

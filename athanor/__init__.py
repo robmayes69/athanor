@@ -4,6 +4,8 @@ Core of the Athanor API.
 """
 CONTROLLER_MANAGER = None
 
+STYLER = None
+
 
 def load(settings):
 

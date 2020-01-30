@@ -222,7 +222,7 @@ class AthanorAccountController(*MIXINS, AthanorController):
         return reverse
     
     def access_account(self, session, account):
-        if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_examine)"):
+        if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_details)"):
             raise ValueError("Permission denied.")
         account = self.find_account(account)
         message = list()
@@ -233,7 +233,7 @@ class AthanorAccountController(*MIXINS, AthanorController):
         return '\n'.join(str(l) for l in message)
 
     def permissions_directory(self, session):
-        if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_examine)"):
+        if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_details)"):
             raise ValueError("Permission denied.")
         # Create a COPY of the permissions since we're going to mutilate it a lot...
 
@@ -267,5 +267,10 @@ class AthanorAccountController(*MIXINS, AthanorController):
         return '\n'.join(str(l) for l in message)
 
     def list_accounts(self, session):
-        if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_examine)"):
+        if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_details)"):
             raise ValueError("Permission denied.")
+
+    def examine_account(self, session, account):
+        if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_details)"):
+            raise ValueError("Permission denied.")
+        account = self.find_account(account)

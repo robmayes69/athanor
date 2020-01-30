@@ -27,6 +27,10 @@ def at_server_start():
     """
     # Retrieve the appropriate Controller Manager class from settings,
     # instantiate it, and launch its load process.
+    styler_class = class_from_module(settings.STYLER_CLASS)
+    athanor.STYLER = styler_class
+    athanor.STYLER.load()
+
     manager_class = class_from_module(settings.CONTROLLER_MANAGER_CLASS)
     athanor.CONTROLLER_MANAGER = manager_class()
     athanor.CONTROLLER_MANAGER.load()

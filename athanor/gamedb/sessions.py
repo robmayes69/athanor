@@ -1,6 +1,9 @@
 from django.conf import settings
+
 from evennia.server.serversession import ServerSession
 from evennia.utils.utils import class_from_module
+
+import athanor
 from athanor.utils.events import EventEmitter
 
 MIXINS = [class_from_module(mixin) for mixin in settings.GAMEDB_MIXINS["SESSION"]]
@@ -8,6 +11,12 @@ MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
 
 class AthanorSession(*MIXINS, ServerSession, EventEmitter):
+
+    @property
+    def styler(self):
+        if self.account:
+            return self.account.styler
+        return athanor.STYLER(self)
 
     def at_sync(self):
         """

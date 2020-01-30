@@ -10,19 +10,67 @@ from evennia.utils.ansi import ANSIString
 from evennia.utils import logger, create
 from evennia.objects.objects import ExitCommand
 from evennia.commands import cmdset
+from evennia.commands.cmdhandler import get_and_merge_cmdsets
 
+import athanor
 from athanor.utils.events import EventEmitter
 from athanor.utils.text import tabular_table
-from athanor.utils import styling
 
 
-class AthanorBaseObjectMixin(EventEmitter):
+class HasRenderExamine(object):
+    """
+    This is a mixin that implements the render_examine method and its methods.
+    All Athanor database Entities will use this instead of Evennia's basic Examine.
+    """
+    examine_hooks = ['basic', 'access', 'commands', 'attributes']
+    examine_type = "account"
+
+    def render_examine(self, viewer):
+        def get_cmdset_callback(cmdset):
+            styling = viewer.styler
+            message = list()
+            message.append(styling.styled_header(f"Examining: {self.get_display_name(viewer)}"))
+            for hook in self.examine_hooks:
+                hook_call = f"render_examine_{hook}"
+                if hasattr(self, hook_call):
+                    message.extend(getattr(self, hook_call)(viewer, cmdset, styling))
+            message.append(styling.blank_footer)
+            viewer.msg('\n'.join(str(l) for l in message))
+
+        obj_session = self.sessions.get()[0] if self.sessions.count() else None
+
+        # using callback for printing result whenever function returns.
+        get_and_merge_cmdsets(
+            self, obj_session, self.get_account(), self.get_puppet(), self.examine_type, "examine"
+        ).addCallback(get_cmdset_callback)
+
+    def render_examine_basic(self, viewer, cmdset, styling):
+        return list()
+
+    def render_examine_access(self, viewer, cmdset, styling):
+        return list()
+
+    def render_examine_commands(self, viewer, cmdset, styling):
+        return list()
+
+    def render_examine_attributes(self, viewer, cmdset, styling):
+        return list()
+
+
+
+class AthanorBaseObjectMixin(HasRenderExamine, EventEmitter):
     """
     This class implements most of the actual LOGIC of Athanor's particulars around how Objects work.
     It is provided as a mixin so other code besides AthanorObject can reference it.
     """
     hook_prefixes = ['object']
     object_types = ['object']
+
+    @property
+    def styler(self):
+        if self.account:
+            return self.account.styler
+        return athanor.STYLER(self)
 
     @lazy_property
     def contents_index(self):
@@ -140,7 +188,7 @@ class AthanorBaseObjectMixin(EventEmitter):
         display = f"{self.key} to {self.destination.key}"
         return f"""{alias:<6} {display}"""
 
-    def return_appearance_exits(self, looker, **kwargs):
+    def return_appearance_exits(self, looker, styling, **kwargs):
         exits = sorted([ex for ex in self.exits if ex.access(looker, "view")],
                        key=lambda ex: ex.key)
         message = list()
@@ -151,7 +199,7 @@ class AthanorBaseObjectMixin(EventEmitter):
         message.append(tabular_table(exits_formatted, field_width=37, line_length=78))
         return message
 
-    def return_appearance_characters(self, looker, **kwargs):
+    def return_appearance_characters(self, looker, styling, **kwargs):
         users = sorted([user for user in self.contents_index['character'] if user.access(looker, "view")],
                        key=lambda user: user.get_display_name(looker))
         message = list()
@@ -164,7 +212,7 @@ class AthanorBaseObjectMixin(EventEmitter):
     def get_room_appearance(self, looker, **kwargs):
         return self.get_display_name(looker, **kwargs)
 
-    def return_appearance_items(self, looker, **kwargs):
+    def return_appearance_items(self, looker, styling, **kwargs):
         visible = (con for con in self.contents_index['item'] if con.access(looker, "view"))
         things = defaultdict(list)
         for con in visible:
@@ -184,25 +232,26 @@ class AthanorBaseObjectMixin(EventEmitter):
             message.append(key)
         return message
 
-    def return_appearance_description(self, looker, **kwargs):
+    def return_appearance_description(self, looker, styling, **kwargs):
         message = list()
         if (desc := self.db.desc):
             message.append(desc)
         return message
 
-    def return_appearance_header(self, looker, **kwargs):
+    def return_appearance_header(self, looker, styling, **kwargs):
         return [styling.styled_header(looker, self.get_display_name(looker))]
 
     def return_appearance(self, looker, **kwargs):
         if not looker:
             return ""
+        styling = looker.styler
         message = list()
-        message.extend(self.return_appearance_header(looker, **kwargs))
-        message.extend(self.return_appearance_description(looker, **kwargs))
-        message.extend(self.return_appearance_items(looker, **kwargs))
-        message.extend(self.return_appearance_characters(looker, **kwargs))
-        message.extend(self.return_appearance_exits(looker, **kwargs))
-        message.append(styling.styled_footer(looker))
+        message.extend(self.return_appearance_header(looker, styling, **kwargs))
+        message.extend(self.return_appearance_description(looker, styling, **kwargs))
+        message.extend(self.return_appearance_items(looker, styling, **kwargs))
+        message.extend(self.return_appearance_characters(looker, styling, **kwargs))
+        message.extend(self.return_appearance_exits(looker, styling, **kwargs))
+        message.append(styling.blank_footer)
 
         return '\n'.join(str(l) for l in message)
 
@@ -625,3 +674,5 @@ class AthanorExitMixin(object):
 
         """
         traversing_object.msg("You cannot go there.")
+
+
