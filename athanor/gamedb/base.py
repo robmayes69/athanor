@@ -8,6 +8,7 @@ import evennia
 from evennia.utils.utils import lazy_property, dbid_to_obj, make_iter
 from evennia.utils.ansi import ANSIString
 from evennia.utils import logger, create
+from evennia.utils import utils
 from evennia.objects.objects import ExitCommand
 from evennia.commands import cmdset
 from evennia.commands.cmdhandler import get_and_merge_cmdsets
@@ -22,18 +23,21 @@ class HasRenderExamine(object):
     This is a mixin that implements the render_examine method and its methods.
     All Athanor database Entities will use this instead of Evennia's basic Examine.
     """
-    examine_hooks = ['basic', 'access', 'commands', 'attributes']
-    examine_type = "account"
+    examine_hooks = ['permissions', 'lock', 'commands', 'scripts', 'tags', 'attributes', 'contents']
+    examine_type = None
 
     def render_examine(self, viewer):
         def get_cmdset_callback(cmdset):
             styling = viewer.styler
             message = list()
-            message.append(styling.styled_header(f"Examining: {self.get_display_name(viewer)}"))
-            for hook in self.examine_hooks:
-                hook_call = f"render_examine_{hook}"
-                if hasattr(self, hook_call):
-                    message.extend(getattr(self, hook_call)(viewer, cmdset, styling))
+            message.append(styling.styled_header(f"Examining {self.examine_type.capitalize()}: {self.get_display_name(viewer)}"))
+            try:
+                for hook in self.examine_hooks:
+                    hook_call = f"render_examine_{hook}"
+                    if hasattr(self, hook_call):
+                        message.extend(getattr(self, hook_call)(viewer, cmdset, styling))
+            except Exception as e:
+                viewer.msg(e)
             message.append(styling.blank_footer)
             viewer.msg('\n'.join(str(l) for l in message))
 
@@ -44,18 +48,97 @@ class HasRenderExamine(object):
             self, obj_session, self.get_account(), self.get_puppet(), self.examine_type, "examine"
         ).addCallback(get_cmdset_callback)
 
-    def render_examine_basic(self, viewer, cmdset, styling):
-        return list()
+    def render_examine_permissions(self, viewer, cmdset, styling):
+        return [
+            f"|wPermissions|n: {', '.join(perms) if (perms := self.permissions.all()) else '<None>'}",
+        ]
 
-    def render_examine_access(self, viewer, cmdset, styling):
-        return list()
+    def render_examine_locks(self, viewer, cmdset, styling):
+        locks = str(self.locks)
+        if locks:
+            locks_string = utils.fill("; ".join([lock for lock in locks.split(";")]), indent=6)
+        else:
+            locks_string = " Default"
+        return [
+            f"|wLocks|n:{locks_string}"
+        ]
 
-    def render_examine_commands(self, viewer, cmdset, styling):
-        return list()
+    def render_examine_commands(self, viewer, avail_cmdset, styling):
+        if not (len(self.cmdset.all()) == 1 and self.cmdset.current.key == "_EMPTY_CMDSET"):
+            # all() returns a 'stack', so make a copy to sort.
+            stored_cmdsets = sorted(self.cmdset.all(), key=lambda x: x.priority, reverse=True)
+            string = "\n|wStored Cmdset(s)|n:\n %s" % (
+                "\n ".join(
+                    "%s [%s] (%s, prio %s)"
+                    % (cmdset.path, cmdset.key, cmdset.mergetype, cmdset.priority)
+                    for cmdset in stored_cmdsets
+                    if cmdset.key != "_EMPTY_CMDSET"
+                )
+            )
+
+            # this gets all components of the currently merged set
+            all_cmdsets = [(cmdset.key, cmdset) for cmdset in avail_cmdset.merged_from]
+            # we always at least try to add account- and session sets since these are ignored
+            # if we merge on the object level.
+            if hasattr(self, "account") and self.account:
+                all_cmdsets.extend([(cmdset.key, cmdset) for cmdset in self.account.cmdset.all()])
+                if self.sessions.count():
+                    # if there are more sessions than one on objects it's because of multisession mode 3.
+                    # we only show the first session's cmdset here (it is -in principle- possible that
+                    # different sessions have different cmdsets but for admins who want such madness
+                    # it is better that they overload with their own CmdExamine to handle it).
+                    all_cmdsets.extend(
+                        [
+                            (cmdset.key, cmdset)
+                            for cmdset in self.account.sessions.all()[0].cmdset.all()
+                        ]
+                    )
+            else:
+                try:
+                    # we have to protect this since many objects don't have sessions.
+                    all_cmdsets.extend(
+                        [
+                            (cmdset.key, cmdset)
+                            for cmdset in self.get_session(self.sessions.get()).cmdset.all()
+                        ]
+                    )
+                except (TypeError, AttributeError):
+                    # an error means we are merging an object without a session
+                    pass
+            all_cmdsets = [cmdset for cmdset in dict(all_cmdsets).values()]
+            all_cmdsets.sort(key=lambda x: x.priority, reverse=True)
+            string += "\n|wMerged Cmdset(s)|n:\n %s" % (
+                "\n ".join(
+                    "%s [%s] (%s, prio %s)"
+                    % (cmdset.path, cmdset.key, cmdset.mergetype, cmdset.priority)
+                    for cmdset in all_cmdsets
+                )
+            )
+
+            # list the commands available to this object
+            avail_cmdset = sorted([cmd.key for cmd in avail_cmdset if cmd.access(self, "cmd")])
+
+            cmdsetstr = utils.fill(", ".join(avail_cmdset), indent=2)
+            string += "\n|wCommands available to %s (result of Merged CmdSets)|n:\n %s" % (
+                self.key,
+                cmdsetstr,
+            )
+            return [string] if string else []
 
     def render_examine_attributes(self, viewer, cmdset, styling):
         return list()
 
+    def render_examine_tags(self, viewer, cmdset, styling):
+        tags_string = utils.fill(
+            ", ".join(
+                "%s[%s]" % (tag, category)
+                for tag, category in self.tags.all(return_key_and_category=True)
+            ),
+            indent=5,
+        )
+        if tags_string:
+            return [f"|wTags[category]|n: {tags_string.strip()}"]
+        return list()
 
 
 class AthanorBaseObjectMixin(HasRenderExamine, EventEmitter):
@@ -65,6 +148,36 @@ class AthanorBaseObjectMixin(HasRenderExamine, EventEmitter):
     """
     hook_prefixes = ['object']
     object_types = ['object']
+    examine_hooks = ['object', 'puppeteer', 'permissions', 'lock', 'commands', 'scripts', 'tags', 'attributes', 'contents']
+    examine_type = "object"
+
+    def render_examine_object(self, viewer, cmdset, styling):
+        message = list()
+        message.append(f"|wName/key|n: |c{self.name}|n ({self.dbref})")
+        message.append(f"|wTypeclass|n: {self.typename} ({self.typeclass_path})")
+        if (aliases := self.aliases.all()):
+            message.append(f"|wAliases|n: {', '.join(utils.make_iter(str(aliases)))}")
+        if (sessions := self.sessions.all()):
+            message.append(f"|wSessions|n: {', '.join(str(sess) for sess in sessions)}")
+        message.append(f"|wHome:|n {self.home} ({self.home.dbref if self.home else None})")
+        message.append(f"|wLocation:|n {self.location} ({self.location.dbref if self.location else None})")
+        return message
+
+    def render_examine_puppeteer(self, viewer, cmdset, styling):
+        if not self.account:
+            return list()
+        return list()
+
+    def render_examine_scripts(self, viewer, cmdset, styling):
+        if self.scripts.all():
+            return [f"|wScripts|n:\n {self.scripts}"]
+        return list()
+
+    def render_examine_contents(self, viewer, cmdset, styling):
+        message = list()
+        for category, contents in self.contents_index.items():
+            message.append(f"|{category.capitalize()}s|n: {', '.join([f'{t.name}({t.dbref})' for t in contents])}")
+        return message
 
     @property
     def styler(self):
