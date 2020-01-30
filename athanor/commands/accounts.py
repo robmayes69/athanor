@@ -52,10 +52,10 @@ class CmdAccount(AdministrationCommand):
     def switch_main(self):
         if not self.args:
             self.args = self.account
-        self.controllers.get('account').examine_account(self.args)
+        self.msg(self.controllers.get('account').examine_account(self.args))
 
     def switch_list(self):
-        self.controllers.get('account').list_accounts(self.session)
+        self.msg(self.controllers.get('account').list_accounts(self.session))
 
     def switch_create(self):
         if not len(self.arglist) == 3:
@@ -70,8 +70,8 @@ class CmdAccount(AdministrationCommand):
 
     def switch_enable(self):
         if not self.lhs and self.rhs:
-            raise ValueError("Usage: @account/enable <account>=<reason>")
-        self.controllers.get('account').enable_account(self.session, self.lhs, self.rhs)
+            raise ValueError("Usage: @account/enable <account>")
+        self.controllers.get('account').enable_account(self.session, self.args)
 
     def switch_rename(self):
         if not self.lhs and self.rhs:
@@ -85,8 +85,8 @@ class CmdAccount(AdministrationCommand):
 
     def switch_unban(self):
         if not self.lhs and self.rhs:
-            raise ValueError("Usage: @account/ban <account>=<reason>")
-        self.controllers.get('account').unban_account(self.session, self.lhs, self.rhs)
+            raise ValueError("Usage: @account/ban <account>")
+        self.controllers.get('account').unban_account(self.session, self.args)
 
     def switch_password(self):
         if not self.lhs and self.rhs:
@@ -161,47 +161,34 @@ class CmdCharacter(AdministrationCommand):
     """
     key = '@character'
     locks = "cmd:pperm(Helper)"
-    switch_options = ('list', 'search', 'enable', 'disable', 'lock',
-                      'typeclass', 'status', 'puppet', 'cost', 'create', 'account', 'shelved', 'examine')
+    switch_options = ('list', 'archive', 'restore', 'rename', 'puppet', 'create', 'transfer', 'old')
 
     def switch_main(self):
-        self.controllers.get('character').account_list(self.session, self.args)
-
-    def switch_search(self):
-        pass
-
-    def switch_enable(self):
-        pass
-
-    def switch_disable(self):
-        pass
-
-    def switch_lock(self):
-        pass
-
-    def switch_status(self):
-        pass
-
-    def switch_typeclass(self):
-        pass
-
-    def switch_puppet(self):
-        pass
-
-    def switch_cost(self):
-        pass
+        self.msg(self.controllers.get('character').examine_character(self.session, self.args))
 
     def switch_create(self):
-        pass
+        self.controllers.get('character').create_character(self.session, self.lhs, self.rhs)
+
+    def switch_restore(self):
+        self.controllers.get('character').restore_character(self.session, self.lhs, self.rhs)
+
+    def switch_archive(self):
+        self.controllers.get('character').archive_character(self.session, self.args)
+
+    def switch_puppet(self):
+        self.controllers.get('character').puppet_character(self.session, self.args)
 
     def switch_rename(self):
-        pass
+        self.controllers.get('character').rename_character(self.session, self.lhs, self.rhs)
 
     def switch_transfer(self):
-        pass
+        self.controllers.get('character').transfer_character(self.session, self.lhs, self.rhs)
 
     def switch_old(self):
-        pass
+        self.controllers.get('character').list_archived(self.session)
+
+    def switch_list(self):
+        self.msg(self.controllers.get('character').list_characters(self.session))
 
 
 class CmdAccRename(AdministrationCommand):
@@ -253,6 +240,12 @@ class CmdAccPassword(AdministrationCommand):
 
 
 class CmdCharCreate(AdministrationCommand):
+    """
+    Create a character bound to your account!
+
+    Usage:
+        @charcreate <character name>
+    """
     key = '@charcreate'
     locks = 'cmd:%s' % 'pperm(Admin)' if settings.RESTRICTED_CHARACTER_CREATION else 'all()'
     account_caller = True
@@ -262,6 +255,12 @@ class CmdCharCreate(AdministrationCommand):
 
 
 class CmdCharRename(AdministrationCommand):
+    """
+    Rename a character you own.
+
+    Usage:
+        @charrename <character>=<new name>
+    """
     key = "@charrename"
     locks = 'cmd:%s' % 'pperm(Admin)' if settings.RESTRICTED_CHARACTER_RENAME else 'all()'
     account_caller = True
@@ -272,6 +271,12 @@ class CmdCharRename(AdministrationCommand):
 
 
 class CmdCharDelete(AdministrationCommand):
+    """
+    Delete one of your characters.
+
+    Usage:
+        @chardelete <character>=<verify name>
+    """
     key = '@chardelete'
     locks = 'cmd:%s' % 'pperm(Admin)' if settings.RESTRICTED_CHARACTER_DELETION else 'all()'
     account_caller = True
@@ -282,6 +287,12 @@ class CmdCharDelete(AdministrationCommand):
 
 
 class CmdCharPuppet(AdministrationCommand):
+    """
+    Enter game as one of your characters.
+
+    Usage:
+        @ic <character>
+    """
     key = "@ic"
     locks = "cmd:all()"
     account_caller = True
@@ -292,6 +303,13 @@ class CmdCharPuppet(AdministrationCommand):
 
 
 class CmdCharUnpuppet(AdministrationCommand):
+    """
+    Have your puppeted character leave the game world. Return to the
+    account menu.
+
+    Usage:
+        @ooc
+    """
     key = "@ooc"
     locks = "cmd:all()"
     account_caller = True

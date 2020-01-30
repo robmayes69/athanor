@@ -5,12 +5,25 @@ from evennia.utils.utils import class_from_module
 
 import athanor
 from athanor.utils.events import EventEmitter
+from athanor.gamedb.base import HasRenderExamine
 
 MIXINS = [class_from_module(mixin) for mixin in settings.GAMEDB_MIXINS["SESSION"]]
 MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
 
-class AthanorSession(*MIXINS, ServerSession, EventEmitter):
+class AthanorSession(*MIXINS, HasRenderExamine, ServerSession, EventEmitter):
+    examine_hooks = ['session', 'puppet', 'commands', 'tags', 'attributes']
+    examine_type = "session"
+
+    def render_examine_session(self, viewer, cmdset, styling):
+        message = list()
+        message.append(f"|wAddress|n: |c{self.address}|n")
+        message.append(f"|wProtocol|n: {self.protocol_key}")
+        message.append(f"|wTypeclass|n: {self.typename} ({self.typeclass_path})")
+        return message
+
+    def render_examine_puppet(self, viewer, cmdset, styling):
+        return list()
 
     @property
     def styler(self):

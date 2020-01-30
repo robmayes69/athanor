@@ -3,6 +3,7 @@ from django.conf import settings
 
 from evennia.utils.utils import class_from_module, lazy_property
 from evennia.accounts.accounts import DefaultAccount
+from evennia.utils import utils
 
 import athanor
 
@@ -26,6 +27,35 @@ class AthanorAccount(*MIXINS, DefaultAccount, EventEmitter):
         account_online (session): Fired whenever an account comes online from being completely offline.
         account_offline (session): Triggered when an account's final session closes.
     """
+    examine_hooks = ['account', 'permissions', 'lock', 'commands', 'scripts', 'tags', 'attributes',
+                     'puppets']
+    examine_type = "account"
+
+    def render_examine_account(self, viewer, cmdset, styling):
+        message = list()
+        message.append(f"|wName/key|n: |c{self.name}|n ({self.dbref})")
+        message.append(f"|wTypeclass|n: {self.typename} ({self.typeclass_path})")
+        if (aliases := self.aliases.all()):
+            message.append(f"|wAliases|n: {', '.join(utils.make_iter(str(aliases)))}")
+        if (sessions := self.sessions.all()):
+            message.append(f"|wSessions|n: {', '.join(str(sess) for sess in sessions)}")
+        message.append(f"|wEmail|n: {self.email}")
+        return message
+
+    def render_examine_puppets(self, viewer, cmdset, styling):
+        return list()
+
+    def render_examine_puppeteer(self, viewer, cmdset, styling):
+        message = [
+            styling.styled_separator("Connected Account"),
+            f"|wUsername|n: {self.username}",
+            f"|wEmail|n: {self.email}",
+            f"|wTypeclass|n: {self.typename} ({self.typeclass_path})",
+            f"|wPermissions|n: {', '.join(perms) if (perms := self.permissions.all()) else '<None>'} (Superuser: {self.is_superuser}) (Quelled: {bool(self.db._quell)})",
+            f"|wOperations|n: {', '.join(opers) if (opers := self.operations.all()) else '<None>'}"
+            f"|wSessions|n: {', '.join(str(sess) for sess in self.sessions.all())}"
+        ]
+        return message
 
     def system_msg(self, text=None, system_name=None, enactor=None):
         sysmsg_border = self.options.sys_msg_border
@@ -39,6 +69,19 @@ class AthanorAccount(*MIXINS, DefaultAccount, EventEmitter):
         if not tz:
             tz = self.options.timezone
         return time_data.astimezone(tz).strftime(time_format)
+
+    def render_list_section(self, enactor, styling):
+        """
+        Called by AccountController's list_accounts method. Renders this account
+        on the list.
+        """
+        return [
+            styling.styled_separator(self.email),
+            f"|wUsername|n: {self.username}",
+            f"|wLast Login|n: Last login here!",
+            f"|wPermissions|n: {self.permissions.all()} (Superuser: {self.is_superuser})",
+            f"|Characters|n: {self.characters()}"
+        ]
 
     def __str__(self):
         return self.key

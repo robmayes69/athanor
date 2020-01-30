@@ -12,6 +12,7 @@ from athanor.controllers.base import AthanorController
 from athanor.gamedb.accounts import AthanorAccount
 from athanor.messages import account as amsg
 from athanor.utils.text import partial_match, iter_to_string
+from athanor.utils.time import utcnow, duration_from_string
 
 from athanor.utils import styling
 
@@ -72,7 +73,6 @@ class AthanorAccountController(*MIXINS, AthanorController):
             amsg.CreateMessage(source=session, target=new_account).send()
         else:
             amsg.CreateMessageAdmin(source=enactor, target=new_account, password=password).send()
-
         return new_account
 
     def rename_account(self, session, account, new_name, ignore_priv=False):
@@ -110,29 +110,43 @@ class AthanorAccountController(*MIXINS, AthanorController):
         if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_disable)"):
             raise ValueError("Permission denied.")
         account = self.find_account(account)
-        account.set_unusable_password()
+        if account.db._disabled:
+            raise ValueError("Account is already disabled!")
+        if not reason:
+            raise ValueError("Must include a reason!")
+        account.db._disabled = reason
         amsg.DisableMessage(source=enactor, target=account, reason=reason)
 
-    def enable_account(self, session, account, new_password, reason):
+    def enable_account(self, session, account):
         if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_disable)"):
             raise ValueError("Permission denied.")
         account = self.find_account(account)
-        if not new_password:
-            raise ValueError("Passwords may not be empty!")
-        account.set_password(new_password)
-        amsg.EnableMessage(source=enactor, target=account, reason=reason)
+        if not account.db._disabled:
+            raise ValueError("Account is not disabled!")
+        del account.db._disabled
+        amsg.EnableMessage(source=enactor, target=account)
 
     def ban_account(self, session, account, duration, reason):
         if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_ban)"):
             raise ValueError("Permission denied.")
         account = self.find_account(account)
+        duration = duration_from_string(duration)
+        ban_date = utcnow() + duration
+        if not reason:
+            raise ValueError("Must include a reason!")
+        account.db._banned = ban_date
+        account.db._ban_reason = reason
         amsg.BanMessage(source=enactor, target=account, duration=duration, reason=reason)
 
-    def unban_account(self, session, account, reason):
+    def unban_account(self, session, account):
         if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_ban)"):
             raise ValueError("Permission denied.")
         account = self.find_account(account)
-        amsg.UnBanMessage(source=enactor, target=account, reason=reason)
+        if not ((banned := account.db._banned) and banned > utcnow()):
+            raise ValueError("Account is not banned!")
+        del account.db._banned
+        del account.db._ban_reason
+        amsg.UnBanMessage(source=enactor, target=account)
 
     def reset_password(self, session, account, new_password, ignore_priv=False, old_password=None):
         if not (enactor := session.get_account()) or (not ignore_priv and not enactor.check_lock("oper(account_password)")):
@@ -143,6 +157,7 @@ class AthanorAccountController(*MIXINS, AthanorController):
         if not new_password:
             raise ValueError("Passwords may not be empty!")
         account.set_password(new_password)
+        account.db._date_password_changed = utcnow()
         if old_password:
             amsg.PasswordMessagePrivate(source=enactor).send()
         else:
@@ -269,8 +284,19 @@ class AthanorAccountController(*MIXINS, AthanorController):
     def list_accounts(self, session):
         if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_details)"):
             raise ValueError("Permission denied.")
+        if not (accounts := AthanorAccount.objects.filter_family()):
+            raise ValueError("No accounts to list!")
+        styling = enactor.styler
+        message = [
+            styling.styled_header(f"Account Listing")
+        ]
+        for acc in accounts:
+            message.extend(acc.render_list_section(enactor, styling))
+        message.append(styling.blank_footer)
+        return '\n'.join(str(l) for l in message)
 
     def examine_account(self, session, account):
         if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_details)"):
             raise ValueError("Permission denied.")
         account = self.find_account(account)
+        return account.render_examine(enactor)

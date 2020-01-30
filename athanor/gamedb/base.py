@@ -23,7 +23,7 @@ class HasRenderExamine(object):
     This is a mixin that implements the render_examine method and its methods.
     All Athanor database Entities will use this instead of Evennia's basic Examine.
     """
-    examine_hooks = ['permissions', 'lock', 'commands', 'scripts', 'tags', 'attributes', 'contents']
+    examine_hooks = ['commands', 'scripts', 'tags', 'attributes']
     examine_type = None
 
     def render_examine(self, viewer):
@@ -47,21 +47,6 @@ class HasRenderExamine(object):
         get_and_merge_cmdsets(
             self, obj_session, self.get_account(), self.get_puppet(), self.examine_type, "examine"
         ).addCallback(get_cmdset_callback)
-
-    def render_examine_permissions(self, viewer, cmdset, styling):
-        return [
-            f"|wPermissions|n: {', '.join(perms) if (perms := self.permissions.all()) else '<None>'}",
-        ]
-
-    def render_examine_locks(self, viewer, cmdset, styling):
-        locks = str(self.locks)
-        if locks:
-            locks_string = utils.fill("; ".join([lock for lock in locks.split(";")]), indent=6)
-        else:
-            locks_string = " Default"
-        return [
-            f"|wLocks|n:{locks_string}"
-        ]
 
     def render_examine_commands(self, viewer, avail_cmdset, styling):
         if not (len(self.cmdset.all()) == 1 and self.cmdset.current.key == "_EMPTY_CMDSET"):
@@ -125,6 +110,9 @@ class HasRenderExamine(object):
             )
             return [string] if string else []
 
+    def render_examine_nattributes(self, viewer, cmdset, styling):
+        return list()
+
     def render_examine_attributes(self, viewer, cmdset, styling):
         return list()
 
@@ -148,35 +136,59 @@ class AthanorBaseObjectMixin(HasRenderExamine, EventEmitter):
     """
     hook_prefixes = ['object']
     object_types = ['object']
-    examine_hooks = ['object', 'puppeteer', 'permissions', 'lock', 'commands', 'scripts', 'tags', 'attributes', 'contents']
+    examine_hooks = ['object', 'puppeteer', 'access', 'commands', 'scripts', 'tags', 'attributes', 'contents']
     examine_type = "object"
 
     def render_examine_object(self, viewer, cmdset, styling):
-        message = list()
-        message.append(f"|wName/key|n: |c{self.name}|n ({self.dbref})")
-        message.append(f"|wTypeclass|n: {self.typename} ({self.typeclass_path})")
+        message = [
+            styling.styled_separator("Object Properties"),
+            f"|wName/key|n: |c{self.key}|n ({self.dbref})",
+            f"|wTypeclass|n: {self.typename} ({self.typeclass_path})"
+        ]
         if (aliases := self.aliases.all()):
             message.append(f"|wAliases|n: {', '.join(utils.make_iter(str(aliases)))}")
         if (sessions := self.sessions.all()):
             message.append(f"|wSessions|n: {', '.join(str(sess) for sess in sessions)}")
         message.append(f"|wHome:|n {self.home} ({self.home.dbref if self.home else None})")
         message.append(f"|wLocation:|n {self.location} ({self.location.dbref if self.location else None})")
+        if (destination := self.destination):
+            message.append(f"|wDestination|n: {destination} ({destination.dbref})")
+        return message
+
+    def render_examine_access(self, viewer, cmdset, styling):
+        locks = str(self.locks)
+        if locks:
+            locks_string = utils.fill("; ".join([lock for lock in locks.split(";")]), indent=6)
+        else:
+            locks_string = " Default"
+        message = [
+            styling.styled_separator("Access"),
+            f"|wPermissions|n: {', '.join(perms) if (perms := self.permissions.all()) else '<None>'}",
+            f"|wLocks|n:{locks_string}"
+        ]
         return message
 
     def render_examine_puppeteer(self, viewer, cmdset, styling):
-        if not self.account:
+        if not (account := self.account):
             return list()
-        return list()
+        return account.render_examine_puppeteer(viewer, cmdset, styling)
 
     def render_examine_scripts(self, viewer, cmdset, styling):
-        if self.scripts.all():
-            return [f"|wScripts|n:\n {self.scripts}"]
-        return list()
+        if not (scripts := self.scripts.all()):
+            return list()
+        message = [
+            styling.styled_separator("Scripts"),
+            scripts
+        ]
+        return message()
 
     def render_examine_contents(self, viewer, cmdset, styling):
+        if not (contents_index := self.contents_index):
+            return list()
         message = list()
-        for category, contents in self.contents_index.items():
-            message.append(f"|{category.capitalize()}s|n: {', '.join([f'{t.name}({t.dbref})' for t in contents])}")
+        for category, contents in contents_index.items():
+            message.append(styling.styled_separator(f"Contents: {category.capitalize()}s"))
+            message.append(', '.join([f'{t.name}({t.dbref})' for t in contents]))
         return message
 
     @property
