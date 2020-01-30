@@ -1,4 +1,6 @@
 import re
+from collections import defaultdict
+
 from django.conf import settings
 
 from evennia.utils.utils import class_from_module
@@ -9,6 +11,7 @@ import athanor
 from athanor.controllers.base import AthanorController
 from athanor.gamedb.accounts import AthanorAccount
 from athanor.messages import account as amsg
+from athanor.utils.text import partial_match
 
 from athanor.utils import styling
 
@@ -26,6 +29,7 @@ class AthanorAccountController(*MIXINS, AthanorController):
         self.name_map = dict()
         self.roles = dict()
         self.reg_names = None
+        self.permissions = defaultdict(set)
     
     def do_load(self):
         try:
@@ -36,7 +40,6 @@ class AthanorAccountController(*MIXINS, AthanorController):
             self.account_typeclass = AthanorAccount
 
         self.update_cache()
-        self.update_roles()
 
     def update_regex(self):
         escape_names = [re.escape(name) for name in self.name_map.keys()]
@@ -47,20 +50,24 @@ class AthanorAccountController(*MIXINS, AthanorController):
         self.id_map = {acc.id: acc for acc in accounts}
         self.name_map = {acc.username.upper(): acc for acc in accounts}
         self.update_regex()
-
-    def update_roles(self):
-        for plugin in athanor.CONTROLLER_MANAGER.get('gamedata').plugins_sorted:
-            self.roles.update(plugin.data.get("roles", dict()))
+        self.permissions = defaultdict(set)
+        for acc in accounts:
+            for perm in acc.permissions.all():
+                self.permissions[perm].add(acc)
+            if acc.is_superuser:
+                self.permissions["_super"].add(acc)
 
     def create_account(self, session, username, email, password, login_screen=False, **kwargs):
         if not login_screen:
-            if not (enactor := session.get_account()) or not enactor.check_lock("apriv(account_create)"):
+            if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_create)"):
                 raise ValueError("Permission denied.")
         new_account = self.account_typeclass.create_account(username=username, email=email, password=password,
                                                                 session=session, ip=session.address)
         self.id_map[new_account.id] = new_account
         self.name_map[new_account.username.upper()] = new_account
         self.update_regex()
+        for perm in new_account.permissions.all():
+            self.permissions[perm].add(new_account)
         if login_screen:
             amsg.CreateMessage(source=session, target=new_account).send()
         else:
@@ -69,7 +76,7 @@ class AthanorAccountController(*MIXINS, AthanorController):
         return new_account
 
     def rename_account(self, session, account, new_name, ignore_priv=False):
-        if not (enactor := session.get_account()) or (not ignore_priv and not enactor.check_lock("apriv(account_rename)")):
+        if not (enactor := session.get_account()) or (not ignore_priv and not enactor.check_lock("oper(account_rename)")):
             raise ValueError("Permission denied.")
         account = self.find_account(account)
         old_name = str(account)
@@ -77,7 +84,7 @@ class AthanorAccountController(*MIXINS, AthanorController):
         amsg.RenameMessage(source=enactor, target=account, old_name=old_name, account_name=new_name).send()
 
     def change_email(self, session, account, new_email, ignore_priv=False):
-        if not (enactor := session.get_account()) or (not ignore_priv and not enactor.check_lock("apriv(account_email)")):
+        if not (enactor := session.get_account()) or (not ignore_priv and not enactor.check_lock("oper(account_email)")):
             raise ValueError("Permission denied.")
         account = self.find_account(account)
         old_email = account.email
@@ -100,14 +107,14 @@ class AthanorAccountController(*MIXINS, AthanorController):
         raise ValueError(f"That matched multiple accounts: {found}")
 
     def disable_account(self, session, account, reason):
-        if not (enactor := session.get_account()) or not enactor.check_lock("apriv(account_disable)"):
+        if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_disable)"):
             raise ValueError("Permission denied.")
         account = self.find_account(account)
         account.set_unusable_password()
         amsg.DisableMessage(source=enactor, target=account, reason=reason)
 
     def enable_account(self, session, account, new_password, reason):
-        if not (enactor := session.get_account()) or not enactor.check_lock("apriv(account_disable)"):
+        if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_disable)"):
             raise ValueError("Permission denied.")
         account = self.find_account(account)
         if not new_password:
@@ -116,19 +123,19 @@ class AthanorAccountController(*MIXINS, AthanorController):
         amsg.EnableMessage(source=enactor, target=account, reason=reason)
 
     def ban_account(self, session, account, duration, reason):
-        if not (enactor := session.get_account()) or not enactor.check_lock("apriv(account_ban)"):
+        if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_ban)"):
             raise ValueError("Permission denied.")
         account = self.find_account(account)
         amsg.BanMessage(source=enactor, target=account, duration=duration, reason=reason)
 
     def unban_account(self, session, account, reason):
-        if not (enactor := session.get_account()) or not enactor.check_lock("apriv(account_ban)"):
+        if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_ban)"):
             raise ValueError("Permission denied.")
         account = self.find_account(account)
         amsg.UnBanMessage(source=enactor, target=account, reason=reason)
 
     def reset_password(self, session, account, new_password, ignore_priv=False, old_password=None):
-        if not (enactor := session.get_account()) or (not ignore_priv and not enactor.check_lock("apriv(account_password)")):
+        if not (enactor := session.get_account()) or (not ignore_priv and not enactor.check_lock("oper(account_password)")):
             raise ValueError("Permission denied.")
         if ignore_priv and not account.check_password(old_password):
             raise ValueError("Permission denied. Password was incorrect.")
@@ -141,28 +148,115 @@ class AthanorAccountController(*MIXINS, AthanorController):
         else:
             amsg.PasswordMessageAdmin(source=enactor, target=account, password=new_password).send()
 
-    def grant_role(self, session, account, role_key):
-        if not (enactor := session.get_account()):
-            raise ValueError("Permission denied.")
-        account = self.find_account(account)
-        role = self.find_role(role_key)
-        role_lock = role.get("lock", f"perm({settings.ACCOUNT_ROLE_PERMISSION})")
-        if not enactor.check_lock(role_lock):
-            raise ValueError("Permission denied.")
-        account.roles.add(role_key)
-        amsg.GranteMessage(source=enactor, target=account, role=role)
+    def find_permission(self, perm):
+        if not perm:
+            raise ValueError("No permission entered!")
+        if not (found := partial_match(perm, settings.PERMISSIONS.keys())):
+            raise ValueError("Permission not found!")
+        return found
 
-    def revoke_role(self, session, account, role_key):
+    def grant_permission(self, session, account, perm):
         if not (enactor := session.get_account()):
             raise ValueError("Permission denied.")
         account = self.find_account(account)
-        role = self.find_role(role_key)
-        role_lock = role.get("lock", f"perm({settings.ACCOUNT_ROLE_PERMISSION})")
-        if not enactor.check_lock(role_lock):
+        perm = self.find_permission(perm)
+        perm_lock = perm.get("permission", None)
+        if not perm_lock:
+            if not enactor.is_superuser:
+                raise ValueError("Permission denied. Only a Superuser can grant this.")
+        if perm_lock and not enactor.check_lock(perm_lock):
+            raise ValueError(f"Permission denied. Requires {perm_lock} or better.")
+        if perm in account.permissions.all():
+            raise ValueError(f"{account} already has that Permission!")
+        account.permissions.add(perm)
+        self.permissions[perm].add(account)
+        account.operations.clear()
+        amsg.GrantMessage(source=enactor, target=account, perm=perm)
+
+    def revoke_permission(self, session, account, perm):
+        if not (enactor := session.get_account()):
             raise ValueError("Permission denied.")
-        account.roles.remove(role_key)
-        amsg.RevokeMessage(source=enactor, target=account, role=role)
+        account = self.find_account(account)
+        perm = self.find_permission(perm)
+        perm_lock = perm.get("permission", None)
+        if not perm_lock:
+            if not enactor.is_superuser:
+                raise ValueError("Permission denied. Only a Superuser can grant this.")
+        if perm_lock and not enactor.check_lock(perm_lock):
+            raise ValueError(f"Permission denied. Requires {perm_lock} or better.")
+        if perm not in account.permissions.all():
+            raise ValueError(f"{account} does not have that Permission!")
+        account.permissions.remove(perm)
+        self.permissions[perm].remove(account)
+        account.operations.clear()
+        amsg.RevokeMessage(source=enactor, target=account, perm=perm)
+
+    def toggle_super(self, session, account):
+        if not (enactor := session.get_account()) or not enactor.is_superuser:
+            raise ValueError("Permission denied.")
+        account = self.find_account(account)
+        acc_super = account.is_superuser
+        reverse = not acc_super
+        if acc_super:
+            amsg.RevokeSuperMessage(source=enactor, target=account).send()
+        else:
+            amsg.GrantSuperMessage(source=enactor, target=account).send()
+        account.is_superuser = reverse
+        account.save(update_fields=['is_superuser'])
+        if reverse:
+            self.permissions["_super"].add(account)
+        else:
+            self.permissions["_super"].remove(account)
+        return reverse
+    
+    def access_account(self, session, account):
+        if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_examine)"):
+            raise ValueError("Permission denied.")
+        account = self.find_account(account)
+        message = list()
+        message.append(styling.styled_header(enactor, f"Access Levels: {account}"))
+        message.append(f"PERMISSION HIERARCHY: {settings.PERMISSION_HIERARCHY} <<<< SUPERUSER")
+        message.append(f"HELD PERMISSIONS: {account.permissions.all()} ; SUPERUSER: {account.is_superuser}")
+        message.append(styling.styled_footer(enactor))
+        return '\n'.join(str(l) for l in message)
+
+    def permissions_directory(self, session):
+        if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_examine)"):
+            raise ValueError("Permission denied.")
+        # Create a COPY of the permissions since we're going to mutilate it a lot...
+
+        def stringify(users):
+            return ', '.join(str(u) for u in users)
+
+        perms = dict(self.permissions)
+        message = list()
+        message.append(styling.styled_header(enactor, "Permissions Hierarchy"))
+        message.append(f"|rSUPERUSERS:|n {stringify(perms.pop('_super', list()))}")
+        for perm in reversed(settings.PERMISSION_HIERARCHY):
+            if perm.lower() in perms:
+                message.append(f"{perm:>10}: {stringify(perms.pop(perm.lower(), list()))}")
+        if perms:
+            message.append(styling.styled_separator(enactor, "Non-Hierarchial Permissions"))
+            for perm, holders in perms.items():
+                if not holders:
+                    continue
+                message.append(f"{perm}: {stringify(holders)}")
+        message.append(styling.styled_footer(enactor))
+        return '\n'.join(str(l) for l in message)
+
+    def list_permissions(self, session):
+        if not (enactor := session.get_account()):
+            raise ValueError("Permission denied.")
+        message = list()
+        message.append(styling.styled_header(enactor, "Grantable Permissions"))
+        for perm, data in settings.PERMISSIONS.items():
+            message.append(styling.styled_separator(enactor, perm))
+            message.append(f"Grantable By: {data.get('permission', 'SUPERUSER')}")
+            if (desc := data.get("description", None)):
+                message.append(f"Description: {desc}")
+        message.append(styling.styled_footer(enactor))
+        return '\n'.join(str(l) for l in message)
 
     def list_accounts(self, session):
-        if not (enactor := session.get_account()) or not enactor.check_lock("apriv(account_examine)"):
+        if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_examine)"):
             raise ValueError("Permission denied.")

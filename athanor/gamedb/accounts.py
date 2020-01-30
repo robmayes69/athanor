@@ -5,7 +5,7 @@ from evennia.utils.utils import class_from_module, lazy_property
 from evennia.accounts.accounts import DefaultAccount
 
 from athanor.utils.events import EventEmitter
-from athanor.gamedb.handlers import RoleHandler, PrivilegeHandler
+from athanor.gamedb.handlers import OperationHandler
 from athanor.gamedb.characters import AthanorPlayerCharacter
 
 from athanor.utils import styling
@@ -63,12 +63,8 @@ class AthanorAccount(*MIXINS, DefaultAccount, EventEmitter):
             self.emit_global("account_online", session=session)
 
     @lazy_property
-    def privileges(self):
-        return PrivilegeHandler(self, "ACCOUNT")
-
-    @lazy_property
-    def roles(self):
-        return RoleHandler(self)
+    def operations(self):
+        return OperationHandler(self)
 
     def set_email(self, new_email):
         new_email = self.__class__.objects.normalize_email(new_email)
@@ -135,3 +131,6 @@ class AthanorAccount(*MIXINS, DefaultAccount, EventEmitter):
         message.append("|wQUIT|n to disconnect.")
         message.append(styling.styled_footer(viewer))
         return '\n'.join(str(l) for l in message)
+
+    def check_lock(self, lock):
+        return self.locks.check_lockstring(self, f"dummy:{lock}")

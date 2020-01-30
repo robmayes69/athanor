@@ -1,7 +1,7 @@
 from django.conf import settings
 from evennia.utils.utils import class_from_module
 from evennia import default_cmds
-from evennia.commands.default import account, admin, building
+from evennia.commands.default import account, admin, building, general
 from athanor.commands import accounts as ath_account
 
 
@@ -31,6 +31,16 @@ class AthanorAccountCmdSet(default_cmds.AccountCmdSet):
         self.remove(account.CmdOOC)
         self.remove(admin.CmdNewPassword)
         self.remove(building.CmdExamine)
+        self.remove(admin.CmdPerm)
+        self.remove(general.CmdAccess)
+        self.remove(admin.CmdBan)
+        self.remove(admin.CmdBoot)
+        self.remove(admin.CmdUnban)
+        self.remove(admin.CmdWall)
+        self.remove(admin.CmdEmit)
+        self.remove(account.CmdPassword)
+
+        self.add(ath_account.CmdAccess)
 
         self.add(ath_account.CmdAccount)
         self.add(ath_account.CmdCharacter)

@@ -74,7 +74,7 @@ CMDSET_UNLOGGEDIN = "athanor.cmdsets.login.AthanorUnloggedinCmdSet"
 # Command set used on the logged-in session
 CMDSET_SESSION = "athanor.cmdsets.session.AthanorSessionCmdSet"
 
-
+CMD_IGNORE_PREFIXES = ""
 
 ######################################################################
 # Controllers
@@ -198,18 +198,13 @@ CONTROLLER_MIXINS = defaultdict(list)
 GAMEDB_MIXINS = defaultdict(list)
 MIXINS = defaultdict(list)
 
-# This is the Evennia Permission used as a fallback for deciding who can grant roles,
-# if the role itself does not define a Permission.
-ACCOUNT_ROLE_PERMISSION = "Developer"
-
 # OPERATIONS are the pieces-of-Permissions that govern access to various parts of the Athanor
-# API. Operations are auto-granted by the stated Permission. Bereft of an included Permission,
+# API Operations are auto-granted by the stated Permission. Bereft of an included Permission,
 # Developers and Superusers are assumed to have all Operations.
 # The permission key dictates at what level of the PERMISSION HIERARCHY one automatically
-# can perform this operation.
-OPERATIONS = defaultdict(dict)
+# can perform this operation. Operations are at the Account level.
 
-OPERATIONS["ACCOUNT"] = {
+OPERATIONS = {
     "account_kick": {
         "description": "Can forcibly disconnect a Player from the game.",
         "permission": "Admin"

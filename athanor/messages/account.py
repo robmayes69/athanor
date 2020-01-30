@@ -64,13 +64,25 @@ class PasswordMessageAdmin(AccountMessage):
     admin_message = "|w{source_name}|n changed Account |w{target_name}|n's password to |w{new_password}"
 
 
-class GranteMessage(AccountMessage):
-    source_message = "Successfuly granted Account: |w{target_name}|n the role: {role}"
-    target_message = "|w{source_name}|n granted your Account the role: {role}"
-    admin_message = "|w{source_name}|n granted Account |w{target_name}|n the role: {role}"
+class GrantMessage(AccountMessage):
+    source_message = "Successfuly granted Account: |w{target_name}|n the Permission: |w{perm}|n"
+    target_message = "|w{source_name}|n granted your Account the Permission: |w{perm}|n"
+    admin_message = "|w{source_name}|n granted Account |w{target_name}|n the Permission: |w{perm}|n"
 
 
 class RevokeMessage(AccountMessage):
-    source_message = "Successfuly revoked Account: |w{target_name}|n's use of the role: {role}"
-    target_message = "|w{source_name}|n revoked Account's use of the role: {role}"
-    admin_message = "|w{source_name}|n revoked Account |w{target_name}|n's use of the role: {role}"
+    source_message = "Successfuly revoked Account: |w{target_name}|n's use of the Permission: |w{perm}|n"
+    target_message = "|w{source_name}|n revoked Account's use of the Permission: |w{perm}|n"
+    admin_message = "|w{source_name}|n revoked Account |w{target_name}|n's use of the Permission: |w{perm}|n"
+
+
+class GrantSuperMessage(AccountMessage):
+    source_message = "Successfuly granted Account: |w{target_name}|n the Permission: |rSUPERUSER|n"
+    target_message = "|w{source_name}|n granted your Account the Permission: |rSUPERUSER|n"
+    admin_message = "|w{source_name}|n granted Account |w{target_name}|n the Permission: |rSUPERUSER|n"
+
+
+class RevokeSuperMessage(AccountMessage):
+    source_message = "Successfuly revoked Account: |w{target_name}|n's use of the Permission: |rSUPERUSER|n"
+    target_message = "|w{source_name}|n revoked Account's use of the Permission: |rSUPERUSER|n"
+    admin_message = "|w{source_name}|n revoked Account |w{target_name}|n's use of the Permission: |rSUPERUSER|n"

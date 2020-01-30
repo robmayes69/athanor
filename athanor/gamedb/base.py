@@ -109,9 +109,13 @@ class AthanorBaseObjectMixin(EventEmitter):
         super().at_post_unpuppet(account, session, **kwargs)
         for pref in self.hook_prefixes:
             self.emit_global(f"{pref}_unpuppet", account=account, session=session, **kwargs)
+
         if not self.sessions.all():
             for pref in self.hook_prefixes:
                 self.emit_global(f"{pref}_offline")
+
+        if session:
+            session.msg(f"You cease controlling |c{self}|n")
 
     def system_msg(self, text=None, system_name=None, enactor=None):
         if self.account:
@@ -358,6 +362,9 @@ class AthanorBaseObjectMixin(EventEmitter):
             self.location.unregister_index(self)
         return super().delete()
 
+    def check_lock(self, lock):
+        return self.locks.check_lockstring(self, f"dummy:{lock}")
+
 
 class AthanorBasePlayerMixin(object):
     hook_prefixes = ['object', 'character']
@@ -391,6 +398,7 @@ class AthanorBasePlayerMixin(object):
             self.location.for_contents(message, exclude=[self], from_obj=self)
 
     def at_post_unpuppet(self, account, session=None, **kwargs):
+        super().at_post_unpuppet(account, session, **kwargs)
         def message(obj, from_obj):
             obj.msg("%s has left the game." % self.get_display_name(obj), from_obj=from_obj)
 
@@ -399,6 +407,8 @@ class AthanorBasePlayerMixin(object):
                 self.location.for_contents(message, exclude=[self], from_obj=self)
                 self.save_location('logout')
                 self.move_to(None, to_none=True, quiet=True, save_keys=None)
+                if session:
+                    session.msg(f"|c{self}|n has safely left the game world.")
 
     def at_after_move(self, source_location, **kwargs):
         """

@@ -1,8 +1,8 @@
-def apriv(accessing_obj, accessed_obj, *args, **kwargs):
+def oper(accessing_obj, accessed_obj, *args, **kwargs):
     """
-    Checks if accessing_obj has an args[0] privilege.
+    Checks if accessing_obj has an args[0] operation.
     Usage:
-        apriv(<privilege>)
+        oper(<privilege>)
 
     Args:
         accessing_obj:
@@ -18,4 +18,4 @@ def apriv(accessing_obj, accessed_obj, *args, **kwargs):
     account = accessing_obj.get_account()
     if not args or not args[0]:
         return False
-    return account.privileges.check(args[0])
+    return account.operations.check(args[0])

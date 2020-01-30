@@ -107,48 +107,52 @@ class CmdAccess(AdministrationCommand):
         @access [<account>]
             Show the target's access details. Your own, if none is provided.
 
-        @access/grant <account>=<role>
-            Grant a Role to an Account. See @role to know which are available.
-            Use @access/revoke <account>=<role> to remove one.
+        @access/grant <account>=<permission>
+            Grant an Evennia Permission to an Account.
+            Use @access/revoke <account>=<permission> to remove it.
 
-        @access/breakdown
-            Display all Roles and which Accounts hold them. Could be very spammy.
+        @access/all
+            Displays all grantable normal Permissions and their descriptions.
 
-        @access/addperm <account>=<permission>
-            Grant an Evennia Permission to an Account. (Superuser only.)
-            Use @access/delperm <account>=<permission> to remove it.
+        @access/directory
+            Display all managed Permissions and which Accounts hold them.
+            Could be very spammy.
 
-        @access/super <account>
-            Promote an Account to Superuser status. (Superuser only.) Use again to demote. |rDANGEROUS.|n
+        @access/super <account>=SUPER DUPER
+            Promote an Account to Superuser status. Use again to demote.
+            Silly verification string required for accident prevention.
+            |rDANGEROUS.|n
     """
     key = "@access"
     locks = "cmd:pperm(Helper)"
-    switch_options = ("roles", "privileges", "addperm", "delperm", "grant", "revoke", "super", 'breakdown')
+    switch_options = ("directory", "all", "grant", "revoke", "super")
 
     def switch_main(self):
-        if not self.args:
-            self.args = self.account
-        self.controllers.get('account').access_account(self.args)
-
-    def switch_addperm(self):
-        if not self.lhs and self.rhs:
-            raise ValueError("Usage: @account/addperm <account>=<new permission>")
-        self.controllers.get('account').add_permission(self.session, self.lhs, self.rhs)
-
-    def switch_delperm(self):
-        if not self.lhs and self.rhs:
-            raise ValueError("Usage: @account/delperm <account>=<delete permission>")
-        self.controllers.get('account').delete_permission(self.session, self.lhs, self.rhs)
+        account = self.args if self.args else self.account
+        self.msg(self.controllers.get('account').access_account(self.session, account))
 
     def switch_grant(self):
         if not self.lhs and self.rhs:
-            raise ValueError("Usage: @account/grant <account>=<new role>")
-        self.controllers.get('account').grant_role(self.session, self.lhs, self.rhs)
+            raise ValueError("Usage: @account/grant <account>=<new permission>")
+        self.controllers.get('account').grant_permission(self.session, self.lhs, self.rhs)
 
     def switch_revoke(self):
         if not self.lhs and self.rhs:
-            raise ValueError("Usage: @account/revoke <account>=<role to remove>")
-        self.controllers.get('account').revoke_role(self.session, self.lhs, self.rhs)
+            raise ValueError("Usage: @account/revoke <account>=<delete permission>")
+        self.controllers.get('account').revoke_permission(self.session, self.lhs, self.rhs)
+
+    def switch_super(self):
+        if not self.args:
+            raise ValueError("Usage: @account/super <account>=SUPER DUPER")
+        if self.rhs != "SUPER DUPER":
+            raise ValueError("Usage: @account/super <account>=SUPER DUPER")
+        self.controllers.get('account').toggle_super(self.session, self.lhs)
+
+    def switch_all(self):
+        self.msg(self.controllers.get('account').list_permissions(self.session))
+
+    def switch_directory(self):
+        self.msg(self.controllers.get('account').permissions_directory(self.session))
 
 
 class CmdCharacter(AdministrationCommand):
