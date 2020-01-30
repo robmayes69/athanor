@@ -9,24 +9,24 @@ class OperationHandler(object):
         self.owner = owner
         self.cached_answers = dict()
 
-    def check(self, privilege):
-        if (found := self.cached_answers.get(privilege, None)) is not None:
+    def check(self, operation):
+        if (found := self.cached_answers.get(operation, None)) is not None:
             return found
-        op_data = settings.OPERATIONS.get(privilege, dict())
+        op_data = settings.OPERATIONS.get(operation, dict())
         if not op_data:
             return False
         op_perm = op_data.get("permission", "Developer")
-        if self.owner.locks.check_lockstring(self.owner, f'dummy:pperm({op_perm})'):
-            self.cached_answers[privilege] = True
+        if self.owner.check_lock(f'pperm({op_perm})'):
+            self.cached_answers[operation] = True
             return True
         all_roles = self.owner.roles.all()
         for role_key, role_def in athanor.CONTROLLER_MANAGER.get('account').roles.items():
             if role_key not in all_roles:
                 continue
-            if privilege in role_def.get('privileges', set()):
-                self.cached_answers[privilege] = True
+            if operation in role_def.get('operations', set()):
+                self.cached_answers[operation] = True
                 return True
-        self.cached_answers[privilege] = False
+        self.cached_answers[operation] = False
         return False
 
     def all(self):

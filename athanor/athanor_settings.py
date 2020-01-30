@@ -205,6 +205,10 @@ MIXINS = defaultdict(list)
 # can perform this operation. Operations are at the Account level.
 
 OPERATIONS = {
+    "account_examine": {
+        "description": "Can see all details about Accounts.",
+        "permission": "Admin"
+    },
     "account_kick": {
         "description": "Can forcibly disconnect a Player from the game.",
         "permission": "Admin"
