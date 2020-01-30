@@ -202,12 +202,14 @@ MIXINS = defaultdict(list)
 # if the role itself does not define a Permission.
 ACCOUNT_ROLE_PERMISSION = "Developer"
 
-# PRIVILEGES are the pieces-of-Roles that govern access to various parts of the Athanor
-# API. Privileges are auto-granted by the stated Permission. Bereft of an included Permission,
-# Developers and Superusers are assumed to have all Privileges.
-PRIVILEGES = defaultdict(dict)
+# OPERATIONS are the pieces-of-Permissions that govern access to various parts of the Athanor
+# API. Operations are auto-granted by the stated Permission. Bereft of an included Permission,
+# Developers and Superusers are assumed to have all Operations.
+# The permission key dictates at what level of the PERMISSION HIERARCHY one automatically
+# can perform this operation.
+OPERATIONS = defaultdict(dict)
 
-PRIVILEGES["ACCOUNT"] = {
+OPERATIONS["ACCOUNT"] = {
     "account_kick": {
         "description": "Can forcibly disconnect a Player from the game.",
         "permission": "Admin"
@@ -263,6 +265,43 @@ PRIVILEGES["ACCOUNT"] = {
     "session_kick": {
         "description": "Can forcibly close a Session.",
         "permission": "Admin"
+    }
+}
+
+# This dictionary describes the Evennia Permissions, including which Permissions
+# are able to grant/revoke a Permission. If a Permission is not in this dictionary,
+# then it cannot be granted through normal commands.
+# If no permission(s) is set, only the Superuser can grant it.
+
+PERMISSION_HIERARCHY = [
+    "Guest",  # note-only used if GUEST_ENABLED=True
+    "Player",
+    "Helper",
+    "Builder",
+    "Gamemaster",
+    "Admin",
+    "Developer",
+]
+
+PERMISSIONS = {
+    "Helper": {
+        "permission": ("Admin"),
+        "description": "Those appointed to help players."
+    },
+    "Builder": {
+        "permission": ("Admin"),
+        "description": "Can edit and alter the grid, creating new rooms and areas."
+    },
+    "Gamemaster": {
+        "permission": ("Admin"),
+        "description": "Can alter game-related character traits like stats, spawn items, grant rewards, puppet mobiles, etc."
+    },
+    "Admin": {
+        "permission": ("Developer"),
+        "description": "Can make wide-spread changes to the game, administrate accounts and characters directly."
+    },
+    "Developer": {
+        "description": "Has virtually unlimited power. Can use very dangerous commands."
     }
 }
 

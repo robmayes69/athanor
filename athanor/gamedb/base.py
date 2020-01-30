@@ -7,7 +7,9 @@ from django.utils.translation import ugettext as _
 import evennia
 from evennia.utils.utils import lazy_property, dbid_to_obj, make_iter
 from evennia.utils.ansi import ANSIString
-from evennia.utils import logger
+from evennia.utils import logger, create
+from evennia.objects.objects import ExitCommand
+from evennia.commands import cmdset
 
 from athanor.utils.events import EventEmitter
 from athanor.utils.text import tabular_table
@@ -351,6 +353,11 @@ class AthanorBaseObjectMixin(EventEmitter):
             self.locations[save_key] = serialized
             return serialized
 
+    def delete(self):
+        if self.location:
+            self.location.unregister_index(self)
+        return super().delete()
+
 
 class AthanorBasePlayerMixin(object):
     hook_prefixes = ['object', 'character']
@@ -392,3 +399,219 @@ class AthanorBasePlayerMixin(object):
                 self.location.for_contents(message, exclude=[self], from_obj=self)
                 self.save_location('logout')
                 self.move_to(None, to_none=True, quiet=True, save_keys=None)
+
+    def at_after_move(self, source_location, **kwargs):
+        """
+        We make sure to look around after a move.
+        """
+        if self.location and self.location.access(self, "view"):
+            self.msg(self.at_look(self.location))
+
+
+class AthanorExitMixin(object):
+    """
+    Basically this just implements the same advancements as DefaultExit.
+    """
+    object_types = ['exit']
+    exit_command = ExitCommand
+    priority = 101
+
+    lockstring = (
+        "control:id({id}) or perm(Admin); "
+        "delete:id({id}) or perm(Admin); "
+        "edit:id({id}) or perm(Admin)"
+    )
+
+    def create_exit_cmdset(self, exidbobj):
+        """
+        Helper function for creating an exit command set + command.
+
+        The command of this cmdset has the same name as the Exit
+        object and allows the exit to react when the account enter the
+        exit's name, triggering the movement between rooms.
+
+        Args:
+            exidbobj (Object): The DefaultExit object to base the command on.
+
+        """
+
+        # create an exit command. We give the properties here,
+        # to always trigger metaclass preparations
+        cmd = self.exit_command(
+            key=exidbobj.db_key.strip().lower(),
+            aliases=exidbobj.aliases.all(),
+            locks=str(exidbobj.locks),
+            auto_help=False,
+            destination=exidbobj.db_destination,
+            arg_regex=r"^$",
+            is_exit=True,
+            obj=exidbobj,
+        )
+        # create a cmdset
+        exit_cmdset = cmdset.CmdSet(None)
+        exit_cmdset.key = "ExitCmdSet"
+        exit_cmdset.priority = self.priority
+        exit_cmdset.duplicates = True
+        # add command to cmdset
+        exit_cmdset.add(cmd)
+        return exit_cmdset
+
+    @classmethod
+    def create(cls, key, account, source, dest, **kwargs):
+        """
+        Creates a basic Exit with default parameters, unless otherwise
+        specified or extended.
+
+        Provides a friendlier interface to the utils.create_object() function.
+
+        Args:
+            key (str): Name of the new Exit, as it should appear from the
+                source room.
+            account (obj): Account to associate this Exit with.
+            source (Room): The room to create this exit in.
+            dest (Room): The room to which this exit should go.
+
+        Kwargs:
+            description (str): Brief description for this object.
+            ip (str): IP address of creator (for object auditing).
+
+        Returns:
+            exit (Object): A newly created Room of the given typeclass.
+            errors (list): A list of errors in string form, if any.
+
+        """
+        errors = []
+        obj = None
+
+        # Get IP address of creator, if available
+        ip = kwargs.pop("ip", "")
+
+        # If no typeclass supplied, use this class
+        kwargs["typeclass"] = kwargs.pop("typeclass", cls)
+
+        # Set the supplied key as the name of the intended object
+        kwargs["key"] = key
+
+        # Get who to send errors to
+        kwargs["report_to"] = kwargs.pop("report_to", account)
+
+        # Set to/from rooms
+        kwargs["location"] = source
+        kwargs["destination"] = dest
+
+        description = kwargs.pop("description", "")
+
+        try:
+            # Create the Exit
+            obj = create.create_object(**kwargs)
+
+            # Set appropriate locks
+            lockstring = kwargs.get("locks", cls.lockstring.format(id=account.id))
+            obj.locks.add(lockstring)
+
+            # Record creator id and creation IP
+            if ip:
+                obj.db.creator_ip = ip
+            if account:
+                obj.db.creator_id = account.id
+
+            # If no description is set, set a default description
+            if description or not obj.db.desc:
+                obj.db.desc = description if description else "This is an exit."
+
+        except Exception as e:
+            errors.append("An error occurred while creating this '%s' object." % key)
+            logger.log_err(e)
+
+        return obj, errors
+
+    def basetype_setup(self):
+        """
+        Setup exit-security
+
+        You should normally not need to overload this - if you do make
+        sure you include all the functionality in this method.
+
+        """
+        super().basetype_setup()
+
+        # setting default locks (overload these in at_object_creation()
+        self.locks.add(
+            ";".join(
+                [
+                    "puppet:false()",  # would be weird to puppet an exit ...
+                    "traverse:all()",  # who can pass through exit by default
+                    "get:false()",
+                ]
+            )
+        )  # noone can pick up the exit
+
+        # an exit should have a destination (this is replaced at creation time)
+        if self.location:
+            self.destination = self.location
+
+    def at_cmdset_get(self, **kwargs):
+        """
+        Called just before cmdsets on this object are requested by the
+        command handler. If changes need to be done on the fly to the
+        cmdset before passing them on to the cmdhandler, this is the
+        place to do it. This is called also if the object currently
+        has no cmdsets.
+
+        Kwargs:
+          force_init (bool): If `True`, force a re-build of the cmdset
+            (for example to update aliases).
+
+        """
+
+        if "force_init" in kwargs or not self.cmdset.has_cmdset("ExitCmdSet", must_be_default=True):
+            # we are resetting, or no exit-cmdset was set. Create one dynamically.
+            self.cmdset.add_default(self.create_exit_cmdset(self), permanent=False)
+
+    def at_init(self):
+        """
+        This is called when this objects is re-loaded from cache. When
+        that happens, we make sure to remove any old ExitCmdSet cmdset
+        (this most commonly occurs when renaming an existing exit)
+        """
+        self.cmdset.remove_default()
+
+    def at_traverse(self, traversing_object, target_location, **kwargs):
+        """
+        This implements the actual traversal. The traverse lock has
+        already been checked (in the Exit command) at this point.
+
+        Args:
+            traversing_object (Object): Object traversing us.
+            target_location (Object): Where target is going.
+            **kwargs (dict): Arbitrary, optional arguments for users
+                overriding the call (unused by default).
+
+        """
+        source_location = traversing_object.location
+        if traversing_object.move_to(target_location):
+            self.at_after_traverse(traversing_object, source_location)
+        else:
+            if self.db.err_traverse:
+                # if exit has a better error message, let's use it.
+                traversing_object.msg(self.db.err_traverse)
+            else:
+                # No shorthand error message. Call hook.
+                self.at_failed_traverse(traversing_object)
+
+    def at_failed_traverse(self, traversing_object, **kwargs):
+        """
+        Overloads the default hook to implement a simple default error message.
+
+        Args:
+            traversing_object (Object): The object that failed traversing us.
+            **kwargs (dict): Arbitrary, optional arguments for users
+                overriding the call (unused by default).
+
+        Notes:
+            Using the default exits, this hook will not be called if an
+            Attribute `err_traverse` is defined - this will in that case be
+            read for an error string instead.
+
+        """
+        traversing_object.msg("You cannot go there.")

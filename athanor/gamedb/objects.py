@@ -3,7 +3,7 @@ from django.conf import settings
 from evennia.objects.objects import DefaultObject
 from evennia.utils.utils import class_from_module
 
-from athanor.gamedb.base import AthanorBaseObjectMixin
+from athanor.gamedb.base import AthanorBaseObjectMixin, AthanorExitMixin
 
 MIXINS = [class_from_module(mixin) for mixin in settings.GAMEDB_MIXINS["OBJECT"]]
 MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
@@ -24,5 +24,8 @@ class AthanorRoom(AthanorObject):
     object_types = ['room']
 
 
-class AthanorExit(AthanorObject):
-    object_types = ['exit']
+class AthanorExit(AthanorExitMixin, AthanorObject):
+    """
+    Re-implements most of DefaultExit...
+    """
+    pass
