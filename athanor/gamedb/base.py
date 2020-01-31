@@ -328,7 +328,7 @@ class AthanorBaseObjectMixin(HasRenderExamine, EventEmitter):
         message = list()
         if not exits:
             return message
-        message.append(styling.styled_separator(looker, "Exits"))
+        message.append(styling.styled_separator("Exits"))
         exits_formatted = [ex.get_exit_formatted(looker, **kwargs) for ex in exits]
         message.append(tabular_table(exits_formatted, field_width=37, line_length=78))
         return message
@@ -339,7 +339,7 @@ class AthanorBaseObjectMixin(HasRenderExamine, EventEmitter):
         message = list()
         if not users:
             return message
-        message.append(styling.styled_separator(looker, "Characters"))
+        message.append(styling.styled_separator("Characters"))
         message.extend([user.get_room_appearance(looker, **kwargs) for user in users])
         return message
 
@@ -354,7 +354,7 @@ class AthanorBaseObjectMixin(HasRenderExamine, EventEmitter):
         message = list()
         if not things:
             return message
-        message.append(styling.styled_separator(looker, "Items"))
+        message.append(styling.styled_separator("Items"))
         for key, itemlist in sorted(things.items()):
             nitem = len(itemlist)
             if nitem == 1:
@@ -373,7 +373,7 @@ class AthanorBaseObjectMixin(HasRenderExamine, EventEmitter):
         return message
 
     def return_appearance_header(self, looker, styling, **kwargs):
-        return [styling.styled_header(looker, self.get_display_name(looker))]
+        return [styling.styled_header(self.get_display_name(looker))]
 
     def return_appearance(self, looker, **kwargs):
         if not looker:
