@@ -5,6 +5,7 @@ from django.conf import settings
 from django.utils.translation import ugettext as _
 
 import evennia
+from evennia import SESSION_HANDLER
 from evennia.utils.utils import lazy_property, dbid_to_obj, make_iter
 from evennia.utils.ansi import ANSIString
 from evennia.utils import logger, create
@@ -547,6 +548,21 @@ class AthanorBaseObjectMixin(HasRenderExamine, EventEmitter):
     def check_lock(self, lock):
         return self.locks.check_lockstring(self, f"dummy:{lock}")
 
+    def force_disconnect(self, reason=""):
+        """
+        Forces a disconnect. This unpuppets all objects and disconnects all
+        relevant sessions.
+
+        Args:
+            reason (str): If provided, will show this message to the Account.
+
+        Returns:
+            None
+        """
+        self.unpuppet_all()
+        for sess in self.sessions.all():
+            SESSION_HANDLER.disconnect(sess, reason=reason)
+
 
 class AthanorBasePlayerMixin(object):
     hook_prefixes = ['object', 'character']
@@ -561,6 +577,13 @@ class AthanorBasePlayerMixin(object):
 
     def render_character_menu_line(self, cmd):
         return self.key
+
+    def render_list_section(self, viewer, styling):
+        return [
+            styling.styled_separator(f"{self.key} ({self.dbref})"),
+            f"|wAccount|n: {self.character_bridge.account} ({self.character_bridge.account.dbref})",
+            f"|wDate Created|n: {self.date_created.strftime('%c')}"
+        ]
 
     def at_pre_puppet(self, account, session=None, **kwargs):
         """

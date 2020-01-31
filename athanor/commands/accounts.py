@@ -163,7 +163,41 @@ class CmdAccess(AdministrationCommand):
 
 class CmdCharacter(AdministrationCommand):
     """
-    Help coming soon.
+    General character administration command.
+
+    Usage:
+        @character <character>
+            Examines a character and displays details.
+
+        @character/list
+            Lists all characters.
+
+        @character/create <account>=<character name>
+            Creates a new character for <account>.
+
+        @character/rename <character>=<new name>
+            Renames a character.
+
+        @character/puppet <character>
+            Takes control of a character that you don't own.
+
+        @character/transfer <character>=<new account>
+            Transfers a character to a different account.
+
+        @character/archive <character>=<verify name>
+            Archives / soft-deletes a character. They still exist for
+            database purposes, but can no longer be used. Archived characters
+            still have names, but the names  are freed for use.
+
+        @character/restore <character>[=<new name>]
+            Archived characters CAN be brought back into play. If the namespace
+            already has re-used the character name, a new alternate name can be
+            provided. This command is special and can only search archived
+            characters. You may need to target them by #DBREF instead of their
+            name if there are multiple matches.
+
+        @character/old
+            List all archived characters.
     """
     key = '@character'
     locks = "cmd:pperm(Helper)"
@@ -179,7 +213,7 @@ class CmdCharacter(AdministrationCommand):
         self.controllers.get('character').restore_character(self.session, self.lhs, self.rhs)
 
     def switch_archive(self):
-        self.controllers.get('character').archive_character(self.session, self.args)
+        self.controllers.get('character').archive_character(self.session, self.lhs, self.rhs)
 
     def switch_puppet(self):
         self.controllers.get('character').puppet_character(self.session, self.args)
@@ -191,7 +225,7 @@ class CmdCharacter(AdministrationCommand):
         self.controllers.get('character').transfer_character(self.session, self.lhs, self.rhs)
 
     def switch_old(self):
-        self.controllers.get('character').list_archived(self.session)
+        self.msg(self.controllers.get('character').list_characters(self.session, archived=True))
 
     def switch_list(self):
         self.msg(self.controllers.get('character').list_characters(self.session))

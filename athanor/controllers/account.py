@@ -59,6 +59,12 @@ class AthanorAccountController(*MIXINS, AthanorController):
         if not login_screen:
             if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_create)"):
                 raise ValueError("Permission denied.")
+        if not username:
+            raise ValueError("An Account must have a username!")
+        if not email:
+            raise ValueError("An Account must have an email address!")
+        if not password:
+            raise ValueError("An Account must have a password!")
         new_account = self.account_typeclass.create_account(username=username, email=email, password=password,
                                                                 session=session, ip=session.address)
         self.id_map[new_account.id] = new_account
@@ -89,6 +95,8 @@ class AthanorAccountController(*MIXINS, AthanorController):
         amsg.EmailMessage(source=enactor, target=account, old_email=old_email).send()
 
     def find_account(self, search_text, exact=False):
+        if not search_text:
+            raise ValueError("No account entered to search for!")
         if isinstance(search_text, AthanorAccount):
             return search_text
         if '@' in search_text:

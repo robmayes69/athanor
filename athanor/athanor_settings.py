@@ -185,11 +185,13 @@ EXAMINE_HOOKS['character'] = ['character', 'puppeteer', 'access', 'commands', 's
 
 
 ######################################################################
-# Room Settings
+# GameDB Settings
 ######################################################################
 BASE_ROOM_TYPECLASS = "athanor.gamedb.objects.AthanorRoom"
 
 BASE_EXIT_TYPECLASS = "athanor.gamedb.objects.AthanorExit"
+
+BASE_OBJECT_TYPECLASS = "athanor.gamedb.objects.AthanorObject"
 
 ######################################################################
 # Plugins

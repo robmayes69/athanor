@@ -57,6 +57,10 @@ class AthanorPlayerCharacter(*MIXINS, AthanorBasePlayerMixin, AthanorObject):
         Returns:
             Character (ObjectDB)
         """
+        if not key:
+            raise ValueError("Characters must have a name!")
+        if not account:
+            raise ValueError("Characters must belong to an Account!")
         key = ANSIString(key)
         clean_key = str(key.clean())
         if '|' in clean_key:
@@ -89,7 +93,7 @@ class AthanorPlayerCharacter(*MIXINS, AthanorBasePlayerMixin, AthanorObject):
         if not self.re_name.match(clean_key):
             raise ValueError("Character name does not meet standards. Avoid double spaces and special characters.")
         bridge = self.character_bridge
-        if CharacterBridge.objects.filter(db_iname=clean_key.lower()).exclude(id=bridge).count():
+        if CharacterBridge.objects.filter(character_bridge__db_namespace=0, db_iname=clean_key.lower()).exclude(id=bridge).count():
             raise ValueError("Name conflicts with another Character.")
         self.key = clean_key
         bridge.db_name = clean_key
@@ -110,3 +114,75 @@ class AthanorPlayerCharacter(*MIXINS, AthanorBasePlayerMixin, AthanorObject):
         )  # no commands can be called on character from outside
         # add the default cmdset
         self.cmdset.add_default(settings.CMDSET_CHARACTER, permanent=True)
+
+    def archive(self):
+        """
+        Places this character into the Archives. An Archived character no longer participates in the
+        character namespace, cannot be logged into, etc. It's effectively a soft-deletion.
+
+        Returns:
+            None
+        """
+        self.character_bridge.namespace = None
+        self.at_archive()
+
+    def at_archive(self):
+        """
+        Called whenever a character is archived.
+
+        Returns:
+            None
+        """
+        pass
+
+    def restore(self, replace_name):
+        """
+        Restores an archived character to playability.
+
+        Args:
+            replace_name (str): Since an archived character's name might be taken in the main namespace,
+                this is used as an alternative if necessary.
+
+        Returns:
+            None
+        """
+        old_name = self.key
+        if not replace_name:
+            try:
+                self.character_bridge.namespace = 0
+            except Exception as e:
+                raise ValueError("Cannot restore character. Does another character use the same name?")
+        else:
+            self.rename(replace_name)
+            self.character_bridge.namespace = 0
+        self.at_restore(old_name, replace_name)
+
+    def at_restore(self, old_name, replace_name):
+        """
+        Called when a character is restored.
+
+        Args:
+            old_name (str): The character's name before restoration.
+            replace_name (str or None): The character's replacement name, if any.
+
+        Returns:
+            None
+        """
+        pass
+
+    def set_account(self, new_account):
+        account = self.bridge.account
+        self.bridge.account = new_account
+        self.at_transfer(account)
+
+    def at_transfer(self, old_account):
+        """
+        Called whenever a character is transferred to a different account.
+
+        Args:
+            old_account (AccountDB): The previous Account that owned this character.
+
+        Returns:
+            None
+        """
+        pass

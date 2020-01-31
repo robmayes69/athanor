@@ -47,6 +47,8 @@ class AthanorAccount(*MIXINS, HasRenderExamine, DefaultAccount, EventEmitter):
         if (sessions := self.sessions.all()):
             message.append(f"|wSessions|n: {', '.join(str(sess) for sess in sessions)}")
         message.append(f"|wEmail|n: {self.email}")
+        if (characters := self.characters()):
+            message.append(f"|wCharacters|n: {', '.join(str(l) for l in characters)}")
         return message
 
     def render_examine_access(self, viewer, cmdset, styling):

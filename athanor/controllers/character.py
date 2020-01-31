@@ -57,13 +57,21 @@ class AthanorCharacterController(*MIXINS, AthanorController):
     def all(self):
         return AthanorPlayerCharacter.objects.filter_family()
 
-    def search_all(self, name, exact=False):
+    def search_all(self, name, exact=False, candidates=None):
+        if candidates is None:
+            candidates = self.all()
         return object_search(name, exact=exact, candidates=self.all())
 
-    def find_character(self, character):
+    def archived(self):
+        return self.all().filter(character_bridge__db_namespace=None)
+
+    def search_archived(self, name, exact=False):
+        return self.search_all(name, exact, candidates=self.archived())
+
+    def find_character(self, character, archived=False):
         if isinstance(character, AthanorPlayerCharacter):
             return character
-        results = self.search_all(character)
+        results = self.search_all(character) if not archived else self.search_archived(character)
         if not results:
             raise ValueError(f"Cannot locate character named {character}!")
         if len(results) == 1:
@@ -82,20 +90,29 @@ class AthanorCharacterController(*MIXINS, AthanorController):
         cmsg.CreateMessage(source=enactor, target=new_character, account_name=account.username).send()
         return new_character
 
-    def delete_character(self, session, character, verify_name, ignore_priv=False):
-        if not (enactor := session.get_account()) or (
-                not ignore_priv and not enactor.check_lock("apriv(character_delete)")):
+    def archive_character(self, session, character, verify_name):
+        if not (enactor := session.get_account()) or not enactor.check_lock("oper(character_archive)"):
             raise ValueError("Permission denied.")
         character = self.find_character(character)
-        account = character.bridge.account
-        cmsg.DeleteMessage(source=enactor, target=character, account_name=account.username if account else 'N/A').send()
+        account = character.character_bridge.account
+        character.archive()
+        cmsg.ArchiveMessage(source=enactor, target=character, account_name=account.username if account else 'N/A').send()
+        character.force_disconnect(reason="Character has been archived!")
+
+    def restore_character(self, session, character, replace_name):
+        if not (enactor := session.get_account()) or not enactor.check_lock("oper(character_archive)"):
+            raise ValueError("Permission denied.")
+        character = self.find_character(character)
+        account = character.character_bridge.account
+        character.restore(replace_name)
+        cmsg.RestoreMessage(source=enactor, target=character, account_name=account.username if account else 'N/A').send()
 
     def rename_character(self, session, character, new_name, ignore_priv=False):
         if not (enactor := session.get_account()) or (
                 not ignore_priv and not enactor.check_lock("apriv(character_rename)")):
             raise ValueError("Permission denied.")
         character = self.find_character(character)
-        account = character.bridge.account
+        account = character.character_bridge.account
         old_name = character.key
         new_name = character.rename(new_name)
         cmsg.RenameMessage(source=enactor, target=character, old_name=old_name, account_name=account.username).send()
@@ -105,8 +122,9 @@ class AthanorCharacterController(*MIXINS, AthanorController):
                 not ignore_priv and not enactor.check_lock("apriv(character_transfer)")):
             raise ValueError("Permission denied.")
         character = self.find_character(character)
-        account = character.bridge.account
+        account = character.character_bridge.account
         new_account = self.manager.get('account').find_account(new_account)
+        character.force_disconnect(reason="This character has been transferred to a different account!")
         character.set_account(new_account)
         cmsg.TransferMessage(source=enactor, target=character, account_username=account.username,
                              new_account=new_account.username).send()
@@ -116,3 +134,17 @@ class AthanorCharacterController(*MIXINS, AthanorController):
             raise ValueError("Permission denied.")
         character = self.find_character(character)
         return character.render_examine(enactor)
+
+    def list_characters(self, session, archived=False):
+        if not (enactor := session.get_account()) or not enactor.check_lock("oper(character_details)"):
+            raise ValueError("Permission denied.")
+        if not (characters := self.all() if not archived else self.archived()):
+            raise ValueError("No characters to list!")
+        styling = enactor.styler
+        message = [
+            styling.styled_header(f"{'Character' if not archived else 'Archived Character'} Listing")
+        ]
+        for char in characters:
+            message.extend(char.render_list_section(enactor, styling))
+        message.append(styling.blank_footer)
+        return '\n'.join(str(l) for l in message)
