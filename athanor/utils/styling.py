@@ -10,11 +10,13 @@ class Styler(object):
     fallback = dict()
     loaded = False
     width = 78
+    fallback_cache = dict()
 
     def __init__(self, viewer):
         """
         It's important to keep in mind that viewer can totally be None.
         """
+        self.cache = dict()
         if viewer and hasattr(viewer, 'get_account'):
             self.viewer = viewer.get_account()
         else:
@@ -30,7 +32,6 @@ class Styler(object):
             cls.fallback[key] = data[2]
         cls.width = settings.CLIENT_DEFAULT_WIDTH
         cls.loaded = True
-
 
     def styled_table(self, *args, **kwargs):
         """
@@ -89,6 +90,7 @@ class Styler(object):
             mode="header",
             color_header=True,
             width=None,
+            use_cache=True
     ):
         """
         Helper for formatting a string into a pretty display, for a header, separator or footer.
@@ -101,11 +103,24 @@ class Styler(object):
             mode(str): One of 'header', 'separator' or 'footer'.
             color_header (bool): If the header should be colorized based on user options.
             width (int): If not given, the client's width will be used if available.
+            use_cache (bool): If True, will fetch generated text from a cache if available.
 
         Returns:
             string (str): The decorated and formatted text.
 
         """
+        # this tuple is used for the cache key.
+        cache_id = (header_text, fill_character, edge_character, mode, color_header, width)
+
+        # Retrieve from cache if relevant.
+        if use_cache:
+            if self.viewer:
+                if (found := self.cache.get(cache_id, None)):
+                    return found
+            else:
+                if (found := self.fallback_cache(cache_id, None)):
+                    return found
+
         colors = dict()
         colors["border"] = self.options.get("border_color")
         colors["headertext"] = self.options.get(f"{mode}_text_color")
@@ -151,6 +166,14 @@ class Styler(object):
             )
         else:
             final_send = left_fill + ANSIString(center_string) + right_fill
+
+        # After going through all of this trouble, cache the result.
+        if use_cache:
+            if self.viewer:
+                self.cache[cache_id] = final_send
+            else:
+                self.fallback_cache[cache_id] = final_send
+
         return final_send
 
 
