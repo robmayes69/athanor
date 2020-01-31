@@ -28,7 +28,6 @@ class AthanorCharacterController(*MIXINS, AthanorController):
         self.reg_names = None
         self.load()
 
-
     def do_load(self):
         try:
             self.character_typeclass = class_from_module(settings.BASE_CHARACTER_TYPECLASS,
@@ -59,7 +58,7 @@ class AthanorCharacterController(*MIXINS, AthanorController):
         return AthanorPlayerCharacter.objects.filter_family()
 
     def search_all(self, name, exact=False):
-        object_search(name, exact=exact, candidates=self.all())
+        return object_search(name, exact=exact, candidates=self.all())
 
     def find_character(self, character):
         if isinstance(character, AthanorPlayerCharacter):
@@ -111,3 +110,9 @@ class AthanorCharacterController(*MIXINS, AthanorController):
         character.set_account(new_account)
         cmsg.TransferMessage(source=enactor, target=character, account_username=account.username,
                              new_account=new_account.username).send()
+
+    def examine_character(self, session, character):
+        if not (enactor := session.get_account()) or not enactor.check_lock("oper(character_details)"):
+            raise ValueError("Permission denied.")
+        character = self.find_character(character)
+        return character.render_examine(enactor)

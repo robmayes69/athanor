@@ -1,7 +1,5 @@
 from django.conf import settings
 
-import athanor
-
 
 class OperationHandler(object):
 
@@ -19,9 +17,9 @@ class OperationHandler(object):
         if self.owner.check_lock(f'pperm({op_perm})'):
             self.cached_answers[operation] = True
             return True
-        all_roles = self.owner.roles.all()
-        for role_key, role_def in athanor.CONTROLLER_MANAGER.get('account').roles.items():
-            if role_key not in all_roles:
+        all_perms = self.owner.permissions.all()
+        for role_key, role_def in settings.PERMISSIONS.items():
+            if role_key not in all_perms:
                 continue
             if operation in role_def.get('operations', set()):
                 self.cached_answers[operation] = True

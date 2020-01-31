@@ -1,5 +1,11 @@
+import re
 from django.conf import settings
+
+from evennia.utils.utils import time_format, datetime_format
+
 from athanor.commands.command import AthanorCommand
+from athanor.gamedb.accounts import AthanorAccount
+from athanor.utils.time import utcnow
 
 
 class CmdLoginCreateAccount(AthanorCommand):
@@ -80,3 +86,74 @@ You can use the |wlook|n command if you want to see the connect screen again.
         if settings.STAFF_CONTACT_EMAIL:
             string += "For support, please contact: %s" % settings.STAFF_CONTACT_EMAIL
         self.caller.msg(string)
+
+
+class CmdLoginConnect(AthanorCommand):
+    """
+    connect to the game
+
+    Usage (at login screen):
+      connect accountname password
+      connect "account name" "pass word"
+
+    Use the create command to first create an account before logging in.
+
+    If you have spaces in your name, enclose it in double quotes.
+    """
+
+    key = "connect"
+    aliases = ["conn", "con", "co"]
+    locks = "cmd:all()"  # not really needed
+    arg_regex = r"\s.*?|$"
+
+    def func(self):
+        """
+        Uses the Django admin api. Note that unlogged-in commands
+        have a unique position in that their func() receives
+        a session object instead of a source_object like all
+        other types of logged-in commands (this is because
+        there is no object yet before the account has logged in)
+        """
+        session = self.caller
+        address = session.address
+
+        args = self.args
+        # extract double quote parts
+        parts = [part.strip() for part in re.split(r"\"", args) if part.strip()]
+        if len(parts) == 1:
+            # this was (hopefully) due to no double quotes being found, or a guest login
+            parts = parts[0].split(None, 1)
+
+        if len(parts) != 2:
+            session.msg("\n\r Usage (without <>): connect <name> <password>")
+            return
+
+        # Get account class
+        Account = AthanorAccount
+
+        name, password = parts
+        account, errors = Account.authenticate(
+            username=name, password=password, ip=address, session=session
+        )
+        if account:
+            # check for both if the account has been banned and whether the ban is still valid.
+            # it's still valid if banned > now.
+            if (banned := account.db._banned) and banned > (now := utcnow()):
+                time_left = banned - now
+                session.msg(f"This account has been banned for: {account.db._ban_reason} until {banned.strftime('%c')}. "
+                            f"{time_format(time_left.total_seconds(), style=2)} remains. If you wish to appeal, contact staff via other means.")
+                return
+            # if there's a ban record but it's passed, may as well just delete it.
+            if banned:
+                session.msg(f"You are no longer banned for: {account.db._ban_reason}. Welcome back!")
+                del account.db._banned
+                del account.db._ban_reason
+
+            # next check for if the account is disabled.
+            if (disabled := account.db._disabled):
+                session.msg(f"This account has been indefinitely disabled for the reason: {disabled}. If you wish to appeal,"
+                            f"contact staff via other means.")
+                return
+            session.sessionhandler.login(session, account)
+        else:
+            session.msg("|R%s|n" % "\n".join(errors))

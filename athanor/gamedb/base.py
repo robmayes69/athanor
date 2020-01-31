@@ -23,36 +23,35 @@ class HasRenderExamine(object):
     This is a mixin that implements the render_examine method and its methods.
     All Athanor database Entities will use this instead of Evennia's basic Examine.
     """
-    examine_hooks = ['commands', 'scripts', 'tags', 'attributes']
     examine_type = None
+    examine_caller_type = None
+
+    def render_examine_callback(self, cmdset, viewer):
+        styling = viewer.styler
+        message = list()
+        message.append(
+            styling.styled_header(f"Examining {self.examine_type.capitalize()}: {self.get_display_name(viewer)}"))
+        try:
+            for hook in settings.EXAMINE_HOOKS[self.examine_type]:
+                hook_call = f"render_examine_{hook}"
+                if hasattr(self, hook_call):
+                    message.extend(getattr(self, hook_call)(viewer, cmdset, styling))
+        except Exception as e:
+            viewer.msg(e)
+        message.append(styling.blank_footer)
+        viewer.msg('\n'.join(str(l) for l in message))
 
     def render_examine(self, viewer):
-        def get_cmdset_callback(cmdset):
-            styling = viewer.styler
-            message = list()
-            message.append(styling.styled_header(f"Examining {self.examine_type.capitalize()}: {self.get_display_name(viewer)}"))
-            try:
-                for hook in self.examine_hooks:
-                    hook_call = f"render_examine_{hook}"
-                    if hasattr(self, hook_call):
-                        message.extend(getattr(self, hook_call)(viewer, cmdset, styling))
-            except Exception as e:
-                viewer.msg(e)
-            message.append(styling.blank_footer)
-            viewer.msg('\n'.join(str(l) for l in message))
-
         obj_session = self.sessions.get()[0] if self.sessions.count() else None
-
-        # using callback for printing result whenever function returns.
         get_and_merge_cmdsets(
-            self, obj_session, self.get_account(), self.get_puppet(), self.examine_type, "examine"
-        ).addCallback(get_cmdset_callback)
+            self, obj_session, None, None, self.examine_caller_type, "examine"
+        ).addCallback(self.get_cmdset_callback, viewer)
 
     def render_examine_commands(self, viewer, avail_cmdset, styling):
         if not (len(self.cmdset.all()) == 1 and self.cmdset.current.key == "_EMPTY_CMDSET"):
             # all() returns a 'stack', so make a copy to sort.
             stored_cmdsets = sorted(self.cmdset.all(), key=lambda x: x.priority, reverse=True)
-            string = "\n|wStored Cmdset(s)|n:\n %s" % (
+            string = "|wStored Cmdset(s)|n:\n %s" % (
                 "\n ".join(
                     "%s [%s] (%s, prio %s)"
                     % (cmdset.path, cmdset.key, cmdset.mergetype, cmdset.priority)
@@ -108,7 +107,10 @@ class HasRenderExamine(object):
                 self.key,
                 cmdsetstr,
             )
-            return [string] if string else []
+            return [
+                styling.styled_separator("Commands"),
+                string
+            ] if string else []
 
     def render_examine_nattributes(self, viewer, cmdset, styling):
         return list()
@@ -135,13 +137,19 @@ class AthanorBaseObjectMixin(HasRenderExamine, EventEmitter):
     It is provided as a mixin so other code besides AthanorObject can reference it.
     """
     hook_prefixes = ['object']
-    object_types = ['object']
-    examine_hooks = ['object', 'puppeteer', 'access', 'commands', 'scripts', 'tags', 'attributes', 'contents']
+    contents_categories = ['object']
     examine_type = "object"
+    examine_caller_type = 'object'
 
-    def render_examine_object(self, viewer, cmdset, styling):
+    def render_examine(self, viewer):
+        obj_session = self.sessions.get()[0] if self.sessions.count() else None
+        get_and_merge_cmdsets(
+            self, obj_session, self.account, self, self.examine_caller_type, "examine"
+        ).addCallback(self.render_examine_callback, viewer)
+
+    def render_examine_object(self, viewer, cmdset, styling, type_name="Object"):
         message = [
-            styling.styled_separator("Object Properties"),
+            styling.styled_separator(f"{type_name} Properties"),
             f"|wName/key|n: |c{self.key}|n ({self.dbref})",
             f"|wTypeclass|n: {self.typename} ({self.typeclass_path})"
         ]
@@ -207,7 +215,7 @@ class AthanorBaseObjectMixin(HasRenderExamine, EventEmitter):
     def register_index(self, obj, index=None):
         if index is None:
             index = self.contents_index
-        for obj_type in obj.object_types:
+        for obj_type in obj.contents_categories:
             if obj in index[obj_type]:
                 continue
             index[obj_type].append(obj)
@@ -215,7 +223,7 @@ class AthanorBaseObjectMixin(HasRenderExamine, EventEmitter):
     def unregister_index(self, obj, index=None):
         if index is None:
             index = self.contents_index
-        for obj_type in obj.object_types:
+        for obj_type in obj.contents_categories:
             if obj not in index[obj_type]:
                 continue
             index[obj_type].remove(obj)
@@ -542,7 +550,14 @@ class AthanorBaseObjectMixin(HasRenderExamine, EventEmitter):
 
 class AthanorBasePlayerMixin(object):
     hook_prefixes = ['object', 'character']
-    object_types = ['character']
+    contents_categories = ['character']
+    examine_type = "character"
+
+    def render_examine_character(self, viewer, cmdset, styling):
+        message = self.render_examine_object(viewer, cmdset, styling, type_name="Character")
+        if (account := self.character_bridge.db_account):
+            message.append(f"|wAccount|n: {account} ({account.dbref})")
+        return message
 
     def render_character_menu_line(self, cmd):
         return self.key
@@ -596,7 +611,7 @@ class AthanorExitMixin(object):
     """
     Basically this just implements the same advancements as DefaultExit.
     """
-    object_types = ['exit']
+    contents_categories = ['exit']
     exit_command = ExitCommand
     priority = 101
 

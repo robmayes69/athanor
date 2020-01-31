@@ -3,18 +3,15 @@ from collections import defaultdict
 
 from django.conf import settings
 
-from evennia.utils.utils import class_from_module, make_iter
+from evennia.utils.utils import class_from_module, make_iter, time_format, datetime_format
 from evennia.utils.logger import log_trace
 from evennia.utils.search import search_account
 
-import athanor
 from athanor.controllers.base import AthanorController
 from athanor.gamedb.accounts import AthanorAccount
 from athanor.messages import account as amsg
 from athanor.utils.text import partial_match, iter_to_string
 from athanor.utils.time import utcnow, duration_from_string
-
-from athanor.utils import styling
 
 MIXINS = [class_from_module(mixin) for mixin in settings.CONTROLLER_MIXINS["ACCOUNT"]]
 MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
@@ -115,7 +112,8 @@ class AthanorAccountController(*MIXINS, AthanorController):
         if not reason:
             raise ValueError("Must include a reason!")
         account.db._disabled = reason
-        amsg.DisableMessage(source=enactor, target=account, reason=reason)
+        amsg.DisableMessage(source=enactor, target=account, reason=reason).send()
+        account.force_disconnect(reason)
 
     def enable_account(self, session, account):
         if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_disable)"):
@@ -124,7 +122,7 @@ class AthanorAccountController(*MIXINS, AthanorController):
         if not account.db._disabled:
             raise ValueError("Account is not disabled!")
         del account.db._disabled
-        amsg.EnableMessage(source=enactor, target=account)
+        amsg.EnableMessage(source=enactor, target=account).send()
 
     def ban_account(self, session, account, duration, reason):
         if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_ban)"):
@@ -136,7 +134,9 @@ class AthanorAccountController(*MIXINS, AthanorController):
             raise ValueError("Must include a reason!")
         account.db._banned = ban_date
         account.db._ban_reason = reason
-        amsg.BanMessage(source=enactor, target=account, duration=duration, reason=reason)
+        amsg.BanMessage(source=enactor, target=account, duration=time_format(duration.total_seconds(), style=2),
+                        ban_date=ban_date.strftime('%c'), reason=reason).send()
+        account.force_disconnect(reason)
 
     def unban_account(self, session, account):
         if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_ban)"):
@@ -146,7 +146,7 @@ class AthanorAccountController(*MIXINS, AthanorController):
             raise ValueError("Account is not banned!")
         del account.db._banned
         del account.db._ban_reason
-        amsg.UnBanMessage(source=enactor, target=account)
+        amsg.UnBanMessage(source=enactor, target=account).send()
 
     def reset_password(self, session, account, new_password, ignore_priv=False, old_password=None):
         if not (enactor := session.get_account()) or (not ignore_priv and not enactor.check_lock("oper(account_password)")):
@@ -162,6 +162,16 @@ class AthanorAccountController(*MIXINS, AthanorController):
             amsg.PasswordMessagePrivate(source=enactor).send()
         else:
             amsg.PasswordMessageAdmin(source=enactor, target=account, password=new_password).send()
+
+    def disconnect_account(self, session, account, reason):
+        if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_boot)"):
+            raise ValueError("Permission denied.")
+        account = self.find_account(account)
+        if not account.sessions.all():
+            raise ValueError("Account is not connected!")
+        amsg.ForceDisconnect(source=enactor, target=account, reason=reason).send()
+        account.force_disconnect(reason=reason)
+
 
     def find_permission(self, perm):
         if not perm:
@@ -240,11 +250,12 @@ class AthanorAccountController(*MIXINS, AthanorController):
         if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_details)"):
             raise ValueError("Permission denied.")
         account = self.find_account(account)
+        styling = enactor.styler
         message = list()
-        message.append(styling.styled_header(enactor, f"Access Levels: {account}"))
+        message.append(styling.styled_header(f"Access Levels: {account}"))
         message.append(f"PERMISSION HIERARCHY: {iter_to_string(settings.PERMISSION_HIERARCHY)} <<<< SUPERUSER")
         message.append(f"HELD PERMISSIONS: {iter_to_string(account.permissions.all())} ; SUPERUSER: {account.is_superuser}")
-        message.append(styling.styled_footer(enactor))
+        message.append(styling.blank_footer)
         return '\n'.join(str(l) for l in message)
 
     def permissions_directory(self, session):
@@ -254,31 +265,33 @@ class AthanorAccountController(*MIXINS, AthanorController):
 
         perms = dict(self.permissions)
         message = list()
-        message.append(styling.styled_header(enactor, "Permissions Hierarchy"))
+        styling = enactor.styler
+        message.append(styling.styled_header("Permissions Hierarchy"))
         message.append(f"|rSUPERUSERS:|n {iter_to_string(perms.pop('_super', list()))}")
         for perm in reversed(settings.PERMISSION_HIERARCHY):
             if perm.lower() in perms:
                 message.append(f"{perm:>10}: {iter_to_string(perms.pop(perm.lower(), list()))}")
         if perms:
-            message.append(styling.styled_separator(enactor, "Non-Hierarchial Permissions"))
+            message.append(styling.styled_separator("Non-Hierarchial Permissions"))
             for perm, holders in perms.items():
                 if not holders:
                     continue
                 message.append(f"{perm}: {iter_to_string(holders)}")
-        message.append(styling.styled_footer(enactor))
+        message.append(styling.blank_footer)
         return '\n'.join(str(l) for l in message)
 
     def list_permissions(self, session):
         if not (enactor := session.get_account()):
             raise ValueError("Permission denied.")
+        styling = enactor.styler
         message = list()
-        message.append(styling.styled_header(enactor, "Grantable Permissions"))
+        message.append(styling.styled_header("Grantable Permissions"))
         for perm, data in settings.PERMISSIONS.items():
-            message.append(styling.styled_separator(enactor, perm))
+            message.append(styling.styled_separator(perm))
             message.append(f"Grantable By: {data.get('permission', 'SUPERUSER')}")
             if (desc := data.get("description", None)):
                 message.append(f"Description: {desc}")
-        message.append(styling.styled_footer(enactor))
+        message.append(styling.blank_footer)
         return '\n'.join(str(l) for l in message)
 
     def list_accounts(self, session):

@@ -21,7 +21,7 @@ class AthanorObject(*MIXINS, AthanorBaseObjectMixin, DefaultObject):
 
 
 class AthanorRoom(AthanorObject):
-    object_types = ['room']
+    contents_categories = ['room']
 
 
 class AthanorExit(AthanorExitMixin, AthanorObject):

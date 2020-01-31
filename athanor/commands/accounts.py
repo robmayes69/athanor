@@ -13,7 +13,8 @@ class CmdAccount(AdministrationCommand):
 
     Usage:
         @account [<account>]
-            Display a breakdown of information all about an Account. Your own, if not targeted.
+            Display a breakdown of information all about an Account.
+            Your own, if not targeted.
 
         @account/list
             Show all accounts in the system.
@@ -22,14 +23,16 @@ class CmdAccount(AdministrationCommand):
             Create a new account.
 
         @account/disable <account>=<reason>
-            Indefinitely disable an Account. The stated reason will be shown to all parties and recorded.
-            If the account is currently online, it will be booted.
-            Use @account/enable <account>=<reason> to re-enable the account.
+            Indefinitely disable an Account. The stated reason will be shown
+            to staff and the account. If the account is currently online,
+            it will be booted.
+            Use @account/enable <account> to re-enable the account.
 
         @account/ban <account>=<duration>,<reason>
-            Temporarily disable an account until the timer's up. <duration> must be a time period such as
-            7d (7 days), 2w (2 weeks), etc. Reason will be shown to the account and staff and recorded.
-            Use @account/unban <account>=<reason> to lift it early.
+            Temporarily disable an account until the timer's up. <duration>
+            must be a time period such as 7d (7 days), 2w (2 weeks), etc.
+            Reason will be shown to the account and staff and recorded.
+            Use @account/unban <account> to lift it early.
 
         @account/rename <account>=<new name>
             Change an account's Username.
@@ -52,15 +55,15 @@ class CmdAccount(AdministrationCommand):
     def switch_main(self):
         if not self.args:
             self.args = self.account
-        self.msg(self.controllers.get('account').examine_account(self.args))
+        self.msg(self.controllers.get('account').examine_account(self.session, self.args))
 
     def switch_list(self):
         self.msg(self.controllers.get('account').list_accounts(self.session))
 
     def switch_create(self):
-        if not len(self.arglist) == 3:
+        if not len(self.argscomma) == 3:
             raise ValueError("Usage: @account/create <username>,<email>,<password>")
-        username, email, password = self.arglist
+        username, email, password = self.argscomma
         self.controllers.get('account').create_account(self.session, username, email, password)
 
     def switch_disable(self):
@@ -97,6 +100,9 @@ class CmdAccount(AdministrationCommand):
         if not self.lhs and self.rhs:
             raise ValueError("Usage: @account/email <account>=<new email>")
         self.controllers.get('account').change_email(self.session, self.lhs, self.rhs)
+
+    def switch_boot(self):
+        self.controllers.get('account').disconnect_account(self.session, self.lhs, self.rhs)
 
 
 class CmdAccess(AdministrationCommand):

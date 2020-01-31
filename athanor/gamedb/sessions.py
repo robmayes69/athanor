@@ -6,6 +6,8 @@ from evennia.utils.utils import class_from_module
 import athanor
 from athanor.utils.events import EventEmitter
 from athanor.gamedb.base import HasRenderExamine
+from evennia.commands.cmdhandler import get_and_merge_cmdsets
+
 
 MIXINS = [class_from_module(mixin) for mixin in settings.GAMEDB_MIXINS["SESSION"]]
 MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
@@ -14,6 +16,11 @@ MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 class AthanorSession(*MIXINS, HasRenderExamine, ServerSession, EventEmitter):
     examine_hooks = ['session', 'puppet', 'commands', 'tags', 'attributes']
     examine_type = "session"
+
+    def render_examine(self, viewer):
+        get_and_merge_cmdsets(
+            self, self, self.get_account(), self.get_puppet(), self.examine_type, "examine"
+        ).addCallback(self.render_examine_callback, viewer)
 
     def render_examine_session(self, viewer, cmdset, styling):
         message = list()

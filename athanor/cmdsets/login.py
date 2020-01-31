@@ -25,8 +25,10 @@ class AthanorUnloggedinCmdSet(default_cmds.UnloggedinCmdSet):
         #
         self.remove(unloggedin.CmdUnconnectedCreate)
         self.remove(unloggedin.CmdUnconnectedHelp)
+        self.remove(unloggedin.CmdUnconnectedConnect)
         self.add(login.CmdLoginCreateAccount)
         self.add(login.CmdLoginHelp)
+        self.add(login.CmdLoginConnect)
 
         for cmdset in CMDSETS:
             if hasattr(cmdset, "setup"):

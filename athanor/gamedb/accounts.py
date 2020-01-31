@@ -4,19 +4,21 @@ from django.conf import settings
 from evennia.utils.utils import class_from_module, lazy_property
 from evennia.accounts.accounts import DefaultAccount
 from evennia.utils import utils
+from evennia.commands.cmdhandler import get_and_merge_cmdsets
+from evennia import SESSION_HANDLER
 
 import athanor
 
 from athanor.utils.events import EventEmitter
 from athanor.gamedb.handlers import OperationHandler
 from athanor.gamedb.characters import AthanorPlayerCharacter
-
+from athanor.gamedb.base import HasRenderExamine
 
 MIXINS = [class_from_module(mixin) for mixin in settings.GAMEDB_MIXINS["ACCOUNT"]]
 MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
 
-class AthanorAccount(*MIXINS, DefaultAccount, EventEmitter):
+class AthanorAccount(*MIXINS, HasRenderExamine, DefaultAccount, EventEmitter):
     """
     AthanorAccount adds the EventEmitter to DefaultAccount and supports Mixins.
     Please read Evennia's documentation for its normal API.
@@ -27,19 +29,39 @@ class AthanorAccount(*MIXINS, DefaultAccount, EventEmitter):
         account_online (session): Fired whenever an account comes online from being completely offline.
         account_offline (session): Triggered when an account's final session closes.
     """
-    examine_hooks = ['account', 'permissions', 'lock', 'commands', 'scripts', 'tags', 'attributes',
-                     'puppets']
     examine_type = "account"
+    examine_caller_type = "account"
+
+    def render_examine(self, viewer):
+        obj_session = self.sessions.get()[0] if self.sessions.count() else None
+        get_and_merge_cmdsets(
+            self, obj_session, self, None, self.examine_type, "examine"
+        ).addCallback(self.render_examine_callback, viewer)
 
     def render_examine_account(self, viewer, cmdset, styling):
         message = list()
-        message.append(f"|wName/key|n: |c{self.name}|n ({self.dbref})")
+        message.append(f"|wUsername|n: |c{self.name}|n ({self.dbref})")
         message.append(f"|wTypeclass|n: {self.typename} ({self.typeclass_path})")
         if (aliases := self.aliases.all()):
             message.append(f"|wAliases|n: {', '.join(utils.make_iter(str(aliases)))}")
         if (sessions := self.sessions.all()):
             message.append(f"|wSessions|n: {', '.join(str(sess) for sess in sessions)}")
         message.append(f"|wEmail|n: {self.email}")
+        return message
+
+    def render_examine_access(self, viewer, cmdset, styling):
+        locks = str(self.locks)
+        if locks:
+            locks_string = utils.fill("; ".join([lock for lock in locks.split(";")]), indent=6)
+        else:
+            locks_string = " Default"
+        message = [
+            styling.styled_separator("Access"),
+            f"|wPermissions|n: {', '.join(perms) if (perms := self.permissions.all()) else '<None>'}",
+            f"|wSuperuser|n: {self.is_superuser}",
+            f"|wOperations|n: {', '.join(self.operations.all())}",
+            f"|wLocks|n:{locks_string}"
+        ]
         return message
 
     def render_examine_puppets(self, viewer, cmdset, styling):
@@ -52,7 +74,7 @@ class AthanorAccount(*MIXINS, DefaultAccount, EventEmitter):
             f"|wEmail|n: {self.email}",
             f"|wTypeclass|n: {self.typename} ({self.typeclass_path})",
             f"|wPermissions|n: {', '.join(perms) if (perms := self.permissions.all()) else '<None>'} (Superuser: {self.is_superuser}) (Quelled: {bool(self.db._quell)})",
-            f"|wOperations|n: {', '.join(opers) if (opers := self.operations.all()) else '<None>'}"
+            f"|wOperations|n: {', '.join(opers) if (opers := self.operations.all()) else '<None>'}",
             f"|wSessions|n: {', '.join(str(sess) for sess in self.sessions.all())}"
         ]
         return message
@@ -76,11 +98,11 @@ class AthanorAccount(*MIXINS, DefaultAccount, EventEmitter):
         on the list.
         """
         return [
-            styling.styled_separator(self.email),
-            f"|wUsername|n: {self.username}",
+            styling.styled_separator(self.username),
+            f"|wEmail|n: {self.email}",
             f"|wLast Login|n: Last login here!",
-            f"|wPermissions|n: {self.permissions.all()} (Superuser: {self.is_superuser})",
-            f"|Characters|n: {self.characters()}"
+            f"|wPermissions|n: {', '.join(self.permissions.all())} (Superuser: {self.is_superuser})",
+            f"|wCharacters|n: {', '.join(str(c) for c in self.characters())}"
         ]
 
     def __str__(self):
@@ -113,11 +135,13 @@ class AthanorAccount(*MIXINS, DefaultAccount, EventEmitter):
     def set_email(self, new_email):
         new_email = self.__class__.objects.normalize_email(new_email)
         self.email = new_email
+        self.save(update_fields=['email'])
         return new_email
 
     def rename(self, new_name):
         new_name = self.normalize_username(new_name)
         self.username = new_name
+        self.save(update_fields=['username'])
         return new_name
 
     def generate_substitutions(self, viewer):
@@ -183,3 +207,18 @@ class AthanorAccount(*MIXINS, DefaultAccount, EventEmitter):
 
     def check_lock(self, lock):
         return self.locks.check_lockstring(self, f"dummy:{lock}")
+
+    def force_disconnect(self, reason=""):
+        """
+        Forces a disconnect. This unpuppets all objects and disconnects all
+        relevant sessions.
+
+        Args:
+            reason (str): If provided, will show this message to the Account.
+
+        Returns:
+            None
+        """
+        self.unpuppet_all()
+        for sess in self.sessions.all():
+            SESSION_HANDLER.disconnect(sess, reason=reason)

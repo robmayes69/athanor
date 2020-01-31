@@ -66,19 +66,19 @@ INLINEFUNC_ENABLED = True
 AT_INITIAL_SETUP_HOOK_MODULE = "athanor.at_initial_setup"
 AT_SERVER_STARTSTOP_MODULE = "athanor.at_server_startstop"
 
-SERVER_SESSION_CLASS = "athanor.gamedb.sessions.AthanorSession"
+HELP_MORE = False
 
-
-# Command set used on session before account has logged in
-CMDSET_UNLOGGEDIN = "athanor.cmdsets.login.AthanorUnloggedinCmdSet"
-# Command set used on the logged-in session
-CMDSET_SESSION = "athanor.cmdsets.session.AthanorSessionCmdSet"
 
 CMD_IGNORE_PREFIXES = ""
 
 # The Styler is an object that generates commonly-used formatting, like
 # headers and tables.
 STYLER_CLASS = "athanor.utils.styling.Styler"
+
+# The EXAMINE HOOKS are used to generate Examine-styled output. It differs by types.
+EXAMINE_HOOKS = defaultdict(list)
+
+EXAMINE_HOOKS['object'] = ['object', 'puppeteer', 'access', 'commands', 'scripts', 'tags', 'attributes', 'contents']
 
 ######################################################################
 # Controllers
@@ -96,6 +96,19 @@ CONTROLLERS['gamedata'] = {
     'class': 'athanor.controllers.gamedata.AthanorGameDataController',
 }
 
+
+######################################################################
+# Session Options
+######################################################################
+# Command set used on the logged-in session
+CMDSET_SESSION = "athanor.cmdsets.session.AthanorSessionCmdSet"
+
+# Command set used on session before account has logged in
+CMDSET_UNLOGGEDIN = "athanor.cmdsets.login.AthanorUnloggedinCmdSet"
+
+SERVER_SESSION_CLASS = "athanor.gamedb.sessions.AthanorSession"
+
+EXAMINE_HOOKS['session'] = []
 
 ######################################################################
 # Plugin Options
@@ -142,6 +155,8 @@ RESTRICTED_ACCOUNT_RENAME = False
 RESTRICTED_ACCOUNT_EMAIL = False
 RESTRICTED_ACCOUNT_PASSWORD = False
 
+EXAMINE_HOOKS['account'] = ['account', 'access',  'commands', 'tags', 'attributes', 'puppets']
+
 ######################################################################
 # Character Settings
 ######################################################################
@@ -163,6 +178,11 @@ BASE_CHARACTER_TYPECLASS = "athanor.gamedb.characters.AthanorPlayerCharacter"
 # If this is enabled, characters will not see each other's true names.
 # Instead, they'll see something generic.
 NAME_DUB_SYSTEM = False
+
+
+EXAMINE_HOOKS['character'] = ['character', 'puppeteer', 'access', 'commands', 'scripts', 'tags', 'attributes', 'contents']
+
+
 
 ######################################################################
 # Room Settings
