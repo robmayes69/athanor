@@ -5,7 +5,7 @@ from evennia.utils.utils import class_from_module, lazy_property
 from evennia.accounts.accounts import DefaultAccount
 from evennia.utils import utils
 from evennia.commands.cmdhandler import get_and_merge_cmdsets
-from evennia import SESSION_HANDLER
+from evennia import SESSION_HANDLER, AccountDB
 
 import athanor
 
@@ -31,6 +31,16 @@ class AthanorAccount(*MIXINS, HasRenderExamine, DefaultAccount, EventEmitter):
     """
     examine_type = "account"
     examine_caller_type = "account"
+
+    def set_email(self, new_email):
+        if not new_email:
+            raise ValueError("Must set an email address!")
+        new_email = AccountDB.objects.normalize_email(new_email)
+        if AccountDB.objects.filter_family(email__iexact=new_email).exclude(id=self.id).count():
+            raise ValueError("This email address is already in use!")
+        self.email = new_email
+        self.save(update_fields=['email'])
+        return new_email
 
     def render_examine(self, viewer):
         obj_session = self.sessions.get()[0] if self.sessions.count() else None
@@ -112,6 +122,10 @@ class AthanorAccount(*MIXINS, HasRenderExamine, DefaultAccount, EventEmitter):
 
     @classmethod
     def create_account(cls, *args, **kwargs):
+        if not (email := kwargs.get('email', '')):
+            raise ValueError("Must include an email!")
+        if AccountDB.objects.filter_family(email__iexact=email).count():
+            raise ValueError("Email is already in use by another account!")
         account, errors = cls.create(*args, **kwargs)
         if account:
             return account
@@ -133,12 +147,6 @@ class AthanorAccount(*MIXINS, HasRenderExamine, DefaultAccount, EventEmitter):
     @lazy_property
     def operations(self):
         return OperationHandler(self)
-
-    def set_email(self, new_email):
-        new_email = self.__class__.objects.normalize_email(new_email)
-        self.email = new_email
-        self.save(update_fields=['email'])
-        return new_email
 
     def rename(self, new_name):
         new_name = self.normalize_username(new_name)

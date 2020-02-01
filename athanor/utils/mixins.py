@@ -7,6 +7,23 @@ from evennia.utils.utils import lazy_property
 _PERMISSION_HIERARCHY = [p.lower() for p in settings.PERMISSION_HIERARCHY]
 
 
+class HasAttributeGetCreate(object):
+
+    def get_or_create_attribute(self, key, default, category=None):
+        """
+        A mixin that's meant to be used
+        Args:
+            key: The attribute key to grab.
+            default: What to create/set if the attribute does not exist.
+            category (str or None): The attribute Category to set/pull from.
+        Returns:
+
+        """
+        if not self.attributes.has(key=key, category=category):
+            self.attributes.add(key=key, category=category, value=default)
+        return self.attributes.get(key=key, category=category)
+
+
 class HasLocks(object):
     """
     Implements the bare minimum of Evennia's Typeclass API to give any sort of class

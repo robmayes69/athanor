@@ -3,14 +3,18 @@ from django.conf import settings
 
 from evennia.utils.evtable import EvTable
 from evennia.utils.ansi import ANSIString
-from evennia.utils.utils import lazy_property
+from evennia.utils.utils import lazy_property, class_from_module
+
+MIXINS = [class_from_module(mixin) for mixin in settings.MIXINS["STYLER"]]
+MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
 
-class Styler(object):
+class Styler(*MIXINS, object):
     fallback = dict()
     loaded = False
     width = 78
     fallback_cache = dict()
+    mixins = MIXINS
 
     def __init__(self, viewer):
         """
@@ -31,6 +35,9 @@ class Styler(object):
         for key, data in settings.OPTIONS_ACCOUNT_DEFAULT.items():
             cls.fallback[key] = data[2]
         cls.width = settings.CLIENT_DEFAULT_WIDTH
+        for mixin in cls.mixins:
+            if (load_mixin := getattr(mixin, 'load_mixin', None)):
+                load_mixin(cls)
         cls.loaded = True
 
     def styled_table(self, *args, **kwargs):
@@ -80,7 +87,6 @@ class Styler(object):
             **kwargs,
         )
         return table
-
 
     def _render_decoration(
             self,
@@ -176,7 +182,6 @@ class Styler(object):
 
         return final_send
 
-
     def styled_header(self, *args, **kwargs):
         """
         Create a pretty header.
@@ -186,7 +191,6 @@ class Styler(object):
             kwargs["mode"] = "header"
         return self._render_decoration(*args, **kwargs)
 
-
     def styled_separator(self, *args, **kwargs):
         """
         Create a separator.
@@ -195,7 +199,6 @@ class Styler(object):
         if "mode" not in kwargs:
             kwargs["mode"] = "separator"
         return self._render_decoration(*args, **kwargs)
-
 
     def styled_footer(self, *args, **kwargs):
         """

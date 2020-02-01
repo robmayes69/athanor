@@ -99,6 +99,7 @@ class AthanorPlayerCharacter(*MIXINS, AthanorBasePlayerMixin, AthanorObject):
         bridge.db_name = clean_key
         bridge.db_iname = clean_key.lower()
         bridge.db_cname = key
+        bridge.save(update_fields=['db_name', 'db_iname', 'db_cname'])
         return key
 
     def basetype_setup(self):
