@@ -32,13 +32,13 @@ class CmdLoginCreateAccount(AthanorCommand):
     aliases = ["cre", "cr"]
     locks = "cmd:all()"
     arg_regex = r"\s.*?|$"
+    args_delim = ','
 
     def switch_main(self):
-        print(self.argscomma)
-        self.msg(self.argscomma)
-        if not len(self.argscomma) == 3:
+        print(self.argslist)
+        if not len(self.argslist) == 3:
             raise ValueError(f"Usage: {self.key} <username>,<email>,<password>")
-        username, email, password = self.argscomma
+        username, email, password = self.argslist
         new_account = self.controllers.get('account').create_account(self.session, username, email, password, login_screen=True)
         username = new_account.username
         user_show = f'"{username}"' if " " in username else username
@@ -105,6 +105,7 @@ class CmdLoginConnect(AthanorCommand):
     aliases = ["conn", "con", "co"]
     locks = "cmd:all()"  # not really needed
     arg_regex = r"\s.*?|$"
+
 
     def func(self):
         """

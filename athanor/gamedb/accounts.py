@@ -5,7 +5,7 @@ from evennia.utils.utils import class_from_module, lazy_property
 from evennia.accounts.accounts import DefaultAccount
 from evennia.utils import utils
 from evennia.commands.cmdhandler import get_and_merge_cmdsets
-from evennia import SESSION_HANDLER, AccountDB
+from evennia import SESSION_HANDLER
 
 import athanor
 
@@ -47,8 +47,8 @@ class AthanorAccount(*MIXINS, HasRenderExamine, DefaultAccount, EventEmitter):
         """
         if not new_email:
             raise ValueError("Must set an email address!")
-        new_email = AccountDB.objects.normalize_email(new_email)
-        if AccountDB.objects.filter_family(email__iexact=new_email).exclude(id=self.id).count():
+        new_email = AthanorAccount.objects.normalize_email(new_email)
+        if AthanorAccount.objects.filter_family(email__iexact=new_email).exclude(id=self.id).count():
             raise ValueError("This email address is already in use!")
         self.email = new_email
         self.save(update_fields=['email'])
@@ -136,7 +136,7 @@ class AthanorAccount(*MIXINS, HasRenderExamine, DefaultAccount, EventEmitter):
     def create_account(cls, *args, **kwargs):
         if not (email := kwargs.get('email', '')):
             raise ValueError("Must include an email!")
-        if AccountDB.objects.filter_family(email__iexact=email).count():
+        if AthanorAccount.objects.filter_family(email__iexact=email).count():
             raise ValueError("Email is already in use by another account!")
         account, errors = cls.create(*args, **kwargs)
         if account:
