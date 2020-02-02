@@ -29,10 +29,22 @@ class AthanorAccount(*MIXINS, HasRenderExamine, DefaultAccount, EventEmitter):
         account_online (session): Fired whenever an account comes online from being completely offline.
         account_offline (session): Triggered when an account's final session closes.
     """
+    # class properties used by the RenderExamine mixin.
     examine_type = "account"
     examine_caller_type = "account"
 
     def set_email(self, new_email):
+        """
+        Validates and normalizes email, then sets it.
+
+        No permission checks are done here. That's on the Account Controller.
+
+        Args:
+            new_email (str): The new email.
+
+        Returns:
+            normalized_email (str)
+        """
         if not new_email:
             raise ValueError("Must set an email address!")
         new_email = AccountDB.objects.normalize_email(new_email)

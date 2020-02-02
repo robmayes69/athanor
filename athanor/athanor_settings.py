@@ -68,6 +68,7 @@ AT_SERVER_STARTSTOP_MODULE = "athanor.at_server_startstop"
 
 HELP_MORE = False
 
+CONNECTION_SCREEN_MODULE = "athanor.connection_screens"
 
 CMD_IGNORE_PREFIXES = ""
 

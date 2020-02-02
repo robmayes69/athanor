@@ -124,7 +124,7 @@ class Styler(*MIXINS, object):
                 if (found := self.cache.get(cache_id, None)):
                     return found
             else:
-                if (found := self.fallback_cache(cache_id, None)):
+                if (found := self.fallback_cache.get(cache_id, None)):
                     return found
 
         colors = dict()

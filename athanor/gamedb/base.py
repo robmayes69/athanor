@@ -138,7 +138,7 @@ class AthanorBaseObjectMixin(HasRenderExamine, EventEmitter):
     It is provided as a mixin so other code besides AthanorObject can reference it.
     """
     hook_prefixes = ['object']
-    contents_categories = ['object']
+    contents_categories = ['item']
     examine_type = "object"
     examine_caller_type = 'object'
 
