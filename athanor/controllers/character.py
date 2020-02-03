@@ -87,7 +87,8 @@ class AthanorCharacterController(*MIXINS, AthanorController):
         if namespace == 0:
             self.id_map[new_character.id] = new_character
             self.name_map[new_character.key.upper()] = new_character
-        cmsg.CreateMessage(source=enactor, target=new_character, account_name=account.username).send()
+        entities = {'enactor': enactor, 'character': new_character, 'account': account}
+        cmsg.CreateMessage(entities).send()
         return new_character
 
     def archive_character(self, session, character, verify_name):
@@ -96,7 +97,8 @@ class AthanorCharacterController(*MIXINS, AthanorController):
         character = self.find_character(character)
         account = character.character_bridge.account
         character.archive()
-        cmsg.ArchiveMessage(source=enactor, target=character, account_name=account.username if account else 'N/A').send()
+        entities = {'enactor': enactor, 'character': character, 'account': account}
+        cmsg.ArchiveMessage(entities).send()
         character.force_disconnect(reason="Character has been archived!")
 
     def restore_character(self, session, character, replace_name):
@@ -105,7 +107,8 @@ class AthanorCharacterController(*MIXINS, AthanorController):
         character = self.find_character(character)
         account = character.character_bridge.account
         character.restore(replace_name)
-        cmsg.RestoreMessage(source=enactor, target=character, account_name=account.username if account else 'N/A').send()
+        entities = {'enactor': enactor, 'character': character, 'account': account}
+        cmsg.RestoreMessage(entities).send()
 
     def rename_character(self, session, character, new_name, ignore_priv=False):
         if not (enactor := session.get_account()) or (
@@ -115,7 +118,8 @@ class AthanorCharacterController(*MIXINS, AthanorController):
         account = character.character_bridge.account
         old_name = character.key
         new_name = character.rename(new_name)
-        cmsg.RenameMessage(source=enactor, target=character, old_name=old_name, account_name=account.username).send()
+        entities = {'enactor': enactor, 'character': character, 'account': account}
+        cmsg.RenameMessage(entities, old_name=old_name).send()
 
     def transfer_character(self, session, character, new_account, ignore_priv=False):
         if not (enactor := session.get_account()) or (
@@ -126,8 +130,8 @@ class AthanorCharacterController(*MIXINS, AthanorController):
         new_account = self.manager.get('account').find_account(new_account)
         character.force_disconnect(reason="This character has been transferred to a different account!")
         character.set_account(new_account)
-        cmsg.TransferMessage(source=enactor, target=character, account_username=account.username,
-                             new_account=new_account.username).send()
+        entities = {'enactor': enactor, 'character': character, 'account_from': account, 'account_to': new_account}
+        cmsg.TransferMessage(entities).send()
 
     def examine_character(self, session, character):
         if not (enactor := session.get_account()) or not enactor.check_lock("oper(character_details)"):

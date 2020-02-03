@@ -1,94 +1,122 @@
-from athanor.utils.submessage import SubMessage
+from athanor.utils.message import AdminMessage
 
 
-class AccountMessage(SubMessage):
+class AccountMessage(AdminMessage):
     system_name = "ACCOUNT"
-
+    targets = ['enactor', 'account', 'admin']
+    
 
 class CreateMessage(AccountMessage):
-    source_message = ""
-    target_message = ""
-    admin_message = "|w{source_name}|n created Account: |w{target_name}|n"
+    messages = {
+        'admin': "|w{enactor_name}|n created Account: |w{account_name}|n"
+    }
 
 
 class CreateMessageAdmin(CreateMessage):
-    source_message = "Successfully created Account: |w{target_name}|n with password: {password} "
-    target_message = ""
-    admin_message = "|w{source_name}|n created Account: |w{target_name}|n with password: {password}"
+    messages = {
+        'enactor': "Successfully created Account: |w{account_name}|n with password: {password}",
+        'admin': "|w{enactor_name}|n created Account: |w{account_name}|n with password: {password}"
+    }
 
 
 class RenameMessage(AccountMessage):
-    source_message = "Successfully renamed Account: |w{old_name}|n to |w{target_name}"
-    target_message = "|w{source_name}|n renamed your Account from |w{old_name}|n to |w{target_name}"
-    admin_message = "|w{source_name}|n renamed Account |w{old_name}|n to |w{target_name}"
+    messages = {
+        'enactor': "Successfully renamed Account: |w{old_name}|n to |w{account_name}",
+        'account': "|w{enactor_name}|n renamed your Account from |w{old_name}|n to |w{account_name}",
+        'admin': "|w{enactor_name}|n renamed Account |w{old_name}|n to |w{account_name}"
+    }
 
 
 class EmailMessage(AccountMessage):
-    source_message = "Successfully changed Email for Account: |w{target_name}|n from |w{old_email}|n to |w{target_email}"
-    target_message = "|w{source_name}|n renamed your Account Email from |w{old_email}|n to |w{target_email}"
-    admin_message = "|w{source_name}|n changed Email for Account: |w{target_name}|n from |w{old_email}|n to |w{target_email}"
+    messages = {
+        'enactor': "Successfully changed Email for Account: |w{account_name}|n from |w{old_email}|n to |w{account_email}",
+        'account': "|w{enactor_name}|n renamed your Account Email from |w{old_email}|n to |w{account_email}",
+        'admin': "|w{enactor_name}|n changed Email for Account: |w{account_name}|n from |w{old_email}|n to |w{account_email}"
+    }
 
 
 class DisableMessage(AccountMessage):
-    source_message = "Successfully disabled Account: |w{target_name}|n under reasoning: {reason}"
-    target_message = "|w{source_name}|n disabled your Account due to: {reason}"
-    admin_message = "|w{source_name}|n disabled Account |w{target_name}|n under reasoning: {reason}"
+    messages = {
+        'enactor': "Successfully disabled Account: |w{account_name}|n under reasoning: {reason}",
+        'account': "|w{enactor_name}|n disabled your Account due to: {reason}",
+        'admin': "|w{enactor_name}|n disabled Account |w{account_name}|n under reasoning: {reason}"
+    }
 
 
 class EnableMessage(AccountMessage):
-    source_message = "Successfully re-enabled Account: |w{target_name}|n."
-    target_message = "|w{source_name}|n re-enabled your Account."
-    admin_message = "|w{source_name}|n re-enabled Account |w{target_name}|n."
+    messages = {
+        'enactor': "Successfully re-enabled Account: |w{account_name}|n.",
+        'account': "|w{enactor_name}|n re-enabled your Account.",
+        'admin': "|w{enactor_name}|n re-enabled Account |w{account_name}|n."
+    }
 
 
 class BanMessage(AccountMessage):
-    source_message = "Successfully banned Account: |w{target_name}|n for {duration} - until {ban_date} - under reasoning: {reason}"
-    target_message = "|w{source_name}|n banned your Account for {duration} - until {ban_date} - due to: {reason}"
-    admin_message = "|w{source_name}|n banned Account |w{target_name}|n for {duration} - until {ban_date} - under reasoning: {reason}"
+    messages = {
+        'enactor': "Successfully banned Account: |w{account_name}|n for {duration} - until {ban_date} - under reasoning: {reason}",
+        'account': "|w{enactor_name}|n banned your Account for {duration} - until {ban_date} - due to: {reason}",
+        'admin': "|w{enactor_name}|n banned Account |w{account_name}|n for {duration} - until {ban_date} - under reasoning: {reason}"
+    }
 
 
 class UnBanMessage(AccountMessage):
-    source_message = "Successfully un-banned Account: |w{target_name}|n."
-    target_message = "|w{source_name}|n un-banned your Account."
-    admin_message = "|w{source_name}|n un-banned Account |w{target_name}|n."
+    messages = {
+        'enactor': "Successfully un-banned Account: |w{account_name}|n.",
+        'account': "|w{enactor_name}|n un-banned your Account.",
+        'admin': "|w{enactor_name}|n un-banned Account |w{account_name}|n."
+    }
 
 
 class PasswordMessagePrivate(AccountMessage):
-    source_message = "Successfully changed your password!"
-    admin_message = "|w{source_name}|n changed their password!"
+    messages = {
+        'enactor': "Successfully changed your password!",
+        'admin': "|w{enactor_name}|n changed their password!"
+    }
 
 
 class PasswordMessageAdmin(AccountMessage):
-    source_message = "Successfully changed the password for Account: |w{target_name}|n to |w{target_name}"
-    target_message = "|w{source_name}|n changed your Account's password!"
-    admin_message = "|w{source_name}|n changed Account |w{target_name}|n's password to |w{new_password}"
+    messages = {
+        'enactor': "Successfully changed the password for Account: |w{account_name}|n to |w{account_name}",
+        'account': "|w{enactor_name}|n changed your Account's password!",
+        'admin': "|w{enactor_name}|n changed Account |w{account_name}|n's password to |w{new_password}"
+    }
 
 
 class GrantMessage(AccountMessage):
-    source_message = "Successfully granted Account: |w{target_name}|n the Permission: |w{perm}|n"
-    target_message = "|w{source_name}|n granted your Account the Permission: |w{perm}|n"
-    admin_message = "|w{source_name}|n granted Account |w{target_name}|n the Permission: |w{perm}|n"
+    messages = {
+        'enactor': "Successfully granted Account: |w{account_name}|n the Permission: |w{perm}|n",
+        'account': "|w{enactor_name}|n granted your Account the Permission: |w{perm}|n",
+        'admin': "|w{enactor_name}|n granted Account |w{account_name}|n the Permission: |w{perm}|n"
+    }
 
 
 class RevokeMessage(AccountMessage):
-    source_message = "Successfully revoked Account: |w{target_name}|n's use of the Permission: |w{perm}|n"
-    target_message = "|w{source_name}|n revoked Account's use of the Permission: |w{perm}|n"
-    admin_message = "|w{source_name}|n revoked Account |w{target_name}|n's use of the Permission: |w{perm}|n"
+    messages = {
+        'enactor': "Successfully revoked Account: |w{account_name}|n's use of the Permission: |w{perm}|n",
+        'account': "|w{enactor_name}|n revoked Account's use of the Permission: |w{perm}|n",
+        'admin': "|w{enactor_name}|n revoked Account |w{account_name}|n's use of the Permission: |w{perm}|n"
+    }
 
 
 class GrantSuperMessage(AccountMessage):
-    source_message = "Successfully granted Account: |w{target_name}|n the Permission: |rSUPERUSER|n"
-    target_message = "|w{source_name}|n granted your Account the Permission: |rSUPERUSER|n"
-    admin_message = "|w{source_name}|n granted Account |w{target_name}|n the Permission: |rSUPERUSER|n"
+    messages = {
+        'enactor': "Successfully granted Account: |w{account_name}|n the Permission: |rSUPERUSER|n",
+        'account': "|w{enactor_name}|n granted your Account the Permission: |rSUPERUSER|n",
+        'admin': "|w{enactor_name}|n granted Account |w{account_name}|n the Permission: |rSUPERUSER|n"
+    }
 
 
 class RevokeSuperMessage(AccountMessage):
-    source_message = "Successfully revoked Account: |w{target_name}|n's use of the Permission: |rSUPERUSER|n"
-    target_message = "|w{source_name}|n revoked Account's use of the Permission: |rSUPERUSER|n"
-    admin_message = "|w{source_name}|n revoked Account |w{target_name}|n's use of the Permission: |rSUPERUSER|n"
+    messages = {
+        'enactor': "Successfully revoked Account: |w{account_name}|n's use of the Permission: |rSUPERUSER|n",
+        'account': "|w{enactor_name}|n revoked Account's use of the Permission: |rSUPERUSER|n",
+        'admin': "|w{enactor_name}|n revoked Account |w{account_name}|n's use of the Permission: |rSUPERUSER|n"
+    }
 
 
 class ForceDisconnect(AccountMessage):
-    source_message = "Successfully booted Account: |w{target_name}|n under reasoning: {reason}"
-    target_message = "|w{source_name}|n booted you for the reasoning: {reason}"
-    admin_message = "|w{source_name}|n booted Account: |w{target_name}|n under reasoning: {reason}"
+    messages = {
+        'enactor': "Successfully booted Account: |w{account_name}|n under reasoning: {reason}",
+        'account': "|w{enactor_name}|n booted you for the reasoning: {reason}",
+        'admin': "|w{enactor_name}|n booted Account: |w{account_name}|n under reasoning: {reason}"
+    }

@@ -7,6 +7,7 @@ from evennia.utils.ansi import ANSIString
 
 import athanor
 
+
 def tabular_table(word_list=None, field_width=26, line_length=78, output_separator=" ", truncate_elements=True):
     """
     This function returns a tabulated string composed of a basic list of words.
@@ -166,7 +167,7 @@ class Speech(object):
 
     def markup_names(self, match):
         found = match.group('found')
-        return f'$^^^{self.controller.name_map[found.upper()].id}:{found}^^^'
+        return f'^^^{self.controller.name_map[found.upper()].id}:{found}^^^'
 
     def __str__(self):
         str(self.demarkup())
@@ -243,16 +244,15 @@ class Speech(object):
 
     def colorize(self, message, viewer):
         viewer = viewer.get_account() if viewer and hasattr(viewer, 'get_account') else None
-        quotes = f'quotes_{self.color_mode}'
-        speech = f'speech_{self.color_mode}'
+        colors = dict()
+        styler = viewer.styler if viewer else athanor.STYLER(None)
+        for op in ("quotes", "speech", "speaker", "self", 'other'):
+            colors[op] = styler.options.get(f"{op}_{self.color_mode}", '')
+            if colors[op] == 'n':
+                colors[op] = ''
 
-        default_style = settings.OPTIONS_ACCOUNT_DEFAULT
-        quote_color = viewer.options.get(quotes) if viewer else default_style[quotes][2]
-        speech_color = viewer.options.get(speech) if viewer else default_style[speech][2]
-        if quote_color == 'n':
-            quote_color = ''
-        if speech_color == 'n':
-            speech_color = ''
+        quote_color = colors["quotes"]
+        speech_color = colors["speech"]
 
         def color_speech(found):
             if not quote_color and not speech_color:
@@ -264,7 +264,25 @@ class Speech(object):
             if quote_color and speech_color:
                 return f'|{quote_color}"|n|{speech_color}{found.group("found")}|n|{quote_color}"|n'
 
+        def color_names(found):
+            data = found.groupdict()
+            thing_name = data["thing_name"]
+            if not viewer:
+                return thing_name
+            thing_id = int(data["thing_id"])
+            if not (obj := self.controller.id_map.get(thing_id, None)):
+                return thing_name
+            custom = viewer.colorizer.get(obj, None)
+            if custom and custom != 'n':
+                return f"|n|{custom}{thing_name}|n"
+            if obj == viewer and colors["self"]:
+                return f"|n|{colors['self']}{thing_name}|n"
+            if obj == self.speaker and colors['speaker']:
+                return f"|n|{colors['speaker']}{thing_name}|n"
+            return thing_name
+
         colorized_string = self.re_speech.sub(color_speech, message)
+        colorized_string = self.re_name.sub(color_names, colorized_string)
         return colorized_string
 
 

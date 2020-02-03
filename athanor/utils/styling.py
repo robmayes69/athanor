@@ -32,7 +32,6 @@ class Styler(*MIXINS, object):
         else:
             self.options = self.fallback
 
-
     @classmethod
     def load(cls):
         for key, data in settings.OPTIONS_ACCOUNT_DEFAULT.items():

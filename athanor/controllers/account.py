@@ -56,6 +56,7 @@ class AthanorAccountController(*MIXINS, AthanorController):
                 self.permissions["_super"].add(acc)
 
     def create_account(self, session, username, email, password, login_screen=False, **kwargs):
+        enactor = None
         if not login_screen:
             if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_create)"):
                 raise ValueError("Permission denied.")
@@ -72,10 +73,11 @@ class AthanorAccountController(*MIXINS, AthanorController):
         self.update_regex()
         for perm in new_account.permissions.all():
             self.permissions[perm].add(new_account)
+        entities = {'enactor': enactor if enactor else session, 'account': new_account}
         if login_screen:
-            amsg.CreateMessage(source=session, target=new_account).send()
+            amsg.CreateMessage(entities).send()
         else:
-            amsg.CreateMessageAdmin(source=enactor, target=new_account, password=password).send()
+            amsg.CreateMessageAdmin(entities, password=password).send()
         return new_account
 
     def rename_account(self, session, account, new_name, ignore_priv=False):
@@ -84,7 +86,8 @@ class AthanorAccountController(*MIXINS, AthanorController):
         account = self.find_account(account)
         old_name = str(account)
         new_name = account.rename(new_name)
-        amsg.RenameMessage(source=enactor, target=account, old_name=old_name, account_name=new_name).send()
+        entities = {'enactor': enactor, 'account': account}
+        amsg.RenameMessage(entities, old_name=old_name).send()
 
     def change_email(self, session, account, new_email, ignore_priv=False):
         if not (enactor := session.get_account()) or (not ignore_priv and not enactor.check_lock("oper(account_email)")):
@@ -92,7 +95,8 @@ class AthanorAccountController(*MIXINS, AthanorController):
         account = self.find_account(account)
         old_email = account.email
         new_email = account.set_email(new_email)
-        amsg.EmailMessage(source=enactor, target=account, old_email=old_email).send()
+        entities = {'enactor': enactor, 'account': account}
+        amsg.EmailMessage(entities, old_email=old_email).send()
 
     def find_account(self, search_text, exact=False):
         if not search_text:
@@ -120,7 +124,8 @@ class AthanorAccountController(*MIXINS, AthanorController):
         if not reason:
             raise ValueError("Must include a reason!")
         account.db._disabled = reason
-        amsg.DisableMessage(source=enactor, target=account, reason=reason).send()
+        entities = {'enactor': enactor, 'account': account}
+        amsg.DisableMessage(entities, reason=reason).send()
         account.force_disconnect(reason)
 
     def enable_account(self, session, account):
@@ -130,7 +135,8 @@ class AthanorAccountController(*MIXINS, AthanorController):
         if not account.db._disabled:
             raise ValueError("Account is not disabled!")
         del account.db._disabled
-        amsg.EnableMessage(source=enactor, target=account).send()
+        entities = {'enactor': enactor, 'account': account}
+        amsg.EnableMessage(entities).send()
 
     def ban_account(self, session, account, duration, reason):
         if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_ban)"):
@@ -142,7 +148,8 @@ class AthanorAccountController(*MIXINS, AthanorController):
             raise ValueError("Must include a reason!")
         account.db._banned = ban_date
         account.db._ban_reason = reason
-        amsg.BanMessage(source=enactor, target=account, duration=time_format(duration.total_seconds(), style=2),
+        entities = {'enactor': enactor, 'account': account}
+        amsg.BanMessage(entities, duration=time_format(duration.total_seconds(), style=2),
                         ban_date=ban_date.strftime('%c'), reason=reason).send()
         account.force_disconnect(reason)
 
@@ -154,7 +161,8 @@ class AthanorAccountController(*MIXINS, AthanorController):
             raise ValueError("Account is not banned!")
         del account.db._banned
         del account.db._ban_reason
-        amsg.UnBanMessage(source=enactor, target=account).send()
+        entities = {'enactor': enactor, 'account': account}
+        amsg.UnBanMessage(entities).send()
 
     def reset_password(self, session, account, new_password, ignore_priv=False, old_password=None):
         if not (enactor := session.get_account()) or (not ignore_priv and not enactor.check_lock("oper(account_password)")):
@@ -166,10 +174,11 @@ class AthanorAccountController(*MIXINS, AthanorController):
             raise ValueError("Passwords may not be empty!")
         account.set_password(new_password)
         account.db._date_password_changed = utcnow()
+        entities = {'enactor': enactor, 'account': account}
         if old_password:
-            amsg.PasswordMessagePrivate(source=enactor).send()
+            amsg.PasswordMessagePrivate(entities).send()
         else:
-            amsg.PasswordMessageAdmin(source=enactor, target=account, password=new_password).send()
+            amsg.PasswordMessageAdmin(entities, password=new_password).send()
 
     def disconnect_account(self, session, account, reason):
         if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_boot)"):
@@ -177,9 +186,9 @@ class AthanorAccountController(*MIXINS, AthanorController):
         account = self.find_account(account)
         if not account.sessions.all():
             raise ValueError("Account is not connected!")
-        amsg.ForceDisconnect(source=enactor, target=account, reason=reason).send()
+        entities = {'enactor': enactor, 'account': account}
+        amsg.ForceDisconnect(entities, reason=reason).send()
         account.force_disconnect(reason=reason)
-
 
     def find_permission(self, perm):
         if not perm:
@@ -210,7 +219,8 @@ class AthanorAccountController(*MIXINS, AthanorController):
         account.permissions.add(perm)
         self.permissions[perm.lower()].add(account)
         account.operations.clear_cache()
-        amsg.GrantMessage(source=enactor, target=account, perm=perm).send()
+        entities = {'enactor': enactor, 'account': account}
+        amsg.GrantMessage(entities, perm=perm).send()
 
     def revoke_permission(self, session, account, perm):
         if not (enactor := session.get_account()):
@@ -234,7 +244,8 @@ class AthanorAccountController(*MIXINS, AthanorController):
         account.permissions.remove(perm)
         self.permissions[perm.lower()].remove(account)
         account.operations.clear_cache()
-        amsg.RevokeMessage(source=enactor, target=account, perm=perm).send()
+        entities = {'enactor': enactor, 'account': account}
+        amsg.RevokeMessage(entities, perm=perm).send()
 
     def toggle_super(self, session, account):
         if not (enactor := session.get_account()) or not enactor.is_superuser:
@@ -242,10 +253,11 @@ class AthanorAccountController(*MIXINS, AthanorController):
         account = self.find_account(account)
         acc_super = account.is_superuser
         reverse = not acc_super
+        entities = {'enactor': enactor, 'account': account}
         if acc_super:
-            amsg.RevokeSuperMessage(source=enactor, target=account).send()
+            amsg.RevokeSuperMessage(entities).send()
         else:
-            amsg.GrantSuperMessage(source=enactor, target=account).send()
+            amsg.GrantSuperMessage(entities).send()
         account.is_superuser = reverse
         account.save(update_fields=['is_superuser'])
         if reverse:

@@ -38,6 +38,12 @@ class AthanorSession(*MIXINS, HasRenderExamine, ServerSession, EventEmitter):
             return self.account.styler
         return athanor.STYLER(self)
 
+    @property
+    def colorizer(self):
+        if self.account:
+            return self.account.colorizer
+        return dict()
+
     def at_sync(self):
         """
         This one's a little tricky. It will call methods on the Mixins...
@@ -62,6 +68,9 @@ class AthanorSession(*MIXINS, HasRenderExamine, ServerSession, EventEmitter):
         sysmsg_text = settings.OPTIONS_ACCOUNT_DEFAULT.get('sys_msg_text')[2]
         formatted_text = f"|{sysmsg_border}-=<|n|{sysmsg_text}{system_name.upper()}|n|{sysmsg_border}>=-|n {text}"
         self.msg(text=formatted_text, system_name=system_name, original_text=text)
+
+    def receive_template_message(self, text, msgobj, target):
+        self.system_msg(text=text, system_name=msgobj.system_name)
 
     def __str__(self):
         account = self.get_account()

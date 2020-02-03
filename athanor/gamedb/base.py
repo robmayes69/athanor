@@ -6,17 +6,19 @@ from django.utils.translation import ugettext as _
 
 import evennia
 from evennia import SESSION_HANDLER
-from evennia.utils.utils import lazy_property, dbid_to_obj, make_iter
+from evennia.utils.utils import lazy_property, dbid_to_obj, make_iter, time_format
 from evennia.utils.ansi import ANSIString
 from evennia.utils import logger, create
 from evennia.utils import utils
 from evennia.objects.objects import ExitCommand
 from evennia.commands import cmdset
 from evennia.commands.cmdhandler import get_and_merge_cmdsets
+from athanor.utils.time import duration_from_string, utcnow
 
 import athanor
 from athanor.utils.events import EventEmitter
-from athanor.utils.text import tabular_table
+from athanor.utils.text import tabular_table, partial_match
+from athanor.utils.mixins import HasAttributeGetCreate
 
 
 class HasRenderExamine(object):
@@ -27,7 +29,7 @@ class HasRenderExamine(object):
     examine_type = None
     examine_caller_type = None
 
-    def render_examine_callback(self, cmdset, viewer):
+    def render_examine_callback(self, cmdset, viewer, callback=True):
         styling = viewer.styler
         message = list()
         message.append(
@@ -40,9 +42,12 @@ class HasRenderExamine(object):
         except Exception as e:
             viewer.msg(e)
         message.append(styling.blank_footer)
-        viewer.msg('\n'.join(str(l) for l in message))
+        rendered = '\n'.join(str(l) for l in message)
+        if not callback:
+            return rendered
+        viewer.msg(rendered)
 
-    def render_examine(self, viewer):
+    def render_examine(self, viewer, callback=True):
         obj_session = self.sessions.get()[0] if self.sessions.count() else None
         get_and_merge_cmdsets(
             self, obj_session, None, None, self.examine_caller_type, "examine"
@@ -132,6 +137,151 @@ class HasRenderExamine(object):
         return list()
 
 
+class HasOps(HasAttributeGetCreate):
+    """
+    This is a mixin for providing User/Moderator/Operator framework to an entity.
+    """
+    positions = ['user', 'operator', 'moderator']
+    operate_operation = None
+    moderate_operation = None
+    use_operation = None
+    grant_msg = None
+    revoke_msg = None
+    ban_msg = None
+    unban_msg = None
+    lock_msg = None
+    config_msg = None
+
+    def get_position(self, pos):
+        err = f"Must enter a Position: {', '.join(self.positions)}"
+        if not pos or not (found := partial_match(pos, self.positions)):
+            raise ValueError(err)
+        return found
+
+    @lazy_property
+    def banned(self):
+        return self.get_or_create_attribute('banned', default=dict())
+
+    @lazy_property
+    def operators(self):
+        return self.get_or_create_attribute('operators', default=set())
+
+    @lazy_property
+    def moderators(self):
+        return self.get_or_create_attribute('moderators', default=set())
+
+    @lazy_property
+    def users(self):
+        return self.get_or_create_attribute('users', default=set())
+
+    def parent_operator(self, user):
+        return self.parent.is_operator(user)
+
+    def parent_moderator(self, user):
+        return self.parent.is_moderator(user)
+
+    def parent_user(self, user):
+        return self.parent.is_user(user)
+
+    def is_operator(self, user):
+        return user in self.operators or self.parent_operator(user)
+
+    def is_moderator(self, user):
+        return user in self.moderators or self.parent_moderator(user)
+
+    def is_user(self, user):
+        return user in self.users or self.parent_user(user)
+
+    def find_user(self, session, user):
+        pass
+
+    def get_user(self, session):
+        pass
+
+    def add_position(self, enactor, user, status_name=None, attr=None):
+        if user in attr:
+            raise ValueError(f"{user} is already an {status_name}!")
+        attr.add(user)
+        entities = {'enactor': enactor, 'user': user, 'target': self}
+        if self.grant_msg:
+            self.grant_msg(entities, status=status_name).send()
+
+    def remove_position(self, enactor, user, status_name=None, attr=None):
+        if user not in attr:
+            raise ValueError(f"{user} is not an {status_name}!")
+        attr.remove(user)
+        entities = {'enactor': enactor, 'user': user, 'target': self}
+        if self.revoke_msg:
+            self.revoke_msg(entities, status=status_name).send()
+
+    def change_status(self, session, position, user, method):
+        if not (enactor := self.get_user(session)):
+            raise ValueError("Permission denied!")
+        position = self.get_position(position)
+        if position == 'moderator':
+            status_name = 'Moderator'
+            check = self.is_operator(enactor)
+            attr = self.moderators
+        elif position == 'operator':
+            status_name = 'Operator'
+            check = self.parent_operator(enactor)
+            attr = self.operators
+        elif position == 'user':
+            status_name = 'User'
+            check = self.is_moderator(enactor)
+            attr = self.users
+        else:
+            raise ValueError("What happened here?")
+        if not enactor.check_lock(f"oper({self.operate_operation})" or check):
+            raise ValueError("Permission denied.")
+        user = self.find_user(session, user)
+        method(enactor, user, status_name=status_name, check=check, attr=attr)
+
+    def grant(self, session, position, user):
+        self.change_status(session, position, user, self.add_position)
+
+    def revoke(self, session, position, user):
+        self.change_status(session, position, user, self.remove_position)
+
+    def ban(self, session, user, duration):
+        if not (enactor := self.get_user(session)) or not self.is_operator(enactor):
+            raise ValueError("Permission denied.")
+        user = self.find_user(session, user)
+        now = utcnow()
+        duration = duration_from_string(duration)
+        new_ban = now + duration
+        self.banned[user] = new_ban
+        entities = {'enactor': enactor, 'user': user, 'target': self}
+        if self.ban_msg:
+            self.ban_msg(entities, duration=time_format(duration.total_seconds(), style=2), ban_date=new_ban.strftime('%c')).send()
+
+    def unban(self, session, user):
+        if not (enactor := self.get_user(session)) or not self.is_operator(enactor):
+            raise ValueError("Permission denied.")
+        user = self.find_user(session, user)
+        now = utcnow()
+        if (banned := self.banned.get(user, None)) and banned < now:
+            banned.pop(user)
+            raise ValueError(f"{user}'s ban has already expired.")
+        entities = {'enactor': enactor, 'user': user, 'target': self}
+        if self.unban_msg:
+            self.unban_msg(entities).send()
+
+    def lock(self, session, lock_data):
+        if not (enactor := self.get_user(session)) or not self.is_operator(enactor):
+            raise ValueError("Permission denied.")
+        self.locks.add(lock_data)
+        entities = {'enactor': enactor, 'target': self}
+        if self.lock_msg:
+            self.lock_msg(entities, lock_string=lock_data).send()
+
+    def config(self, session, config_op, config_val):
+        if not (enactor := self.get_user(session)) or not self.is_operator(enactor):
+            raise ValueError("Permission denied.")
+        entities = {'enactor': enactor, 'target': self}
+        if self.config_msg:
+            self.config_msg(entities, config_op=config_op, config_val=config_val).send()
+
 class AthanorBaseObjectMixin(HasRenderExamine, EventEmitter):
     """
     This class implements most of the actual LOGIC of Athanor's particulars around how Objects work.
@@ -205,6 +355,12 @@ class AthanorBaseObjectMixin(HasRenderExamine, EventEmitter):
         if self.account:
             return self.account.styler
         return athanor.STYLER(self)
+
+    @property
+    def colorizer(self):
+        if self.account:
+            return self.account.colorizer
+        return dict()
 
     @lazy_property
     def contents_index(self):
@@ -299,7 +455,7 @@ class AthanorBaseObjectMixin(HasRenderExamine, EventEmitter):
         if session:
             session.msg(f"You cease controlling |c{self}|n")
 
-    def system_msg(self, text=None, system_name=None, enactor=None):
+    def system_msg(self, text=None, system_name=None):
         if self.account:
             sysmsg_border = self.account.options.sys_msg_border
             sysmsg_text = self.account.options.sys_msg_text
@@ -308,6 +464,9 @@ class AthanorBaseObjectMixin(HasRenderExamine, EventEmitter):
             sysmsg_text = settings.OPTIONS_ACCOUNT_DEFAULT.get('sys_msg_text')[2]
         formatted_text = f"|{sysmsg_border}-=<|n|{sysmsg_text}{system_name.upper()}|n|{sysmsg_border}>=-|n {text}"
         self.msg(text=formatted_text, system_name=system_name, original_text=text)
+
+    def receive_template_message(self, text, msgobj, target):
+        self.system_msg(text=text, system_name=msgobj.system_name)
 
     def get_puppet(self):
         return self

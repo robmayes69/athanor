@@ -13,12 +13,13 @@ from athanor.utils.events import EventEmitter
 from athanor.gamedb.handlers import OperationHandler
 from athanor.gamedb.characters import AthanorPlayerCharacter
 from athanor.gamedb.base import HasRenderExamine
+from athanor.utils.mixins import HasAttributeGetCreate
 
 MIXINS = [class_from_module(mixin) for mixin in settings.GAMEDB_MIXINS["ACCOUNT"]]
 MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
 
-class AthanorAccount(*MIXINS, HasRenderExamine, DefaultAccount, EventEmitter):
+class AthanorAccount(*MIXINS, HasAttributeGetCreate, HasRenderExamine, DefaultAccount, EventEmitter):
     """
     AthanorAccount adds the EventEmitter to DefaultAccount and supports Mixins.
     Please read Evennia's documentation for its normal API.
@@ -109,6 +110,9 @@ class AthanorAccount(*MIXINS, HasRenderExamine, DefaultAccount, EventEmitter):
         formatted_text = f"|{sysmsg_border}-=<|n|{sysmsg_text}{system_name.upper()}|n|{sysmsg_border}>=-|n {text}"
         self.msg(text=formatted_text, system_name=system_name, original_text=text)
 
+    def receive_template_message(self, text, msgobj, target):
+        self.system_msg(text=text, system_name=msgobj.system_name)
+
     def localize_timestring(self, time_data=None, time_format='%b %d %I:%M%p %Z', tz=None):
         if not time_data:
             time_data = datetime.datetime.utcnow()
@@ -182,6 +186,10 @@ class AthanorAccount(*MIXINS, HasRenderExamine, DefaultAccount, EventEmitter):
     @lazy_property
     def styler(self):
         return athanor.STYLER(self)
+
+    @lazy_property
+    def colorizer(self):
+        return self.get_or_create_attribute('colorizer', default=dict())
 
     def at_look(self, target=None, session=None, **kwargs):
         """
