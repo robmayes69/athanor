@@ -79,7 +79,7 @@ class AthanorCharacterController(*MIXINS, AthanorController):
         raise ValueError(f"That matched: {results}")
 
     def create_character(self, session, account, character_name, namespace=0, ignore_priv=False):
-        if not (enactor := session.get_account()) or (not ignore_priv and not enactor.check_lock("apriv(character_create)")):
+        if not (enactor := session.get_account()) or (not ignore_priv and not enactor.check_lock("oper(character_create)")):
             raise ValueError("Permission denied.")
         account = self.manager.get('account').find_account(account)
         new_character = self.character_typeclass.create_character(character_name, account, namespace=namespace)
@@ -112,7 +112,7 @@ class AthanorCharacterController(*MIXINS, AthanorController):
 
     def rename_character(self, session, character, new_name, ignore_priv=False):
         if not (enactor := session.get_account()) or (
-                not ignore_priv and not enactor.check_lock("apriv(character_rename)")):
+                not ignore_priv and not enactor.check_lock("oper(character_rename)")):
             raise ValueError("Permission denied.")
         character = self.find_character(character)
         account = character.character_bridge.account
@@ -123,7 +123,7 @@ class AthanorCharacterController(*MIXINS, AthanorController):
 
     def transfer_character(self, session, character, new_account, ignore_priv=False):
         if not (enactor := session.get_account()) or (
-                not ignore_priv and not enactor.check_lock("apriv(character_transfer)")):
+                not ignore_priv and not enactor.check_lock("oper(character_transfer)")):
             raise ValueError("Permission denied.")
         character = self.find_character(character)
         account = character.character_bridge.account
