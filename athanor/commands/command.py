@@ -1,7 +1,7 @@
 import re
 from collections import defaultdict
 from evennia.commands.default.muxcommand import MuxCommand
-from evennia.utils.utils import inherits_from
+from evennia.utils.utils import inherits_from, lazy_property
 from evennia.utils.search import object_search
 
 import athanor
@@ -16,6 +16,31 @@ class AthanorCommand(MuxCommand):
     rhs_delim = ","
     lhs_delim = ","
     args_delim = " "
+
+    @lazy_property
+    def styler(self):
+        return self.caller.styler
+
+    def styled_footer(self, *args, **kwargs):
+        return self.styler.styled_footer(*args, **kwargs)
+
+    def styled_header(self, *args, **kwargs):
+        return self.styler.styled_header(*args, **kwargs)
+
+    def styled_separator(self, *args, **kwargs):
+        return self.styler.styled_separator(*args, **kwargs)
+
+    def styled_table(self, *args, **kwargs):
+        return self.styler.styled_table(*args, **kwargs)
+
+    def blank_footer(self):
+        return self.styler.blank_footer
+
+    def blank_header(self):
+        return self.styler.blank_header
+
+    def blank_separator(self):
+        return self.styler.blank_separator
 
     @property
     def controllers(self):
