@@ -33,12 +33,18 @@ class AthanorCommand(MuxCommand):
     def styled_table(self, *args, **kwargs):
         return self.styler.styled_table(*args, **kwargs)
 
+    def styled_columns(self, *args, **kwargs):
+        return self.styler.styled_columns(*args, **kwargs)
+
+    @property
     def blank_footer(self):
         return self.styler.blank_footer
 
+    @property
     def blank_header(self):
         return self.styler.blank_header
 
+    @property
     def blank_separator(self):
         return self.styler.blank_separator
 

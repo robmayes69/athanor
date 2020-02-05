@@ -11,7 +11,7 @@ MIXINS = [class_from_module(mixin) for mixin in settings.GAMEDB_MIXINS["SCRIPT"]
 MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
 
-class AthanorScript(*MIXINS, HasRenderExamine, DefaultScript, EventEmitter):
+class AthanorScript(*MIXINS, HasRenderExamine, EventEmitter, DefaultScript):
     """
     Really just a Script class that accepts the Mixin framework and supports Events.
     """

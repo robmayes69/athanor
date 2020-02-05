@@ -19,7 +19,7 @@ MIXINS = [class_from_module(mixin) for mixin in settings.GAMEDB_MIXINS["ACCOUNT"
 MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
 
-class AthanorAccount(*MIXINS, HasAttributeGetCreate, HasRenderExamine, DefaultAccount, EventEmitter):
+class AthanorAccount(*MIXINS, HasAttributeGetCreate, HasRenderExamine, EventEmitter, DefaultAccount):
     """
     AthanorAccount adds the EventEmitter to DefaultAccount and supports Mixins.
     Please read Evennia's documentation for its normal API.
@@ -112,13 +112,6 @@ class AthanorAccount(*MIXINS, HasAttributeGetCreate, HasRenderExamine, DefaultAc
 
     def receive_template_message(self, text, msgobj, target):
         self.system_msg(text=text, system_name=msgobj.system_name)
-
-    def localize_timestring(self, time_data=None, time_format='%b %d %I:%M%p %Z', tz=None):
-        if not time_data:
-            time_data = datetime.datetime.utcnow()
-        if not tz:
-            tz = self.options.timezone
-        return time_data.astimezone(tz).strftime(time_format)
 
     def render_list_section(self, enactor, styling):
         """

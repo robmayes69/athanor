@@ -282,6 +282,7 @@ class HasOps(HasAttributeGetCreate):
         if self.config_msg:
             self.config_msg(entities, config_op=config_op, config_val=config_val).send()
 
+
 class AthanorBaseObjectMixin(HasRenderExamine, EventEmitter):
     """
     This class implements most of the actual LOGIC of Athanor's particulars around how Objects work.

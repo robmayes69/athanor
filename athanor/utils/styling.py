@@ -1,4 +1,4 @@
-import math
+import math, datetime
 from django.conf import settings
 
 from evennia.utils.evtable import EvTable
@@ -41,6 +41,9 @@ class Styler(*MIXINS, object):
             if (load_mixin := getattr(mixin, 'load_mixin', None)):
                 load_mixin(cls)
         cls.loaded = True
+
+    def styled_columns(self, columns):
+        return f"|{self.options.get('column_names_color')}{columns}|n"
 
     def styled_table(self, *args, **kwargs):
         """
@@ -221,3 +224,10 @@ class Styler(*MIXINS, object):
     @lazy_property
     def blank_header(self):
         return self.styled_header()
+
+    def localize_timestring(self, time_data=None, time_format='%b %d %I:%M%p %Z', tz=None):
+        if not time_data:
+            time_data = datetime.datetime.utcnow()
+        if not tz:
+            tz = self.options.get('timezone')
+        return time_data.astimezone(tz).strftime(time_format)
