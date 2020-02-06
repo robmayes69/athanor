@@ -162,6 +162,15 @@ class HasOps(HasAttributeGetCreate):
     def banned(self):
         return self.get_or_create_attribute('banned', default=dict())
 
+    def is_banned(self, user):
+        if (found := self.banned.get(user, None)):
+            if found > utcnow():
+                return True
+            else:
+                self.banned.pop(user)
+                return False
+        return False
+
     @lazy_property
     def operators(self):
         return self.get_or_create_attribute('operators', default=set())
