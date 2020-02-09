@@ -1,5 +1,34 @@
 from athanor.utils.online import admin_accounts
-from evennia.utils.utils import make_iter
+from evennia.utils.utils import make_iter, time_format
+import athanor
+
+
+class Duration(object):
+    """
+    Wrapper to generate substitutions around a timedelta.
+    """
+
+    def __init__(self, data):
+        self.data = data
+
+    def generate_substitutions(self, viewer):
+        modes = (0, 1, 2, 3)
+        return {f"style_{mode}": time_format(self.data.total_seconds(), style=mode) for mode in modes}
+
+
+class DateTime(object):
+    """
+    Wrapper to generate substitutions around a datetime.
+    Please feed it a UTC datetime.
+    """
+
+    def __init__(self, data):
+        self.data = data
+
+    def generate_substitutions(self, viewer):
+        styling = athanor.STYLER(viewer)
+        formats = styling.time_formats.keys()
+        return {mode: styling.localize_timestring(time_data=self.data, time_format=mode) for mode in formats}
 
 
 class TemplateMessage(object):
@@ -48,7 +77,10 @@ class TemplateMessage(object):
             self.heard_already.add(ent)
 
     def standard_send_out(self, entity, text, target):
-        entity.receive_template_message(text=text, msgobj=self, target=target)
+        if hasattr(entity, 'receive_template_message'):
+            entity.receive_template_message(text=text, msgobj=self, target=target)
+        if hasattr(entity, 'msg'):
+            entity.msg(text)
 
     def generate_perspective(self, viewer):
         packvars = dict(self.extra)

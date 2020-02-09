@@ -33,6 +33,7 @@ class AthanorAccount(*MIXINS, HasAttributeGetCreate, HasRenderExamine, EventEmit
     # class properties used by the RenderExamine mixin.
     examine_type = "account"
     examine_caller_type = "account"
+    dbtype = 'AccountDB'
 
     def set_email(self, new_email):
         """

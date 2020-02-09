@@ -225,7 +225,12 @@ class Styler(*MIXINS, object):
     def blank_header(self):
         return self.styled_header()
 
-    def localize_timestring(self, time_data=None, time_format='%b %d %I:%M%p %Z', tz=None):
+    time_formats = {
+        'full': '%c',
+        'standard': '%b %d %I:%M%p %Z',
+    }
+
+    def localize_timestring(self, time_data=None, time_format='standard', tz=None):
         if not time_data:
             time_data = datetime.datetime.utcnow()
         if not tz:

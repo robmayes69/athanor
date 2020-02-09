@@ -17,7 +17,7 @@ class AthanorObject(*MIXINS, AthanorBaseObjectMixin, DefaultObject):
         object_online (session): Fired whenever an account comes online from being completely offline.
         object_offline (session): Triggered when an account's final session closes.
     """
-    pass
+    dbtype = 'ObjectDB'
 
 
 class AthanorRoom(AthanorObject):

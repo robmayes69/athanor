@@ -16,6 +16,7 @@ class AthanorScript(*MIXINS, HasRenderExamine, EventEmitter, DefaultScript):
     Really just a Script class that accepts the Mixin framework and supports Events.
     """
     examine_type = 'script'
+    dbtype = 'ScriptDB'
 
     def __repr__(self):
         return f"<{self.__class__.__name__}: {self.key}>"

@@ -19,7 +19,7 @@ import athanor
 from athanor.utils.events import EventEmitter
 from athanor.utils.text import tabular_table, partial_match
 from athanor.utils.mixins import HasAttributeGetCreate
-
+from athanor.utils.message import Duration, DateTime
 
 class HasRenderExamine(object):
     """
@@ -29,11 +29,15 @@ class HasRenderExamine(object):
     examine_type = None
     examine_caller_type = None
 
+    def render_examine_identifier(self, viewer):
+        dbclass = f"({self.dbtype}: {self.dbref}) " if hasattr(self, 'dbtype') else None
+        return f"{dbclass if dbclass else ''}{self.examine_type}: {self.get_display_name(viewer)}"
+
     def render_examine_callback(self, cmdset, viewer, callback=True):
         styling = viewer.styler
         message = list()
         message.append(
-            styling.styled_header(f"Examining {self.examine_type.capitalize()}: {self.get_display_name(viewer)}"))
+            styling.styled_header(f"Examining {self.render_examine_identifier(viewer)}"))
         try:
             for hook in settings.EXAMINE_HOOKS[self.examine_type]:
                 hook_call = f"render_examine_{hook}"
@@ -244,7 +248,7 @@ class HasOps(HasAttributeGetCreate):
         if not enactor.check_lock(f"oper({self.operate_operation})" or check):
             raise ValueError("Permission denied.")
         user = self.find_user(session, user)
-        method(enactor, user, status_name=status_name, check=check, attr=attr)
+        method(enactor, user, status_name=status_name, attr=attr)
 
     def grant(self, session, position, user):
         self.change_status(session, position, user, self.add_position)
@@ -260,9 +264,10 @@ class HasOps(HasAttributeGetCreate):
         duration = duration_from_string(duration)
         new_ban = now + duration
         self.banned[user] = new_ban
-        entities = {'enactor': enactor, 'user': user, 'target': self}
+        entities = {'enactor': enactor, 'user': user, 'target': self, 'datetime': DateTime(new_ban),
+                    'duration': Duration(duration)}
         if self.ban_msg:
-            self.ban_msg(entities, duration=time_format(duration.total_seconds(), style=2), ban_date=new_ban.strftime('%c')).send()
+            self.ban_msg(entities).send()
 
     def unban(self, session, user):
         if not (enactor := self.get_user(session)) or not self.is_operator(enactor):
