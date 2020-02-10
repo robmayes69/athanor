@@ -1,7 +1,7 @@
 import re
 from django.conf import settings
 
-from evennia.utils.utils import time_format, datetime_format
+from evennia.utils.utils import time_format
 
 from athanor.commands.command import AthanorCommand
 from athanor.gamedb.accounts import AthanorAccount
@@ -33,16 +33,19 @@ class CmdLoginCreateAccount(AthanorCommand):
     locks = "cmd:all()"
     arg_regex = r"\s.*?|$"
     args_delim = ','
+    switch_syntax = {
+        'main': '<username>,<email>,<password>'
+    }
+    controller_key = 'account'
 
     def switch_main(self):
-        print(self.argslist)
         if not len(self.argslist) == 3:
-            raise ValueError(f"Usage: {self.key} <username>,<email>,<password>")
+            self.syntax_error()
         username, email, password = self.argslist
-        new_account = self.controllers.get('account').create_account(self.session, username, email, password, login_screen=True)
+        new_account = self.controller.create_account(self.session, username, email, password, login_screen=True)
         username = new_account.username
         user_show = f'"{username}"' if " " in username else username
-        output = f"A new account '{username}' was created. Welcome!\nYou can now log in with the command: connect {user_show} <password>"
+        output = f"A new account '{username}' was created. Welcome!\nYou can now log in with the command: connect {user_show}=<password>"
         self.msg(output)
 
 
@@ -93,18 +96,16 @@ class CmdLoginConnect(AthanorCommand):
     connect to the game
 
     Usage (at login screen):
-      connect accountname password
-      connect "account name" "pass word"
+      connect <accountname>=<password>
 
     Use the create command to first create an account before logging in.
-
-    If you have spaces in your name, enclose it in double quotes.
     """
 
     key = "connect"
     aliases = ["conn", "con", "co"]
     locks = "cmd:all()"  # not really needed
     arg_regex = r"\s.*?|$"
+    controller_key = 'account'
 
 
     def func(self):
@@ -118,21 +119,13 @@ class CmdLoginConnect(AthanorCommand):
         session = self.caller
         address = session.address
 
-        args = self.args
-        # extract double quote parts
-        parts = [part.strip() for part in re.split(r"\"", args) if part.strip()]
-        if len(parts) == 1:
-            # this was (hopefully) due to no double quotes being found, or a guest login
-            parts = parts[0].split(None, 1)
-
-        if len(parts) != 2:
-            session.msg("\n\r Usage (without <>): connect <name> <password>")
-            return
+        if not self.lhs and self.rhs:
+            self.syntax_error()
 
         # Get account class
         Account = AthanorAccount
 
-        name, password = parts
+        name, password = self.lhs, self.rhs
         account, errors = Account.authenticate(
             username=name, password=password, ip=address, session=session
         )

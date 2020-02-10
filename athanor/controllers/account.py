@@ -81,7 +81,7 @@ class AthanorAccountController(*MIXINS, AthanorController):
         return new_account
 
     def rename_account(self, session, account, new_name, ignore_priv=False):
-        if not (enactor := session.get_account()) or (not ignore_priv and not enactor.check_lock("oper(account_rename)")):
+        if not (enactor := session.get_account()) or (not ignore_priv and not enactor.check_lock("pperm(Admin)")):
             raise ValueError("Permission denied.")
         account = self.find_account(account)
         old_name = str(account)
@@ -89,8 +89,8 @@ class AthanorAccountController(*MIXINS, AthanorController):
         entities = {'enactor': enactor, 'account': account}
         amsg.RenameMessage(entities, old_name=old_name).send()
 
-    def change_email(self, session, account, new_email, ignore_priv=False):
-        if not (enactor := session.get_account()) or (not ignore_priv and not enactor.check_lock("oper(account_email)")):
+    def email_account(self, session, account, new_email, ignore_priv=False):
+        if not (enactor := session.get_account()) or (not ignore_priv and not enactor.check_lock("pperm(Admin)")):
             raise ValueError("Permission denied.")
         account = self.find_account(account)
         old_email = account.email
@@ -115,8 +115,10 @@ class AthanorAccountController(*MIXINS, AthanorController):
             raise ValueError(f"Cannot find a user named {search_text}!")
         raise ValueError(f"That matched multiple accounts: {found}")
 
+    find_user = find_account
+
     def disable_account(self, session, account, reason):
-        if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_disable)"):
+        if not (enactor := session.get_account()) or not enactor.check_lock("pperm(Admin)"):
             raise ValueError("Permission denied.")
         account = self.find_account(account)
         if account.db._disabled:
@@ -129,7 +131,7 @@ class AthanorAccountController(*MIXINS, AthanorController):
         account.force_disconnect(reason)
 
     def enable_account(self, session, account):
-        if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_disable)"):
+        if not (enactor := session.get_account()) or not enactor.check_lock("pperm(Admin)"):
             raise ValueError("Permission denied.")
         account = self.find_account(account)
         if not account.db._disabled:
@@ -139,7 +141,7 @@ class AthanorAccountController(*MIXINS, AthanorController):
         amsg.EnableMessage(entities).send()
 
     def ban_account(self, session, account, duration, reason):
-        if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_ban)"):
+        if not (enactor := session.get_account()) or not enactor.check_lock("pperm(Moderator)"):
             raise ValueError("Permission denied.")
         account = self.find_account(account)
         duration = duration_from_string(duration)
@@ -154,7 +156,7 @@ class AthanorAccountController(*MIXINS, AthanorController):
         account.force_disconnect(reason)
 
     def unban_account(self, session, account):
-        if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_ban)"):
+        if not (enactor := session.get_account()) or not enactor.check_lock("pperm(Moderator)"):
             raise ValueError("Permission denied.")
         account = self.find_account(account)
         if not ((banned := account.db._banned) and banned > utcnow()):
@@ -164,7 +166,7 @@ class AthanorAccountController(*MIXINS, AthanorController):
         entities = {'enactor': enactor, 'account': account}
         amsg.UnBanMessage(entities).send()
 
-    def reset_password(self, session, account, new_password, ignore_priv=False, old_password=None):
+    def password_account(self, session, account, new_password, ignore_priv=False, old_password=None):
         if not (enactor := session.get_account()) or (not ignore_priv and not enactor.check_lock("oper(account_password)")):
             raise ValueError("Permission denied.")
         if ignore_priv and not account.check_password(old_password):
@@ -181,7 +183,7 @@ class AthanorAccountController(*MIXINS, AthanorController):
             amsg.PasswordMessageAdmin(entities, password=new_password).send()
 
     def disconnect_account(self, session, account, reason):
-        if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_boot)"):
+        if not (enactor := session.get_account()) or not enactor.check_lock("pperm(Moderator)"):
             raise ValueError("Permission denied.")
         account = self.find_account(account)
         if not account.sessions.all():
@@ -267,7 +269,7 @@ class AthanorAccountController(*MIXINS, AthanorController):
         return reverse
     
     def access_account(self, session, account):
-        if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_details)"):
+        if not (enactor := session.get_account()) or not enactor.check_lock("pperm(Admin)"):
             raise ValueError("Permission denied.")
         account = self.find_account(account)
         styling = enactor.styler
@@ -279,7 +281,7 @@ class AthanorAccountController(*MIXINS, AthanorController):
         return '\n'.join(str(l) for l in message)
 
     def permissions_directory(self, session):
-        if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_details)"):
+        if not (enactor := session.get_account()) or not enactor.check_lock("pperm(Admin)"):
             raise ValueError("Permission denied.")
         # Create a COPY of the permissions since we're going to mutilate it a lot...
 
@@ -315,7 +317,7 @@ class AthanorAccountController(*MIXINS, AthanorController):
         return '\n'.join(str(l) for l in message)
 
     def list_accounts(self, session):
-        if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_details)"):
+        if not (enactor := session.get_account()) or not enactor.check_lock("pperm(Admin)"):
             raise ValueError("Permission denied.")
         if not (accounts := AthanorAccount.objects.filter_family()):
             raise ValueError("No accounts to list!")
@@ -329,7 +331,7 @@ class AthanorAccountController(*MIXINS, AthanorController):
         return '\n'.join(str(l) for l in message)
 
     def examine_account(self, session, account):
-        if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_details)"):
+        if not (enactor := session.get_account()) or not enactor.check_lock("pperm(Admin)"):
             raise ValueError("Permission denied.")
         account = self.find_account(account)
         return account.render_examine(enactor)

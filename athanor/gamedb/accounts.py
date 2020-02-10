@@ -10,7 +10,6 @@ from evennia import SESSION_HANDLER
 import athanor
 
 from athanor.utils.events import EventEmitter
-from athanor.gamedb.handlers import OperationHandler
 from athanor.gamedb.characters import AthanorPlayerCharacter
 from athanor.gamedb.base import HasRenderExamine
 from athanor.utils.mixins import HasAttributeGetCreate
@@ -153,10 +152,6 @@ class AthanorAccount(*MIXINS, HasAttributeGetCreate, HasRenderExamine, EventEmit
         self.emit_global("account_connect", session=session)
         if len(self.sessions.all()) == 1:
             self.emit_global("account_online", session=session)
-
-    @lazy_property
-    def operations(self):
-        return OperationHandler(self)
 
     def rename(self, new_name):
         new_name = self.normalize_username(new_name)

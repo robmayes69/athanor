@@ -13,13 +13,16 @@ from evennia.utils import utils
 from evennia.objects.objects import ExitCommand
 from evennia.commands import cmdset
 from evennia.commands.cmdhandler import get_and_merge_cmdsets
-from athanor.utils.time import duration_from_string, utcnow
+from evennia.utils.validatorfuncs import lock as validate_lock
+
 
 import athanor
 from athanor.utils.events import EventEmitter
 from athanor.utils.text import tabular_table, partial_match
 from athanor.utils.mixins import HasAttributeGetCreate
 from athanor.utils.message import Duration, DateTime
+from athanor.utils.time import duration_from_string, utcnow
+
 
 class HasRenderExamine(object):
     """
@@ -145,20 +148,37 @@ class HasOps(HasAttributeGetCreate):
     """
     This is a mixin for providing User/Moderator/Operator framework to an entity.
     """
-    positions = ['user', 'operator', 'moderator']
-    operate_operation = None
-    moderate_operation = None
-    use_operation = None
     grant_msg = None
     revoke_msg = None
     ban_msg = None
     unban_msg = None
     lock_msg = None
     config_msg = None
+    lock_options = ['user', 'moderator', 'operator']
+    access_hierarchy = ['user', 'moderator', 'operator']
+    access_breakdown = {
+        'user': {
+        },
+        'moderator': {
+            "lock": 'pperm(Moderator)'
+        },
+        "operator": {
+            'lock': 'pperm(Admin)'
+        }
+    }
+    operations = {
+        'ban': 'moderator',
+        'lock': 'operator',
+        'config': 'operator'
+    }
+
+    @lazy_property
+    def granted(self):
+        return self.get_or_create_attribute(key='granted', default=dict())
 
     def get_position(self, pos):
-        err = f"Must enter a Position: {', '.join(self.positions)}"
-        if not pos or not (found := partial_match(pos, self.positions)):
+        err = f"Must enter a Position: {', '.join(self.access_hierarchy)}"
+        if not pos or not (found := partial_match(pos, self.access_hierarchy)):
             raise ValueError(err)
         return found
 
@@ -175,89 +195,77 @@ class HasOps(HasAttributeGetCreate):
                 return False
         return False
 
-    @lazy_property
-    def operators(self):
-        return self.get_or_create_attribute('operators', default=set())
-
-    @lazy_property
-    def moderators(self):
-        return self.get_or_create_attribute('moderators', default=set())
-
-    @lazy_property
-    def users(self):
-        return self.get_or_create_attribute('users', default=set())
-
-    def parent_operator(self, user):
-        return self.parent.is_operator(user)
-
-    def parent_moderator(self, user):
-        return self.parent.is_moderator(user)
-
-    def parent_user(self, user):
-        return self.parent.is_user(user)
-
-    def is_operator(self, user):
-        return user in self.operators or self.parent_operator(user)
-
-    def is_moderator(self, user):
-        return user in self.moderators or self.parent_moderator(user)
-
-    def is_user(self, user):
-        return user in self.users or self.parent_user(user)
+    def parent_position(self, user, position):
+        return False
+    
+    def is_position(self, user, position):
+        rules = self.access_breakdown.get(position, dict())
+        if (lock := rules.get('lock', None)) and user.check_lock(lock):
+            return True
+        if self.access(user, position):
+            return True
+        if (held := self.granted.get(user, None)):
+            if held in self.access_hierarchy and self.gte_position(held, position):
+                return True
+        return self.parent_position(user, position)
+    
+    def highest_position(self, user):
+        for position in reversed(self.access_hierarchy):
+            if self.is_position(user, position):
+                return position
+        return None
 
     def find_user(self, session, user):
         pass
 
-    def get_user(self, session):
+    def get_enactor(self, session):
         pass
 
-    def add_position(self, enactor, user, status_name=None, attr=None):
-        if user in attr:
-            raise ValueError(f"{user} is already an {status_name}!")
-        attr.add(user)
+    def gte_position(self, check, against):
+        return self.access_hierarchy.index(check) >= self.access_hierarchy.index(against)
+
+    def gt_position(self, check, against):
+        return self.access_hierarchy.index(check) > self.access_hierarchy.index(against)
+
+    def add_position(self, enactor, user, position, attr=None):
+        granted = self.granted
+        granted[user] = position
         entities = {'enactor': enactor, 'user': user, 'target': self}
         if self.grant_msg:
-            self.grant_msg(entities, status=status_name).send()
+            self.grant_msg(entities, status=position).send()
 
-    def remove_position(self, enactor, user, status_name=None, attr=None):
-        if user not in attr:
-            raise ValueError(f"{user} is not an {status_name}!")
-        attr.remove(user)
+    def remove_position(self, enactor, user, position, attr=None):
+        granted = self.granted
+        if user not in granted:
+            raise ValueError("User has no position to remove!")
+        del granted[user]
         entities = {'enactor': enactor, 'user': user, 'target': self}
         if self.revoke_msg:
-            self.revoke_msg(entities, status=status_name).send()
+            self.revoke_msg(entities, status=position).send()
 
     def change_status(self, session, position, user, method):
-        if not (enactor := self.get_user(session)):
+        if not (enactor := self.get_enactor(session)):
             raise ValueError("Permission denied!")
         position = self.get_position(position)
-        if position == 'moderator':
-            status_name = 'Moderator'
-            check = self.is_operator(enactor)
-            attr = self.moderators
-        elif position == 'operator':
-            status_name = 'Operator'
-            check = self.parent_operator(enactor)
-            attr = self.operators
-        elif position == 'user':
-            status_name = 'User'
-            check = self.is_moderator(enactor)
-            attr = self.users
-        else:
-            raise ValueError("What happened here?")
-        if not enactor.check_lock(f"oper({self.operate_operation})" or check):
-            raise ValueError("Permission denied.")
+        highest = self.highest_position(enactor)
+        if not self.gt_position(highest, position):
+            if not self.parent_position(enactor, highest):
+                raise ValueError("Permission denied. ")
         user = self.find_user(session, user)
-        method(enactor, user, status_name=status_name, attr=attr)
+        user_highest = self.highest_position(user)
+        if user_highest and not self.gt_position(highest, user_highest):
+            if not self.parent_position(enactor, highest):
+                raise ValueError("Permission denied. ")
+        method(enactor, user, position=position)
 
-    def grant(self, session, position, user):
+    def grant(self, session, user, position):
         self.change_status(session, position, user, self.add_position)
 
-    def revoke(self, session, position, user):
+    def revoke(self, session, user, position):
         self.change_status(session, position, user, self.remove_position)
 
     def ban(self, session, user, duration):
-        if not (enactor := self.get_user(session)) or not self.is_operator(enactor):
+        if not (enactor := self.get_enactor(session)) or not self.is_position(enactor, self.operations.get('ban')):
             raise ValueError("Permission denied.")
         user = self.find_user(session, user)
         now = utcnow()
@@ -270,7 +278,7 @@ class HasOps(HasAttributeGetCreate):
             self.ban_msg(entities).send()
 
     def unban(self, session, user):
-        if not (enactor := self.get_user(session)) or not self.is_operator(enactor):
+        if not (enactor := self.get_enactor(session)) or not self.is_position(enactor, self.operations.get('ban')):
             raise ValueError("Permission denied.")
         user = self.find_user(session, user)
         now = utcnow()
@@ -282,15 +290,16 @@ class HasOps(HasAttributeGetCreate):
             self.unban_msg(entities).send()
 
     def lock(self, session, lock_data):
-        if not (enactor := self.get_user(session)) or not self.is_operator(enactor):
+        if not (enactor := self.get_enactor(session)) or not self.is_position(enactor, self.operations.get('lock')):
             raise ValueError("Permission denied.")
+        lock_data = validate_lock(lock_data, access_options=self.lock_options)
         self.locks.add(lock_data)
         entities = {'enactor': enactor, 'target': self}
         if self.lock_msg:
             self.lock_msg(entities, lock_string=lock_data).send()
 
     def config(self, session, config_op, config_val):
-        if not (enactor := self.get_user(session)) or not self.is_operator(enactor):
+        if not (enactor := self.get_enactor(session)) or not self.is_position(enactor, self.operations.get('config')):
             raise ValueError("Permission denied.")
         entities = {'enactor': enactor, 'target': self}
         if self.config_msg:

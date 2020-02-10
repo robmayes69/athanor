@@ -16,6 +16,17 @@ class AthanorCommand(MuxCommand):
     rhs_delim = ","
     lhs_delim = ","
     args_delim = " "
+    switch_syntax = dict()
+    controller_key = None
+
+    @lazy_property
+    def controller(self):
+        return self.controllers.get(self.controller_key)
+
+    def syntax_error(self):
+        rules = self.switch_syntax.get(self.chosen_switch, '')
+        switch = '' if self.chosen_switch == 'main' else f"/{self.chosen_switch}"
+        raise ValueError(f"Usage: {self.key}{switch} {rules}")
 
     @lazy_property
     def styler(self):
@@ -56,6 +67,7 @@ class AthanorCommand(MuxCommand):
         pass
 
     def func(self):
+        self.chosen_switch = None
         try:
             if self.switches:
                 if len(self.switches) > 1:
@@ -64,7 +76,9 @@ class AthanorCommand(MuxCommand):
                     raise ValueError(f"{self.key} does not support switch '{self.switches[0]}`")
                 if not (found := getattr(self, f"switch_{switch}", None)):
                     raise ValueError(f"Command does not support switch {switch}")
+                self.chosen_switch = switch
                 return found()
+            self.chosen_switch = 'main'
             return self.switch_main()
         except ValueError as err:
             self.msg(f"ERROR: {str(err)}")
@@ -139,6 +153,7 @@ class AthanorCommand(MuxCommand):
                 self.character = self.caller.get_puppet(self.session)
             else:
                 self.character = None
+
 
     def select_character(self, char_name, exact=False):
         """

@@ -31,8 +31,7 @@ CONNECTION_SCREEN = f"""
  Welcome to |g{settings.SERVERNAME}|n, version {utils.get_evennia_version("short")}!
 
  You may login by typin (without the <>'s):
-      |wconnect <username> <password>|n
-        If you have spaces in your username, enclose it in quotes.
+      |wconnect <username>=<password>|n
 
  To create an account, type (without the <>'s):
       |wcreate <username>,<email>,<password>|n

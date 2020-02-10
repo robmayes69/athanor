@@ -1,7 +1,7 @@
 from django.conf import settings
 
 from evennia.objects.objects import DefaultObject
-from evennia.utils.utils import class_from_module
+from evennia.utils.utils import class_from_module, lazy_property
 
 from athanor.gamedb.base import AthanorBaseObjectMixin, AthanorExitMixin
 

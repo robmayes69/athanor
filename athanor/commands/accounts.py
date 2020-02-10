@@ -4,6 +4,8 @@ from athanor.commands.command import AthanorCommand
 
 class AdministrationCommand(AthanorCommand):
     help_category = "Account Management"
+    controller_key = 'account'
+    account_caller = True
 
 
 class CmdAccount(AdministrationCommand):
@@ -48,61 +50,50 @@ class CmdAccount(AdministrationCommand):
     """
     key = '@account'
     locks = "cmd:pperm(Helper)"
-    switch_options = ('list', 'create', 'disable', 'enable', 'rename', 'ban', 'unban', 'password', 'email', 'addperm',
-                      'delperm', 'grant', 'revoke', 'super', 'boot')
-    account_caller = True
+    switch_options = ('list', 'create', 'disable', 'enable', 'rename', 'ban', 'unban', 'password', 'email', 'boot')
+    args_delim = ','
+    switch_syntax = {
+        'create': "<username>,<email>,<password>",
+        'disable': '<account>=<reason>',
+        'enable': '<account>',
+        'main': '<account>',
+        'rename': '<account>=<new name>',
+        'ban': '<account>=<duration>,<reason>',
+        'unban': '<account>',
+        'email': '<account>=<new email>',
+        'password': '<account>=<new password>',
+        'boot': '<account>=<reason>',
+        'main': '<account>'
+    }
 
     def switch_main(self):
         if not self.args:
             self.args = self.account
-        self.msg(self.controllers.get('account').examine_account(self.session, self.args))
+        self.msg(self.controller.examine_account(self.session, self.args))
 
     def switch_list(self):
-        self.msg(self.controllers.get('account').list_accounts(self.session))
+        self.msg(self.controller.list_accounts(self.session))
 
     def switch_create(self):
-        if not len(self.argscomma) == 3:
-            raise ValueError("Usage: @account/create <username>,<email>,<password>")
-        username, email, password = self.argscomma
-        self.controllers.get('account').create_account(self.session, username, email, password)
+        if not len(self.argslist) == 3:
+            self.syntax_error()
+        username, email, password = self.argslist
+        self.controller.create_account(self.session, username, email, password)
 
     def switch_disable(self):
-        if not self.lhs and self.rhs:
-            raise ValueError("Usage: @account/disable <account>=<reason>")
-        self.controllers.get('account').disable_account(self.session, self.lhs, self.rhs)
+        self.controller.disable_account(self.session, self.lhs, self.rhs)
 
     def switch_enable(self):
-        if not self.lhs and self.rhs:
-            raise ValueError("Usage: @account/enable <account>")
-        self.controllers.get('account').enable_account(self.session, self.args)
-
-    def switch_rename(self):
-        if not self.lhs and self.rhs:
-            raise ValueError("Usage: @account/rename <account>=<new name>")
-        self.controllers.get('account').rename_account(self.session, self.lhs, self.rhs)
-
-    def switch_ban(self):
-        if not (self.lhs and self.rhs) or not len(self.rhslist) == 2:
-            raise ValueError("Usage: @account/ban <account>=<duration>,<reason>")
-        self.controllers.get('account').ban_account(self.session, self.lhs, self.rhslist[0], self.rhslist[1])
-
-    def switch_unban(self):
-        if not self.lhs and self.rhs:
-            raise ValueError("Usage: @account/ban <account>")
-        self.controllers.get('account').unban_account(self.session, self.args)
+        self.controller.enable_account(self.session, self.lhs)
 
     def switch_password(self):
-        if not self.lhs and self.rhs:
-            raise ValueError("Usage: @account/password <account>=<new password>")
-        self.controllers.get('account').reset_password(self.session, self.lhs, self.rhs)
+        self.controller.password_account(self.session, self.lhs, self.rhs)
 
     def switch_email(self):
-        if not self.lhs and self.rhs:
-            raise ValueError("Usage: @account/email <account>=<new email>")
-        self.controllers.get('account').change_email(self.session, self.lhs, self.rhs)
+        self.controller.email_account(self.session, self.lhs, self.rhs)
 
     def switch_boot(self):
-        self.controllers.get('account').disconnect_account(self.session, self.lhs, self.rhs)
+        self.controller.disconnect_account(self.session, self.lhs, self.rhs)
 
 
 class CmdAccess(AdministrationCommand):
@@ -131,34 +122,41 @@ class CmdAccess(AdministrationCommand):
     """
     key = "@access"
     locks = "cmd:pperm(Helper)"
-    switch_options = ("directory", "all", "grant", "revoke", "super")
+    switch_rules = {
+        'directory': dict(),
+        'super': {
+            'syntax': "<account>=SUPER DUPER",
+            'lhs_req': True,
+            'rhs_req': True
+        },
+        'grant': {
+            'syntax': "<account>=<permission>",
+            'lhs_req': True,
+            'rhs_req': True
+        },
+        'all': dict()
+    }
 
     def switch_main(self):
         account = self.args if self.args else self.account
-        self.msg(self.controllers.get('account').access_account(self.session, account))
+        self.msg(self.controller.access_account(self.session, account))
 
     def switch_grant(self):
-        if not self.lhs and self.rhs:
-            raise ValueError("Usage: @account/grant <account>=<new permission>")
-        self.controllers.get('account').grant_permission(self.session, self.lhs, self.rhs)
+        self.controller.grant_permission(self.session, self.lhs, self.rhs)
 
     def switch_revoke(self):
-        if not self.lhs and self.rhs:
-            raise ValueError("Usage: @account/revoke <account>=<delete permission>")
-        self.controllers.get('account').revoke_permission(self.session, self.lhs, self.rhs)
+        self.controller.revoke_permission(self.session, self.lhs, self.rhs)
 
     def switch_super(self):
-        if not self.args:
-            raise ValueError("Usage: @account/super <account>=SUPER DUPER")
         if self.rhs != "SUPER DUPER":
             raise ValueError("Usage: @account/super <account>=SUPER DUPER")
-        self.controllers.get('account').toggle_super(self.session, self.lhs)
+        self.controller.toggle_super(self.session, self.lhs)
 
     def switch_all(self):
-        self.msg(self.controllers.get('account').list_permissions(self.session))
+        self.msg(self.controller.list_permissions(self.session))
 
     def switch_directory(self):
-        self.msg(self.controllers.get('account').permissions_directory(self.session))
+        self.msg(self.controller.permissions_directory(self.session))
 
 
 class CmdCharacter(AdministrationCommand):
@@ -201,34 +199,43 @@ class CmdCharacter(AdministrationCommand):
     """
     key = '@character'
     locks = "cmd:pperm(Helper)"
-    switch_options = ('list', 'archive', 'restore', 'rename', 'puppet', 'create', 'transfer', 'old')
+    switch_options = ('create', 'archive', 'restore', 'rename', 'list',  'puppet', 'transfer', 'old')
+    controller_key = 'character'
+    switch_rules = {
+        'create': "<account>=<character name>",
+        'archive': '<character>',
+        'restore': '<character>[=<new name>]',
+        'rename': '<character>=<new name>',
+        'puppet': '<character>',
+        'transfer': '<character>=<new account>'
+    }
 
     def switch_main(self):
-        self.msg(self.controllers.get('character').examine_character(self.session, self.args))
+        self.msg(self.controller.examine_character(self.session, self.args))
 
     def switch_create(self):
-        self.controllers.get('character').create_character(self.session, self.lhs, self.rhs)
+        self.controller.create_character(self.session, self.lhs, self.rhs)
 
     def switch_restore(self):
-        self.controllers.get('character').restore_character(self.session, self.lhs, self.rhs)
+        self.controller.restore_character(self.session, self.lhs, self.rhs)
 
     def switch_archive(self):
-        self.controllers.get('character').archive_character(self.session, self.lhs, self.rhs)
+        self.controller.archive_character(self.session, self.lhs, self.rhs)
 
     def switch_puppet(self):
-        self.controllers.get('character').puppet_character(self.session, self.args)
+        self.controller.puppet_character(self.session, self.args)
 
     def switch_rename(self):
-        self.controllers.get('character').rename_character(self.session, self.lhs, self.rhs)
+        self.controller.rename_character(self.session, self.lhs, self.rhs)
 
     def switch_transfer(self):
-        self.controllers.get('character').transfer_character(self.session, self.lhs, self.rhs)
+        self.controller.transfer_character(self.session, self.lhs, self.rhs)
 
     def switch_old(self):
-        self.msg(self.controllers.get('character').list_characters(self.session, archived=True))
+        self.msg(self.controller.list_characters(self.session, archived=True))
 
     def switch_list(self):
-        self.msg(self.controllers.get('character').list_characters(self.session))
+        self.msg(self.controller.list_characters(self.session))
 
 
 class CmdAccRename(AdministrationCommand):
@@ -240,10 +247,9 @@ class CmdAccRename(AdministrationCommand):
     """
     key = '@username'
     locks = 'cmd:%s' % 'pperm(Admin)' if settings.RESTRICTED_ACCOUNT_RENAME else 'all()'
-    account_caller = True
 
     def switch_main(self):
-        self.controllers.get('account').rename_account(self.session, self.caller, self.args, ignore_priv=True)
+        self.controller.rename_account(self.session, self.caller, self.args, ignore_priv=True)
 
 
 class CmdAccEmail(AdministrationCommand):
@@ -255,10 +261,9 @@ class CmdAccEmail(AdministrationCommand):
     """
     key = '@email'
     locks = 'cmd:%s' % 'pperm(Admin)' if settings.RESTRICTED_ACCOUNT_EMAIL else 'all()'
-    account_caller = True
 
     def switch_main(self):
-        self.controllers.get('account').change_email(self.session, self.caller, self.args, ignore_priv=True)
+        self.controller.email_account(self.session, self.caller, self.args, ignore_priv=True)
 
 
 class CmdAccPassword(AdministrationCommand):
@@ -270,12 +275,11 @@ class CmdAccPassword(AdministrationCommand):
     """
     key = '@password'
     locks = 'cmd:%s' % 'pperm(Admin)' if settings.RESTRICTED_ACCOUNT_PASSWORD else 'all()'
-    account_caller = True
 
     def switch_main(self):
         if not self.rhs and self.lhs:
             raise ValueError(f"Usage: @password <old>=<new>")
-        self.controllers.get('account').reset_password(self.session, self.caller, self.rhs, ignore_priv=True,
+        self.controller.password_account(self.session, self.caller, self.rhs, ignore_priv=True,
                                                        old_password=self.lhs)
 
 
@@ -288,10 +292,10 @@ class CmdCharCreate(AdministrationCommand):
     """
     key = '@charcreate'
     locks = 'cmd:%s' % 'pperm(Admin)' if settings.RESTRICTED_CHARACTER_CREATION else 'all()'
-    account_caller = True
+    controller_key = 'character'
 
     def switch_main(self):
-        self.controllers.get('character').create_character(self.session, self.caller, self.args, ignore_priv=True)
+        self.controller.create_character(self.session, self.caller, self.args, ignore_priv=True)
 
 
 class CmdCharRename(AdministrationCommand):
@@ -303,11 +307,10 @@ class CmdCharRename(AdministrationCommand):
     """
     key = "@charrename"
     locks = 'cmd:%s' % 'pperm(Admin)' if settings.RESTRICTED_CHARACTER_RENAME else 'all()'
-    account_caller = True
 
     def switch_main(self):
         character = self.select_character(self.lhs)
-        self.controllers.get('character').rename_character(self.session, character, self.rhs)
+        self.controller.rename_character(self.session, character, self.rhs)
 
 
 class CmdCharDelete(AdministrationCommand):
@@ -319,11 +322,10 @@ class CmdCharDelete(AdministrationCommand):
     """
     key = '@chardelete'
     locks = 'cmd:%s' % 'pperm(Admin)' if settings.RESTRICTED_CHARACTER_DELETION else 'all()'
-    account_caller = True
 
     def switch_main(self):
         character = self.select_character(self.lhs)
-        self.controllers.get('character').delete_character(self.session, character, self.rhs, ignore_priv=True)
+        self.controller.delete_character(self.session, character, self.rhs, ignore_priv=True)
 
 
 class CmdCharPuppet(AdministrationCommand):
@@ -335,7 +337,6 @@ class CmdCharPuppet(AdministrationCommand):
     """
     key = "@ic"
     locks = "cmd:all()"
-    account_caller = True
 
     def switch_main(self):
         character = self.select_character(self.args)
@@ -352,7 +353,6 @@ class CmdCharUnpuppet(AdministrationCommand):
     """
     key = "@ooc"
     locks = "cmd:all()"
-    account_caller = True
 
     def switch_main(self):
         if not self.session.get_puppet():
