@@ -204,9 +204,8 @@ class HasOps(HasAttributeGetCreate):
             return True
         if self.access(user, position):
             return True
-        if (held := self.granted.get(user, None)):
-            if held in self.access_hierarchy and self.gte_position(held, position):
-                return True
+        if (held := self.granted.get(user, None)) and held == position:
+            return True
         return self.parent_position(user, position)
     
     def highest_position(self, user):
@@ -214,6 +213,11 @@ class HasOps(HasAttributeGetCreate):
             if self.is_position(user, position):
                 return position
         return None
+
+    def check_position(self, user, position):
+        if not (highest := self.highest_position(user)):
+            return False
+        return self.gte_position(highest, position)
 
     def find_user(self, session, user):
         pass
