@@ -20,3 +20,20 @@ class CharacterBridge(SharedMemoryModel):
         verbose_name = 'Character'
         verbose_name_plural = 'Characters'
         unique_together = (('db_namespace', 'db_iname'),)
+
+
+class AlternateNamespaceName(SharedMemoryModel):
+    db_name = models.CharField(max_length=255, null=False, blank=False, unique=True)
+
+
+class AlternateNamespace(SharedMemoryModel):
+    db_object = models.ForeignKey('objects.ObjectDB', related_name='alternate_namespace', on_delete=models.CASCADE)
+    db_namespace = models.ForeignKey(AlternateNamespaceName, related_name='users', on_delete=models.CASCADE)
+    db_name = models.CharField(max_length=255, null=False, blank=False)
+    db_cname = models.CharField(max_length=255, null=False, blank=False)
+    db_iname = models.CharField(max_length=255, null=False, blank=False)
+
+    class Meta:
+        verbose_name = 'Namespace'
+        verbose_name_plural = 'Namespaces'
+        unique_together = (('db_namespace', 'db_object'), ('db_namespace', 'db_iname'))
