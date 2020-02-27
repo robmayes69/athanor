@@ -220,7 +220,6 @@ class AthanorAccountController(*MIXINS, AthanorController):
             raise ValueError(f"{account} already has that Permission!")
         account.permissions.add(perm)
         self.permissions[perm.lower()].add(account)
-        account.operations.clear_cache()
         entities = {'enactor': enactor, 'account': account}
         amsg.GrantMessage(entities, perm=perm).send()
 
@@ -245,7 +244,6 @@ class AthanorAccountController(*MIXINS, AthanorController):
             raise ValueError(f"{account} does not have that Permission!")
         account.permissions.remove(perm)
         self.permissions[perm.lower()].remove(account)
-        account.operations.clear_cache()
         entities = {'enactor': enactor, 'account': account}
         amsg.RevokeMessage(entities, perm=perm).send()
 

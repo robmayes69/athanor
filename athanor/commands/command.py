@@ -18,6 +18,7 @@ class AthanorCommand(MuxCommand):
     args_delim = " "
     switch_syntax = dict()
     controller_key = None
+    switch_options = []
 
     @lazy_property
     def controller(self):

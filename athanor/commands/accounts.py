@@ -134,8 +134,14 @@ class CmdAccess(AdministrationCommand):
             'lhs_req': True,
             'rhs_req': True
         },
-        'all': dict()
+        'all': dict(),
+        'revoke': {
+            'syntax': '<account>=<permission>',
+            'lhs_req': True,
+            'rhs_req': True
+        }
     }
+    switch_options = ['directory', 'super', 'grant', 'all', 'revoke']
 
     def switch_main(self):
         account = self.args if self.args else self.account
