@@ -55,7 +55,7 @@ class AthanorAccount(*MIXINS, HasAttributeGetCreate, HasRenderExamine, EventEmit
         self.save(update_fields=['email'])
         return new_email
 
-    def render_examine(self, viewer):
+    def render_examine(self, viewer, callback=True):
         obj_session = self.sessions.get()[0] if self.sessions.count() else None
         get_and_merge_cmdsets(
             self, obj_session, self, None, self.examine_type, "examine"
@@ -84,7 +84,6 @@ class AthanorAccount(*MIXINS, HasAttributeGetCreate, HasRenderExamine, EventEmit
             styling.styled_separator("Access"),
             f"|wPermissions|n: {', '.join(perms) if (perms := self.permissions.all()) else '<None>'}",
             f"|wSuperuser|n: {self.is_superuser}",
-            f"|wOperations|n: {', '.join(self.operations.all())}",
             f"|wLocks|n:{locks_string}"
         ]
         return message
