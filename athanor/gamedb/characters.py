@@ -1,18 +1,14 @@
 import re
 
 from django.conf import settings
-from evennia.utils.utils import class_from_module
 from evennia.utils.ansi import ANSIString
 
 from athanor.gamedb.objects import AthanorObject
-from athanor.models import CharacterBridge
+from athanor.models import CharacterBridge, ObjectNamespaceName
 from athanor.gamedb.base import AthanorBasePlayerMixin
 
-MIXINS = [class_from_module(mixin) for mixin in settings.GAMEDB_MIXINS["CHARACTER"]]
-MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
-
-class AthanorPlayerCharacter(*MIXINS, AthanorBasePlayerMixin, AthanorObject):
+class AthanorPlayerCharacter(AthanorBasePlayerMixin, AthanorObject):
     """
     The basic Athanor Player Character, built atop of Evennia's DefaultObject but modified to co-exist with Entities
     and exist in the Athanor Grid system.
@@ -42,7 +38,7 @@ class AthanorPlayerCharacter(*MIXINS, AthanorBasePlayerMixin, AthanorObject):
                                               db_iname=clean_key.lower(), db_namespace=namespace)
 
     @classmethod
-    def create_character(cls, key, account, namespace=0, **kwargs):
+    def create_character(cls, key, account, namespace='player_characters', **kwargs):
         """
         Create a character! Also creates extra models and sets everything up.
         This is meant to be called by the Character Controller, not directly.
@@ -67,11 +63,14 @@ class AthanorPlayerCharacter(*MIXINS, AthanorBasePlayerMixin, AthanorObject):
             raise ValueError("Malformed ANSI in Character Name.")
         if not cls.re_name.match(clean_key):
             raise ValueError("Character name does not meet standards. Avoid double spaces and special characters.")
-        if namespace is not None and CharacterBridge.objects.filter(db_iname=clean_key.lower(), db_namespace=namespace).count():
+        namespace_name, created = ObjectNamespaceName.objects.get_or_create(db_name=namespace)
+        if created:
+            namespace_name.save()
+        if namespace is not None and CharacterBridge.objects.filter(db_iname=clean_key.lower(), db_namespace=namespace_name).count():
             raise ValueError("Name conflicts with another Character.")
         character, errors = cls.create(clean_key, account, **kwargs)
         if character:
-            character.create_bridge(account, key, clean_key, namespace)
+            character.create_bridge(account, key, clean_key, namespace_name)
         else:
             raise ValueError(errors)
         return character
@@ -93,7 +92,10 @@ class AthanorPlayerCharacter(*MIXINS, AthanorBasePlayerMixin, AthanorObject):
         if not self.re_name.match(clean_key):
             raise ValueError("Character name does not meet standards. Avoid double spaces and special characters.")
         bridge = self.character_bridge
-        if CharacterBridge.objects.filter(character_bridge__db_namespace=0, db_iname=clean_key.lower()).exclude(id=bridge).count():
+        namespace, created = ObjectNamespaceName.objects.get_or_create(db_name='player_characters')
+        if created:
+            namespace.save()
+        if namespace.objects.filter(db_iname=clean_key.lower(), db_namespace=namespace).exclude(db_object=self).count():
             raise ValueError("Name conflicts with another Character.")
         self.key = clean_key
         bridge.db_name = clean_key
@@ -124,7 +126,7 @@ class AthanorPlayerCharacter(*MIXINS, AthanorBasePlayerMixin, AthanorObject):
         Returns:
             None
         """
-        self.character_bridge.namespace = None
+        self.namespace.set_namespace(None)
         self.at_archive()
 
     def at_archive(self):
@@ -150,12 +152,12 @@ class AthanorPlayerCharacter(*MIXINS, AthanorBasePlayerMixin, AthanorObject):
         old_name = self.key
         if not replace_name:
             try:
-                self.character_bridge.namespace = 0
+                self.namespace.set_namespace('player_characters')
             except Exception as e:
                 raise ValueError("Cannot restore character. Does another character use the same name?")
         else:
             self.rename(replace_name)
-            self.character_bridge.namespace = 0
+            self.namespace.set_namespace("player_characters")
         self.at_restore(old_name, replace_name)
 
     def at_restore(self, old_name, replace_name):
@@ -187,3 +189,4 @@ class AthanorPlayerCharacter(*MIXINS, AthanorBasePlayerMixin, AthanorObject):
             None
         """
         pass
+

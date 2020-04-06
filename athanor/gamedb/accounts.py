@@ -1,6 +1,5 @@
 import datetime
 from django.conf import settings
-
 from evennia.utils.utils import class_from_module, lazy_property
 from evennia.accounts.accounts import DefaultAccount
 from evennia.utils import utils
@@ -14,13 +13,9 @@ from athanor.gamedb.characters import AthanorPlayerCharacter
 from athanor.gamedb.base import HasRenderExamine
 from athanor.utils.mixins import HasAttributeGetCreate
 
-MIXINS = [class_from_module(mixin) for mixin in settings.GAMEDB_MIXINS["ACCOUNT"]]
-MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
-
-class AthanorAccount(*MIXINS, HasAttributeGetCreate, HasRenderExamine, EventEmitter, DefaultAccount):
+class AthanorAccount(HasAttributeGetCreate, HasRenderExamine, EventEmitter, DefaultAccount):
     """
-    AthanorAccount adds the EventEmitter to DefaultAccount and supports Mixins.
     Please read Evennia's documentation for its normal API.
 
     Triggers Global Events:
@@ -168,7 +163,7 @@ class AthanorAccount(*MIXINS, HasAttributeGetCreate, HasRenderExamine, EventEmit
         return self
 
     def characters(self):
-        return AthanorPlayerCharacter.objects.filter_family(character_bridge__db_namespace=0,
+        return AthanorPlayerCharacter.objects.filter_family(namespace__db_namespace__db_name='player_characters',
                                                             character_bridge__db_account=self)
 
     @lazy_property
