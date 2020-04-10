@@ -7,7 +7,6 @@ class AthanorPlayerCharacter(AthanorIdentityScript, HasCmdSets):
     _verbose_name = 'Player Character'
     _verbose_name_plural = "Player Characters"
 
-    def at_identity_creation(self, validated):
-        # Should probably do something here about creating ObjectDB's... player avatars.
+    def at_identity_creation(self, validated, kwargs):
+        # Should probably do something here about creating ObjectDB's... player avatars. By default.
         pass
-

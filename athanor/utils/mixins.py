@@ -2,9 +2,53 @@ from django.conf import settings
 
 from evennia.locks.lockhandler import LockHandler
 from evennia.utils.utils import lazy_property
+from evennia.commands.cmdsethandler import CmdSetHandler
+from evennia.utils.optionhandler import OptionHandler
+from evennia.objects.objects import ObjectSessionHandler
 
 
 _PERMISSION_HIERARCHY = [p.lower() for p in settings.PERMISSION_HIERARCHY]
+
+
+class HasOptions:
+    """
+    Implements OptionHandler for anything that supports Attributes.
+    """
+    option_dict = dict()
+
+    @lazy_property
+    def options(self):
+        return OptionHandler(self,
+                             options_dict=self.option_dict,
+                             savefunc=self.attributes.add,
+                             loadfunc=self.attributes.get,
+                             save_kwargs={"category": 'option'},
+                             load_kwargs={"category": 'option'})
+
+class HasCmdSets:
+    """
+    Mixin that provides CmdSetHandler to anything that implements Attributes.
+    """
+
+    @lazy_property
+    def cmdset(self):
+        return CmdSetHandler(self)
+
+    @property
+    def cmdset_storage(self):
+        return str(self.attributes.get(key="cmdset_storage", default=""))
+
+    @cmdset_storage.setter
+    def cmdset_storage(self, value):
+        self.attributes.add(key="cmdset_storage", value=value)
+
+
+
+
+class HasSessions:
+    """
+    Mixin that provides SessionHandling to anything that implements Attributes.
+    """
 
 
 class HasAttributeGetCreate(object):

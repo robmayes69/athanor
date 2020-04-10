@@ -14,7 +14,7 @@ from evennia.objects.objects import ExitCommand
 from evennia.commands import cmdset
 from evennia.commands.cmdhandler import get_and_merge_cmdsets
 from evennia.utils.validatorfuncs import lock as validate_lock
-from evennia.commands.cmdsethandler import CmdSetHandler
+
 
 import athanor
 from athanor.utils.events import EventEmitter
@@ -23,22 +23,8 @@ from athanor.utils.mixins import HasAttributeGetCreate
 from athanor.utils.message import Duration, DateTime
 from athanor.utils.time import duration_from_string, utcnow
 
-class HasCmdSets:
-    """
-    Mixin that provides CmdSetHandler to anything that implements Attributes.
-    """
 
-    @lazy_property
-    def cmdset(self):
-        return CmdSetHandler(self)
 
-    @property
-    def cmdset_storage(self):
-        return str(self.attributes.get(key="cmdset_storage", default=""))
-
-    @cmdset_storage.setter
-    def cmdset_storage(self, value):
-        self.attributes.add(key="cmdset_storage", value=value)
 
 
 class HasRenderExamine:
@@ -214,7 +200,7 @@ class HasOps(HasAttributeGetCreate):
 
     def parent_position(self, user, position):
         return False
-    
+
     def is_position(self, user, position):
         rules = self.access_breakdown.get(position, dict())
         if (lock := rules.get('lock', None)) and user.check_lock(lock):
@@ -224,7 +210,7 @@ class HasOps(HasAttributeGetCreate):
         if (held := self.granted.get(user, None)) and held == position:
             return True
         return self.parent_position(user, position)
-    
+
     def highest_position(self, user):
         for position in reversed(self.access_hierarchy):
             if self.is_position(user, position):

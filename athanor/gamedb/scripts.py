@@ -1,12 +1,12 @@
 import re
 
 from evennia import DefaultScript
-from evennia.utils.optionhandler import OptionHandler
-from evennia.utils.utils import lazy_property
+
 from evennia.utils.ansi import ANSIString
 
 from athanor.utils.events import EventEmitter
-from athanor.gamedb.base import HasRenderExamine
+from athanor.gamedb.base import HasRenderExamine, HasOptions
+
 
 class AthanorScript(HasRenderExamine, EventEmitter, DefaultScript):
     """
@@ -22,36 +22,45 @@ class AthanorScript(HasRenderExamine, EventEmitter, DefaultScript):
         return self.render_examine_callback(None, viewer, callback=callback)
 
 
-class AthanorOptionScript(AthanorScript):
-    option_dict = dict()
-
-    @lazy_property
-    def options(self):
-        return OptionHandler(self,
-                             options_dict=self.option_dict,
-                             savefunc=self.attributes.add,
-                             loadfunc=self.attributes.get,
-                             save_kwargs={"category": 'option'},
-                             load_kwargs={"category": 'option'})
-
-
-class AthanorIdentityScript(AthanorOptionScript):
+class AthanorIdentityScript(AthanorScript, HasOptions):
+    """
+    This Script forms the basis of Athanor's Identity system, used as a central repository for
+    meta-data about Player Characters, Factions/Guilds, Parties, etc. This allows the ScriptDB
+    table to be used for all kinds of relational lookups and membership hijinx, among other
+    things.
+    """
+    # CLASS PROPERTIES
+    # The _verbose entries are used for formatting automated messages.
     _verbose_name = 'Identity'
     _verbose_name_plural = "Identities"
-    _name_standards = "Avoid double spaces and special characters."
+
+    # _namespace determines which global namespace this script will fall into. The namespace is
+    # case-insensitive. _re_name is a regex used to validate names, and _name_standards is an error
+    # to use when this regex fails.
     _namespace = None
+    _name_standards = "Avoid double spaces and special characters."
     _re_name = re.compile(r"(?i)^([A-Z]|[0-9]|\.|-|')+( ([A-Z]|[0-9]|\.|-|')+)*$")
 
     @classmethod
     def _validate_identity_name(cls, name, namespace=None, exclude=None):
         """
         Checks if an Identity name is both valid and not in use. Returns a tuple of (name, clean_name).
+
+        Args:
+            name (str or ANSIString): A string containing the Identity's name.
+            namespace (str): A namespace override to use for creating this identity.
+            exclude (AthanorIdentityScript): When renaming, set exclude to the entity being renamed.
+                This will allow for setting a thing to its existing case-insensitive name. Used for
+                fixing case typos.
+
+        Returns:
+            (name, clean_name): Tuple of the ANSIString name and a cleaned version.
         """
         if namespace is None:
             namespace = cls._namespace
         if not name:
             raise ValueError(f"{cls._verbose_names} must have a name!")
-        name = ANSIString(name)
+        name = ANSIString(name.strip())
         clean_name = str(name.clean())
         if '|' in clean_name:
             raise ValueError(f"Malformed ANSI in {cls._verbose_name} Name.")
@@ -67,16 +76,27 @@ class AthanorIdentityScript(AthanorOptionScript):
         return (name, clean_name)
 
     @classmethod
-    def _validate_identity(cls, name, clean_name, namespace, **kwargs):
+    def _validate_identity(cls, name, clean_name, namespace, kwargs):
         """
         Performs all other validation checks for creating the Identity.
+
+        Args:
+            name (str or ANSIString): The Identity's string name. It may contain color.
+            clean_name (str): Raw string version of the Identity's name.
+            namespace (str): The namespace the Identity's name exists in.
+            **kwargs: The kwargs that are to be passed to create_script()
+
+        Returns:
+            (validated, kwargs): A tuple of any data that should be passed to at_identity_creation
+                and a possibly-modified version of the kwargs that will be given to create_script().
         """
+        return dict(), kwargs
 
     def create_or_update_namespace(self, name, clean_name, namespace=None):
         """
         Private helper method for renames and creations.
         """
-        if not namespace:
+        if namespace is None:
             namespace = self._namespace
         query = {
             "db_namespace": namespace,
@@ -92,7 +112,7 @@ class AthanorIdentityScript(AthanorOptionScript):
             self.namespaces.create(**props)
 
     @classmethod
-    def _create_identity(cls, name, clean_name, validated_data, **kwargs):
+    def _create_identity(cls, name, clean_name, validated_data, kwargs):
         """
         Does the actual work of creating the identity.
 
@@ -128,11 +148,22 @@ class AthanorIdentityScript(AthanorOptionScript):
         Returns:
             AthanorIdentityScript (AthanorIdentityScript): The created identity.
         """
-        namespace = kwargs.get('namespace', cls._namespace)
+        namespace = kwargs.pop('namespace', cls._namespace)
         name, clean_name = cls._validate_identity_name(name, namespace)
-        validated = cls._validate_identity(name, clean_name, namespace, **kwargs)
-        identity = cls._create_identity(name, clean_name, validated, **kwargs)
+        validated, kwargs = cls._validate_identity(name, clean_name, namespace, kwargs)
+        identity = cls._create_identity(name, clean_name, validated, kwargs)
         return identity
 
-    def at_identity_creation(self, validated):
-        pass
+    def at_identity_creation(self, validated, kwargs):
+        """
+        Method called by the creation process for Identities. Not to be confused with at_script_creation()
+        as this happens after that.
+
+        Args:
+            validated (dict): A dictionary of key-value data that will be used to setup this entity.
+            kwargs (dict): The same data that was fed to create_script()... it may be useful. Or it may not.
+
+        Returns:
+            errors (list of str or str): Any errors that occured during the creation process.
+                If this method returns anything truthy, creation will be halted and the object deleted.
+        """
