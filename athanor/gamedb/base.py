@@ -14,7 +14,7 @@ from evennia.objects.objects import ExitCommand
 from evennia.commands import cmdset
 from evennia.commands.cmdhandler import get_and_merge_cmdsets
 from evennia.utils.validatorfuncs import lock as validate_lock
-
+from evennia.commands.cmdsethandler import CmdSetHandler
 
 import athanor
 from athanor.utils.events import EventEmitter
@@ -23,8 +23,25 @@ from athanor.utils.mixins import HasAttributeGetCreate
 from athanor.utils.message import Duration, DateTime
 from athanor.utils.time import duration_from_string, utcnow
 
+class HasCmdSets:
+    """
+    Mixin that provides CmdSetHandler to anything that implements Attributes.
+    """
 
-class HasRenderExamine(object):
+    @lazy_property
+    def cmdset(self):
+        return CmdSetHandler(self)
+
+    @property
+    def cmdset_storage(self):
+        return str(self.attributes.get(key="cmdset_storage", default=""))
+
+    @cmdset_storage.setter
+    def cmdset_storage(self, value):
+        self.attributes.add(key="cmdset_storage", value=value)
+
+
+class HasRenderExamine:
     """
     This is a mixin that implements the render_examine method and its methods.
     All Athanor database Entities will use this instead of Evennia's basic Examine.
