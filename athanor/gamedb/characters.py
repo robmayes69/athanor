@@ -1,17 +1,18 @@
 import re
+import time
 
 from django.conf import settings
 from evennia.utils.ansi import ANSIString
 
 from athanor.gamedb.objects import AthanorObject
-from athanor.models import CharacterBridge, ObjectNamespaceName
+from athanor.models import CharacterBridge, ObjectNamespace, LocationStorage
 from athanor.gamedb.base import AthanorBasePlayerMixin
 
 
 class AthanorPlayerCharacter(AthanorBasePlayerMixin, AthanorObject):
     """
-    The basic Athanor Player Character, built atop of Evennia's DefaultObject but modified to co-exist with Entities
-    and exist in the Athanor Grid system.
+    The basic Athanor Player Character. Note that Athanor uses the Character as a 'relatable container' and master of
+    puppets. It is not meant to enter the game world directly. For that, see Avatars.
 
     Connect/Puppet Trigger prefixes are 'object' and 'character'.
     """
@@ -190,3 +191,24 @@ class AthanorPlayerCharacter(AthanorBasePlayerMixin, AthanorObject):
         """
         pass
 
+    @property
+    def idle_time(self):
+        """
+        Returns the idle time of the least idle session in seconds. If
+        no sessions are connected it returns nothing.
+        """
+        idle = [session.cmd_last_visible for session in self.sessions.all()]
+        if idle:
+            return time.time() - float(max(idle))
+        return None
+
+    @property
+    def connection_time(self):
+        """
+        Returns the maximum connection time of all connected sessions
+        in seconds. Returns nothing if there are no sessions.
+        """
+        conn = [session.conn_time for session in self.sessions.all()]
+        if conn:
+            return time.time() - float(min(conn))
+        return None
