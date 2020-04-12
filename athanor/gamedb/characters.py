@@ -1,8 +1,8 @@
 from athanor.gamedb.scripts import AthanorIdentityScript
-from athanor.gamedb.base import HasCmdSets
+from athanor.utils.mixins import HasCommands, HasSessions
 
 
-class AthanorPlayerCharacter(AthanorIdentityScript, HasCmdSets):
+class AthanorPlayerCharacter(AthanorIdentityScript, HasCommands, HasSessions):
     _namespace = "player_character"
     _verbose_name = 'Player Character'
     _verbose_name_plural = "Player Characters"
