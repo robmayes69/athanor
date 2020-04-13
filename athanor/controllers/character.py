@@ -10,11 +10,8 @@ from athanor.gamedb.characters import AthanorPlayerCharacter
 
 from athanor.messages import character as cmsg
 
-MIXINS = [class_from_module(mixin) for mixin in settings.CONTROLLER_MIXINS["CHARACTER"]]
-MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
-
-class AthanorCharacterController(*MIXINS, AthanorController):
+class AthanorCharacterController(AthanorController):
     system_name = 'CHARACTERS'
 
     def __init__(self, key, manager):

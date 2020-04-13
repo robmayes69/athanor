@@ -290,8 +290,7 @@ class CmdHandler:
         else:
             merged_current = merged_current + self.cmdobj.cmdset.current
         stack = list()
-        stack.extend(self.cmdobj.cmdset.cmdset_stack)
-        stack.extend(self.get_extra_cmdsets(caller, merged_current))
+        stack.extend(self.cmdobj.cmdset.gather())
         if merged_stack is None:
             merged_stack = stack
         else:
@@ -739,48 +738,32 @@ class AccountCmdHandler(CmdHandler):
         return cmdobjects
 
 
+class CharacterCmdHandler(CmdHandler):
+    session = None
+
+    def get_cmdobjects(self, session=None):
+        cmdobjects = super().get_cmdobjects(session)
+        cmdobjects['character'] = self.cmdobj
+        if (session := cmdobjects.get('session', None)):
+            cmdobjects['account'] = session.get_account()
+            cmdobjects['puppet'] = session.get_puppet()
+        return cmdobjects
+
+
 class PuppetCmdHandler(CmdHandler):
     session = None
 
     def get_cmdobjects(self, session=None):
         cmdobjects = super().get_cmdobjects(session)
         cmdobjects['puppet'] = self.cmdobj
-        if cmdobjects['session']:
+        if (session := cmdobjects.get('session', None)):
             cmdobjects['account'] = session.get_account()
+            cmdobjects['character'] = session.get_pcharacter()
         return cmdobjects
 
-    def get_neighbors(self):
-        location = self.cmdobj.location
-        neighbors = list(self.cmdobj.contents_get())
-        if location:
-            neighbors.append(location)
-            neighbors.extend(location.contents_get(exclude=self.cmdobj))
-        return [obj for obj in neighbors if not obj._is_deleted]
 
-    def get_callable_neighbors(self, caller):
-        return [obj for obj in self.get_neighbors() if hasattr(obj, 'cmdset') and
-                obj.access(caller, 'call', no_superuser_bypass=True)]
 
-    def get_channel_cmdset(self, caller, merged_current):
-        # still writing this one
-        return []
 
-    def get_neighbor_cmdsets(self, caller, merged_current):
-        cmdsets = []
-        neighbors = self.get_callable_neighbors(caller)
-        for obj in neighbors:
-            yield obj.at_cmdset_get()
-        cmdsets = list()
-        for obj in neighbors:
-            cmdsets.extend(obj.cmdset.cmdset_stack)
-        if not merged_current.no_exits:
-            return cmdsets
-        return [cset for cset in cmdsets if cset.key != "ExitCmdSet"]
 
-    def get_extra_cmdsets(self, caller, merged_current):
-        cmdsets = []
-        if not merged_current.no_objs:
-            cmdsets.extend(self.get_neighbor_cmdsets(caller, merged_current))
-        if not merged_current.no_channels:
-            cmdsets.extend(self.get_channel_cmdset(caller, merged_current))
-        return cmdsets
+
+

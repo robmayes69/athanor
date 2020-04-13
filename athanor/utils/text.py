@@ -1,7 +1,5 @@
 import re
 
-from django.conf import settings
-
 from evennia.utils.ansi import ANSI_PARSER
 from evennia.utils.ansi import ANSIString
 

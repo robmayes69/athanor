@@ -1,11 +1,33 @@
-from django.conf import settings
-from evennia.utils.utils import class_from_module
 from evennia import default_cmds
+from evennia.commands.cmdset import CmdSet
 from evennia.commands.default import account, admin, building, general
 from athanor.commands import accounts as ath_account
 
+from evennia.commands.default import unloggedin
+from athanor.commands import login
 
-CMDSETS = [class_from_module(cmdset) for cmdset in settings.CMDSETS["ACCOUNT"]]
+
+class AthanorUnloggedinCmdSet(default_cmds.UnloggedinCmdSet):
+    """
+    Command set available to the Session before being logged in.  This
+    holds commands like creating a new account, logging in, etc.
+    """
+    key = "DefaultUnloggedin"
+
+    def at_cmdset_creation(self):
+        """
+        Populates the cmdset
+        """
+        super().at_cmdset_creation()
+        #
+        # any commands you add below will overload the default ones.
+        #
+        self.remove(unloggedin.CmdUnconnectedCreate)
+        self.remove(unloggedin.CmdUnconnectedHelp)
+        self.remove(unloggedin.CmdUnconnectedConnect)
+        self.add(login.CmdLoginCreateAccount)
+        self.add(login.CmdLoginHelp)
+        self.add(login.CmdLoginConnect)
 
 
 class AthanorAccountCmdSet(default_cmds.AccountCmdSet):
@@ -55,7 +77,37 @@ class AthanorAccountCmdSet(default_cmds.AccountCmdSet):
         self.add(ath_account.CmdCharPuppet)
         self.add(ath_account.CmdCharUnpuppet)
 
-        for cmdset in CMDSETS:
-            if hasattr(cmdset, "setup"):
-                cmdset.setup(self)
-            self.add(cmdset)
+
+
+class AthanorCharacterCmdSet(CmdSet):
+    """
+
+    """
+    key = "DefaultCharacter"
+
+    def at_cmdset_creation(self):
+        """
+        Populates the cmdset
+        """
+        super().at_cmdset_creation()
+        #
+        # any commands you add below will overload the default ones.
+        #
+
+
+class AthanorAvatarCmdSet(default_cmds.CharacterCmdSet):
+    """
+    The `CharacterCmdSet` contains general in-game commands like `look`,
+    `get`, etc available on in-game Character objects. It is merged with
+    the `AccountCmdSet` when an Account puppets a Character.
+    """
+    key = "DefaultAvatar"
+
+    def at_cmdset_creation(self):
+        """
+        Populates the cmdset
+        """
+        super().at_cmdset_creation()
+        #
+        # any commands you add below will overload the default ones.
+        #

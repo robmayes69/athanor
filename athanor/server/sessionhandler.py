@@ -1,25 +1,7 @@
 from django.conf import settings
 from evennia.server.sessionhandler import ServerSessionHandler
-from evennia.utils.utils import class_from_module, delay,
-
-
-PCONN = chr(1)  # portal session connect
-PDISCONN = chr(2)  # portal session disconnect
-PSYNC = chr(3)  # portal session sync
-SLOGIN = chr(4)  # server session login
-SDISCONN = chr(5)  # server session disconnect
-SDISCONNALL = chr(6)  # server session disconnect all
-SSHUTD = chr(7)  # server shutdown
-SSYNC = chr(8)  # server session sync
-SCONN = chr(11)  # server portal connection (for bots)
-PCONNSYNC = chr(12)  # portal post-syncing session
-PDISCONNALL = chr(13)  # portal session discnnect all
-SRELOAD = chr(14)  # server reloading (have portal start a new server)
-SSTART = chr(15)  # server start (portal must already be running anyway)
-PSHUTD = chr(16)  # portal (+server) shutdown
-SSHUTD = chr(17)  # server shutdown
-PSTATUS = chr(18)  # ping server or portal status
-SRESET = chr(19)  # server shutdown in reset mode
+from evennia.utils.utils import class_from_module, delay
+from evennia.server.portal import amp
 
 
 class AthanorServerSessionHandler(ServerSessionHandler):
@@ -76,7 +58,7 @@ class AthanorServerSessionHandler(ServerSessionHandler):
         # Update AMP.
         if not testmode:
             session.sessionhandler.server.amp_protocol.send_AdminServer2Portal(
-                session, operation=SLOGIN, sessiondata={"logged_in": True, "uid": session.uid}
+                session, operation=amp.SLOGIN, sessiondata={"logged_in": True, "uid": session.uid}
             )
 
     def disconnect(self, session, reason="", sync_portal=True):
@@ -106,5 +88,5 @@ class AthanorServerSessionHandler(ServerSessionHandler):
         if sync_portal:
             # inform portal that session should be closed.
             self.server.amp_protocol.send_AdminServer2Portal(
-                session, operation=SDISCONN, reason=reason
+                session, operation=amp.SDISCONN, reason=reason
             )

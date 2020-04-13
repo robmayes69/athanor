@@ -6,25 +6,27 @@ from evennia.utils.utils import lazy_property
 import athanor
 from athanor.commands.cmdhandler import SessionCmdHandler
 from athanor.utils.events import EventEmitter
-from athanor.gamedb.base import HasRenderExamine
 
 
-class AthanorSession(HasRenderExamine, ServerSession, EventEmitter):
-    examine_hooks = ['session', 'puppet', 'commands', 'tags', 'attributes']
-    examine_type = "session"
+class AthanorSession(ServerSession, EventEmitter):
+
     _cmd_sort = -1000
 
     def __init__(self, handler):
         """
         Receive the handler through dependency injection.
+
         Args:
             handler:
         """
         ServerSession.__init__(self)
         self.sessionhandler = handler
+        self.pcharacter = None
+        self.pcid = None
         self.linked = dict()
         self.linked_sort = list()
         self.linked_state = list()
+        self._find_map = self._generate_find_map()
 
     def _generate_find_map(self):
         return {
@@ -56,7 +58,7 @@ class AthanorSession(HasRenderExamine, ServerSession, EventEmitter):
         self.linked_sort = sorted(self.linked.items(), key=lambda o: o[1]._cmd_sort)
         self.linked_state = [(link_type, entity.pk) for link_type, entity in self.linked_sort]
 
-    def link(self, kind, entity, sync=False, **kwargs):
+    def link(self, kind, entity, force=False, sync=False, **kwargs):
         """
         Links the session to an entity.
         Args:
@@ -71,21 +73,15 @@ class AthanorSession(HasRenderExamine, ServerSession, EventEmitter):
             entity (object): The entity that was linked.
         """
         entity = self._find_entity(kind, entity)
-        try:
-            entity.validate_link_request(self, sync, **kwargs)
-        except ValueError as e:
-            self.msg(e)
-            return
-        entity.at_pre_link_session(self, sync, **kwargs)
-        entity.at_link_session(self, sync, **kwargs)
-        entity.at_post_link_session(self, sync, **kwargs)
-        self.linked[kind] = entity
-        if not sync:
-            self._sort_links()
+        if entity.sessions.add(self, force=force, sync=sync):
+            self.linked[kind] = entity
+            if not sync:
+                self._sort_links()
 
     def unlink(self, kind, entity, force=False, reason=None, **kwargs):
         """
         Unlinks an entity from this session.
+
         Args:
             kind (str): The kind of entity. examples are 'account' and 'puppet'
             entity (object or int): The entity to unlink, or its ID to lookup.
@@ -93,18 +89,10 @@ class AthanorSession(HasRenderExamine, ServerSession, EventEmitter):
             reason (str or None): A reason that might be displayed down the chain.
         """
         entity = self._find_entity(kind, entity)
-        try:
-            entity.validate_unlink_request(self, force=force, reason=reason, **kwargs)
-        except ValueError as e:
-            self.msg(e)
-            return
-        entity.at_pre_unlink_session(self, force=force, reason=reason, **kwargs)
-        entity.at_unlink_session(self, force=force, reason=reason, **kwargs)
-        entity.at_post_unlink_session(self, force=force, reason=reason, **kwargs)
-
-        if kind in self.linked:
-            del self.linked[kind]
-        self._sort_links()
+        if entity.sessions.remove(self, force=force, reason=reason, **kwargs):
+            if kind in self.linked:
+                del self.linked[kind]
+            self._sort_links()
 
     def at_disconnect(self, reason=None):
         """
@@ -113,19 +101,6 @@ class AthanorSession(HasRenderExamine, ServerSession, EventEmitter):
         # Gonna have to unlink everything... in reverse order. Puppet first, then Account, etc.
         for kind, entity in reversed(self.linked_sort):
             self.unlink(kind, entity, force=True, reason=reason)
-
-    def render_examine(self, viewer):
-        pass
-
-    def render_examine_session(self, viewer, cmdset, styling):
-        message = list()
-        message.append(f"|wAddress|n: |c{self.address}|n")
-        message.append(f"|wProtocol|n: {self.protocol_key}")
-        message.append(f"|wTypeclass|n: {self.typename} ({self.typeclass_path})")
-        return message
-
-    def render_examine_puppet(self, viewer, cmdset, styling):
-        return list()
 
     @property
     def styler(self):

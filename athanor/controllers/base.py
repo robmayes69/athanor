@@ -1,19 +1,11 @@
 from django.conf import settings
 
-
 from evennia.utils.utils import class_from_module
-
 from athanor.utils.online import admin_accounts
 from athanor.utils.events import EventEmitter
 
-MANAGER_MIXINS = [class_from_module(mixin) for mixin in settings.CONTROLLER_MIXINS["CONTROLLER_MANAGER"]]
-MANAGER_MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
-BASE_MIXINS = [class_from_module(mixin) for mixin in settings.CONTROLLER_MIXINS["BASE_CONTROLLER"]]
-BASE_MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
-
-
-class ControllerManager(*MANAGER_MIXINS, EventEmitter):
+class ControllerManager(EventEmitter):
 
     def __init__(self):
         self.loaded = False
@@ -35,7 +27,7 @@ class ControllerManager(*MANAGER_MIXINS, EventEmitter):
         return found
 
 
-class AthanorController(*BASE_MIXINS, EventEmitter):
+class AthanorController(EventEmitter):
     system_name = 'SYSTEM'
 
     def __init__(self, key, manager):
