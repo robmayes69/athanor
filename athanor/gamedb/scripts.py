@@ -3,12 +3,14 @@ import re
 from evennia import DefaultScript
 
 from evennia.utils.ansi import ANSIString
+from evennia.utils.utils import lazy_property
 
 from athanor.utils.events import EventEmitter
-from athanor.gamedb.base import HasRenderExamine, HasOptions
+from athanor.utils.examine import ScriptExamineHandler
+from athanor.utils.mixins import HasOptions
 
 
-class AthanorScript(HasRenderExamine, EventEmitter, DefaultScript):
+class AthanorScript(EventEmitter, DefaultScript):
     """
     Really just a Script class that accepts the Mixin framework and supports Events.
     """
@@ -20,6 +22,10 @@ class AthanorScript(HasRenderExamine, EventEmitter, DefaultScript):
 
     def render_examine(self, viewer, callback=True):
         return self.render_examine_callback(None, viewer, callback=callback)
+
+    @lazy_property
+    def examine(self):
+        return ScriptExamineHandler(self)
 
 
 class AthanorIdentityScript(AthanorScript, HasOptions):

@@ -5,16 +5,12 @@ from evennia.utils.evtable import EvTable
 from evennia.utils.ansi import ANSIString
 from evennia.utils.utils import lazy_property, class_from_module
 
-MIXINS = [class_from_module(mixin) for mixin in settings.MIXINS["STYLER"]]
-MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
-
-
-class Styler(*MIXINS, object):
+class Styler:
     fallback = dict()
     loaded = False
     width = 78
     fallback_cache = dict()
-    mixins = MIXINS
+
 
     def __init__(self, viewer):
         """
@@ -37,9 +33,6 @@ class Styler(*MIXINS, object):
         for key, data in settings.OPTIONS_ACCOUNT_DEFAULT.items():
             cls.fallback[key] = data[2]
         cls.width = settings.CLIENT_DEFAULT_WIDTH
-        for mixin in cls.mixins:
-            if (load_mixin := getattr(mixin, 'load_mixin', None)):
-                load_mixin(cls)
         cls.loaded = True
 
     def styled_columns(self, columns):

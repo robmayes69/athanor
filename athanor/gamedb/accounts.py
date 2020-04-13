@@ -1,21 +1,17 @@
-import time
-from datetime import timezone
 from django.conf import settings
 
 from evennia.utils.utils import lazy_property
 from evennia.accounts.accounts import DefaultAccount
-from evennia.utils import utils
-from evennia.commands.cmdhandler import get_and_merge_cmdsets
-from evennia import SESSION_HANDLER, MONITOR_HANDLER
 
 import athanor
 
 from athanor.utils.events import EventEmitter
 from athanor.gamedb.characters import AthanorPlayerCharacter
-from athanor.utils.mixins import HasAttributeGetCreate, HasSessions
+from athanor.utils.mixins import HasAttributeGetCreate
+from athanor.utils.link import AccountSessionHandler
 
 
-class AthanorAccount(HasAttributeGetCreate, HasSessions, EventEmitter, DefaultAccount):
+class AthanorAccount(HasAttributeGetCreate, EventEmitter, DefaultAccount):
     """
     AthanorAccount adds the EventEmitter to DefaultAccount and supports Mixins.
     Please read Evennia's documentation for its normal API.
@@ -31,7 +27,9 @@ class AthanorAccount(HasAttributeGetCreate, HasSessions, EventEmitter, DefaultAc
     examine_caller_type = "account"
     dbtype = 'AccountDB'
 
-
+    @lazy_property
+    def sessions(self):
+        return AccountSessionHandler(self)
 
     def set_email(self, new_email):
         """

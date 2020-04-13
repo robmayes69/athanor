@@ -16,10 +16,6 @@ does what you expect it to.
 
 
 def at_initial_setup():
-    from athanor.gamedb.accounts import AthanorAccount
-    from athanor.gamedb.characters import AthanorPlayerCharacter
-
-    god_account = AthanorAccount.objects.get(id=1)
-
-    god_character = AthanorPlayerCharacter.objects.filter_family().first()
-    god_character.create_bridge(god_account, god_character.key, god_character.key, 0)
+    # just ensure that Athanor has run properly.
+    import athanor
+    athanor._init()

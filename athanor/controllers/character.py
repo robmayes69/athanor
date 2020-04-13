@@ -77,15 +77,21 @@ class AthanorCharacterController(AthanorController):
 
     find_user = find_character
 
-    def create_character(self, session, account, character_name, namespace=0, ignore_priv=False):
-        if not (enactor := session.get_account()) or (not ignore_priv and not enactor.check_lock("oper(character_create)")):
+    def create_character(self, session, account, character_name, ignore_priv=False, typeclass=None, no_session=False):
+        if not session and not no_session:
             raise ValueError("Permission denied.")
+        if session and not no_session:
+            if not (enactor := session.get_account()) or (not ignore_priv and not enactor.check_lock("oper(character_create)")):
+                raise ValueError("Permission denied.")
+        else:
+            enactor = account
         account = self.manager.get('account').find_account(account)
-        new_character = self.character_typeclass.create_character(character_name, account, namespace=namespace)
+        if not typeclass:
+            typeclass = self.character_typeclass
+        new_character = typeclass.create_character(character_name, account)
         new_character.db.account = account
-        if namespace == 0:
-            self.id_map[new_character.id] = new_character
-            self.name_map[new_character.key.upper()] = new_character
+        self.id_map[new_character.id] = new_character
+        self.name_map[new_character.key.lower()] = new_character
         entities = {'enactor': enactor, 'character': new_character, 'account': account}
         cmsg.CreateMessage(entities).send()
         return new_character

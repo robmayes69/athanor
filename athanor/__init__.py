@@ -4,12 +4,41 @@ Core of the Athanor API. It is also styled as a plugin.
 """
 
 # This dictionary will be filled in with useful singletons as the system loads.
-API = dict()
+
+_API_STORAGE = dict()
 
 # The Core must always load first.
 LOAD_PRIORITY = -100000000
 
 PLUGIN_NAME = 'athanor'
+
+LOADED = False
+
+
+def _init():
+    global LOADED, _API_STORAGE
+    if LOADED:
+        return
+
+    from django.conf import settings
+    from evennia.utils.utils import class_from_module
+
+    styler_class = class_from_module(settings.STYLER_CLASS)
+    _API_STORAGE['styler'] = styler_class
+    _API_STORAGE['styler'].load()
+
+    manager_class = class_from_module(settings.CONTROLLER_MANAGER_CLASS)
+    _API_STORAGE['controller_manager'] = manager_class()
+    _API_STORAGE['controller_manager'].load()
+
+    LOADED = True
+
+
+def api():
+    global LOADED, _API_STORAGE
+    if not LOADED:
+        _init()
+    return _API_STORAGE
 
 
 def init_settings(settings):
@@ -53,6 +82,9 @@ def init_settings(settings):
     # different entities.
     settings.CMDSETS = defaultdict(list)
 
+    # Taking control of initial setup. No more screwy godcharacter nonsense.
+    settings.INITIAL_SETUP_MODULE = "athanor.initial_setup"
+
     ######################################################################
     # Module List Options
     ######################################################################
@@ -95,7 +127,7 @@ def init_settings(settings):
     settings.EXAMINE_HOOKS['session'] = []
 
     settings.SESSION_SYNC_ATTRS = list(settings.SESSION_SYNC_ATTRS)
-    settings.extend(["pcid", "pcname"])
+    settings.SESSION_SYNC_ATTRS.extend(["pcid", "pcname"])
 
     ######################################################################
     # Account Options
@@ -160,7 +192,7 @@ def init_settings(settings):
 
     settings.BASE_ROOM_TYPECLASS = "athanor.gamedb.objects.AthanorRoom"
     settings.BASE_EXIT_TYPECLASS = "athanor.gamedb.objects.AthanorExit"
-    settings.BASE_OBJECT_TYPECLASS = "athanor.gamedb.objects.AthanorObject"
+    settings.BASE_OBJECT_TYPECLASS = "athanor.gamedb.objects.AthanorItem"
 
     ######################################################################
     # Permissions

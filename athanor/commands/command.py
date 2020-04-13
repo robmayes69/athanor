@@ -1,5 +1,4 @@
 import re
-from collections import defaultdict
 from evennia.commands.default.muxcommand import MuxCommand
 from evennia.utils.utils import inherits_from, lazy_property
 from evennia.utils.search import object_search

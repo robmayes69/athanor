@@ -54,6 +54,7 @@ class AbstractRelations(SharedMemoryModel):
     value = property(__value_get, __value_set, __value_del)
 
     class Meta:
+        abstract = True
         unique_together = (('db_from_obj', 'db_to_obj', 'db_kind'),)
 
 
@@ -85,15 +86,11 @@ class ObjectNamespace(AbstractNamespace):
         unique_together = (('db_namespace', 'db_object'), ('db_namespace', 'db_iname'))
 
 
-class CharacterBridge(SharedMemoryModel):
+class ScriptMeta(SharedMemoryModel):
     """
-    A Django Model for storing data particular to Player Characters. Mostly a unique namespace enforce.
-    It also tracks which Account a character belongs to.
+    Not all scripts will have these - just Identities for the most part. Maybe a few others.
     """
-    db_script = models.OneToOneField('scripts.ScriptDB', related_name='character_bridge', primary_key=True,
-                                     on_delete=models.CASCADE)
-    db_account = models.ForeignKey('accounts.AccountDB', related_name='owned_characters', on_delete=models.PROTECT)
-
-    class Meta:
-        verbose_name = 'PlayerCharacter'
-        verbose_name_plural = 'PlayerCharacters'
+    db_script = models.OneToOneField('scripts.ScriptDB', related_name='meta_data', on_delete=models.CASCADE,
+                                     primary_key=True)
+    db_account_owner = models.ForeignKey('accounts.AccountDB', related_name='owned_scripts', on_delete=models.PROTECT)
+    db_owner = models.ForeignKey('scripts.ScriptDB', related_name='owned_scripts', on_delete=models.PROTECT)
