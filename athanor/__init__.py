@@ -111,12 +111,12 @@ def init_settings(settings):
     ######################################################################
     # Game Data System
     ######################################################################
-    settings.CONTROLLERS['gamedata'] = {
-        'class': 'athanor.controllers.gamedata.AthanorGameDataController',
-        }
+    #settings.CONTROLLERS['gamedata'] = {
+    #    'class': 'athanor.controllers.gamedata.AthanorGameDataController',
+    #    }
 
     ######################################################################
-    # Session Options
+    # Connection Options
     ######################################################################
     # Command set used on the logged-in session
     settings.CMDSET_SESSION = "athanor.cmdsets.session.AthanorSessionCmdSet"

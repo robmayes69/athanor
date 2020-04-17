@@ -19,8 +19,8 @@ class _AthanorBaseObject:
     General mixin applied to all types of things.
 
     Events Triggered:
-        object_puppet (session): Fired whenever a Session puppets this object.
-        object_disconnect (session): Triggered whenever a Session disconnects from this account.
+        object_puppet (session): Fired whenever a Connection puppets this object.
+        object_disconnect (session): Triggered whenever a Connection disconnects from this account.
         object_online (session): Fired whenever an account comes online from being completely offline.
         object_offline (session): Triggered when an account's final session closes.
     """

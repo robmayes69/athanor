@@ -247,7 +247,7 @@ class CmdHandler:
         part of yielding from a Command's `func`.
 
         Args:
-            caller (Character, Account or Session): the caller.
+            caller (Character, Account or Connection): the caller.
             prompt (str): The sent prompt.
             result (str): The unprocessed answer.
             cmd (Command): The command itself.
@@ -316,13 +316,13 @@ class CmdHandler:
         Gather all relevant cmdsets and merge them.
 
         Args:
-            caller (Session, Account or Object): The entity executing the command. Which
+            caller (Connection, Account or Object): The entity executing the command. Which
                 type of object this is depends on the current game state; for example
-                when the user is not logged in, this will be a Session, when being OOC
+                when the user is not logged in, this will be a Connection, when being OOC
                 it will be an Account and when puppeting an object this will (often) be
                 a Character Object. In the end it depends on where the cmdset is stored.
             ordered_objects (list): A list of objects that have a CmdSetHandler as .cmdset
-                and implement the CmdSetHandler API. This will generally be [Session, Account,
+                and implement the CmdSetHandler API. This will generally be [Connection, Account,
                 PuppetObject] as explained in caller. Order isn't generally important for
                 merging, but is preserved from CmdHandler.execute()
             raw_string (str): The input string. This is only used for error reporting.
@@ -335,7 +335,7 @@ class CmdHandler:
         Notes:
             The cdmsets are merged in order or generality, so that the
             Object's cmdset is merged last (and will thus take precedence
-            over same-named and same-prio commands on Account and Session).
+            over same-named and same-prio commands on Account and Connection).
 
         """
         try:
@@ -402,7 +402,7 @@ class CmdHandler:
         command or one of the system commands.
 
         Args:
-            caller (cmdobj): A Session, Account, Puppet, etc....
+            caller (cmdobj): A Connection, Account, Puppet, etc....
             cmd (Command): Command object
             cmdname (str): Name of command
             args (str): extra text entered after the identified command
@@ -410,7 +410,7 @@ class CmdHandler:
                 prefix-stripping (if no prefix-stripping, this is the same
                 as cmdname).
             cmdset (CmdSet): Command sert the command belongs to (if any)..
-            session (Session): Session of caller (if any).
+            session (Connection): Connection of caller (if any).
             account (Account): Account of caller (if any).
 
         Returns:
@@ -509,7 +509,7 @@ class CmdHandler:
     def error_cmdobjects(self, cmdobjects):
         """
         Returns which object shall have errors reported to it during command processing
-        This is generally the 'deepest' in a stack of connections. Session->Account->Object.
+        This is generally the 'deepest' in a stack of connections. Connection->Account->Object.
 
         Args:
             cmdobjects (list): The ordered list of cmdobjects generated in .execute().
@@ -531,7 +531,7 @@ class CmdHandler:
         This is the main mechanism that handles any string sent to the engine.
 
         Args:
-            caller (Session, Account or Object): Object from which this
+            caller (Connection, Account or Object): Object from which this
                 command was called. which this was called from.  What this is
                 depends on the game state.
             cmdobjects (dict): The Keys are string-names of the 'object types' of all
@@ -541,7 +541,7 @@ class CmdHandler:
             _testing (bool, optional): Used for debug purposes and decides if we
                 should actually execute the command or not. If True, the
                 command instance will be returned.
-            session (Session, optional): Relevant if callertype is "account" - the session will help
+            session (Connection, optional): Relevant if callertype is "account" - the session will help
                 retrieve the correct cmdsets from puppeted objects.
             cmdobj (Command, optional): If given a command instance, this will be executed using
                 `called_by` as the caller, `raw_string` representing its arguments and (optionally)
@@ -568,8 +568,8 @@ class CmdHandler:
 
         cmdobjects = self.get_cmdobjects(session)
 
-        # The first element in this list will probably be a ServerSession. The last, in default Evennia,
-        # would be a Session, Account, or Puppet. The 'last' is used for Error reporting, to preserve
+        # The first element in this list will probably be a ServerConnection. The last, in default Evennia,
+        # would be a Connection, Account, or Puppet. The 'last' is used for Error reporting, to preserve
         # character mirroring.
         ordered_objects = self.sort_cmdobjects(cmdobjects)
 

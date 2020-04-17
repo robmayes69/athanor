@@ -46,7 +46,7 @@ class AthanorMenu(EvMenu):
 
         Returns:
             client width (int or None): The width (in characters) of the client window. None
-                if this command is run without a Session (such as by an NPC).
+                if this command is run without a Connection (such as by an NPC).
 
         """
         if self._session:

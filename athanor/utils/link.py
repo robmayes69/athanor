@@ -38,10 +38,10 @@ class EntitySessionHandler:
     def add(self, session, force=False, sync=False, **kwargs):
         """
         Add session to handler. Do not call this directly - it is meant to be called from
-        ServerSession.link(). If this is called directly, ServerSession will not set import attributes.
+        ServerConnection.link(). If this is called directly, ServerConnection will not set import attributes.
 
         Args:
-            session (Session or int): Session or session id to add.
+            session (Connection or int): Connection or session id to add.
             force (bool): Don't stop for anything. Mainly used for Unexpected Disconnects
             sync (bool):
 
@@ -50,11 +50,11 @@ class EntitySessionHandler:
 
         Notes:
             We will only add a session/sessid if this actually also exists
-            in the core sessionhandler.
+            in the core connectionhandler.
         """
         try:
             if session in self._sessions:
-                raise ValueError("Session is already linked to this entity!")
+                raise ValueError("Connection is already linked to this entity!")
             self.validate_link_request(self, sync, **kwargs)
         except ValueError as e:
             session.msg(e)
@@ -70,10 +70,10 @@ class EntitySessionHandler:
 
     def remove(self, session, force=False, reason=None, **kwargs):
         """
-        Remove session from handler. As with add(), it must be called by ServerSession.unlink().
+        Remove session from handler. As with add(), it must be called by ServerConnection.unlink().
 
         Args:
-            session (Session or int): Session or session id to remove.
+            session (Connection or int): Connection or session id to remove.
             force (bool): Don't stop for anything. Mainly used for Unexpected Disconnects
             reason (str or None): A reason that might be displayed down the chain.
         """
@@ -103,10 +103,10 @@ class EntitySessionHandler:
 
     def validate_link_request(self, session, force=False, sync=False, **kwargs):
         """
-        This is called to check if a Session should be allowed to link this entity.
+        This is called to check if a Connection should be allowed to link this entity.
 
         Args:
-            session (ServerSession): The Session in question.
+            session (ServerConnection): The Connection in question.
             force (bool): Bypass most checks for some reason? Usually admin overrides.
             sync (bool): Whether this is operating in sync-after-reload mode.
                 In general, nothing should stop it if this is true.
@@ -122,7 +122,7 @@ class EntitySessionHandler:
         off other Sessions, whatever it needs to do.
 
         Args:
-            session (ServerSession): The Session in question.
+            session (ServerConnection): The Connection in question.
             force (bool): Bypass most checks for some reason? Usually admin overrides.
             sync (bool): Whether this is operating in sync-after-reload mode.
                 In general, nothing should stop it if this is true.
@@ -131,9 +131,9 @@ class EntitySessionHandler:
 
     def at_link_session(self, session, force=False, sync=False, **kwargs):
         """"
-        Sets up our Session connection.
+        Sets up our Connection connection.
         Args:
-            session (ServerSession): The Session in question.
+            session (ServerConnection): The Connection in question.
             force (bool): Bypass most checks for some reason? Usually admin overrides.
             sync (bool): Whether this is operating in sync-after-reload mode.
                 In general, nothing should stop it if this is true.
@@ -145,14 +145,14 @@ class EntitySessionHandler:
         Called just after puppeting has been completed and all
         Account<->Object links have been established.
         Args:
-            session (ServerSession): The Session in question.
+            session (ServerConnection): The Connection in question.
             force (bool): Bypass most checks for some reason? Usually admin overrides.
             sync (bool): Whether this is operating in sync-after-reload mode.
                 In general, nothing should stop it if this is true.
         Note:
             You can use `self.account` and `self.sessions.get()` to get
             account and sessions at this point; the last entry in the
-            list from `self.sessions.get()` is the latest Session
+            list from `self.sessions.get()` is the latest Connection
             puppeting this Object.
         """
         raise NotImplementedError()
@@ -162,7 +162,7 @@ class EntitySessionHandler:
         Validates an unlink. This can halt an unlink for whatever reason.
 
         Args:
-            session (ServerSession): The session that will be leaving us.
+            session (ServerConnection): The session that will be leaving us.
             force (bool): Don't stop for anything. Mainly used for Unexpected Disconnects
             reason (str or None): A reason that might be displayed down the chain.
 
@@ -182,7 +182,7 @@ class EntitySessionHandler:
         Note:
             You can use `self.account` and `self.sessions.get()` to get
             account and sessions at this point; the last entry in the
-            list from `self.sessions.get()` is the latest Session
+            list from `self.sessions.get()` is the latest Connection
             puppeting this Object.
         """
         raise NotImplementedError()
@@ -192,7 +192,7 @@ class EntitySessionHandler:
         That's all folks. Disconnect session from this object.
 
         Args:
-            session (ServerSession): The session that will be leaving us.
+            session (ServerConnection): The session that will be leaving us.
             force (bool): Don't stop for anything. Mainly used for Unexpected Disconnects
             reason (str or None): A reason that might be displayed down the chain.
         """
@@ -205,7 +205,7 @@ class EntitySessionHandler:
         Args:
             account (Account): The account object that just disconnected
                 from this object.
-            session (Session): Session id controlling the connection that
+            session (Connection): Connection id controlling the connection that
                 just disconnected.
             **kwargs (dict): Arbitrary, optional arguments for users
                 overriding the call (unused by default).
@@ -224,7 +224,7 @@ class AccountSessionHandler(EntitySessionHandler):
         existing = self.all()
         if settings.MULTISESSION_MODE == 0:
             # disconnect all previous sessions.
-            # session.sessionhandler.disconnect_duplicate_sessions(session)
+            # session.connectionhandler.disconnect_duplicate_sessions(session)
             pass  # I will make this work later
 
     def at_link_session(self, session, force=False, sync=False, **kwargs):

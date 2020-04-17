@@ -46,6 +46,30 @@ class AthanorIdentityScript(AthanorScript, HasOptions):
     _namespace = None
     _name_standards = "Avoid double spaces and special characters."
     _re_name = re.compile(r"(?i)^([A-Z]|[0-9]|\.|-|')+( ([A-Z]|[0-9]|\.|-|')+)*$")
+    _cmdset_types = []
+
+    @property
+    def cmdset_storage(self):
+        return self.attributes.get(key="cmdset_storage", category="system", default=settings.CMDSET_CHARACTER)
+
+    def cmd(self):
+        raise NotImplementedError()
+
+    @cmdset_storage.setter
+    def cmdset_storage(self, value):
+        self.attributes.add(key="cmdset_storage", category="system", value=value)
+
+    def at_cmdset_get(self, **kwargs):
+        """
+        Load Athanor CmdSets from settings.CMDSETs. Since an object miiiiight be more than one thing....
+        """
+        if self.ndb._cmdsets_loaded:
+            return
+        for cmdset_type in self._cmdset_types:
+            for cmdset in settings.CMDSETS.get(cmdset_type):
+                if not self.cmdset.has(cmdset):
+                    self.cmdset.add(cmdset)
+        self.ndb._cmdsets_loaded = True
 
     @classmethod
     def _validate_identity_name(cls, name, namespace=None, exclude=None):

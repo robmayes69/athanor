@@ -3,7 +3,7 @@ from collections import defaultdict
 
 from django.conf import settings
 
-from evennia.utils.utils import class_from_module, make_iter, time_format, datetime_format
+from evennia.utils.utils import class_from_module, make_iter, time_format
 from evennia.utils.logger import log_trace
 from evennia.utils.search import search_account
 
@@ -13,22 +13,19 @@ from athanor.messages import account as amsg
 from athanor.utils.text import partial_match, iter_to_string
 from athanor.utils.time import utcnow, duration_from_string
 
-MIXINS = [class_from_module(mixin) for mixin in settings.CONTROLLER_MIXINS["ACCOUNT"]]
-MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
-
-class AthanorAccountController(*MIXINS, AthanorController):
+class AthanorAccountController(AthanorController):
     system_name = 'ACCOUNTS'
 
     def __init__(self, key, manager):
-        AthanorController.__init__(self, key, manager)
+        super().__init__(key, manager)
         self.account_typeclass = None
         self.id_map = dict()
         self.name_map = dict()
         self.roles = dict()
         self.reg_names = None
         self.permissions = defaultdict(set)
-    
+
     def do_load(self):
         try:
             self.account_typeclass = class_from_module(settings.BASE_ACCOUNT_TYPECLASS,
@@ -55,7 +52,7 @@ class AthanorAccountController(*MIXINS, AthanorController):
             if acc.is_superuser:
                 self.permissions["_super"].add(acc)
 
-    def create_account(self, session, username, email, password, login_screen=False, **kwargs):
+    def create_account(self, session, username, email, password, typeclass=None, login_screen=False, **kwargs):
         enactor = None
         if not login_screen:
             if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_create)"):
@@ -66,7 +63,9 @@ class AthanorAccountController(*MIXINS, AthanorController):
             raise ValueError("An Account must have an email address!")
         if not password:
             raise ValueError("An Account must have a password!")
-        new_account = self.account_typeclass.create_account(username=username, email=email, password=password,
+        if typeclass is None:
+            typeclass = self.account_typeclass
+        new_account = typeclass.create_account(username=username, email=email, password=password,
                                                                 session=session, ip=session.address)
         self.id_map[new_account.id] = new_account
         self.name_map[new_account.username.upper()] = new_account
@@ -265,7 +264,7 @@ class AthanorAccountController(*MIXINS, AthanorController):
         else:
             self.permissions["_super"].remove(account)
         return reverse
-    
+
     def access_account(self, session, account):
         if not (enactor := session.get_account()) or not enactor.check_lock("pperm(Admin)"):
             raise ValueError("Permission denied.")

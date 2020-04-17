@@ -5,17 +5,36 @@ from evennia.utils.dbserialize import to_pickle, from_pickle
 from evennia.utils.picklefield import PickledObjectField
 
 
+class Pluginspace(SharedMemoryModel):
+    """
+    This model holds database references to all of the Athanor Plugins that have ever been
+    installed, in case data must be removed.
+    """
+    # The name is something like 'athanor' or 'athanor_bbs'. It is an unchanging identifier which
+    # uniquely signifies this plugin across all of its versions. It must never change, once established,
+    # without a careful migration.
+    db_name = models.CharField(max_length=255, null=False, blank=False, unique=True)
+
+    # The Python Path to the plugin.
+    db_path = models.CharField(max_length=255, null=False, blank=False)
+
+    # The current version of the Plugin.
+    db_version = models.CharField(max_length=255, null=False, blank=False)
+
+
 class HasNames(SharedMemoryModel):
+    """
+    Does a thing have a name? Does it need to be colored? Would it be great if
+    that it was perhaps case-insensitively indexed? This is a good start towards
+    that.
+    """
+    # Store the plain text version of a name in this field.
     db_name = models.CharField(max_length=255, null=False, blank=False)
+    # Store the version with Evennia-style ANSI markup in here.
     db_cname = models.CharField(max_length=255, null=False, blank=False)
+    # Store lowercase here. SQLite3 can't case-insensitively collate without
+    # hoop-jumping so we do this instead.
     db_iname = models.CharField(max_length=255, null=False, blank=False)
-
-    class Meta:
-        abstract = True
-
-
-class AbstractNamespace(HasNames):
-    db_namespace = models.CharField(max_length=255, null=False, blank=False)
 
     class Meta:
         abstract = True
@@ -68,22 +87,30 @@ class ObjectRelations(AbstractRelations):
     db_to_obj = models.ForeignKey('objects.ObjectDB', related_name='relations_from', on_delete=models.CASCADE)
 
 
-class ScriptNamespace(AbstractNamespace):
+class Namespace(SharedMemoryModel):
+    db_name = models.CharField(max_length=255, null=False, blank=False, unique=True)
+
+
+class ScriptNamespace(HasNames):
+    db_plugin = models.ForeignKey(Pluginspace, related_name='script_names', on_delete=models.PROTECT)
+    db_namespace = models.ForeignKey(Namespace, related_name='script_names', on_delete=models.PROTECT)
     db_script = models.ForeignKey('scripts.ScriptDB', related_name='namespaces', on_delete=models.CASCADE)
 
     class Meta:
         verbose_name = 'ScriptNamespace'
         verbose_name_plural = 'ScriptNamespaces'
-        unique_together = (('db_namespace', 'db_script'), ('db_namespace', 'db_iname'))
+        unique_together = (('db_plugin', 'db_namespace', 'db_script'), ('db_plugin', 'db_namespace', 'db_iname'))
 
 
-class ObjectNamespace(AbstractNamespace):
+class ObjectNamespace(HasNames):
+    db_plugin = models.ForeignKey(Pluginspace, related_name='object_names', on_delete=models.PROTECT)
+    db_namespace = models.ForeignKey(Namespace, related_name='object_names', on_delete=models.PROTECT)
     db_object = models.ForeignKey('objects.ObjectDB', related_name='namespaces', on_delete=models.CASCADE)
 
     class Meta:
         verbose_name = 'ObjectNamespace'
         verbose_name_plural = 'ObjectNamespace'
-        unique_together = (('db_namespace', 'db_object'), ('db_namespace', 'db_iname'))
+        unique_together = (('db_plugin', 'db_namespace', 'db_object'), ('db_plugin', 'db_namespace', 'db_iname'))
 
 
 class ScriptMeta(SharedMemoryModel):
@@ -93,4 +120,17 @@ class ScriptMeta(SharedMemoryModel):
     db_script = models.OneToOneField('scripts.ScriptDB', related_name='meta_data', on_delete=models.CASCADE,
                                      primary_key=True)
     db_account_owner = models.ForeignKey('accounts.AccountDB', related_name='owned_scripts', on_delete=models.PROTECT)
-    db_owner = models.ForeignKey('scripts.ScriptDB', related_name='owned_scripts', on_delete=models.PROTECT)
+    db_script_owner = models.ForeignKey('scripts.ScriptDB', related_name='owned_scripts', on_delete=models.PROTECT,
+                                          null=True)
+
+
+class ObjectMeta(SharedMemoryModel):
+    db_object = models.OneToOneField('objects.ObjectDB', related_name='meta_data', on_delete=models.CASCADE,
+                                     primary_key=True)
+    db_account_owner = models.ForeignKey('accounts.AccountDB', related_name='owned_objects', on_delete=models.PROTECT,
+                                         null=True)
+    db_script_owner = models.ForeignKey('scripts.ScriptDB', related_name='owned_objects', on_delete=models.PROTECT,
+                                          null=True)
+    db_object_owner = models.ForeignKey('objects.ObjectDB', related_name='owned_objects', on_delete=models.PROTECT,
+                                        null=True)
+

@@ -9,7 +9,7 @@ from athanor.commands import login
 
 class AthanorUnloggedinCmdSet(default_cmds.UnloggedinCmdSet):
     """
-    Command set available to the Session before being logged in.  This
+    Command set available to the Connection before being logged in.  This
     holds commands like creating a new account, logging in, etc.
     """
     key = "DefaultUnloggedin"

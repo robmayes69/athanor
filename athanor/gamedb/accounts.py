@@ -17,8 +17,8 @@ class AthanorAccount(HasAttributeGetCreate, EventEmitter, DefaultAccount):
     Please read Evennia's documentation for its normal API.
 
     Triggers Global Events:
-        account_connect (session): Fired whenever a Session authenticates to this account.
-        account_disconnect (session): Triggered whenever a Session disconnects from this account.
+        account_connect (session): Fired whenever a Connection authenticates to this account.
+        account_disconnect (session): Triggered whenever a Connection disconnects from this account.
         account_online (session): Fired whenever an account comes online from being completely offline.
         account_offline (session): Triggered when an account's final session closes.
     """

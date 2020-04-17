@@ -1,6 +1,6 @@
 from django.conf import settings
 
-from evennia.locks.lockhandler import LockHandler
+from evennia.evlib.locks.lockhandler import LockHandler
 from evennia.utils.utils import lazy_property
 from evennia.commands.cmdsethandler import CmdSetHandler
 from evennia.utils.optionhandler import OptionHandler

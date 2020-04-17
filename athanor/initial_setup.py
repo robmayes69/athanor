@@ -85,7 +85,7 @@ def create_objects():
     )
     # this is necessary for quelling to work correctly.
     god_account.permissions.add("Developer")
-
+    print("BOOOOOOOOO")
     conman = api.get('controller_manager')
 
     char_controller = conman.get('character')
@@ -101,7 +101,7 @@ def create_objects():
     # Creating god character works differently from base Evennia. Characters are Scripts and act
     # as the containers for objects.
 
-    # calling it with No Session so we can setup using just Account.
+    # calling it with No Connection so we can setup using just Account.
     god_character = char_controller.create_character(session=None, account=god_account,
                                                      character_name=god_account.username, no_session=True)
     god_character.db.desc = _("This is User #1.")
@@ -187,7 +187,7 @@ def reset_server():
 
     """
     ServerConfig.objects.conf("server_epoch", time.time())
-    from evennia.server.sessionhandler import SESSIONS
+    from evennia.server.connectionhandler import SESSIONS
 
     logger.log_info("Initial setup complete. Restarting Server once.")
     SESSIONS.portal_reset_server()

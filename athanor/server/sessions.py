@@ -1,6 +1,6 @@
 from django.conf import settings
 
-from evennia.server.serversession import ServerSession
+from evennia.server.serverconnection import ServerConnection
 from evennia.utils.utils import lazy_property
 
 import athanor
@@ -96,7 +96,7 @@ class AthanorSession(ServerSession, EventEmitter):
 
     def at_disconnect(self, reason=None):
         """
-        Hook called by sessionhandler when disconnecting this session.
+        Hook called by connectionhandler when disconnecting this session.
         """
         # Gonna have to unlink everything... in reverse order. Puppet first, then Account, etc.
         for kind, entity in reversed(self.linked_sort):

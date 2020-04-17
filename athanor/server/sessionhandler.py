@@ -1,10 +1,10 @@
 from django.conf import settings
-from evennia.server.sessionhandler import ServerSessionHandler
+from evennia.server.connectionhandler import ServerConnectionHandler
 from evennia.utils.utils import class_from_module, delay
 from evennia.server.portal import amp
 
 
-class AthanorServerSessionHandler(ServerSessionHandler):
+class AthanorServerSessionHandler(ServerConnectionHandler):
     _server_session_class = class_from_module(settings.SERVER_SESSION_CLASS)
 
     # AMP communication methods
@@ -24,7 +24,7 @@ class AthanorServerSessionHandler(ServerSessionHandler):
         sess = self._server_session_class(self)
         sess.load_sync_data(portalsessiondata)
 
-        # Register the session to SessionHandler.
+        # Register the session to ConnectionHandler.
         self[sess.sessid] = sess
 
         # Ready the session for use, setting up its previous state as
@@ -42,8 +42,8 @@ class AthanorServerSessionHandler(ServerSessionHandler):
         the session to be logged in one way or another.
 
         Args:
-            session (Session): The Session to authenticate.
-            account (Account): The Account identified as associated with this Session.
+            session (Connection): The Connection to authenticate.
+            account (Account): The Account identified as associated with this Connection.
             force (bool): Login also if the session thinks it's already logged in
                 (this can happen for auto-authenticating protocols)
             testmode (bool, optional): This is used by unittesting for
@@ -67,7 +67,7 @@ class AthanorServerSessionHandler(ServerSessionHandler):
         of this fact.
 
         Args:
-            session (Session): The Session to disconnect.
+            session (Connection): The Connection to disconnect.
             reason (str, optional): A motivation for the disconnect.
             sync_portal (bool, optional): Sync the disconnect to
                 Portal side. This should be done unless this was
@@ -79,7 +79,7 @@ class AthanorServerSessionHandler(ServerSessionHandler):
             return
         sessid = session.sessid
 
-        # Tell Session to stop everything, unlink all entities, and
+        # Tell Connection to stop everything, unlink all entities, and
         # say goodbye.
         session.at_disconnect(reason=reason)
 
