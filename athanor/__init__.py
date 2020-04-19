@@ -16,12 +16,35 @@ LOADED = False
 
 
 def _init():
+
+    pspace_dict = dict()
+    def get_or_create_pspace(pspace):
+        if pspace in pspace_dict:
+            return pspace_dict[pspace]
+        model, created = Pluginspace.objects.get_or_create(db_name=pspace)
+        if created:
+            model.save()
+        pspace_dict[pspace] = model
+        return model
+
     global LOADED, _API_STORAGE
     if LOADED:
         return
 
     from django.conf import settings
     from evennia.utils.utils import class_from_module
+
+    from athanor.models import Pluginspace, Namespace
+
+    for plugin in settings.ATHANOR_PLUGINS.keys():
+        get_or_create_pspace(plugin)
+
+    for pspace_name, namespaces in settings.NAMESPACES.items():
+        pspace = get_or_create_pspace(pspace_name)
+        for name in namespaces:
+            nspace, created = Namespace.objects.get_or_create(db_pluginspace=pspace, db_name=name)
+            if created:
+                nspace.save()
 
     styler_class = class_from_module(settings.STYLER_CLASS)
     _API_STORAGE['styler'] = styler_class
@@ -92,6 +115,8 @@ def init_settings(settings):
     settings.LOCK_FUNC_MODULES = list(settings.LOCK_FUNC_MODULES)
     settings.LOCK_FUNC_MODULES.append("athanor.lockfuncs")
 
+    settings.INPUT_FUNC_MODULES.append('athanor.inputfuncs')
+
     ######################################################################
     # Database Options
     ######################################################################
@@ -104,8 +129,8 @@ def init_settings(settings):
     # Controllers
     ######################################################################
 
-    settings.CONTROLLER_MANAGER_CLASS = "athanor.controllers.base.ControllerManager"
-    settings.BASE_CONTROLLER_CLASS = "athanor.controlers.base.AthanorController"
+    settings.CONTROLLER_MANAGER_CLASS = "athanor.utils.controllers.ControllerManager"
+    settings.BASE_CONTROLLER_CLASS = "athanor.utils.controllers.AthanorController"
     settings.CONTROLLERS = dict()
 
     ######################################################################
@@ -122,8 +147,10 @@ def init_settings(settings):
     settings.CMDSET_SESSION = "athanor.cmdsets.session.AthanorSessionCmdSet"
 
     # Command set used on session before account has logged in
-    settings.CMDSET_UNLOGGEDIN = "athanor.cmdsets.login.AthanorUnloggedinCmdSet"
-    settings.SERVER_SESSION_CLASS = "athanor.gamedb.sessions.AthanorSession"
+    settings.CMDSET_LOGINSCREEN = "athanor.serversessions.cmdsets.LoginCmdSet"
+    settings.CMDSET_SELECTSCREEN = 'athanor.serversessions.cmdsets.CharacterSelectScreenCmdSet'
+    settings.SERVER_SESSION_CLASS = "athanor.serversessions.classes.AthanorSession"
+    settings.SERVER_SESSION_HANDLER_CLASS = 'athanor.utils.serversessionhandler.AthanorServerSessionHandler'
     settings.EXAMINE_HOOKS['session'] = []
 
     settings.SESSION_SYNC_ATTRS = list(settings.SESSION_SYNC_ATTRS)
@@ -133,13 +160,14 @@ def init_settings(settings):
     # Account Options
     ######################################################################
     settings.CONTROLLERS['account'] = {
-        'class': 'athanor.controllers.account.AthanorAccountController',
+        'class': 'athanor.accounts.controller.AthanorAccountController',
+        'backend': 'athanor.accounts.controller.AthanorAccountControllerBackend'
     }
 
-    settings.BASE_ACCOUNT_TYPECLASS = "athanor.gamedb.accounts.AthanorAccount"
+    settings.BASE_ACCOUNT_TYPECLASS = "athanor.accounts.typeclasses.AthanorAccount"
 
     # Command set for accounts with or without a character (ooc)
-    settings.CMDSET_ACCOUNT = "athanor.cmdsets.account.AthanorAccountCmdSet"
+    settings.CMDSET_ACCOUNT = "athanor.accounts.cmdsets.AccountCmdSet"
 
     # Default options for display rules.
     settings.OPTIONS_ACCOUNT_DEFAULT['sys_msg_border'] = ('For -=<>=-', 'Color', 'm')
@@ -157,27 +185,50 @@ def init_settings(settings):
     settings.EXAMINE_HOOKS['account'] = ['account', 'access', 'commands', 'tags', 'attributes', 'puppets']
 
     ######################################################################
+    # Identity Options (ScriptDB)
+    ######################################################################
+    # The namespaces dict contains a set of namespaces that should exist in the database.
+    # The key is the pluginspace it will exist in. This will be integrity
+    # checked every reload.
+    settings.NAMESPACES = defaultdict(set)
+
+    settings.NAMESPACES['athanor'].add('playercharacters')
+    settings.NAMESPACES['athanor'].add('playsessions')
+
+    ######################################################################
     # Player Character (ScriptDB)
     ######################################################################
-    settings.CONTROLLERS['character'] = {
-        'class': 'athanor.controllers.character.AthanorCharacterController',
+    settings.CONTROLLERS['playercharacter'] = {
+        'class': 'athanor.playercharacters.controller.AthanorPlayerCharacterController',
+        'backend': 'athanor.playercharacters.controller.AthanorPlayerCharacterControllerBackend'
     }
+
+    settings.BASE_PLAYER_CHARACTER_TYPECLASS = "athanor.playercharacters.typeclasses.AthanorPlayerCharacter"
+    settings.CMDSET_PLAYER_CHARACTER = "athanor.playercharacters.cmdsets.AthanorPlayerCharacterCmdSet"
 
     # These restrict a player's ability to create/modify their own characters.
     # If True, only staff can perform these operations (if allowed by the privileges system)
-
-    settings.BASE_CHARACTER_TYPECLASS = "athanor.gamedb.characters.AthanorPlayerCharacter"
-    settings.CMDSET_CHARACTER = "athanor.cmdsets.character.AthanorCharacterCmdSet"
     settings.RESTRICTED_CHARACTER_CREATION = False
     settings.RESTRICTED_CHARACTER_DELETION = False
     settings.RESTRICTED_CHARACTER_RENAME = False
 
     ######################################################################
+    # PlaySession (ScriptDB)
+    ######################################################################
+    settings.CONTROLLERS['playsession'] = {
+        'class': 'athanor.playsessions.controller.AthanorPlaySessionController',
+        'backend': 'athanor.playsessions.controller.AthanorPlaySessionControllerBackend'
+    }
+
+    settings.BASE_PLAYSESSION_TYPECLASS = "athanor.playsessions.typeclasses.AthanorPlaySession"
+    settings.CMDSET_PLAYSESSION = "athanor.playsessions.cmdsets.AthanorPlaySessionCmdSet"
+
+    ######################################################################
     # Avatar Settings (ObjectDB)
     ######################################################################
 
-    settings.CMDSET_AVATAR = "athanor.cmdsets.character.AthanorAvatarCmdSet"
-    settings.BASE_AVATAR_TYPECLASS = "athanor.gamedb.objects.AthanorAvatar"
+    settings.CMDSET_AVATAR = "athanor.grid.cmdsets.AthanorAvatarCmdSet"
+    settings.BASE_AVATAR_TYPECLASS = "athanor.grid.typeclasses.AthanorAvatar"
 
     settings.EXAMINE_HOOKS['avatar'] = ['character', 'puppeteer', 'access', 'commands', 'scripts', 'tags', 'attributes', 'contents']
 
@@ -190,9 +241,9 @@ def init_settings(settings):
     # Grid / Building Settings
     ######################################################################
 
-    settings.BASE_ROOM_TYPECLASS = "athanor.gamedb.objects.AthanorRoom"
-    settings.BASE_EXIT_TYPECLASS = "athanor.gamedb.objects.AthanorExit"
-    settings.BASE_OBJECT_TYPECLASS = "athanor.gamedb.objects.AthanorItem"
+    settings.BASE_ROOM_TYPECLASS = "athanor.grid.typeclasses.AthanorRoom"
+    settings.BASE_EXIT_TYPECLASS = "athanor.grid.typeclasses.AthanorExit"
+    settings.BASE_OBJECT_TYPECLASS = "athanor.grid.typeclasses.AthanorItem"
 
     ######################################################################
     # Permissions
@@ -271,3 +322,5 @@ def load(settings, plugin_list):
     for plugin in settings.ATHANOR_PLUGINS_SORTED:
         if hasattr(plugin, "init_settings"):
             plugin.init_settings(settings)
+
+    settings.ATHANOR_PLUGINS = plugins_dict

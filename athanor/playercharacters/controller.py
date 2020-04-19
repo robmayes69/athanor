@@ -1,79 +1,21 @@
 import re
-from django.conf import settings
-
-from evennia.utils.utils import class_from_module
-from evennia.utils.logger import log_trace
 from evennia.utils.search import object_search
 
-from athanor.controllers.base import AthanorController
-from athanor.gamedb.characters import AthanorPlayerCharacter
+from athanor.utils.controllers import AthanorController, AthanorControllerBackend
+from athanor.playercharacters.typeclasses import AthanorPlayerCharacter
 
-from athanor.messages import character as cmsg
+from athanor.playercharacters import messages as cmsg
 
 
-class AthanorCharacterController(AthanorController):
+class AthanorPlayerCharacterController(AthanorController):
     system_name = 'CHARACTERS'
 
-    def __init__(self, key, manager):
-        AthanorController.__init__(self, key, manager)
-        self.character_typeclass = None
-        self.id_map = dict()
-        self.name_map = dict()
-        self.online = set()
-        self.on_global("character_online", self.at_character_online)
-        self.on_global("character_offline", self.at_character_offline)
-        self.reg_names = None
+    def __init__(self, key, manager, backend):
+        super().__init__(key, manager, backend)
         self.load()
 
-    def do_load(self):
-        try:
-            self.character_typeclass = class_from_module(settings.BASE_CHARACTER_TYPECLASS,
-                                                           defaultpaths=settings.TYPECLASS_PATHS)
-        except Exception:
-            log_trace()
-            self.character_typeclass = AthanorPlayerCharacter
-
-        self.update_cache()
-
-    def update_regex(self):
-        escape_names = [re.escape(name) for name in self.name_map.keys()]
-        self.reg_names = re.compile(r"(?i)\b(?P<found>%s)\b" % '|'.join(escape_names))
-
-    def at_character_online(self, sender, **kwargs):
-        self.online.add(sender)
-
-    def at_character_offline(self, sender, **kwargs):
-        self.online.remove(sender)
-
-    def update_cache(self):
-        chars = AthanorPlayerCharacter.objects.filter_family(character_bridge__db_namespace=0)
-        self.id_map = {char.id: char for char in chars}
-        self.name_map = {char.key.upper(): char for char in chars}
-        self.online = set(chars.exclude(db_account=None))
-
-    def all(self):
-        return AthanorPlayerCharacter.objects.filter_family()
-
-    def search_all(self, name, exact=False, candidates=None):
-        if candidates is None:
-            candidates = self.all()
-        return object_search(name, exact=exact, candidates=self.all())
-
-    def archived(self):
-        return self.all().filter(character_bridge__db_namespace=None)
-
-    def search_archived(self, name, exact=False):
-        return self.search_all(name, exact, candidates=self.archived())
-
     def find_character(self, character, archived=False):
-        if isinstance(character, AthanorPlayerCharacter):
-            return character
-        results = self.search_all(character) if not archived else self.search_archived(character)
-        if not results:
-            raise ValueError(f"Cannot locate character named {character}!")
-        if len(results) == 1:
-            return results[0]
-        raise ValueError(f"That matched: {results}")
+        return self.backend.find_character(character, archived=archived)
 
     find_user = find_character
 
@@ -157,3 +99,58 @@ class AthanorCharacterController(AthanorController):
             message.extend(char.render_list_section(enactor, styling))
         message.append(styling.blank_footer)
         return '\n'.join(str(l) for l in message)
+
+
+class AthanorPlayerCharacterControllerBackend(AthanorControllerBackend):
+    typeclass_defs = [
+        ('player_character_typeclass', 'BASE_PLAYER_CHARACTER_TYPECLASS', AthanorPlayerCharacter)
+    ]
+
+    def __init__(self, frontend):
+        super().__init__(frontend)
+        self.player_character_typeclass = None
+        self.id_map = dict()
+        self.name_map = dict()
+        self.online = set()
+        self.reg_names = None
+        self.load()
+
+    def do_load(self):
+        self.update_cache()
+
+    def update_regex(self):
+        escape_names = [re.escape(name) for name in self.name_map.keys()]
+        self.reg_names = re.compile(r"(?i)\b(?P<found>%s)\b" % '|'.join(escape_names))
+
+    def update_cache(self):
+        chars = AthanorPlayerCharacter.objects.filter_family()
+        self.id_map = {char.pk: char for char in chars}
+        self.name_map = {char.key.upper(): char for char in chars}
+        self.online = set(chars.exclude(db_account=None))
+
+    def all(self):
+        return AthanorPlayerCharacter.objects.filter_family()
+
+    def count(self):
+        return AthanorPlayerCharacter.objects.filter_family().count()
+
+    def find_player_character(self, character, archived=False):
+        if isinstance(character, AthanorPlayerCharacter):
+            return character
+        results = self.search_all(character) if not archived else self.search_archived(character)
+        if not results:
+            raise ValueError(f"Cannot locate character named {character}!")
+        if len(results) == 1:
+            return results[0]
+        raise ValueError(f"That matched: {results}")
+
+    def search_all(self, name, exact=False, candidates=None):
+        if candidates is None:
+            candidates = self.all()
+        return object_search(name, exact=exact, candidates=self.all())
+
+    def archived(self):
+        return self.all()
+
+    def search_archived(self, name, exact=False):
+        return self.search_all(name, exact, candidates=self.archived())

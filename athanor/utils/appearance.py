@@ -4,9 +4,34 @@ from athanor.utils.text import tabular_table
 
 
 class AppearanceHandler:
+    hooks = []
 
     def __init__(self, obj):
         self.obj = obj
+
+    def description(self, looker, styling, **kwargs):
+        message = list()
+        if (desc := self.obj.db.desc):
+            message.append(desc)
+        return message
+
+    def header(self, looker, styling, **kwargs):
+        return [styling.styled_header(self.obj.get_display_name(looker))]
+
+    def render(self, looker, **kwargs):
+        if not looker:
+            return ""
+        styling = looker.styler
+        message = list()
+        for hook in self.hooks:
+            message.extend(getattr(self, hook)(looker, styling, **kwargs))
+        message.append(styling.blank_footer)
+
+        return '\n'.join(str(l) for l in message)
+
+
+class ObjectAppearanceHandler(AppearanceHandler):
+    hooks = ['header', 'description', 'items', 'characters', 'exits']
 
     def get_exit_formatted(self, looker, **kwargs):
         aliases = self.obj.aliases.all()
@@ -15,7 +40,7 @@ class AppearanceHandler:
         display = f"{self.obj.key} to {self.obj.destination.key}"
         return f"""{alias:<6} {display}"""
 
-    def return_appearance_exits(self, looker, styling, **kwargs):
+    def exits(self, looker, styling, **kwargs):
         exits = sorted([ex for ex in self.obj.exits if ex.access(looker, "view")],
                        key=lambda ex: ex.key)
         message = list()
@@ -26,7 +51,7 @@ class AppearanceHandler:
         message.append(tabular_table(exits_formatted, field_width=37, line_length=78))
         return message
 
-    def return_appearance_characters(self, looker, styling, **kwargs):
+    def characters(self, looker, styling, **kwargs):
         users = sorted([user for user in self.obj.contents_get(content_type='mobile') if user.access(looker, "view")],
                        key=lambda user: user.get_display_name(looker))
         message = list()
@@ -39,7 +64,7 @@ class AppearanceHandler:
     def get_room_appearance(self, looker, **kwargs):
         return self.obj.get_display_name(looker, **kwargs)
 
-    def return_appearance_items(self, looker, styling, **kwargs):
+    def items(self, looker, styling, **kwargs):
         visible = (con for con in self.obj.contents_get(content_type='item') if con.access(looker, "view"))
         things = defaultdict(list)
         for con in visible:
@@ -58,30 +83,3 @@ class AppearanceHandler:
                 ]
             message.append(key)
         return message
-
-    def return_appearance_description(self, looker, styling, **kwargs):
-        message = list()
-        if (desc := self.obj.db.desc):
-            message.append(desc)
-        return message
-
-    def return_appearance_header(self, looker, styling, **kwargs):
-        return [styling.styled_header(self.obj.get_display_name(looker))]
-
-    def render(self, looker, **kwargs):
-        if not looker:
-            return ""
-        styling = looker.styler
-        message = list()
-        message.extend(self.return_appearance_header(looker, styling, **kwargs))
-        message.extend(self.return_appearance_description(looker, styling, **kwargs))
-        message.extend(self.return_appearance_items(looker, styling, **kwargs))
-        message.extend(self.return_appearance_characters(looker, styling, **kwargs))
-        message.extend(self.return_appearance_exits(looker, styling, **kwargs))
-        message.append(styling.blank_footer)
-
-        return '\n'.join(str(l) for l in message)
-
-
-class PuppetAppearanceHandler(AppearanceHandler):
-    pass

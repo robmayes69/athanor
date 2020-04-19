@@ -1,8 +1,6 @@
-import time
-from datetime import timezone
-from django.conf import settings
-
-from evennia import MONITOR_HANDLER
+"""
+General base class for linking Sessions to anything.
+"""
 
 
 class EntitySessionHandler:
@@ -55,14 +53,14 @@ class EntitySessionHandler:
         try:
             if session in self._sessions:
                 raise ValueError("Connection is already linked to this entity!")
-            self.validate_link_request(self, sync, **kwargs)
+            self.validate_link_request(sync, **kwargs)
         except ValueError as e:
             session.msg(e)
             return False
-        self.at_before_link_session(self, session, force=force, sync=sync, **kwargs)
+        self.at_before_link_session(session, force=force, sync=sync, **kwargs)
         self._sessions.append(session)
-        self.at_link_session(self, session, force=force, sync=sync, **kwargs)
-        self.at_after_link_session(self, session, force=force, sync=sync, **kwargs)
+        self.at_link_session(session, force=force, sync=sync, **kwargs)
+        self.at_after_link_session(session, force=force, sync=sync, **kwargs)
 
         # I really don't know why, but ObjectDB loves to save stuff.
         self.save()
@@ -80,14 +78,14 @@ class EntitySessionHandler:
         try:
             if session not in self._sessions:
                 raise ValueError("Cannot remove session: it is not linked to this object.")
-            self.validate_unlink_request(self, force=force, reason=reason, **kwargs)
+            self.validate_unlink_request(force=force, reason=reason, **kwargs)
         except ValueError as e:
             self.msg(e)
             return
-        self.at_before_unlink_session(self, force=force, reason=reason, **kwargs)
+        self.at_before_unlink_session(force=force, reason=reason, **kwargs)
         self._sessions.remove(session)
-        self.at_unlink_session(self, force=force, reason=reason, **kwargs)
-        self.at_after_unlink_session(self, force=force, reason=reason, **kwargs)
+        self.at_unlink_session(force=force, reason=reason, **kwargs)
+        self.at_after_unlink_session(force=force, reason=reason, **kwargs)
 
         # I really don't know why, but ObjectDB loves to save stuff.
         self.save()
@@ -213,71 +211,6 @@ class EntitySessionHandler:
         raise NotImplementedError()
 
 
-class AccountSessionHandler(EntitySessionHandler):
-
-    def validate_link_request(self, session, force=False, sync=False, **kwargs):
-        """
-        Nothing really to do here. Accounts are validated through their password. That's .authenticate().
-        """
-
-    def at_before_link_session(self, session, force=False, sync=False, **kwargs):
-        existing = self.all()
-        if settings.MULTISESSION_MODE == 0:
-            # disconnect all previous sessions.
-            # session.connectionhandler.disconnect_duplicate_sessions(session)
-            pass  # I will make this work later
-
-    def at_link_session(self, session, force=False, sync=False, **kwargs):
-        session.logged_in = True
-        session.uname = self.obj.name
-        session.uid = self.obj.pk
-        session.conn_time = time.time()
-        session.cmdset.add(settings.CMDSET_SESSION, permanent=True, default_cmdset=True)
-
-    def at_after_link_session(self, session, force=False, sync=False, **kwargs):
-        self.obj.at_init()
-        # Check if this is the first time the *account* logs in
-        if self.obj.db.FIRST_LOGIN:
-            self.obj.at_first_login()
-            del self.obj.db.FIRST_LOGIN
-        self.obj.last_login = timezone.now()
-        self.obj.save()
-        nsess = self.count()
-        session.log(f"Logged in: {self} {session.address} ({nsess} session(s) total)")
-        if nsess < 2:
-            pass
-
-        #    SIGNAL_ACCOUNT_POST_FIRST_LOGIN.send(sender=self, session=session)
-        #  SIGNAL_ACCOUNT_POST_LOGIN.send(sender=self, session=session)
-
-    def validate_unlink_request(self, session, force=False, reason=None, **kwargs):
-        pass
-
-    def at_before_unlink_session(self, session, force=False, reason=None, **kwargs):
-        pass
-
-    def at_unlink_session(self, session, force=False, reason=None, **kwargs):
-        session.logged_in = False
-        session.uid = None
-        session.uname = None
-        session.cmdset.add(settings.CMDSET_UNLOGGEDIN, permanent=True, default_cmdset=True)
-
-    def at_after_unlink_session(self, session, force=False, reason=None, **kwargs):
-        if not (remaining := self.all()):
-            self.obj.attributes.add(key="last_active_datetime", category="system", value=timezone.now())
-            self.obj.is_connected = False
-        MONITOR_HANDLER.remove(self.obj, "_saved_webclient_options", session.sessid)
-
-        session.log(f"Logged out: {self.obj} {session.address} ({len(remaining)} sessions(s) remaining)"
-                    f"{reason if reason else ''}")
-
-        if not remaining:
-            pass
-            # SIGNAL_ACCOUNT_POST_LAST_LOGOUT.send(sender=session.account, session=session)
-        # SIGNAL_ACCOUNT_POST_LOGOUT.send(sender=session.account, session=session)
-        sessid = session.sessid
-
-
 class PuppetSessionHandler(EntitySessionHandler):
 
     def validate_link_request(self, session, force=False, sync=False, **kwargs):
@@ -335,56 +268,4 @@ class PuppetSessionHandler(EntitySessionHandler):
         pass
 
 
-class CharacterSessionHandler(EntitySessionHandler):
 
-    def validate_link_request(self, session, force=False, sync=False, **kwargs):
-        pass
-
-    def at_before_link_session_multisession(self, session, force=False, sync=False, **kwargs):
-        """
-        Multisession logic is performed here. This should not stop the link process.
-        """
-        # object already puppeted
-        # we check for whether it's the same account in a _validate_puppet_request.
-        # if we reach here, assume that it's either no account or the same account
-        if (others := self.all()):
-            # we may take over another of our sessions
-            # output messages to the affected sessions
-            if settings.MULTISESSION_MODE in (1, 3):
-                txt1 = f"Sharing |c{self.obj.name}|n with another of your sessions."
-                txt2 = f"|c{self.obj.name}|n|G is now shared from another of your sessions.|n"
-                session.msg(txt1)
-                self.obj.msg(txt2, session=others)
-            else:
-                txt1 = f"Taking over |c{self.obj.name}|n from another of your sessions."
-                txt2 = f"|c{self.obj.name}|n|R is now acted from another of your sessions.|n"
-                session.msg(txt1)
-                self.obj.msg(txt2, session=others)
-                for other in others:
-                    other.unlink('puppet', self, force=True, reason="Taken over by another session")
-
-    def at_before_link_session(self, session, force=False, sync=False, **kwargs):
-        # First, check multisession status. Kick off anyone as necessary.
-        self.at_before_link_session_multisession(session, force, sync, **kwargs)
-        # Next, call the hook for object relocation.
-        self.at_before_link_session_unstow(session, force, sync, **kwargs)
-
-    def at_link_session(self, session, force=False, sync=False, **kwargs):
-        session.pcid = self.obj.pk
-        session.pcharacter = self.obj
-
-    def at_after_link_session(self, session, force=False, sync=False, **kwargs):
-        pass
-
-    def validate_unlink_request(self, session, force=False, reason=None, **kwargs):
-        pass
-
-    def at_before_unlink_session(self, session, force=False, reason=None, **kwargs):
-        pass
-
-    def at_unlink_session(self, session, force=False, reason=None, **kwargs):
-        session.pcid = None
-        session.pcharacter = None
-
-    def at_after_unlink_session(self, session, force=False, reason=None, **kwargs):
-        pass

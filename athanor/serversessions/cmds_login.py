@@ -1,11 +1,7 @@
-import re
 from django.conf import settings
 
-from evennia.utils.utils import time_format
-
-from athanor.commands.command import AthanorCommand
-from athanor.gamedb.accounts import AthanorAccount
-from athanor.utils.time import utcnow
+from athanor.utils.command import AthanorCommand
+from athanor.accounts.typeclasses import AthanorAccount
 
 
 class CmdLoginCreateAccount(AthanorCommand):
@@ -122,32 +118,11 @@ class CmdLoginConnect(AthanorCommand):
         if not self.lhs and self.rhs:
             self.syntax_error()
 
-        # Get account class
-        Account = AthanorAccount
-
         name, password = self.lhs, self.rhs
-        account, errors = Account.authenticate(
+        account, errors = AthanorAccount.authenticate(
             username=name, password=password, ip=address, session=session
         )
         if account:
-            # check for both if the account has been banned and whether the ban is still valid.
-            # it's still valid if banned > now.
-            if (banned := account.db._banned) and banned > (now := utcnow()):
-                time_left = banned - now
-                session.msg(f"This account has been banned for: {account.db._ban_reason} until {banned.strftime('%c')}. "
-                            f"{time_format(time_left.total_seconds(), style=2)} remains. If you wish to appeal, contact staff via other means.")
-                return
-            # if there's a ban record but it's passed, may as well just delete it.
-            if banned:
-                session.msg(f"You are no longer banned for: {account.db._ban_reason}. Welcome back!")
-                del account.db._banned
-                del account.db._ban_reason
-
-            # next check for if the account is disabled.
-            if (disabled := account.db._disabled):
-                session.msg(f"This account has been indefinitely disabled for the reason: {disabled}. If you wish to appeal,"
-                            f"contact staff via other means.")
-                return
-            session.sessionhandler.login(session, account)
+            account.at_session_login(session)
         else:
             session.msg("|R%s|n" % "\n".join(errors))

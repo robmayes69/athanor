@@ -9,9 +9,8 @@ from evennia.utils.utils import lazy_property
 import athanor
 
 from athanor.utils.link import PuppetSessionHandler
-from athanor.commands.cmdhandler import PuppetCmdHandler
-from athanor.commands.cmdsethandler import PuppetCmdSetHandler
-from athanor.utils.appearance import PuppetAppearanceHandler
+from athanor.grid.handlers import AvatarCmdHandler, AvatarCmdSetHandler
+from athanor.utils.appearance import ObjectAppearanceHandler
 
 
 class _AthanorBaseObject:
@@ -35,11 +34,11 @@ class _AthanorBaseObject:
 
     @lazy_property
     def cmd(self):
-        return PuppetCmdHandler(self)
+        return AvatarCmdHandler(self)
 
     @lazy_property
     def cmdset(self):
-        return PuppetCmdSetHandler(self)
+        return AvatarCmdSetHandler(self)
 
     def at_cmdset_get(self, **kwargs):
         """
@@ -94,7 +93,7 @@ class _AthanorBaseObject:
 
     @lazy_property
     def appearance(self):
-        return PuppetAppearanceHandler(self)
+        return ObjectAppearanceHandler(self)
 
     def return_appearance(self, looker, **kwargs):
         return self.appearance.render(looker, **kwargs)

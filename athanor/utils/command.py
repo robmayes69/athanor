@@ -61,7 +61,7 @@ class AthanorCommand(MuxCommand):
 
     @property
     def controllers(self):
-        return athanor.CONTROLLER_MANAGER
+        return athanor.api().get('controller_storage')
 
     def switch_main(self):
         pass

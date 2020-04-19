@@ -332,36 +332,3 @@ class CmdCharDelete(AdministrationCommand):
     def switch_main(self):
         character = self.select_character(self.lhs)
         self.controller.delete_character(self.session, character, self.rhs, ignore_priv=True)
-
-
-class CmdCharPuppet(AdministrationCommand):
-    """
-    Enter game as one of your characters.
-
-    Usage:
-        @ic <character>
-    """
-    key = "@ic"
-    locks = "cmd:all()"
-
-    def switch_main(self):
-        character = self.select_character(self.args)
-        self.caller.puppet_object(self.session, character)
-
-
-class CmdCharUnpuppet(AdministrationCommand):
-    """
-    Have your puppeted character leave the game world. Return to the
-    account menu.
-
-    Usage:
-        @ooc
-    """
-    key = "@ooc"
-    locks = "cmd:all()"
-
-    def switch_main(self):
-        if not self.session.get_puppet():
-            raise ValueError("Can only use this while @ic!")
-        self.caller.unpuppet_object(self.session)
-        self.msg(self.caller.render_character_menu(self))

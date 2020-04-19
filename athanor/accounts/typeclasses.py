@@ -2,13 +2,15 @@ from django.conf import settings
 
 from evennia.utils.utils import lazy_property
 from evennia.accounts.accounts import DefaultAccount
+from evennia.utils.utils import time_format
 
 import athanor
 
 from athanor.utils.events import EventEmitter
-from athanor.gamedb.characters import AthanorPlayerCharacter
 from athanor.utils.mixins import HasAttributeGetCreate
-from athanor.utils.link import AccountSessionHandler
+from athanor.accounts.handlers import AccountSessionHandler, AccountCmdSetHandler
+from athanor.accounts.handlers import BanHandler, AccountCmdHandler, AccountAppearanceHandler
+from athanor.playercharacters.typeclasses import AthanorPlayerCharacter
 
 
 class AthanorAccount(HasAttributeGetCreate, EventEmitter, DefaultAccount):
@@ -26,10 +28,50 @@ class AthanorAccount(HasAttributeGetCreate, EventEmitter, DefaultAccount):
     examine_type = "account"
     examine_caller_type = "account"
     dbtype = 'AccountDB'
+    _cmd_sort = -750
+
+    @lazy_property
+    def cmdset(self):
+        return AccountCmdSetHandler(self, True)
+
+    @lazy_property
+    def cmd(self):
+        return AccountCmdHandler(self)
 
     @lazy_property
     def sessions(self):
         return AccountSessionHandler(self)
+
+    @lazy_property
+    def ban(self):
+        return BanHandler(self)
+
+    def at_session_login(self, session):
+        """
+        Is called by the unlogged-in connect command for checking whether the player should be allowed to login.
+        This should check for bans, disabled state, etc, and message the session about results.
+
+        Args:
+            session (ServerSession): The session attempting to connect.
+
+        """
+        # check for both if the account has been banned and whether the ban is still valid.
+        # it's still valid if banned > now.
+        if (bstate := self.ban.get_state()):
+            session.msg(f"This account has been banned for: {bstate['reason']} until {bstate['until'].strftime('%c')}. "
+                        f"{time_format(bstate['left'].total_seconds(), style=2)} remains. If you wish to appeal, contact staff via other means.")
+            return
+
+        # next check for if the account is disabled.
+        if (disabled := self.db._disabled):
+            session.msg(
+                f"This account has been indefinitely disabled for the reason: {disabled}. If you wish to appeal,"
+                f"contact staff via other means.")
+            return
+
+        # Did all go well? Then proceed with login and display the select screen.
+        session.sessionhandler.login(session, self)
+        session.msg(self.return_appearance(session))
 
     def set_email(self, new_email):
         """
@@ -117,60 +159,25 @@ class AthanorAccount(HasAttributeGetCreate, EventEmitter, DefaultAccount):
         return self
 
     def characters(self):
-        return AthanorPlayerCharacter.objects.filter_family(character_bridge__db_namespace=0,
-                                                            character_bridge__db_account=self)
+        return AthanorPlayerCharacter.objects.filter_family(db_account=self)
 
     @lazy_property
     def styler(self):
-        return athanor.STYLER(self)
+        return athanor.api()['styler'](self)
 
     @lazy_property
     def colorizer(self):
         return self.get_or_create_attribute('colorizer', default=dict())
 
     def at_look(self, target=None, session=None, **kwargs):
-        """
-        Displays the character menu for the Account's 'Look' command.
+        return self.return_appearance(looker=session)
 
-        Args:
-            cmd (AthanorCommand): The running command for CmdOOCLook or etc.
+    @lazy_property
+    def appearance(self):
+        return AccountAppearanceHandler(self)
 
-        Returns:
-            Display (str): What to display to the looker.
-        """
-        styling = self.styler
-        viewer = kwargs.pop('viewer', self)
-        message = list()
-        message.append(styling.styled_header(f"Account: {self.username}"))
-        message.append(f"|wEmail:|n {self.email}")
-        if (sessions := self.sessions.all()):
-            message.append(styling.styled_separator("Sessions"))
-            for sess in sessions:
-                message.append(sess.render_character_menu_line(viewer))
-        if (characters := self.characters()):
-            message.append(styling.styled_separator("Characters"))
-            for char in characters:
-                message.append(char.render_character_menu_line(viewer))
-        caller_admin = viewer.check_lock("pperm(Admin)")
-        message.append(styling.styled_separator(viewer, "Commands"))
-        if not settings.RESTRICTED_CHARACTER_CREATION or caller_admin:
-            message.append("|w@charcreate <name>|n to create a Character.")
-        if not settings.RESTRICTED_CHARACTER_DELETION or caller_admin:
-            message.append("|w@chardelete <name>=<verify name>|n to delete a character.")
-        if not settings.RESTRICTED_CHARACTER_RENAME or caller_admin:
-            message.append("|w@charrename <character>=<new name>|n to rename a character.")
-        if not settings.RESTRICTED_ACCOUNT_RENAME or caller_admin:
-            message.append("|w@username <name>|n to change your Account username.")
-        if not settings.RESTRICTED_ACCOUNT_EMAIL or caller_admin:
-            message.append("|w@email <new email>|n to change your Email")
-        if not settings.RESTRICTED_ACCOUNT_PASSWORD or caller_admin:
-            message.append("|w@password <old>=<new>|n to change your password.")
-        message.append("|w@ic <name>|n to enter the game as a Character.")
-        message.append("|w@ooc|n to return here again.")
-        message.append("|whelp|n for more information.")
-        message.append("|wQUIT|n to disconnect.")
-        message.append(styling.blank_footer)
-        return '\n'.join(str(l) for l in message)
+    def return_appearance(self, looker, **kwargs):
+        return self.appearance.render(looker, **kwargs)
 
     def check_lock(self, lock):
         return self.locks.check_lockstring(self, f"dummy:{lock}")

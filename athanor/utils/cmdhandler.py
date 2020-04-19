@@ -290,7 +290,7 @@ class CmdHandler:
         else:
             merged_current = merged_current + self.cmdobj.cmdset.current
         stack = list()
-        stack.extend(self.cmdobj.cmdset.gather())
+        stack.extend(self.cmdobj.cmdset.gather(caller, merged_current))
         if merged_stack is None:
             merged_stack = stack
         else:
@@ -339,7 +339,7 @@ class CmdHandler:
 
         """
         try:
-            current, cmdsets = None, None
+            current, cmdsets = None, list()
             for obj in ordered_objects:
                 current, cmdsets = yield obj.cmd.get_cmdsets(caller, raw_string, current, cmdsets)
 
@@ -565,7 +565,6 @@ class CmdHandler:
             default Evennia.
 
         """
-
         cmdobjects = self.get_cmdobjects(session)
 
         # The first element in this list will probably be a ServerConnection. The last, in default Evennia,
@@ -711,59 +710,5 @@ class CmdHandler:
         except Exception:
             # This catches exceptions in cmdhandler exceptions themselves
             self._msg_err(error_to, _ERROR_CMDHANDLER)
-
-
-class SessionCmdHandler(CmdHandler):
-
-    def __init__(self, cmdobj):
-        self.cmdobj = cmdobj
-        self.session = cmdobj
-
-    def get_cmdobjects(self, session=None):
-        if not session:
-            session = self.cmdobj
-        base = {
-            'session': session
-        }
-        base.update(session.linked)
-        return base
-
-
-class AccountCmdHandler(CmdHandler):
-    session = None
-
-    def get_cmdobjects(self, session=None):
-        cmdobjects = super().get_cmdobjects(session)
-        cmdobjects['account'] = self.cmdobj
-        return cmdobjects
-
-
-class CharacterCmdHandler(CmdHandler):
-    session = None
-
-    def get_cmdobjects(self, session=None):
-        cmdobjects = super().get_cmdobjects(session)
-        cmdobjects['character'] = self.cmdobj
-        if (session := cmdobjects.get('session', None)):
-            cmdobjects['account'] = session.get_account()
-            cmdobjects['puppet'] = session.get_puppet()
-        return cmdobjects
-
-
-class PuppetCmdHandler(CmdHandler):
-    session = None
-
-    def get_cmdobjects(self, session=None):
-        cmdobjects = super().get_cmdobjects(session)
-        cmdobjects['puppet'] = self.cmdobj
-        if (session := cmdobjects.get('session', None)):
-            cmdobjects['account'] = session.get_account()
-            cmdobjects['character'] = session.get_pcharacter()
-        return cmdobjects
-
-
-
-
-
 
 

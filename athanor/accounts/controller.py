@@ -3,13 +3,12 @@ from collections import defaultdict
 
 from django.conf import settings
 
-from evennia.utils.utils import class_from_module, make_iter, time_format
-from evennia.utils.logger import log_trace
+from evennia.utils.utils import make_iter, time_format
 from evennia.utils.search import search_account
 
-from athanor.controllers.base import AthanorController
-from athanor.gamedb.accounts import AthanorAccount
-from athanor.messages import account as amsg
+from athanor.utils.controllers import AthanorController, AthanorControllerBackend
+from athanor.accounts.typeclasses import AthanorAccount
+from athanor.accounts import messages as amsg
 from athanor.utils.text import partial_match, iter_to_string
 from athanor.utils.time import utcnow, duration_from_string
 
@@ -17,42 +16,11 @@ from athanor.utils.time import utcnow, duration_from_string
 class AthanorAccountController(AthanorController):
     system_name = 'ACCOUNTS'
 
-    def __init__(self, key, manager):
-        super().__init__(key, manager)
-        self.account_typeclass = None
-        self.id_map = dict()
-        self.name_map = dict()
-        self.roles = dict()
-        self.reg_names = None
-        self.permissions = defaultdict(set)
+    def __init__(self, key, manager, backend):
+        super().__init__(key, manager, backend)
+        self.load()
 
-    def do_load(self):
-        try:
-            self.account_typeclass = class_from_module(settings.BASE_ACCOUNT_TYPECLASS,
-                                                         defaultpaths=settings.TYPECLASS_PATHS)
-        except Exception:
-            log_trace()
-            self.account_typeclass = AthanorAccount
-
-        self.update_cache()
-
-    def update_regex(self):
-        escape_names = [re.escape(name) for name in self.name_map.keys()]
-        self.reg_names = re.compile(r"(?i)\b(?P<found>%s)\b" % '|'.join(escape_names))
-
-    def update_cache(self):
-        accounts = AthanorAccount.objects.filter_family()
-        self.id_map = {acc.id: acc for acc in accounts}
-        self.name_map = {acc.username.upper(): acc for acc in accounts}
-        self.update_regex()
-        self.permissions = defaultdict(set)
-        for acc in accounts:
-            for perm in acc.permissions.all():
-                self.permissions[perm].add(acc)
-            if acc.is_superuser:
-                self.permissions["_super"].add(acc)
-
-    def create_account(self, session, username, email, password, typeclass=None, login_screen=False, **kwargs):
+    def create_account(self, session, username, email, password, typeclass=None, login_screen=False):
         enactor = None
         if not login_screen:
             if not (enactor := session.get_account()) or not enactor.check_lock("oper(account_create)"):
@@ -63,15 +31,7 @@ class AthanorAccountController(AthanorController):
             raise ValueError("An Account must have an email address!")
         if not password:
             raise ValueError("An Account must have a password!")
-        if typeclass is None:
-            typeclass = self.account_typeclass
-        new_account = typeclass.create_account(username=username, email=email, password=password,
-                                                                session=session, ip=session.address)
-        self.id_map[new_account.id] = new_account
-        self.name_map[new_account.username.upper()] = new_account
-        self.update_regex()
-        for perm in new_account.permissions.all():
-            self.permissions[perm].add(new_account)
+        new_account = self.backend.create_account(username, email, password, typeclass=typeclass)
         entities = {'enactor': enactor if enactor else session, 'account': new_account}
         if login_screen:
             amsg.CreateMessage(entities).send()
@@ -83,8 +43,7 @@ class AthanorAccountController(AthanorController):
         if not (enactor := session.get_account()) or (not ignore_priv and not enactor.check_lock("pperm(Admin)")):
             raise ValueError("Permission denied.")
         account = self.find_account(account)
-        old_name = str(account)
-        new_name = account.rename(new_name)
+        old_name, new_name = self.backend.rename_account(account, new_name)
         entities = {'enactor': enactor, 'account': account}
         amsg.RenameMessage(entities, old_name=old_name).send()
 
@@ -92,27 +51,12 @@ class AthanorAccountController(AthanorController):
         if not (enactor := session.get_account()) or (not ignore_priv and not enactor.check_lock("pperm(Admin)")):
             raise ValueError("Permission denied.")
         account = self.find_account(account)
-        old_email = account.email
-        new_email = account.set_email(new_email)
+        old_email, new_email = self.backend.change_email(account, new_email)
         entities = {'enactor': enactor, 'account': account}
         amsg.EmailMessage(entities, old_email=old_email).send()
 
     def find_account(self, search_text, exact=False):
-        if not search_text:
-            raise ValueError("No account entered to search for!")
-        if isinstance(search_text, AthanorAccount):
-            return search_text
-        if '@' in search_text:
-            found = AthanorAccount.objects.get_account_from_email(search_text).first()
-            if found:
-                return found
-            raise ValueError(f"Cannot find a user with email address: {search_text}")
-        found = search_account(search_text, exact=exact)
-        if len(found) == 1:
-            return found[0]
-        if not found:
-            raise ValueError(f"Cannot find a user named {search_text}!")
-        raise ValueError(f"That matched multiple accounts: {found}")
+        return self.backend.find_account(search_text, exact=exact)
 
     find_user = find_account
 
@@ -332,3 +276,85 @@ class AthanorAccountController(AthanorController):
             raise ValueError("Permission denied.")
         account = self.find_account(account)
         return account.render_examine(enactor)
+
+    def all(self):
+        return self.backend.all()
+
+    def count(self):
+        return self.backend.count()
+
+
+class AthanorAccountControllerBackend(AthanorControllerBackend):
+    typeclass_defs = [
+        ('account_typeclass', 'BASE_ACCOUNT_TYPECLASS', AthanorAccount)
+    ]
+
+    def __init__(self, frontend):
+        super().__init__(frontend)
+        self.id_map = dict()
+        self.name_map = dict()
+        self.roles = dict()
+        self.reg_names = None
+        self.account_typeclass = None
+        self.permissions = defaultdict(set)
+        self.load()
+
+    def all(self):
+        pass
+
+    def count(self):
+        pass
+
+    def create_account(self, username, email, password, typeclass=None):
+        if typeclass is None:
+            typeclass = self.account_typeclass
+        new_account = typeclass.create_account(username=username, email=email, password=password)
+        self.id_map[new_account.id] = new_account
+        self.name_map[new_account.username.upper()] = new_account
+        self.update_regex()
+        for perm in new_account.permissions.all():
+            self.permissions[perm].add(new_account)
+        return new_account
+
+    def update_regex(self):
+        escape_names = [re.escape(name) for name in self.name_map.keys()]
+        self.reg_names = re.compile(r"(?i)\b(?P<found>%s)\b" % '|'.join(escape_names))
+
+    def update_cache(self):
+        accounts = AthanorAccount.objects.filter_family()
+        self.id_map = {acc.id: acc for acc in accounts}
+        self.name_map = {acc.username.upper(): acc for acc in accounts}
+        self.update_regex()
+        self.permissions = defaultdict(set)
+        for acc in accounts:
+            for perm in acc.permissions.all():
+                self.permissions[perm].add(acc)
+            if acc.is_superuser:
+                self.permissions["_super"].add(acc)
+
+    def rename_account(self, account, new_name):
+        old_name = str(account)
+        new_name = account.rename(new_name)
+        return old_name, new_name
+
+    def change_email(self, account, new_email):
+        old_email = account.email
+        new_email = account.set_email(new_email)
+        return old_email, new_email
+
+    def find_account(self, search_text, exact=False):
+        if not search_text:
+            raise ValueError("No account entered to search for!")
+        if isinstance(search_text, AthanorAccount):
+            return search_text
+        if '@' in search_text:
+            found = AthanorAccount.objects.get_account_from_email(search_text).first()
+            if found:
+                return found
+            raise ValueError(f"Cannot find a user with email address: {search_text}")
+        found = search_account(search_text, exact=exact)
+        if len(found) == 1:
+            return found[0]
+        if not found:
+            raise ValueError(f"Cannot find a user named {search_text}!")
+        raise ValueError(f"That matched multiple accounts: {found}")

@@ -15,12 +15,6 @@ class Pluginspace(SharedMemoryModel):
     # without a careful migration.
     db_name = models.CharField(max_length=255, null=False, blank=False, unique=True)
 
-    # The Python Path to the plugin.
-    db_path = models.CharField(max_length=255, null=False, blank=False)
-
-    # The current version of the Plugin.
-    db_version = models.CharField(max_length=255, null=False, blank=False)
-
 
 class HasNames(SharedMemoryModel):
     """
@@ -88,29 +82,31 @@ class ObjectRelations(AbstractRelations):
 
 
 class Namespace(SharedMemoryModel):
-    db_name = models.CharField(max_length=255, null=False, blank=False, unique=True)
+    db_pluginspace = models.ForeignKey(Pluginspace, related_name='namespaces', on_delete=models.PROTECT)
+    db_name = models.CharField(max_length=255, null=False, blank=False)
+
+    class Meta:
+        unique_together = (('db_pluginspace', 'db_name'),)
 
 
 class ScriptNamespace(HasNames):
-    db_plugin = models.ForeignKey(Pluginspace, related_name='script_names', on_delete=models.PROTECT)
     db_namespace = models.ForeignKey(Namespace, related_name='script_names', on_delete=models.PROTECT)
     db_script = models.ForeignKey('scripts.ScriptDB', related_name='namespaces', on_delete=models.CASCADE)
 
     class Meta:
         verbose_name = 'ScriptNamespace'
         verbose_name_plural = 'ScriptNamespaces'
-        unique_together = (('db_plugin', 'db_namespace', 'db_script'), ('db_plugin', 'db_namespace', 'db_iname'))
+        unique_together = (('db_namespace', 'db_script'), ('db_namespace', 'db_iname'))
 
 
 class ObjectNamespace(HasNames):
-    db_plugin = models.ForeignKey(Pluginspace, related_name='object_names', on_delete=models.PROTECT)
     db_namespace = models.ForeignKey(Namespace, related_name='object_names', on_delete=models.PROTECT)
     db_object = models.ForeignKey('objects.ObjectDB', related_name='namespaces', on_delete=models.CASCADE)
 
     class Meta:
         verbose_name = 'ObjectNamespace'
         verbose_name_plural = 'ObjectNamespace'
-        unique_together = (('db_plugin', 'db_namespace', 'db_object'), ('db_plugin', 'db_namespace', 'db_iname'))
+        unique_together = (('db_namespace', 'db_object'), ('db_namespace', 'db_iname'))
 
 
 class ScriptMeta(SharedMemoryModel):

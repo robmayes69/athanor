@@ -1,15 +1,14 @@
 from django.conf import settings
 
-from evennia.server.serverconnection import ServerConnection
+from evennia.server.serversession import ServerSession
 from evennia.utils.utils import lazy_property
 
 import athanor
-from athanor.commands.cmdhandler import SessionCmdHandler
-from athanor.utils.events import EventEmitter
+from athanor.serversessions.handlers import ServerSessionCmdHandler, ServerSessionCmdSetHandler
 
 
-class AthanorSession(ServerSession, EventEmitter):
-
+class AthanorSession(ServerSession):
+    # The Session is always the first thing to matter when parsing commands.
     _cmd_sort = -1000
 
     def __init__(self, handler):
@@ -20,18 +19,23 @@ class AthanorSession(ServerSession, EventEmitter):
             handler:
         """
         ServerSession.__init__(self)
+        super().__init__()
         self.sessionhandler = handler
-        self.pcharacter = None
-        self.pcid = None
         self.linked = dict()
         self.linked_sort = list()
         self.linked_state = list()
+        self.cmdset = ServerSessionCmdSetHandler(self, True)
         self._find_map = self._generate_find_map()
+
+    @lazy_property
+    def cmd(self):
+        return ServerSessionCmdHandler(self)
 
     def _generate_find_map(self):
         return {
             'account': self._find_account,
-            'puppet': self._find_object
+            'puppet': self._find_object,
+            'playsession': self._find_script
         }
 
     def _find_account(self, acc_id):
@@ -46,6 +50,12 @@ class AthanorSession(ServerSession, EventEmitter):
             from evennia.objects.models import ObjectDB as _ObjectDB
         return _ObjectDB.objects.get(id=obj_id)
 
+    def _find_script(self, scr_id):
+        global _ScriptDB
+        if not _ScriptDB:
+            from evennia.scripts.models import ScriptDB as _ScriptDB
+        return _ObjectDB.objects.get(id=scr_id)
+
     def _find_entity(self, kind, entity):
         if isinstance(entity, int):
             find_method = self._find_map.get(kind)
@@ -54,7 +64,33 @@ class AthanorSession(ServerSession, EventEmitter):
                 raise ValueError("Cannot link to a non-existent entity!")
         return entity
 
-    def _sort_links(self):
+    def at_sync(self):
+        """
+        This is called whenever a session has been resynced with the
+        portal.  At this point all relevant attributes have already
+        been set and self.account been assigned (if applicable).
+
+        Since this is often called after a server restart we need to
+        set up the session as it was.
+
+        """
+        super().at_sync()
+
+        for link_kind, link_id in self.linked_state:
+            try:
+                self.link(link_kind, link_id, sync=True)
+            except Exception as e:
+                # what the heck happened?
+                continue
+
+        if not self.logged_in:
+            # assign the unloggedin-command set.
+            self.cmdset_storage = settings.CMDSET_LOGINSCREEN
+            self.cmdset.update(init_mode=True)
+
+        self.sort_links()
+
+    def sort_links(self):
         self.linked_sort = sorted(self.linked.items(), key=lambda o: o[1]._cmd_sort)
         self.linked_state = [(link_type, entity.pk) for link_type, entity in self.linked_sort]
 
@@ -76,7 +112,7 @@ class AthanorSession(ServerSession, EventEmitter):
         if entity.sessions.add(self, force=force, sync=sync):
             self.linked[kind] = entity
             if not sync:
-                self._sort_links()
+                self.sort_links()
 
     def unlink(self, kind, entity, force=False, reason=None, **kwargs):
         """
@@ -92,7 +128,7 @@ class AthanorSession(ServerSession, EventEmitter):
         if entity.sessions.remove(self, force=force, reason=reason, **kwargs):
             if kind in self.linked:
                 del self.linked[kind]
-            self._sort_links()
+            self.sort_links()
 
     def at_disconnect(self, reason=None):
         """
@@ -106,7 +142,7 @@ class AthanorSession(ServerSession, EventEmitter):
     def styler(self):
         if self.account:
             return self.account.styler
-        return athanor.STYLER(self)
+        return athanor.api()['styler'](self)
 
     @property
     def colorizer(self):
@@ -134,7 +170,7 @@ class AthanorSession(ServerSession, EventEmitter):
 
     @lazy_property
     def cmd(self):
-        return SessionCmdHandler(self)
+        return ServerSessionCmdHandler(self)
 
     def __str__(self):
         """
@@ -150,3 +186,12 @@ class AthanorSession(ServerSession, EventEmitter):
             if extra:
                 base_str += ":" + ":".join([f"{ent[1].key}({ent[1].dbref})" for ent in self.linked_sort[1:]])
             return base_str
+
+    def get_avatar(self):
+        return None
+
+    def get_player_character(self):
+        return None
+
+    def get_play_session(self):
+        return None

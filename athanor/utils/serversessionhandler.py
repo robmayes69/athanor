@@ -1,10 +1,10 @@
 from django.conf import settings
-from evennia.server.connectionhandler import ServerConnectionHandler
+from evennia.server.sessionhandler import ServerSessionHandler
 from evennia.utils.utils import class_from_module, delay
 from evennia.server.portal import amp
 
 
-class AthanorServerSessionHandler(ServerConnectionHandler):
+class AthanorServerSessionHandler(ServerSessionHandler):
     _server_session_class = class_from_module(settings.SERVER_SESSION_CLASS)
 
     # AMP communication methods
@@ -20,7 +20,6 @@ class AthanorServerSessionHandler(ServerConnectionHandler):
                 synced.
 
         """
-
         sess = self._server_session_class(self)
         sess.load_sync_data(portalsessiondata)
 

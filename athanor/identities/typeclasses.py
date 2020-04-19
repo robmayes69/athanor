@@ -1,16 +1,17 @@
 import re
 
-from evennia import DefaultScript
+from django.conf import settings
 
+from evennia import DefaultScript
 from evennia.utils.ansi import ANSIString
 from evennia.utils.utils import lazy_property
 
-from athanor.utils.events import EventEmitter
 from athanor.utils.examine import ScriptExamineHandler
 from athanor.utils.mixins import HasOptions
+from athanor.models import Namespace
 
 
-class AthanorScript(EventEmitter, DefaultScript):
+class AthanorScript(DefaultScript):
     """
     Really just a Script class that accepts the Mixin framework and supports Events.
     """
@@ -44,15 +45,30 @@ class AthanorIdentityScript(AthanorScript, HasOptions):
     # case-insensitive. _re_name is a regex used to validate names, and _name_standards is an error
     # to use when this regex fails.
     _namespace = None
+    _pluginspace = 'athanor'
     _name_standards = "Avoid double spaces and special characters."
     _re_name = re.compile(r"(?i)^([A-Z]|[0-9]|\.|-|')+( ([A-Z]|[0-9]|\.|-|')+)*$")
     _cmdset_types = []
 
+    @classmethod
+    def namespace(cls, namespace=None):
+        """
+        Clever little helper method for loading the ever-useful Namespace into an easy reference.
+        """
+        if namespace is None:
+            namespace = cls._namespace
+        return Namespace.objects.get(db_name=namespace, db_pluginspace__db_name=cls._pluginspace)
+
     @property
     def cmdset_storage(self):
-        return self.attributes.get(key="cmdset_storage", category="system", default=settings.CMDSET_CHARACTER)
+        return self.attributes.get(key="cmdset_storage", category="system", default="")
 
+    @lazy_property
     def cmd(self):
+        raise NotImplementedError()
+
+    @lazy_property
+    def cmdset(self):
         raise NotImplementedError()
 
     @cmdset_storage.setter
@@ -96,11 +112,8 @@ class AthanorIdentityScript(AthanorScript, HasOptions):
             raise ValueError(f"Malformed ANSI in {cls._verbose_name} Name.")
         if not cls._re_name.match(clean_name):
             raise ValueError(f"{cls._verbose_name} Name does not meet standards. {cls._name_standards}")
-        query = {
-            "namespaces__db_namespace": namespace,
-            "namespaces__db_iname": clean_name.lower()
-        }
-        if (found := cls.objects.filter_family(**query).first()):
+        namespace = cls.namespace(namespace)
+        if (found := namespace.script_names.filter(db_iname=clean_name.lower()).first()):
             if exclude and found != exclude:
                 raise ValueError(f"Name conflicts with another {cls._verbose_name}")
         return (name, clean_name)
@@ -126,20 +139,15 @@ class AthanorIdentityScript(AthanorScript, HasOptions):
         """
         Private helper method for renames and creations.
         """
-        if namespace is None:
-            namespace = self._namespace
-        query = {
-            "db_namespace": namespace,
-            "db_iname": clean_name.lower()
-        }
+        namespace = self.namespace(namespace)
         props = {
             "db_iname": clean_name.lower(),
             "db_cname": name,
             "db_name": clean_name
         }
-        if not self.namespaces.filter(**query).update(**props):
-            props.update(query)
-            self.namespaces.create(**props)
+        if not namespace.script_names.filter(db_script=self).update(**props):
+            props['db_namespace'] = namespace
+            namespace.script_names.create(**props)
 
     @classmethod
     def _create_identity(cls, name, clean_name, validated_data, kwargs):

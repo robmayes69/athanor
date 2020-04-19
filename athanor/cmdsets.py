@@ -7,7 +7,7 @@ from evennia.commands.default import unloggedin
 from athanor.commands import login
 
 
-class AthanorUnloggedinCmdSet(default_cmds.UnloggedinCmdSet):
+class ServerSessionUnloggedinCmdSet(default_cmds.UnloggedinCmdSet):
     """
     Command set available to the Connection before being logged in.  This
     holds commands like creating a new account, logging in, etc.
@@ -30,7 +30,42 @@ class AthanorUnloggedinCmdSet(default_cmds.UnloggedinCmdSet):
         self.add(login.CmdLoginConnect)
 
 
-class AthanorAccountCmdSet(default_cmds.AccountCmdSet):
+class ServerSessionLoggedInCmdSet(CmdSet):
+    """
+    This Cmdset replaces UnloggedIn once a ServerSession has authenticated.
+    It provides the Character Select screen / menu. It will be replaced again
+    once a PlaySession is started.
+    """
+    key = "DefaultLoggedIn"
+
+    def at_cmdset_creation(self):
+        super().at_cmdset_creation()
+
+        self.add(ath_account.CmdAccRename)
+        self.add(ath_account.CmdAccEmail)
+        self.add(ath_account.CmdAccPassword)
+
+        self.add(ath_account.CmdCharCreate)
+        self.add(ath_account.CmdCharDelete)
+        self.add(ath_account.CmdCharRename)
+
+        self.add(ath_account.CmdCharPuppet)
+
+
+class ServerSessionActiveCmdSet(CmdSet):
+    """
+    This CmdSet is active on ServerSession after a PlaySession has been linked.
+    This makes the 'character select menu' go away.
+    """
+    key = "DefaultActive"
+
+    def at_cmdset_creation(self):
+        super().at_cmdset_creation()
+
+        self.add(ath_account.CmdCharUnpuppet)
+
+
+class AccountCmdSet(default_cmds.AccountCmdSet):
     """
     This is the cmdset available to the Account at all times. It is
     combined with the `CharacterCmdSet` when the Account puppets a
@@ -67,23 +102,25 @@ class AthanorAccountCmdSet(default_cmds.AccountCmdSet):
         self.add(ath_account.CmdAccount)
         self.add(ath_account.CmdCharacter)
 
-        self.add(ath_account.CmdAccRename)
-        self.add(ath_account.CmdAccEmail)
-        self.add(ath_account.CmdAccPassword)
 
-        self.add(ath_account.CmdCharCreate)
-        self.add(ath_account.CmdCharDelete)
-        self.add(ath_account.CmdCharRename)
-        self.add(ath_account.CmdCharPuppet)
-        self.add(ath_account.CmdCharUnpuppet)
-
-
-
-class AthanorCharacterCmdSet(CmdSet):
+class PlaySessionCmdSet(CmdSet):
+    """
+    This CmdSet is the base for all PlaySessions. Commands in this CmdSet are specific to the state of
+    'being in play'.
     """
 
+    def at_cmdset_creation(self):
+        """
+        Populates the cmdset
+        """
+        super().at_cmdset_creation()
+
+
+class PlayerCharacterCmdSet(CmdSet):
     """
-    key = "DefaultCharacter"
+    This CmdSet contains
+    """
+    key = "DefaultPlayerCharacter"
 
     def at_cmdset_creation(self):
         """
@@ -95,11 +132,10 @@ class AthanorCharacterCmdSet(CmdSet):
         #
 
 
-class AthanorAvatarCmdSet(default_cmds.CharacterCmdSet):
+class AvatarCmdSet(default_cmds.CharacterCmdSet):
     """
-    The `CharacterCmdSet` contains general in-game commands like `look`,
-    `get`, etc available on in-game Character objects. It is merged with
-    the `AccountCmdSet` when an Account puppets a Character.
+    The AvatarCmdSet is commands provided by the Object being puppeted as an Avatar.
+    This will generally be
     """
     key = "DefaultAvatar"
 
