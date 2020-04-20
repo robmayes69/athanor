@@ -6,10 +6,22 @@ from evennia.utils.utils import lazy_property
 import athanor
 from athanor.serversessions.handlers import ServerSessionCmdHandler, ServerSessionCmdSetHandler
 
+_AccountDB = None
+_ScriptDB = None
+_ObjectDB = None
+
 
 class AthanorSession(ServerSession):
     # The Session is always the first thing to matter when parsing commands.
     _cmd_sort = -1000
+
+    @lazy_property
+    def find_map(self):
+        return {
+            'account': self._find_account,
+            'puppet': self._find_object,
+            'playsession': self._find_script
+        }
 
     def __init__(self, handler):
         """
@@ -25,18 +37,10 @@ class AthanorSession(ServerSession):
         self.linked_sort = list()
         self.linked_state = list()
         self.cmdset = ServerSessionCmdSetHandler(self, True)
-        self._find_map = self._generate_find_map()
 
     @lazy_property
     def cmd(self):
         return ServerSessionCmdHandler(self)
-
-    def _generate_find_map(self):
-        return {
-            'account': self._find_account,
-            'puppet': self._find_object,
-            'playsession': self._find_script
-        }
 
     def _find_account(self, acc_id):
         global _AccountDB
@@ -58,11 +62,19 @@ class AthanorSession(ServerSession):
 
     def _find_entity(self, kind, entity):
         if isinstance(entity, int):
-            find_method = self._find_map.get(kind)
+            find_method = self.find_map.get(kind)
             entity = find_method(entity)
             if not entity:
                 raise ValueError("Cannot link to a non-existent entity!")
         return entity
+
+    def swap_cmdset(self, cmdset_path):
+        """
+        Simply reloads the cmdset handler given the path. Used because
+        ServerSession's a bit weird.
+        """
+        self.cmdset_storage = cmdset_path
+        self.cmdset = ServerSessionCmdSetHandler(self, True)
 
     def at_sync(self):
         """
@@ -74,19 +86,16 @@ class AthanorSession(ServerSession):
         set up the session as it was.
 
         """
-        super().at_sync()
-
         for link_kind, link_id in self.linked_state:
             try:
                 self.link(link_kind, link_id, sync=True)
             except Exception as e:
+                print(str(e))
                 # what the heck happened?
                 continue
 
         if not self.logged_in:
-            # assign the unloggedin-command set.
-            self.cmdset_storage = settings.CMDSET_LOGINSCREEN
-            self.cmdset.update(init_mode=True)
+            self.swap_cmdset(settings.CMDSET_LOGINSCREEN)
 
         self.sort_links()
 
@@ -177,15 +186,11 @@ class AthanorSession(ServerSession):
         String representation of the user session class. We use
         this a lot in the server logs.
         """
-        if not self.linked:
-            return f"None@{self.sessid}:{self.address}"
-        else:
-            account = self.get_account()
-            base_str = f"{account.username}({account.dbref})@{self.sessid}:{self.address}"
-            extra = self.linked_sort[1:]
-            if extra:
-                base_str += ":" + ":".join([f"{ent[1].key}({ent[1].dbref})" for ent in self.linked_sort[1:]])
-            return base_str
+        return repr(self)
+
+    def __repr__(self):
+        return f"<({self.sessid}) {self.protocol_key.capitalize()}: {self.get_account()}:" \
+               f"{self.get_player_character()}@{self.address}>"
 
     def get_avatar(self):
         return None

@@ -30,6 +30,12 @@ class AthanorAccount(HasAttributeGetCreate, EventEmitter, DefaultAccount):
     dbtype = 'AccountDB'
     _cmd_sort = -750
 
+    def __repr__(self):
+        return f"<Account: {self.username}({self.dbref})>"
+
+    def __str__(self):
+        return repr(self)
+
     @lazy_property
     def cmdset(self):
         return AccountCmdSetHandler(self, True)

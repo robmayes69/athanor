@@ -52,12 +52,13 @@ class AthanorPlaySessionControllerBackend(AthanorControllerBackend):
         self.online_characters = dict()
         self.load()
         self.update_cache()
+        print(f"PLAYSESSIONBACKEND REPORTS: {self.online_characters}")
 
     def update_cache(self):
-        self.online_characters = {psess.get_player_character(): psess for psess in
-                                  AthanorPlaySession.objects.filter_family(db_is_active=True)}
+        self.online_characters = {char: psess for psess in AthanorPlaySession.objects.filter_family()
+                                  if (char := psess.get_player_character())}
 
-    def create(self, player_character):
+    def get(self, player_character):
         """
         Get-or-creates a PlaySession for a given player character.
 
@@ -69,7 +70,9 @@ class AthanorPlaySessionControllerBackend(AthanorControllerBackend):
         """
         if (psess := self.online_characters.get(player_character, None)):
             return psess
-        new_playsession = self.playsessions_typeclass.create(player_character)
+        new_playsession = self.playsessions_typeclass.create_playsession(player_character)
+        new_playsession.db.character = player_character
+        player_character.db.playsession = new_playsession
         self.online_characters[player_character] = new_playsession
         return new_playsession
 

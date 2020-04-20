@@ -149,12 +149,13 @@ def init_settings(settings):
     # Command set used on session before account has logged in
     settings.CMDSET_LOGINSCREEN = "athanor.serversessions.cmdsets.LoginCmdSet"
     settings.CMDSET_SELECTSCREEN = 'athanor.serversessions.cmdsets.CharacterSelectScreenCmdSet'
+    settings.CMDSET_ACTIVE = 'athanor.serversessions.cmdsets.ActiveCmdSet'
     settings.SERVER_SESSION_CLASS = "athanor.serversessions.classes.AthanorSession"
     settings.SERVER_SESSION_HANDLER_CLASS = 'athanor.utils.serversessionhandler.AthanorServerSessionHandler'
     settings.EXAMINE_HOOKS['session'] = []
 
     settings.SESSION_SYNC_ATTRS = list(settings.SESSION_SYNC_ATTRS)
-    settings.SESSION_SYNC_ATTRS.extend(["pcid", "pcname"])
+    #settings.SESSION_SYNC_ATTRS.extend(["pcid", "pcname"])
 
     ######################################################################
     # Account Options

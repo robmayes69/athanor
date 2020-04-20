@@ -4,7 +4,7 @@ from athanor.utils.message import AdminMessage
 class AccountMessage(AdminMessage):
     system_name = "ACCOUNT"
     targets = ['enactor', 'account', 'admin']
-    
+
 
 class CreateMessage(AccountMessage):
     messages = {

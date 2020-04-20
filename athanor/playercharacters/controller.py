@@ -28,12 +28,7 @@ class AthanorPlayerCharacterController(AthanorController):
         else:
             enactor = account
         account = self.manager.get('account').find_account(account)
-        if not typeclass:
-            typeclass = self.character_typeclass
-        new_character = typeclass.create_character(character_name, account)
-        new_character.db.account = account
-        self.id_map[new_character.id] = new_character
-        self.name_map[new_character.key.lower()] = new_character
+        new_character = self.backend.create_character(account, character_name, typeclass=typeclass)
         entities = {'enactor': enactor, 'character': new_character, 'account': account}
         cmsg.CreateMessage(entities).send()
         return new_character
@@ -100,6 +95,9 @@ class AthanorPlayerCharacterController(AthanorController):
         message.append(styling.blank_footer)
         return '\n'.join(str(l) for l in message)
 
+    def all(self, account=None):
+        return self.backend.all(account=account)
+
 
 class AthanorPlayerCharacterControllerBackend(AthanorControllerBackend):
     typeclass_defs = [
@@ -128,8 +126,10 @@ class AthanorPlayerCharacterControllerBackend(AthanorControllerBackend):
         self.name_map = {char.key.upper(): char for char in chars}
         self.online = set(chars.exclude(db_account=None))
 
-    def all(self):
-        return AthanorPlayerCharacter.objects.filter_family()
+    def all(self, account=None):
+        if account is None:
+            return AthanorPlayerCharacter.objects.filter_family()
+        return AthanorPlayerCharacter.objects.filter_family(db_account=account)
 
     def count(self):
         return AthanorPlayerCharacter.objects.filter_family().count()
@@ -154,3 +154,11 @@ class AthanorPlayerCharacterControllerBackend(AthanorControllerBackend):
 
     def search_archived(self, name, exact=False):
         return self.search_all(name, exact, candidates=self.archived())
+
+    def create_character(self, account, character_name, typeclass=None):
+        if not typeclass:
+            typeclass = self.player_character_typeclass
+        new_character = typeclass.create_playercharacter(account, character_name)
+        self.id_map[new_character.id] = new_character
+        self.name_map[new_character.key.lower()] = new_character
+        return new_character

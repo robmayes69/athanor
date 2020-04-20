@@ -59,6 +59,7 @@ class AccountSessionHandler(EntitySessionHandler):
         """
         Nothing really to do here. Accounts are validated through their password. That's .authenticate().
         """
+        pass
 
     def at_before_link_session(self, session, force=False, sync=False, **kwargs):
         existing = self.all()
@@ -73,7 +74,7 @@ class AccountSessionHandler(EntitySessionHandler):
         session.uname = self.obj.name
         session.uid = self.obj.pk
         session.conn_time = time.time()
-        session.cmdset.add(settings.CMDSET_SELECTSCREEN, permanent=True, default_cmdset=True)
+        session.swap_cmdset(settings.CMDSET_SELECTSCREEN)
 
     def at_after_link_session(self, session, force=False, sync=False, **kwargs):
         self.obj.at_init()

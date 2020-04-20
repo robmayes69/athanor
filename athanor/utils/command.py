@@ -1,7 +1,7 @@
 import re
 from evennia.commands.default.muxcommand import MuxCommand
 from evennia.utils.utils import inherits_from, lazy_property
-from evennia.utils.search import object_search
+from evennia.utils.search import script_search
 
 import athanor
 from athanor.utils.text import partial_match
@@ -61,7 +61,7 @@ class AthanorCommand(MuxCommand):
 
     @property
     def controllers(self):
-        return athanor.api().get('controller_storage')
+        return athanor.api().get('controller_manager')
 
     def switch_main(self):
         pass
@@ -168,15 +168,13 @@ class AthanorCommand(MuxCommand):
         """
         if not self.account:
             raise ValueError("Must be logged in to use this feature!")
-        candidates = self.controllers.get('character').all().filter(character_bridge__db_account=self.account,
-                                                                   character_bridge__db_namespace=0)
+        if not char_name:
+            raise ValueError("no character entered to search for!")
+        candidates = self.controllers.get('playercharacter').all(account=self.account)
+
         if not candidates:
             raise ValueError("No characters to select from!")
 
-        results = object_search(char_name, exact=exact, candidates=candidates)
-
-        if not results:
+        if not (found := partial_match(char_name, candidates)):
             raise ValueError(f"Cannot locate character named {char_name}!")
-        if len(results) == 1:
-            return results[0]
-        raise ValueError(f"That matched: {results}")
+        return found

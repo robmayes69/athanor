@@ -49,6 +49,19 @@ class AthanorIdentityScript(AthanorScript, HasOptions):
     _name_standards = "Avoid double spaces and special characters."
     _re_name = re.compile(r"(?i)^([A-Z]|[0-9]|\.|-|')+( ([A-Z]|[0-9]|\.|-|')+)*$")
     _cmdset_types = []
+    _default_cmdset = ""
+
+    @lazy_property
+    def my_namespace(self):
+        return self.namespaces.all().first()
+
+    def get_display_name(self, looker):
+        return self.db_key
+
+    def generate_substitutions(self, looker):
+        return {
+            'name': self.get_display_name(looker)
+        }
 
     @classmethod
     def namespace(cls, namespace=None):
@@ -61,7 +74,7 @@ class AthanorIdentityScript(AthanorScript, HasOptions):
 
     @property
     def cmdset_storage(self):
-        return self.attributes.get(key="cmdset_storage", category="system", default="")
+        return self.attributes.get(key="cmdset_storage", category="system", default=self._default_cmdset)
 
     @lazy_property
     def cmd(self):
@@ -110,11 +123,14 @@ class AthanorIdentityScript(AthanorScript, HasOptions):
         clean_name = str(name.clean())
         if '|' in clean_name:
             raise ValueError(f"Malformed ANSI in {cls._verbose_name} Name.")
-        if not cls._re_name.match(clean_name):
+        if cls._re_name and not cls._re_name.match(clean_name):
             raise ValueError(f"{cls._verbose_name} Name does not meet standards. {cls._name_standards}")
         namespace = cls.namespace(namespace)
         if (found := namespace.script_names.filter(db_iname=clean_name.lower()).first()):
-            if exclude and found != exclude:
+            if exclude:
+                if found.db_script != exclude:
+                    raise ValueError(f"Name conflicts with another {cls._verbose_name}")
+            else:
                 raise ValueError(f"Name conflicts with another {cls._verbose_name}")
         return (name, clean_name)
 
@@ -147,6 +163,7 @@ class AthanorIdentityScript(AthanorScript, HasOptions):
         }
         if not namespace.script_names.filter(db_script=self).update(**props):
             props['db_namespace'] = namespace
+            props['db_script'] = self
             namespace.script_names.create(**props)
 
     @classmethod
@@ -162,7 +179,7 @@ class AthanorIdentityScript(AthanorScript, HasOptions):
             if errors:
                 raise ValueError(errors)
             identity.create_or_update_namespace(name, clean_name)
-            errors = identity.at_identity_creation(validated_data)
+            errors = identity.at_identity_creation(validated_data, **kwargs)
             if errors:
                 raise ValueError(errors)
         except ValueError as e:
@@ -192,7 +209,7 @@ class AthanorIdentityScript(AthanorScript, HasOptions):
         identity = cls._create_identity(name, clean_name, validated, kwargs)
         return identity
 
-    def at_identity_creation(self, validated, kwargs):
+    def at_identity_creation(self, validated, **kwargs):
         """
         Method called by the creation process for Identities. Not to be confused with at_script_creation()
         as this happens after that.
@@ -205,3 +222,6 @@ class AthanorIdentityScript(AthanorScript, HasOptions):
             errors (list of str or str): Any errors that occured during the creation process.
                 If this method returns anything truthy, creation will be halted and the object deleted.
         """
+
+    def get_account(self):
+        return self.db_account

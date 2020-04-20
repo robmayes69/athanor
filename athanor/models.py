@@ -85,6 +85,12 @@ class Namespace(SharedMemoryModel):
     db_pluginspace = models.ForeignKey(Pluginspace, related_name='namespaces', on_delete=models.PROTECT)
     db_name = models.CharField(max_length=255, null=False, blank=False)
 
+    def __repr__(self):
+        return f"<Namespace({self.pk}): {self.db_pluginspace.db_name}-{self.db_name}>"
+
+    def __str__(self):
+        return repr(self)
+
     class Meta:
         unique_together = (('db_pluginspace', 'db_name'),)
 
@@ -129,4 +135,3 @@ class ObjectMeta(SharedMemoryModel):
                                           null=True)
     db_object_owner = models.ForeignKey('objects.ObjectDB', related_name='owned_objects', on_delete=models.PROTECT,
                                         null=True)
-

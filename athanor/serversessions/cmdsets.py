@@ -22,3 +22,19 @@ class CharacterSelectScreenCmdSet(CmdSet):
 
     def at_cmdset_creation(self):
         self.add(cmds_select.CmdCharacterSelectLook)
+        self.add(cmds_select.CmdAccEmail)
+        self.add(cmds_select.CmdAccPassword)
+        self.add(cmds_select.CmdAccRename)
+        self.add(cmds_select.CmdCharCreate)
+        self.add(cmds_select.CmdCharDelete)
+        self.add(cmds_select.CmdCharRename)
+        self.add(cmds_select.CmdCharSelect)
+        self.add(cmds_select.CmdEndPlaySession)
+        self.add(cmds_select.CmdQuit)
+
+
+class ActiveCmdSet(CmdSet):
+    key = "ActiveCmdSet"
+
+    def at_cmdset_creation(self):
+        pass

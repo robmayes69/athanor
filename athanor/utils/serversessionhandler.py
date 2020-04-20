@@ -3,6 +3,8 @@ from evennia.server.sessionhandler import ServerSessionHandler
 from evennia.utils.utils import class_from_module, delay
 from evennia.server.portal import amp
 
+from django.utils.translation import gettext as _
+
 
 class AthanorServerSessionHandler(ServerSessionHandler):
     _server_session_class = class_from_module(settings.SERVER_SESSION_CLASS)
@@ -33,6 +35,35 @@ class AthanorServerSessionHandler(ServerSessionHandler):
         # show the first login command, may delay slightly to allow
         # the handshakes to finish.
         delay(settings.DELAY_COMMAND_LOGINSTART, self._run_cmd_login, sess)
+
+    def portal_sessions_sync(self, portalsessionsdata):
+        """
+        Syncing all session ids of the portal with the ones of the
+        server. This is instantiated by the portal when reconnecting.
+
+        Args:
+            portalsessionsdata (dict): A dictionary
+              `{sessid: {property:value},...}` defining each session and
+              the properties in it which should be synced.
+
+        """
+        for sess in list(self.values()):
+            # we delete the old session to make sure to catch eventual
+            # lingering references.
+            del sess
+
+        for sessid, sessdict in portalsessionsdata.items():
+            sess = self._server_session_class(self)
+            sess.load_sync_data(sessdict)
+            self[sessid] = sess
+            sess.at_sync()
+
+        mode = "reload"
+
+        # tell the server hook we synced
+        self.server.at_post_portal_sync(mode)
+        # announce the reconnection
+        self.announce_all(_(" ... Server restarted."))
 
     def login(self, session, account, force=False, testmode=False):
         """

@@ -1,4 +1,7 @@
+from django.conf import settings
+from evennia.utils.utils import lazy_property
 from athanor.identities.typeclasses import AthanorIdentityScript
+from athanor.playsessions.handlers import PlaySessionCmdHandler, PlaySessionCmdSetHandler, PlaySessionSessionHandler
 
 
 class AthanorPlaySession(AthanorIdentityScript):
@@ -18,9 +21,24 @@ class AthanorPlaySession(AthanorIdentityScript):
 
     The number of PlaySessions-per-Account can be configured in settings too.
     """
-    _verbose_name = 'Identity'
-    _verbose_name_plural = "Identities"
+    _verbose_name = 'PlaySession'
+    _verbose_name_plural = "PlaySessions"
     _namespace = 'playsessions'
+    _re_name = None
+    _cmd_sort = 10
+    _default_cmdset = settings.CMDSET_PLAYSESSION
+
+    @lazy_property
+    def cmdset(self):
+        return PlaySessionCmdSetHandler(self, True)
+
+    @lazy_property
+    def cmd(self):
+        return PlaySessionCmdHandler(self)
+
+    @lazy_property
+    def sessions(self):
+        return PlaySessionSessionHandler(self)
 
     def at_logout(self, forced=False, unexpected=False, reason=None):
         """
@@ -37,9 +55,12 @@ class AthanorPlaySession(AthanorIdentityScript):
         pass
 
     @classmethod
-    def create(cls, player_character, **kwargs):
+    def create_playsession(cls, player_character, **kwargs):
         account = player_character.get_account()
         kwargs['account'] = account
         kwargs['autostart'] = False
         kwargs['interval'] = 10
         return cls.create_identity(f"{player_character}{player_character.dbref}", **kwargs)
+
+    def get_player_character(self):
+        return self.db.character
