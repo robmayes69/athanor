@@ -1,5 +1,8 @@
 from django.db import models
-from evennia.typeclasses.models import SharedMemoryModel
+from django.conf import settings
+from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
+
+from evennia.typeclasses.models import SharedMemoryModel, TypedObject
 
 from evennia.utils.dbserialize import to_pickle, from_pickle
 from evennia.utils.picklefield import PickledObjectField
@@ -115,23 +118,103 @@ class ObjectNamespace(HasNames):
         unique_together = (('db_namespace', 'db_object'), ('db_namespace', 'db_iname'))
 
 
-class ScriptMeta(SharedMemoryModel):
-    """
-    Not all scripts will have these - just Identities for the most part. Maybe a few others.
-    """
-    db_script = models.OneToOneField('scripts.ScriptDB', related_name='meta_data', on_delete=models.CASCADE,
-                                     primary_key=True)
-    db_account_owner = models.ForeignKey('accounts.AccountDB', related_name='owned_scripts', on_delete=models.PROTECT)
-    db_script_owner = models.ForeignKey('scripts.ScriptDB', related_name='owned_scripts', on_delete=models.PROTECT,
-                                          null=True)
+class PlayerCharacterDB(TypedObject):
+    __settingsclasspath__ = settings.BASE_PLAYER_CHARACTER_TYPECLASS
+    __defaultclasspath__ = "athanor.playercharacters.playercharacters.DefaultPlayerCharacter"
+    __applabel__ = "athanor"
+
+    # Store the plain text version of a name in db_key
+
+    # Store the version with Evennia-style ANSI markup in here.
+    db_ckey = models.CharField(max_length=255, null=False, blank=False)
+    # Store lowercase here. SQLite3 can't case-insensitively collate without
+    # hoop-jumping so we do this instead.
+    db_ikey = models.CharField(max_length=255, null=False, blank=False, unique=True)
+
+    db_account = models.ForeignKey('accounts.AccountDB', related_name='player_characters', null=False,
+                                   on_delete=models.PROTECT)
+
+    db_cmdset_storage = models.CharField(
+        "cmdset",
+        max_length=255,
+        null=True,
+        blank=True,
+        help_text="optional python path to a cmdset class.",
+    )
 
 
-class ObjectMeta(SharedMemoryModel):
-    db_object = models.OneToOneField('objects.ObjectDB', related_name='meta_data', on_delete=models.CASCADE,
-                                     primary_key=True)
-    db_account_owner = models.ForeignKey('accounts.AccountDB', related_name='owned_objects', on_delete=models.PROTECT,
-                                         null=True)
-    db_script_owner = models.ForeignKey('scripts.ScriptDB', related_name='owned_objects', on_delete=models.PROTECT,
-                                          null=True)
-    db_object_owner = models.ForeignKey('objects.ObjectDB', related_name='owned_objects', on_delete=models.PROTECT,
-                                        null=True)
+class PlaySessionDB(TypedObject):
+    __settingsclasspath__ = settings.BASE_PLAY_SESSION_TYPECLASS
+    __defaultclasspath__ = "athanor.playsessions.playsessions.DefaultPlaySession"
+    __applabel__ = "athanor"
+
+    id = models.OneToOneField(PlayerCharacterDB, related_name='play_session', on_delete=models.PROTECT,
+                              primary_key=True)
+
+
+    db_cmdset_storage = models.CharField(
+        "cmdset",
+        max_length=255,
+        null=True,
+        blank=True,
+        help_text="optional python path to a cmdset class.",
+    )
+
+
+class HostAddress(models.Model):
+    host_ip = models.GenericIPAddressField(null=False)
+    host_name = models.TextField(null=True)
+
+
+class ProtocolName(models.Model):
+    name = models.CharField(max_length=100, null=False, blank=False, unique=True)
+
+
+class ServerSessionDB(TypedObject):
+    __settingsclasspath__ = settings.BASE_SERVER_SESSION_TYPECLASS
+    __defaultclasspath__ = "athanor.serversessions.serversessions.DefaultServerSession"
+    __applabel__ = "athanor"
+
+    id = models.UUIDField(primary_key=True, auto_created=False)
+    db_host = models.ForeignKey(HostAddress, null=False, on_delete=models.PROTECT, related_name='sessions')
+    db_protocol = models.ForeignKey(ProtocolName, null=False, on_delete=models.PROTECT, related_name='sessions')
+
+    db_cmdset_storage = models.CharField(
+        "cmdset",
+        max_length=255,
+        null=True,
+        blank=True,
+        help_text="optional python path to a cmdset class.",
+    )
+
+    db_account = models.ForeignKey('accounts.AccountDB', related_name='server_sessions', null=True,
+                                   on_delete=models.SET_NULL)
+
+    db_play_session = models.ForeignKey(PlaySessionDB, related_name='server_sessions', null=True,
+                                        on_delete=models.SET_NULL)
+
+
+class EntityDB(TypedObject):
+    __settingsclasspath__ = settings.BASE_ENTITY_TYPECLASS
+    __defaultclasspath__ = "athanor.entities.entities.DefaultEntity"
+    __applabel__ = "athanor"
+
+    # db_key is used as a multi-word collection of words this entity will respond to
+    # for commands like 'get' or 'look.' such as 'female goblin'. It is not necessarily
+    # the Entity's name.
+
+    # Store the plain text version of a name in this field.
+    db_name = models.CharField(max_length=255, null=False, blank=False)
+    # Store the version with Evennia-style ANSI markup in here.
+    db_cname = models.CharField(max_length=255, null=False, blank=False)
+    # Store lowercase here. SQLite3 can't case-insensitively collate without
+    # hoop-jumping so we do this instead.
+    db_iname = models.CharField(max_length=255, null=False, blank=False)
+
+    db_cmdset_storage = models.CharField(
+        "cmdset",
+        max_length=255,
+        null=True,
+        blank=True,
+        help_text="optional python path to a cmdset class.",
+    )
