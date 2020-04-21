@@ -7,7 +7,7 @@ from django.utils.translation import gettext as _
 
 
 class AthanorServerSessionHandler(ServerSessionHandler):
-    _server_session_class = class_from_module(settings.SERVER_SESSION_CLASS)
+    _server_session_class = class_from_module(settings.BASE_SERVER_SESSION_TYPECLASS)
 
     # AMP communication methods
 
@@ -22,11 +22,15 @@ class AthanorServerSessionHandler(ServerSessionHandler):
                 synced.
 
         """
-        sess = self._server_session_class(self)
+        address = portalsessiondata.pop('address')
+        protocol = portalsessiondata.pop('protocol_key')
+        django_key = portalsessiondata.pop('csessid', None)
+        sessid = portalsessiondata.pop('sessid')
+        sess = self._server_session_class.create(sessid, django_key, address, protocol, self)
         sess.load_sync_data(portalsessiondata)
 
         # Register the session to ConnectionHandler.
-        self[sess.sessid] = sess
+        self[sessid] = sess
 
         # Ready the session for use, setting up its previous state as
         # appropriate.
