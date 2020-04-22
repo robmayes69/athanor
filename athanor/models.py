@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
+from django.contrib.contenttypes.models import ContentType
 
 from evennia.typeclasses.models import SharedMemoryModel, TypedObject
 
@@ -288,6 +289,9 @@ class EntityDB(TypedObject):
         help_text="optional python path to a cmdset class.",
     )
 
+    inventories = GenericRelation('athanor.InventoryDB', related_name='entities')
+    equipsets = GenericRelation('athanor.EquippedDB', related_query_name='entities')
+
 
 class EntityFixture(SharedMemoryModel):
     """
@@ -359,12 +363,13 @@ class InventoryDB(TypedObject):
     different things. A Capital Ship might have a cargo bay and a fuel hangar. Given this, Inventories are
     TypedObjects.
     """
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    owner_object = GenericForeignKey('content_type', 'object_id')
     # db_key is used to identify the type of inventory it is specific to its owner. It must be unique per-entity.
-    db_entity = models.ForeignKey(EntityDB, related_name='inventories', on_delete=models.CASCADE)
-    # Not sure what else is relevant to an Inventory yet.
 
     class Meta:
-        unique_together = (('db_entity', 'db_key'),)
+        unique_together = (('content_type', 'object_id', 'db_key'),)
 
 
 class InventoryLocation(SharedMemoryModel):
@@ -384,13 +389,16 @@ class EquippedDB(TypedObject):
     Like with Inventories, there may be many kinds of Equip sets. This might be anything from a paper-doll style
     inventory to a spaceship's part slots or maybe slotting gems into an sword to give it magical powers.
     """
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    owner_object = GenericForeignKey('content_type', 'object_id')
     # db_key is used to identify the type of EquippedSet it is specific to its owner. It must be unique per-entity.
-    db_entity = models.ForeignKey(EntityDB, related_name='equipment_sets', on_delete=models.CASCADE)
+
 
     # Not sure what else is relevant to an Equipped set yet.
 
     class Meta:
-        unique_together = (('db_entity', 'db_key'), )
+        unique_together = (('content_type', 'object_id', 'db_key'),)
 
 
 class EquipLocation(SharedMemoryModel):

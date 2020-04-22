@@ -128,9 +128,6 @@ class DefaultServerSession(ServerSessionDB, metaclass=TypeclassBase):
     def render_character_menu_line(self, cmd):
         return f"({self.sessid}) {self.protocol_key} from {self.address} via {self.protocol_key}"
 
-    @lazy_property
-    def cmd(self):
-        return ServerSessionCmdHandler(self)
 
     def __str__(self):
         """
@@ -142,12 +139,3 @@ class DefaultServerSession(ServerSessionDB, metaclass=TypeclassBase):
     def __repr__(self):
         return f"<({self.id}) {str(self.db_protocol).capitalize()}: {self.account}:" \
                f"{self.play_session}@{str(self.db_host)}>"
-
-    def get_avatar(self):
-        return None
-
-    def get_player_character(self):
-        return None
-
-    def get_play_session(self):
-        return None
