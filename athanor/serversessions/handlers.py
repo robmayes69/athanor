@@ -15,7 +15,7 @@ class ServerSessionCmdHandler(CmdHandler):
         base = {
             'session': session
         }
-        if (psess := session.get_play_session()):
+        if (psess := session.play_session):
             base.update({
                 'playsession': psess,
                 'account': psess.get_account(),
@@ -23,7 +23,7 @@ class ServerSessionCmdHandler(CmdHandler):
                 'avatar': psess.get_avatar()
             })
             return base
-        base['account'] = session.get_account()
+        base['account'] = session.account
         return base
 
 

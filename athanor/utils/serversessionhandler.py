@@ -11,6 +11,22 @@ class AthanorServerSessionHandler(ServerSessionHandler):
 
     # AMP communication methods
 
+    def get_or_create_session(self, sessiondata):
+        address = sessiondata.pop('address')
+        protocol = sessiondata.pop('protocol_key')
+        django_key = sessiondata.pop('csessid', None)
+        sessid = sessiondata.pop('sessid')
+        sess = self._server_session_class.create(sessid, django_key, address, protocol, self)
+        sess.load_sync_data(sessiondata)
+
+        # Register the session to ConnectionHandler.
+        self[sessid] = sess
+
+        # Ready the session for use, setting up its previous state as
+        # appropriate.
+        sess.at_sync()
+        return sess
+
     def portal_connect(self, portalsessiondata):
         """
         Called by Portal when a new session has connected.
@@ -22,19 +38,7 @@ class AthanorServerSessionHandler(ServerSessionHandler):
                 synced.
 
         """
-        address = portalsessiondata.pop('address')
-        protocol = portalsessiondata.pop('protocol_key')
-        django_key = portalsessiondata.pop('csessid', None)
-        sessid = portalsessiondata.pop('sessid')
-        sess = self._server_session_class.create(sessid, django_key, address, protocol, self)
-        sess.load_sync_data(portalsessiondata)
-
-        # Register the session to ConnectionHandler.
-        self[sessid] = sess
-
-        # Ready the session for use, setting up its previous state as
-        # appropriate.
-        sess.at_sync()
+        sess = self.get_or_create_session(portalsessiondata)
 
         # show the first login command, may delay slightly to allow
         # the handshakes to finish.
@@ -51,16 +55,15 @@ class AthanorServerSessionHandler(ServerSessionHandler):
               the properties in it which should be synced.
 
         """
-        for sess in list(self.values()):
-            # we delete the old session to make sure to catch eventual
-            # lingering references.
-            del sess
+        old_sessions = set(self._server_session_class.objects.all())
 
         for sessid, sessdict in portalsessionsdata.items():
-            sess = self._server_session_class(self)
-            sess.load_sync_data(sessdict)
-            self[sessid] = sess
-            sess.at_sync()
+            sessdict['sessid'] = sessid
+            sess = self.get_or_create_session(sessdict)
+            if sess in old_sessions:
+                old_sessions.remove(sess)
+
+        self._server_session_class.objects.filter(id__in=old_sessions).update(db_is_active=False)
 
         mode = "reload"
 
@@ -84,10 +87,6 @@ class AthanorServerSessionHandler(ServerSessionHandler):
                 faking login without any AMP being actually active.
 
         """
-        if session.logged_in and not force:
-            # don't log in a session that is already logged in.
-            return
-        session.link('account', account, sync=False, testmode=testmode)
 
         # Update AMP.
         if not testmode:

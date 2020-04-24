@@ -114,7 +114,7 @@ class CmdCharSelect(AdministrationCommand):
         character = self.select_character(self.lhs)
         psesscon = self.controllers.get('playsession')
         psess = psesscon.get(character)
-        self.session.link('playsession', psess)
+        self.session.link_play_session(psess)
 
 
 class CmdEndPlaySession(AdministrationCommand):

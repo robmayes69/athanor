@@ -76,7 +76,7 @@ class AthanorAccount(HasAttributeGetCreate, EventEmitter, DefaultAccount):
             return
 
         # Did all go well? Then proceed with login and display the select screen.
-        session.sessionhandler.login(session, self)
+        session.login(self)
         session.msg(self.return_appearance(session))
 
     def set_email(self, new_email):

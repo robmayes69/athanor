@@ -135,6 +135,8 @@ class PlayerCharacterDB(TypedObject):
     db_account = models.ForeignKey('accounts.AccountDB', related_name='player_characters', null=False,
                                    on_delete=models.PROTECT)
 
+    db_total_playtime = models.DurationField(null=False, default=0)
+
     db_cmdset_storage = models.CharField(
         "cmdset",
         max_length=255,
@@ -149,8 +151,11 @@ class PlaySessionDB(TypedObject):
     __defaultclasspath__ = "athanor.playsessions.playsessions.DefaultPlaySession"
     __applabel__ = "athanor"
 
-    character = models.OneToOneField(PlayerCharacterDB, related_name='play_session', on_delete=models.PROTECT,
-                              primary_key=True)
+    db_character = models.OneToOneField(PlayerCharacterDB, related_name='play_session', on_delete=models.PROTECT)
+
+    # This will store a record of 'when this PlaySession was last known to be active.' It is used only in the event
+    # of a crash for playtime calculations during cleanup.
+    db_date_good = models.DateTimeField(null=False)
 
     db_cmdset_storage = models.CharField(
         "cmdset",
@@ -193,6 +198,11 @@ class ServerSessionDB(TypedObject):
         blank=True,
         help_text="optional python path to a cmdset class.",
     )
+    db_cmd_total = models.PositiveIntegerField(default=0, null=True)
+    db_is_active = models.BooleanField(default=True, null=False)
+    db_cmd_last = models.DateTimeField(null=True)
+    db_cmd_last_visible = models.DateTimeField(null=True)
+
 
     db_account = models.ForeignKey('accounts.AccountDB', related_name='server_sessions', null=True,
                                    on_delete=models.SET_NULL)
@@ -269,8 +279,8 @@ class EntityDB(TypedObject):
     """
     This is Athanor's replacement to Evennia's ObjectDB.
     """
-    __settingsclasspath__ = settings.BASE_ENTITY_TYPECLASS
-    __defaultclasspath__ = "athanor.entities.entities.DefaultEntity"
+    #__settingsclasspath__ = settings.BASE_ENTITY_TYPECLASS
+    #__defaultclasspath__ = "athanor.entities.entities.DefaultEntity"
     __applabel__ = "athanor"
 
     # db_key is used as a multi-word collection of words this entity will respond to
@@ -320,7 +330,7 @@ class RoomDB(TypedObject):
     # db_key is used for database exports and generating structures with consistent results.
     # If new rooms are created in play, be careful to ensure they have a prefix.
     # something like cust_whatever. This will prevent conflicts.
-
+    db_entity = models.ForeignKey(EntityDB, related_name='rooms', on_delete=models.CASCADE)
     # Store the plain text version of the room's display name in this field.
     db_name = models.CharField(max_length=255, null=False, blank=False)
     # Store the version with Evennia-style ANSI markup in here.

@@ -1,10 +1,12 @@
 from django.conf import settings
+from evennia.typeclasses.models import TypeclassBase
 from evennia.utils.utils import lazy_property
-from athanor.identities.typeclasses import AthanorIdentityScript
 from athanor.playsessions.handlers import PlaySessionCmdHandler, PlaySessionCmdSetHandler, PlaySessionSessionHandler
+from athanor.models import PlaySessionDB
+from evennia.typeclasses.managers import TypeclassManager
 
 
-class AthanorPlaySession(AthanorIdentityScript):
+class DefaultPlaySession(PlaySessionDB, metaclass=TypeclassBase):
     """
     A PlaySession represents a PlayerCharacter's in-game activities. Although this could be
     tracked as just 'an active PlayerCharacter' (running Script, as opposed to a paused one), having a
@@ -27,6 +29,8 @@ class AthanorPlaySession(AthanorIdentityScript):
     _re_name = None
     _cmd_sort = 10
     _default_cmdset = settings.CMDSET_PLAYSESSION
+
+    objects = TypeclassManager()
 
     @lazy_property
     def cmdset(self):

@@ -1,7 +1,11 @@
+import time
 from django.conf import settings
 
 from evennia.utils.utils import lazy_property
+from evennia.utils import logger
 from evennia.typeclasses.models import TypeclassBase
+from evennia.typeclasses.managers import TypeclassManager
+from evennia import ChannelDB
 
 import athanor
 from athanor.models import ServerSessionDB, HostAddress, ProtocolName
@@ -12,9 +16,21 @@ class DefaultServerSession(ServerSessionDB, metaclass=TypeclassBase):
     # The Session is always the first thing to matter when parsing commands.
     _cmd_sort = -1000
 
+    objects = TypeclassManager()
+
     @lazy_property
     def cmdset(self):
         return ServerSessionCmdSetHandler(self, True)
+
+    def at_first_save(self):
+        pass
+
+    @property
+    def sessionhandler(self):
+        return self.ndb.handler
+
+    def swap_cmdset(self, path):
+        self.cmdset.add(path, permanent=True, default_cmdset=True)
 
     @classmethod
     def create(cls, sessid, django_key, address, protocol, handler):
@@ -28,69 +44,114 @@ class DefaultServerSession(ServerSessionDB, metaclass=TypeclassBase):
             protocol (str): The type of protocol being used to connect.
             handler (ServerSessionHandler): The ServerSessionHandler singleton.
         """
-        if (found := DefaultServerSession.objects.filter_family(id=sessid).first()):
-            found.ndb.handler = handler
-            return found
+        try:
+            if (found := DefaultServerSession.objects.filter_family(sessid=sessid).first()):
+                found.ndb.handler = handler
+                return found
 
-        address_model, created = HostAddress.objects.get_or_create(host_ip=address)
-        if created:
-            address_model.save()
+            address_model, created = HostAddress.objects.get_or_create(host_ip=address)
+            if created:
+                address_model.save()
 
-        protocol_name, created2 = ProtocolName.objects.get_or_create(name=protocol)
-        if created2:
-            protocol_name.save()
+            protocol_name, created2 = ProtocolName.objects.get_or_create(name=protocol)
+            if created2:
+                protocol_name.save()
+            sess = cls.objects.create(sessid=sessid, django_session_key=django_key, db_host=address_model,
+                                      db_protocol=protocol_name)
 
-        sess = cls.objects.create(id=sessid, django_session_key=django_key, db_host=address_model,
-                                  db_protocol=protocol_name, db_cmdset_storage=settings.CMDSET_LOGINSCREEN)
-        sess.ndb.handler = handler
-        return sess
+            sess.ndb.handler = handler
+            sess.swap_cmdset(settings.CMDSET_LOGINSCREEN)
+            return sess
+        except Exception as e:
+            print(e)
+            logger.log_err(e)
 
-    @property
-    def account(self):
-        return self.db_account
-
-    @account.setter
-    def account(self, value):
-        old_account = self.db_account
-        if value is None and old_account is None:
-            #  Nothing to do if we're setting None to None.
-            return
-        if old_account == value:
-            #  Do nothing if we are setting it to what it already is.
-            return
-        if value:
-            self.cmdset.add(settings.CMDSET_SELECTSCREEN, permanent=True, default_cmdset=True)
-        else:
-            self.cmdset.add(settings.CMDSET_LOGINSCREEN, permanent=True, default_cmdset=True)
-
-        self.db_account = value
-        self.save(update_fields=['db_account'])
-
-    @property
-    def play_session(self):
-        return self.db_play_session
-
-    @play_session.setter
-    def play_session(self, value):
-        old_play = self.db_play_session
-        if old_play is None and value is None:
-            return  # Nothing to do here...
-        if old_play == value:
-            return  # Nothing to do here...
-        if value:
-            self.cmdset.add(settings.CMDSET_ACTIVE, permanent=True, default_cmdset=True)
-        else:
-            self.cmdset.add(settings.CMDSET_SELECTSCREEN, permanent=True, default_cmdset=True)
-        self.db_play_session = value
-        self.save(update_fields=['db_play_session'])
+    def cmd_nick_replace(self, txt):
+        if self.account:
+            # nick replacement
+            puppet = None
+            if puppet:
+                txt = puppet.nicks.nickreplace(
+                    txt, categories=("inputline", "channel"), include_account=True
+                )
+            else:
+                txt = self.account.nicks.nickreplace(
+                    txt, categories=("inputline", "channel"), include_account=False
+                )
+        return txt
 
     @lazy_property
     def cmd(self):
         return ServerSessionCmdHandler(self)
 
-
     def at_sync(self):
+        self.is_active = True
+
+    def login(self, account):
+        self.account = account
+        self.swap_cmdset(settings.CMDSET_SELECTSCREEN)
+        self.sessionhandler.login(self, account)
+        self.at_login()
+
+    def at_login(self):
+        """
+        Called during the login process. Does whatever you want it to do.
+        """
         pass
+
+    def link_play_session(self, play_session):
+        """
+        Links a play session.
+        """
+        self.play_session = play_session
+        self.swap_cmdset(settings.CMDSET_ACTIVE)
+        self.at_link_play_session()
+
+    def at_link_play_session(self):
+        pass
+
+    def unlink_play_session(self, reason=None):
+        old = self.play_session
+        self.play_session = None
+        self.swap_cmdset(settings.CMDSET_SELECTSCREEN)
+        self.at_unlink_play_session(old, reason=reason)
+
+    def at_unlink_play_session(self, play_session, reason=None):
+        pass
+
+    def get_sync_data(self):
+        """
+        Get all data relevant to sync the session.
+
+        Args:
+            syncdata (dict): All syncdata values, based on
+                the keys given by self._attrs_to_sync.
+
+        """
+        return {
+            attr: getattr(self, attr) for attr in settings.SESSION_SYNC_ATTRS if hasattr(self, attr)
+        }
+
+    def load_sync_data(self, sessdata):
+        """
+        Takes a session dictionary, as created by get_sync_data, and
+        loads it into the correct properties of the session.
+
+        Args:
+            sessdata (dict): Session data dictionary.
+
+        """
+        for propname, value in sessdata.items():
+            if (
+                propname == "protocol_flags"
+                and isinstance(value, dict)
+                and hasattr(self, "protocol_flags")
+                and isinstance(self.protocol_flags, dict)
+            ):
+                # special handling to allow partial update of protocol flags
+                self.protocol_flags.update(value)
+            else:
+                setattr(self, propname, value)
 
     def at_disconnect(self, reason=None):
         """
@@ -126,8 +187,7 @@ class DefaultServerSession(ServerSessionDB, metaclass=TypeclassBase):
         self.system_msg(text=text, system_name=msgobj.system_name)
 
     def render_character_menu_line(self, cmd):
-        return f"({self.sessid}) {self.protocol_key} from {self.address} via {self.protocol_key}"
-
+        return f"({self.sessid}) {self.protocol} from {self.host} via {self.protocol}"
 
     def __str__(self):
         """
@@ -139,3 +199,168 @@ class DefaultServerSession(ServerSessionDB, metaclass=TypeclassBase):
     def __repr__(self):
         return f"<({self.id}) {str(self.db_protocol).capitalize()}: {self.account}:" \
                f"{self.play_session}@{str(self.db_host)}>"
+
+    def log(self, message, channel=True):
+        """
+        Emits session info to the appropriate outputs and info channels.
+
+        Args:
+            message (str): The message to log.
+            channel (bool, optional): Log to the CHANNEL_CONNECTINFO channel
+                in addition to the server log.
+
+        """
+        cchan = channel and settings.CHANNEL_CONNECTINFO
+        if cchan:
+            try:
+                cchan = ChannelDB.objects.get_channel(cchan["key"])
+                cchan.msg("[%s]: %s" % (cchan.key, message))
+            except Exception:
+                logger.log_trace()
+        logger.log_info(message)
+
+    def get_client_size(self):
+        """
+        Return eventual eventual width and height reported by the
+        client. Note that this currently only deals with a single
+        client window (windowID==0) as in a traditional telnet session.
+
+        """
+        flags = self.protocol_flags
+        width = flags.get("SCREENWIDTH", {}).get(0, settings.CLIENT_DEFAULT_WIDTH)
+        height = flags.get("SCREENHEIGHT", {}).get(0, settings.CLIENT_DEFAULT_HEIGHT)
+        return width, height
+
+    def update_session_counters(self, idle=False):
+        """
+        Hit this when the user enters a command in order to update
+        idle timers and command counters.
+
+        """
+        # Idle time used for timeout calcs.
+        self.cmd_last = time.time()
+
+        # Store the timestamp of the user's last command.
+        if not idle:
+            # Increment the user's command counter.
+            self.cmd_total += 1
+            # Account-visible idle time, not used in idle timeout calcs.
+            self.cmd_last_visible = self.cmd_last
+
+    def update_flags(self, **kwargs):
+        """
+        Update the protocol_flags and sync them with Portal.
+
+        Kwargs:
+            key, value - A key:value pair to set in the
+                protocol_flags dictionary.
+
+        Notes:
+            Since protocols can vary, no checking is done
+            as to the existene of the flag or not. The input
+            data should have been validated before this call.
+
+        """
+        if kwargs:
+            self.protocol_flags.update(kwargs)
+            self.sessionhandler.session_portal_sync(self)
+
+    def data_out(self, **kwargs):
+        """
+        Sending data from Evennia->Client
+
+        Kwargs:
+            text (str or tuple)
+            any (str or tuple): Send-commands identified
+                by their keys. Or "options", carrying options
+                for the protocol(s).
+
+        """
+        self.sessionhandler.data_out(self, **kwargs)
+
+    def data_in(self, **kwargs):
+        """
+        Receiving data from the client, sending it off to
+        the respective inputfuncs.
+
+        Kwargs:
+            kwargs (any): Incoming data from protocol on
+                the form `{"commandname": ((args), {kwargs}),...}`
+        Notes:
+            This method is here in order to give the user
+            a single place to catch and possibly process all incoming data from
+            the client. It should usually always end by sending
+            this data off to `self.sessionhandler.call_inputfuncs(self, **kwargs)`.
+        """
+        print("HEY HEY HEY!")
+        self.sessionhandler.call_inputfuncs(self, **kwargs)
+
+    def msg(self, text=None, **kwargs):
+        """
+        Wrapper to mimic msg() functionality of Objects and Accounts.
+
+        Args:
+            text (str): String input.
+
+        Kwargs:
+            any (str or tuple): Send-commands identified
+                by their keys. Or "options", carrying options
+                for the protocol(s).
+
+        """
+        # this can happen if this is triggered e.g. a command.msg
+        # that auto-adds the session, we'd get a kwarg collision.
+        kwargs.pop("session", None)
+        kwargs.pop("from_obj", None)
+        if text is not None:
+            self.data_out(text=text, **kwargs)
+        else:
+            self.data_out(**kwargs)
+
+    def execute_cmd(self, raw_string, session=None, **kwargs):
+        """
+        Do something as this object. This method is normally never
+        called directly, instead incoming command instructions are
+        sent to the appropriate inputfunc already at the sessionhandler
+        level. This method allows Python code to inject commands into
+        this stream, and will lead to the text inputfunc be called.
+
+        Args:
+            raw_string (string): Raw command input
+            session (Session): This is here to make API consistent with
+                Account/Object.execute_cmd. If given, data is passed to
+                that Session, otherwise use self.
+        Kwargs:
+            Other keyword arguments will be added to the found command
+            object instace as variables before it executes.  This is
+            unused by default Evennia but may be used to set flags and
+            change operating paramaters for commands at run-time.
+
+        """
+        # inject instruction into input stream
+        kwargs["text"] = ((raw_string,), {})
+        self.sessionhandler.data_in(session or self, **kwargs)
+
+    def at_cmdset_get(self, **kwargs):
+        """
+        A dummy hook all objects with cmdsets need to have
+        """
+        pass
+
+    def access(self, *args, **kwargs):
+        """Dummy method to mimic the logged-in API."""
+        return True
+
+    @property
+    def logged_in(self):
+        return bool(self.account)
+
+    @property
+    def conn_time(self):
+        return float(self.db_date_created)
+
+    @lazy_property
+    def protocol_flags(self):
+        if not self.attributes.has(key='protocol_flags', category='system'):
+            self.attributes.add(key='protocol_flags', category='system', value=dict())
+        return self.attributes.get(key='protocol_flags', category='system')

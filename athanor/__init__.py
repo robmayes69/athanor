@@ -150,8 +150,9 @@ def init_settings(settings):
     settings.CMDSET_LOGINSCREEN = "athanor.serversessions.cmdsets.LoginCmdSet"
     settings.CMDSET_SELECTSCREEN = 'athanor.serversessions.cmdsets.CharacterSelectScreenCmdSet'
     settings.CMDSET_ACTIVE = 'athanor.serversessions.cmdsets.ActiveCmdSet'
-    settings.SERVER_SESSION_CLASS = "athanor.serversessions.classes.AthanorSession"
+    settings.BASE_SERVER_SESSION_TYPECLASS = "athanor.serversessions.serversessions.DefaultServerSession"
     settings.SERVER_SESSION_HANDLER_CLASS = 'athanor.utils.serversessionhandler.AthanorServerSessionHandler'
+    settings.PORTAL_SESSION_HANDLER_CLASS = 'athanor.utils.portalsessionhandler.AthanorPortalSessionHandler'
     settings.EXAMINE_HOOKS['session'] = []
 
     settings.SESSION_SYNC_ATTRS = list(settings.SESSION_SYNC_ATTRS)
@@ -197,7 +198,7 @@ def init_settings(settings):
     settings.NAMESPACES['athanor'].add('playsessions')
 
     ######################################################################
-    # Player Character (ScriptDB)
+    # Player Character DB
     ######################################################################
     settings.CONTROLLERS['playercharacter'] = {
         'class': 'athanor.playercharacters.controller.AthanorPlayerCharacterController',
@@ -214,14 +215,14 @@ def init_settings(settings):
     settings.RESTRICTED_CHARACTER_RENAME = False
 
     ######################################################################
-    # PlaySession (ScriptDB)
+    # PlaySessionDB
     ######################################################################
     settings.CONTROLLERS['playsession'] = {
         'class': 'athanor.playsessions.controller.AthanorPlaySessionController',
         'backend': 'athanor.playsessions.controller.AthanorPlaySessionControllerBackend'
     }
 
-    settings.BASE_PLAYSESSION_TYPECLASS = "athanor.playsessions.typeclasses.AthanorPlaySession"
+    settings.BASE_PLAY_SESSION_TYPECLASS = "athanor.playsessions.playsessions.DefaultPlaySession"
     settings.CMDSET_PLAYSESSION = "athanor.playsessions.cmdsets.AthanorPlaySessionCmdSet"
 
     ######################################################################

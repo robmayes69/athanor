@@ -85,7 +85,8 @@ def create_objects():
     )
     # this is necessary for quelling to work correctly.
     god_account.permissions.add("Developer")
-    print("BOOOOOOOOO")
+
+    """
     conman = api.get('controller_manager')
 
     char_controller = conman.get('character')
@@ -121,7 +122,7 @@ def create_objects():
         god_character.location = limbo_obj
     if not god_character.home:
         god_character.home = limbo_obj
-
+    """
 
 def create_channels():
     """
@@ -187,7 +188,7 @@ def reset_server():
 
     """
     ServerConfig.objects.conf("server_epoch", time.time())
-    from evennia.server.connectionhandler import SESSIONS
+    from evennia.server.sessionhandler import SESSIONS
 
     logger.log_info("Initial setup complete. Restarting Server once.")
     SESSIONS.portal_reset_server()

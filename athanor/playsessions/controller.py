@@ -1,6 +1,6 @@
 from django.conf import settings
 from athanor.utils.controllers import AthanorController, AthanorControllerBackend
-from athanor.playsessions.typeclasses import AthanorPlaySession
+from athanor.playsessions.playsessions import DefaultPlaySession
 
 
 class AthanorPlaySessionController(AthanorController):
@@ -43,7 +43,7 @@ class AthanorPlaySessionController(AthanorController):
 
 class AthanorPlaySessionControllerBackend(AthanorControllerBackend):
     typeclass_defs = [
-        ('playsessions_typeclass', 'BASE_PLAYSESSION_TYPECLASS', AthanorPlaySession)
+        ('playsessions_typeclass', 'BASE_PLAY_SESSION_TYPECLASS', DefaultPlaySession)
     ]
 
     def __init__(self, frontend):
@@ -52,10 +52,9 @@ class AthanorPlaySessionControllerBackend(AthanorControllerBackend):
         self.online_characters = dict()
         self.load()
         self.update_cache()
-        print(f"PLAYSESSIONBACKEND REPORTS: {self.online_characters}")
 
     def update_cache(self):
-        self.online_characters = {char: psess for psess in AthanorPlaySession.objects.filter_family()
+        self.online_characters = {char: psess for psess in DefaultPlaySession.objects.filter_family()
                                   if (char := psess.get_player_character())}
 
     def get(self, player_character):

@@ -26,17 +26,9 @@ def text(session, *args, **kwargs):
     if txt.strip() in _IDLE_COMMAND:
         session.update_session_counters(idle=True)
         return
-    if session.account:
-        # nick replacement
-        puppet = session.puppet
-        if puppet:
-            txt = puppet.nicks.nickreplace(
-                txt, categories=("inputline", "channel"), include_account=True
-            )
-        else:
-            txt = session.account.nicks.nickreplace(
-                txt, categories=("inputline", "channel"), include_account=False
-            )
+
+    txt = session.cmd_nick_replace(txt)
+
     kwargs.pop("options", None)
     # This is the only change - call the session.cmd.execute() instead of cmdhandler(session...)
     session.cmd.execute(txt, session=session, **kwargs)
