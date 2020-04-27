@@ -31,5 +31,6 @@ def text(session, *args, **kwargs):
 
     kwargs.pop("options", None)
     # This is the only change - call the session.cmd.execute() instead of cmdhandler(session...)
+    print("ARE WE GETTING TO CMD EXECUTE?")
     session.cmd.execute(txt, session=session, **kwargs)
     session.update_session_counters()

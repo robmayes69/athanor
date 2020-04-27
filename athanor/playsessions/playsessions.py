@@ -29,7 +29,7 @@ class DefaultPlaySession(PlaySessionDB, metaclass=TypeclassBase):
     _re_name = None
     _cmd_sort = 10
     _default_cmdset = settings.CMDSET_PLAYSESSION
-
+    acl_type = 'playsession'
     objects = TypeclassManager()
 
     @lazy_property

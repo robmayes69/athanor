@@ -571,7 +571,10 @@ class CmdHandler:
         # would be a Connection, Account, or Puppet. The 'last' is used for Error reporting, to preserve
         # character mirroring.
         ordered_objects = self.sort_cmdobjects(cmdobjects)
-
+        for obj in ordered_objects:
+            print(obj.cmdset)
+            print(obj.cmdset_storage)
+        print(f"ORDERED: {ordered_objects}")
         if error_to is None:
             error_to = self.error_cmdobjects(ordered_objects)
             if error_to is None:
@@ -602,6 +605,7 @@ class CmdHandler:
                     if not cmdset:
                         # this is bad and shouldn't happen.
                         raise NoCmdSets
+                    print(f"MERGGED CMDSET: {cmdset}")
                     # store the completely unmodified raw string - including
                     # whitespace and eventual prefixes-to-be-stripped.
                     unformatted_raw_string = raw_string
@@ -671,7 +675,7 @@ class CmdHandler:
                         cmd.session = session
                         sysarg = "%s:%s" % (cmdname, args)
                         raise ExecSystemCommand(cmd, sysarg)
-
+                print(f"CMD FOUND: {cmd}")
                 # A normal command.
                 ret = yield self._run_command(caller, cmd, cmdname, args, raw_cmdname, cmdset, cmdobjects, raw_string,
                                               unformatted_raw_string, testing, **kwargs)

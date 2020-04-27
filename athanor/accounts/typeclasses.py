@@ -1,5 +1,3 @@
-from django.conf import settings
-
 from evennia.utils.utils import lazy_property
 from evennia.accounts.accounts import DefaultAccount
 from evennia.utils.utils import time_format
@@ -10,7 +8,6 @@ from athanor.utils.events import EventEmitter
 from athanor.utils.mixins import HasAttributeGetCreate
 from athanor.accounts.handlers import AccountSessionHandler, AccountCmdSetHandler
 from athanor.accounts.handlers import BanHandler, AccountCmdHandler, AccountAppearanceHandler
-from athanor.playercharacters.typeclasses import AthanorPlayerCharacter
 
 
 class AthanorAccount(HasAttributeGetCreate, EventEmitter, DefaultAccount):
@@ -29,6 +26,7 @@ class AthanorAccount(HasAttributeGetCreate, EventEmitter, DefaultAccount):
     examine_caller_type = "account"
     dbtype = 'AccountDB'
     _cmd_sort = -750
+    acl_type = 'account'
 
     def __repr__(self):
         return f"<Account: {self.username}({self.dbref})>"
@@ -165,7 +163,7 @@ class AthanorAccount(HasAttributeGetCreate, EventEmitter, DefaultAccount):
         return self
 
     def characters(self):
-        return AthanorPlayerCharacter.objects.filter_family(db_account=self)
+        return self.player_characters.all()
 
     @lazy_property
     def styler(self):

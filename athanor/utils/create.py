@@ -8,6 +8,7 @@ from athanor.utils.text import Speech, sanitize_string
 def account(key, password, email=None):
     return create_account(key, email, password)
 
+
 class SpeechFactory(object):
 
     def __init__(self):

@@ -16,8 +16,11 @@ class AthanorServerSessionHandler(ServerSessionHandler):
         protocol = sessiondata.pop('protocol_key')
         django_key = sessiondata.pop('csessid', None)
         sessid = sessiondata.pop('sessid')
+        print(f"RECEIVED SESSION DATA: {sessiondata}")
         sess = self._server_session_class.create(sessid, django_key, address, protocol, self)
+        print(f"CREATED SESSION {sess}")
         sess.load_sync_data(sessiondata)
+        print(f"SESS DICT {sess.__dict__}")
 
         # Register the session to ConnectionHandler.
         self[sessid] = sess

@@ -10,12 +10,12 @@ from evennia import ChannelDB
 import athanor
 from athanor.models import ServerSessionDB, HostAddress, ProtocolName
 from athanor.serversessions.handlers import ServerSessionCmdHandler, ServerSessionCmdSetHandler
-
+from athanor.utils.time import utcnow
 
 class DefaultServerSession(ServerSessionDB, metaclass=TypeclassBase):
     # The Session is always the first thing to matter when parsing commands.
     _cmd_sort = -1000
-
+    acl_type = 'serversession'
     objects = TypeclassManager()
 
     @lazy_property
@@ -88,6 +88,7 @@ class DefaultServerSession(ServerSessionDB, metaclass=TypeclassBase):
         self.is_active = True
 
     def login(self, account):
+        account.cmdset.add(settings.CMDSET_ACCOUNT, permanent=True, default_cmdset=True)
         self.account = account
         self.swap_cmdset(settings.CMDSET_SELECTSCREEN)
         self.sessionhandler.login(self, account)
@@ -142,6 +143,7 @@ class DefaultServerSession(ServerSessionDB, metaclass=TypeclassBase):
 
         """
         for propname, value in sessdata.items():
+            print(f"SETTING PROPNAME {propname} VALUE {value}")
             if (
                 propname == "protocol_flags"
                 and isinstance(value, dict)
@@ -151,7 +153,8 @@ class DefaultServerSession(ServerSessionDB, metaclass=TypeclassBase):
                 # special handling to allow partial update of protocol flags
                 self.protocol_flags.update(value)
             else:
-                setattr(self, propname, value)
+                continue
+                #setattr(self, propname, value)
 
     def at_disconnect(self, reason=None):
         """
@@ -238,12 +241,12 @@ class DefaultServerSession(ServerSessionDB, metaclass=TypeclassBase):
 
         """
         # Idle time used for timeout calcs.
-        self.cmd_last = time.time()
+        self.cmd_last = utcnow()
 
         # Store the timestamp of the user's last command.
         if not idle:
             # Increment the user's command counter.
-            self.cmd_total += 1
+            self.cmd_total = self.cmd_total + 1
             # Account-visible idle time, not used in idle timeout calcs.
             self.cmd_last_visible = self.cmd_last
 
@@ -355,12 +358,30 @@ class DefaultServerSession(ServerSessionDB, metaclass=TypeclassBase):
     def logged_in(self):
         return bool(self.account)
 
+    @logged_in.setter
+    def logged_in(self, value):
+        pass
+
     @property
     def conn_time(self):
         return float(self.db_date_created)
+
+    @conn_time.setter
+    def conn_time(self, value):
+        pass
 
     @lazy_property
     def protocol_flags(self):
         if not self.attributes.has(key='protocol_flags', category='system'):
             self.attributes.add(key='protocol_flags', category='system', value=dict())
         return self.attributes.get(key='protocol_flags', category='system')
+
+    @property
+    def address(self):
+        return self.host.host_ip
+
+    @property
+    def uid(self):
+        if not self.account:
+            return None
+        return self.account.pk

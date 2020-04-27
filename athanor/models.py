@@ -1,5 +1,7 @@
 from django.db import models
 from django.conf import settings
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 
 from evennia.typeclasses.models import SharedMemoryModel, TypedObject
 
@@ -29,23 +31,19 @@ class Namespace(SharedMemoryModel):
         unique_together = (('db_pluginspace', 'db_name'),)
 
 
-class PlayerCharacterDB(TypedObject):
-    __settingsclasspath__ = settings.BASE_PLAYER_CHARACTER_TYPECLASS
-    __defaultclasspath__ = "athanor.playercharacters.playercharacters.DefaultPlayerCharacter"
+class IdentityDB(TypedObject):
+    __settingsclasspath__ = settings.BASE_IDENTITY_TYPECLASS
+    __defaultclasspath__ = "athanor.identities.identities.DefaultIdentity"
     __applabel__ = "athanor"
 
     # Store the plain text version of a name in db_key
 
     # Store the version with Evennia-style ANSI markup in here.
     db_ckey = models.CharField(max_length=255, null=False, blank=False)
+    db_ikey = models.CharField(max_length=255, null=False, blank=False)
 
-    db_account = models.ForeignKey('accounts.AccountDB', related_name='player_characters', null=False,
-                                   on_delete=models.PROTECT)
-
-    # For games that allow / desire you to list who your alts are, this allows you to show a variety of different
-    # Player Characters - each index of (account, alt_number) is an 'alt set' that will be presented to people checking.
-    # This allows you to maintain 'hidden alts' on games that allow it.
-    db_alt_number = models.PositiveSmallIntegerField(null=True, default=None)
+    db_account = models.ForeignKey('accounts.AccountDB', default=1, related_name='owned_identities', null=False,
+                                   on_delete=models.SET_DEFAULT)
 
     # This is for total playtime the character has accrued. Accounts also track this for their usage of a character.
     db_total_playtime = models.DurationField(null=False, default=0)
@@ -62,16 +60,21 @@ class PlayerCharacterDB(TypedObject):
     db_is_active = models.BooleanField(null=False, default=True)
 
 
-class AccountPlayerCombo(SharedMemoryModel):
+class AccountIdentityCombo(SharedMemoryModel):
     """
     This table is used for creating a relationship between specifics accounts and specific Player Characters.
     This is especially useful for games where Player Characters may change hands.
     """
     db_account = models.ForeignKey('accounts.AccountDB', related_name='player_stats', on_delete=models.CASCADE)
-    db_player_character = models.ForeignKey(PlayerCharacterDB, related_name='account_stats', on_delete=models.CASCADE)
+    db_identity = models.ForeignKey(IdentityDB, related_name='account_stats', on_delete=models.CASCADE)
 
     # This tracks how much playtime this Account has accrued playing this character.
     db_total_playtime = models.DurationField(null=False, default=0)
+
+    # For games that allow / desire you to list who your alts are, this allows you to show a variety of different
+    # Player Characters - each index of (account, alt_number) is an 'alt set' that will be presented to people checking.
+    # This allows you to maintain 'hidden alts' on games that allow it.
+    db_alt_number = models.PositiveSmallIntegerField(null=True, default=None)
 
     class Meta:
         unique_together = (('db_account', 'db_player_character'),)
@@ -140,3 +143,139 @@ class ServerSessionDB(TypedObject):
 
     db_play_session = models.ForeignKey(PlaySessionDB, related_name='server_sessions', null=True,
                                         on_delete=models.SET_NULL)
+
+
+class ACLPermission(models.Model):
+    name = models.CharField(max_length=50, null=False, unique=True, blank=False)
+
+
+class AbstractACLResource(models.Model):
+    #  resource = NOT NULL ForeignKey to SOMETHING... related_name='acl_entries'
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    subject = GenericForeignKey('content_type', 'object_id')
+    deny = models.BooleanField(null=False, default=False)
+    permissions = models.ManyToManyField(ACLPermission, related_name='+')
+
+    class Meta:
+        abstract = True
+        unique_together = (('entity', 'content_type', 'object_id', 'deny'),)
+
+
+class BBSBoardDB(TypedObject):
+    __settingsclasspath__ = settings.BASE_BBS_BOARD_TYPECLASS
+    __defaultclasspath__ = "athanor.bbs_boards.bbs_boards.DefaultBBSBoard"
+    __applabel__ = "athanor"
+
+    db_owner = models.ForeignKey(OrganizationDB, null=True, on_delete=models.CASCADE, related_name='boards')
+    db_ikey = models.CharField(max_length=255, blank=False, null=False)
+    db_ckey = models.CharField(max_length=255, blank=False, null=False)
+    db_order = models.PositiveIntegerField(default=0)
+
+    def __str__(self):
+        return str(self.db_key)
+
+    class Meta:
+        verbose_name = 'BBS'
+        verbose_name_plural = 'BBSs'
+        unique_together = (('db_owner', 'db_order'), ('db_owner', 'db_ikey'))
+
+
+class BBSPostDB(TypedObject):
+    __settingsclasspath__ = settings.BASE_BBS_POST_TYPECLASS
+    __defaultclasspath__ = "athanor.bbs_posts.bbs_posts.DefaultBBSPost"
+    __applabel__ = "athanor"
+
+    content_type = models.ForeignKey(ContentType, on_delete=models.PROTECT, null=True)
+    object_id = models.PositiveIntegerField(null=True)
+    db_poster = GenericForeignKey('content_type', 'object_id')
+    db_ckey = models.CharField(max_length=255, blank=False, null=False)
+    db_date_created = models.DateTimeField(null=False)
+    db_board = models.ForeignKey(BBSBoardDB, related_name='posts', on_delete=models.CASCADE)
+    db_date_modified = models.DateTimeField(null=False)
+    db_order = models.PositiveIntegerField(null=False)
+    db_body = models.TextField(null=False, blank=False)
+
+    class Meta:
+        verbose_name = 'Post'
+        verbose_name_plural = 'Posts'
+        unique_together = (('db_board', 'db_order'), )
+
+    @classmethod
+    def validate_key(cls, key_text, rename_from=None):
+        return key_text
+
+    @classmethod
+    def validate_order(cls, order_text, rename_from=None):
+        return int(order_text)
+
+    def __str__(self):
+        return self.subject
+
+    def post_alias(self):
+        return f"{self.board.alias}/{self.order}"
+
+    def can_edit(self, checker=None):
+        if self.owner.account_stub.account == checker:
+            return True
+        return self.board.check_permission(checker=checker, type="admin")
+
+    def edit_post(self, find=None, replace=None):
+        if not find:
+            raise ValueError("No text entered to find.")
+        if not replace:
+            replace = ''
+        self.date_modified = utcnow()
+        self.text = self.text.replace(find, replace)
+
+    def update_read(self, account):
+        acc_read, created = self.read.get_or_create(account=account)
+        acc_read.date_read = utcnow()
+        acc_read.save()
+
+    def fullname(self):
+        return f"BBS Post: ({self.board.db_script.prefix_order}/{self.order}): {self.name}"
+
+    def generate_substitutions(self, viewer):
+        return {'name': self.name,
+                'cname': self.cname,
+                'typename': 'BBS Post',
+                'fullname': self.fullname}
+
+
+class BBSPostRead(models.Model):
+    account = models.ForeignKey('accounts.AccountDB', related_name='bbs_read', on_delete=models.CASCADE)
+    post = models.ForeignKey(BBSPostDB, related_name='read', on_delete=models.CASCADE)
+    date_read = models.DateTimeField(null=True)
+
+    class Meta:
+        unique_together = (('account', 'post'),)
+
+
+class ChannelDB(TypedObject):
+    __settingsclasspath__ = settings.BASE_CHANNEL_TYPECLASS
+    __defaultclasspath__ = "athanor.channels.channels.DefaultChannel"
+    __applabel__ = "athanor"
+
+    db_owner = models.ForeignKey(OrganizationDB, null=True, on_delete=models.CASCADE, related_name='channels')
+    db_ckey = models.CharField(max_length=255, blank=False, null=False)
+    db_ikey = models.CharField(max_length=255, blank=False, null=False)
+
+
+class ChannelSubscription(SharedMemoryModel):
+    db_channel = models.ForeignKey(ChannelDB, related_name='subscriptions', on_delete=models.CASCADE)
+    db_subscriber = models.ForeignKey(PlayerCharacterDB, related_name='channel_subs', on_delete=models.CASCADE)
+    db_name = models.CharField(max_length=255, null=False, blank=False)
+    db_iname = models.CharField(max_length=255, null=False, blank=False)
+    db_namespace = models.CharField(max_length=255, null=False, blank=False)
+    db_codename = models.CharField(max_length=255, null=True, blank=False)
+    db_ccodename = models.CharField(max_length=255, null=True, blank=False)
+    db_icodename = models.CharField(max_length=255, null=True, blank=False)
+    db_title = models.CharField(max_length=255, null=True, blank=False)
+    db_altname = models.CharField(max_length=255, null=True, blank=False)
+    db_muted = models.BooleanField(default=False, null=False, blank=False)
+    db_enabled = models.BooleanField(default=True, null=False, blank=False)
+
+    class Meta:
+        unique_together = (('db_channel', 'db_subscriber'), ('db_subscriber', 'db_iname'),
+                           ('db_channel', 'db_icodename'))

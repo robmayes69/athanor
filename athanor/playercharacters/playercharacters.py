@@ -1,17 +1,21 @@
 from django.conf import settings
 from evennia.utils.utils import lazy_property
-from athanor.identities.typeclasses import AthanorIdentityScript
 from athanor.playercharacters.handlers import PlayerCharacterSessionHandler, PlayerCharacterCmdHandler
 from athanor.playercharacters.handlers import PlayerCharacterCmdSetHandler
+from athanor.models import PlayerCharacterDB
+from evennia.typeclasses.models import TypeclassBase
+from evennia.typeclasses.managers import TypeclassManager
 
 
-class AthanorPlayerCharacter(AthanorIdentityScript):
+class DefaultPlayerCharacter(PlayerCharacterDB, metaclass=TypeclassBase):
     _namespace = "playercharacters"
     _verbose_name = 'Player Character'
     _verbose_name_plural = "Player Characters"
     _cmd_sort = 25
     _cmdset_types = ['character']
     _default_cmdset = settings.CMDSET_PLAYER_CHARACTER
+    acl_type = 'playercharacter'
+    objects = TypeclassManager()
 
     def cmd(self):
         return PlayerCharacterCmdHandler(self)

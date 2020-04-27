@@ -1,3 +1,6 @@
+from evennia.contrib.unixcommand import UnixCommand
+
+import athanor
 from athanor.utils.command import AthanorCommand
 
 
@@ -241,3 +244,49 @@ class CmdCharacter(AdministrationCommand):
 
     def switch_list(self):
         self.msg(self.controller.list_characters(self.session))
+
+
+class _CmdAcl(UnixCommand):
+    locks = "cmd:all()"
+
+    @property
+    def controller(self):
+        return athanor.api().get('controller_manager').get('access')
+
+    def init_parser(self):
+        self.parser.add_argument("resource", action='store', nargs=1,
+                                 help="The resource being operated on. Addressed as TYPE:THINGNAME.")
+
+
+class _ModAcl(_CmdAcl):
+
+    def init_parser(self):
+        super().init_parser()
+        self.parser.add_argument("-s", "--subjects", action='store', nargs='+', required=True,
+                                 help="The entity(ies) having permissions added/removed to/from. Addressed as TYPE:THINGNAME")
+        self.parser.add_argument("-p", "--permissions", action='store', nargs='+', required=True,
+                                 help="The permissions being added/removed to the Subjects. These are words like 'read' or 'write'.")
+        self.parser.add_argument("-d", "--deny", action="store_true", nargs=0, required=False,
+                                 help="Modify Deny entries. Deny entries override Allows.")
+
+
+class CmdAddAcl(_ModAcl):
+    key = 'addacl'
+
+    def func(self):
+        pass
+
+
+class CmdRemAcl(_ModAcl):
+    key = 'remacl'
+
+    def func(self):
+        pass
+
+
+class CmdGetAcl(_CmdAcl):
+    key = 'getacl'
+
+    def func(self):
+        obj = self.controller.find_resource(self.caller, self.opts.resource[0])
+        self.msg(f"I FOUND: {obj}")

@@ -2,6 +2,7 @@ from evennia.commands.cmdset import CmdSet
 
 from evennia.commands.default import help, comms, admin, system
 from evennia.commands.default import building, account, general
+from athanor.accounts import commands as athcmds
 
 
 class AccountCmdSet(CmdSet):
@@ -29,3 +30,7 @@ class AccountCmdSet(CmdSet):
         self.add(system.CmdReset)
         self.add(system.CmdShutdown)
         self.add(system.CmdPy)
+
+        self.add(athcmds.CmdAddAcl)
+        self.add(athcmds.CmdGetAcl)
+        self.add(athcmds.CmdRemAcl)

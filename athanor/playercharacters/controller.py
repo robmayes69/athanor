@@ -2,7 +2,7 @@ import re
 from evennia.utils.search import object_search
 
 from athanor.utils.controllers import AthanorController, AthanorControllerBackend
-from athanor.playercharacters.typeclasses import AthanorPlayerCharacter
+from athanor.playercharacters.playercharacters import DefaultPlayerCharacter
 
 from athanor.playercharacters import messages as cmsg
 
@@ -101,7 +101,7 @@ class AthanorPlayerCharacterController(AthanorController):
 
 class AthanorPlayerCharacterControllerBackend(AthanorControllerBackend):
     typeclass_defs = [
-        ('player_character_typeclass', 'BASE_PLAYER_CHARACTER_TYPECLASS', AthanorPlayerCharacter)
+        ('player_character_typeclass', 'BASE_PLAYER_CHARACTER_TYPECLASS', DefaultPlayerCharacter)
     ]
 
     def __init__(self, frontend):
@@ -121,21 +121,21 @@ class AthanorPlayerCharacterControllerBackend(AthanorControllerBackend):
         self.reg_names = re.compile(r"(?i)\b(?P<found>%s)\b" % '|'.join(escape_names))
 
     def update_cache(self):
-        chars = AthanorPlayerCharacter.objects.filter_family()
+        chars = DefaultPlayerCharacter.objects.filter_family()
         self.id_map = {char.pk: char for char in chars}
         self.name_map = {char.key.upper(): char for char in chars}
         self.online = set(chars.exclude(db_account=None))
 
     def all(self, account=None):
         if account is None:
-            return AthanorPlayerCharacter.objects.filter_family()
-        return AthanorPlayerCharacter.objects.filter_family(db_account=account)
+            return DefaultPlayerCharacter.objects.filter_family()
+        return DefaultPlayerCharacter.objects.filter_family(db_account=account)
 
     def count(self):
-        return AthanorPlayerCharacter.objects.filter_family().count()
+        return DefaultPlayerCharacter.objects.filter_family().count()
 
     def find_player_character(self, character, archived=False):
-        if isinstance(character, AthanorPlayerCharacter):
+        if isinstance(character, DefaultPlayerCharacter):
             return character
         results = self.search_all(character) if not archived else self.search_archived(character)
         if not results:

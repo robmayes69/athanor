@@ -134,11 +134,16 @@ def init_settings(settings):
     settings.CONTROLLERS = dict()
 
     ######################################################################
-    # Game Data System
+    # Access Control List System
     ######################################################################
-    #settings.CONTROLLERS['gamedata'] = {
-    #    'class': 'athanor.controllers.gamedata.AthanorGameDataController',
-    #    }
+    # These two settings contain key-path combinations.
+    settings.ACL_SUBJECT_SYSTEMS = dict()
+    settings.ACL_OBJECT_SYSTEMS = dict()
+
+    settings.CONTROLLERS['access'] = {
+        'class': 'athanor.utils.access.AccessController',
+        'backend': 'athanor.utils.access.AccessControllerBackend'
+        }
 
     ######################################################################
     # Connection Options
@@ -186,6 +191,8 @@ def init_settings(settings):
 
     settings.EXAMINE_HOOKS['account'] = ['account', 'access', 'commands', 'tags', 'attributes', 'puppets']
 
+    settings.ACL_SUBJECT_SYSTEMS['account'] = 'athanor.accounts.access.AccountSubjectSystem'
+
     ######################################################################
     # Identity Options (ScriptDB)
     ######################################################################
@@ -205,7 +212,7 @@ def init_settings(settings):
         'backend': 'athanor.playercharacters.controller.AthanorPlayerCharacterControllerBackend'
     }
 
-    settings.BASE_PLAYER_CHARACTER_TYPECLASS = "athanor.playercharacters.typeclasses.AthanorPlayerCharacter"
+    settings.BASE_PLAYER_CHARACTER_TYPECLASS = "athanor.playercharacters.playercharacters.DefaultPlayerCharacter"
     settings.CMDSET_PLAYER_CHARACTER = "athanor.playercharacters.cmdsets.AthanorPlayerCharacterCmdSet"
 
     # These restrict a player's ability to create/modify their own characters.
@@ -213,6 +220,8 @@ def init_settings(settings):
     settings.RESTRICTED_CHARACTER_CREATION = False
     settings.RESTRICTED_CHARACTER_DELETION = False
     settings.RESTRICTED_CHARACTER_RENAME = False
+
+    settings.ACL_SUBJECT_SYSTEMS['player'] = 'athanor.playercharacters.access.CharacterSubjectSystem'
 
     ######################################################################
     # PlaySessionDB
@@ -243,9 +252,9 @@ def init_settings(settings):
     # Grid / Building Settings
     ######################################################################
 
-    settings.BASE_ROOM_TYPECLASS = "athanor.grid.typeclasses.AthanorRoom"
-    settings.BASE_EXIT_TYPECLASS = "athanor.grid.typeclasses.AthanorExit"
-    settings.BASE_OBJECT_TYPECLASS = "athanor.grid.typeclasses.AthanorItem"
+    #settings.BASE_ROOM_TYPECLASS = "athanor.grid.typeclasses.AthanorRoom"
+    #settings.BASE_EXIT_TYPECLASS = "athanor.grid.typeclasses.AthanorExit"
+    #settings.BASE_OBJECT_TYPECLASS = "athanor.grid.typeclasses.AthanorItem"
 
     ######################################################################
     # Permissions
