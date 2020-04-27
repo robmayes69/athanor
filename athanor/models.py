@@ -11,7 +11,7 @@ class Pluginspace(SharedMemoryModel):
     This model holds database references to all of the Athanor Plugins that have ever been
     installed, in case data must be removed.
     """
-    # The name is something like 'athanor' or 'athanor_bbs'. It is an unchanging identifier which
+    # The name is something like 'athanor' or 'mod_name'. It is an unchanging identifier which
     # uniquely signifies this plugin across all of its versions. It must never change, once established,
     # without a careful migration.
     db_name = models.CharField(max_length=255, null=False, blank=False, unique=True)
@@ -32,21 +32,27 @@ class Namespace(SharedMemoryModel):
 
 
 class IdentityDB(TypedObject):
+    """
+    The IdentityDB is a new Evennia Typeclass which is used for keeping track of Player Characters, Non-Player
+    Characters, Nations, Factions, Parties, and any other such 'named things' for which Access Control Lists are
+    relevant. In General, Identities should be deleted with care; a Party might only last for a week, a Faction might
+    be entirely disbanded, but Player Characters may have BBS posts or other events attached to them which makes
+    deletion a bad idea.
+    """
     __settingsclasspath__ = settings.BASE_IDENTITY_TYPECLASS
     __defaultclasspath__ = "athanor.identities.identities.DefaultIdentity"
     __applabel__ = "athanor"
 
-    # Store the plain text version of a name in db_key
+    # Store the plain text version of a name in db_key. We might as well use it.
 
     # Store the version with Evennia-style ANSI markup in here.
     db_ckey = models.CharField(max_length=255, null=False, blank=False)
-    db_ikey = models.CharField(max_length=255, null=False, blank=False)
 
-    db_account = models.ForeignKey('accounts.AccountDB', default=1, related_name='owned_identities', null=False,
-                                   on_delete=models.SET_DEFAULT)
+    db_namespace = models.ForeignKey(Namespace, related_name='identities', on_delete=models.PROTECT)
 
-    # This is for total playtime the character has accrued. Accounts also track this for their usage of a character.
-    db_total_playtime = models.DurationField(null=False, default=0)
+    # All Identities have an owner. Bereft of any other, Identities default to the Evennia Superuser.
+    db_account = models.ForeignKey('accounts.AccountDB', related_name='owned_identities', on_delete=models.SET_DEFAULT,
+                                   default=1)
 
     db_cmdset_storage = models.CharField(
         "cmdset",
@@ -56,8 +62,8 @@ class IdentityDB(TypedObject):
         help_text="optional python path to a cmdset class.",
     )
 
-    # Am inactive character is for soft-deletion / disabling.
-    db_is_active = models.BooleanField(null=False, default=True)
+    class Meta:
+        ordering = ['-db_namespace__db_pluginspace__db_name', '-db_namespace__db_name', 'db_account__username', 'db_key']
 
 
 class AccountIdentityCombo(SharedMemoryModel):
@@ -76,8 +82,14 @@ class AccountIdentityCombo(SharedMemoryModel):
     # This allows you to maintain 'hidden alts' on games that allow it.
     db_alt_number = models.PositiveSmallIntegerField(null=True, default=None)
 
+    # Am inactive entry is for soft-deletion / disabling. If active is False, this Character will not appear in the
+    # account's character select screen.
+    db_is_active = models.BooleanField(null=False, default=True)
+
+    db_date_created = models.DateTimeField(null=False, auto_now_add=True)
+
     class Meta:
-        unique_together = (('db_account', 'db_player_character'),)
+        unique_together = (('db_account', 'db_identity'),)
 
 
 class PlaySessionDB(TypedObject):
@@ -85,7 +97,7 @@ class PlaySessionDB(TypedObject):
     __defaultclasspath__ = "athanor.playsessions.playsessions.DefaultPlaySession"
     __applabel__ = "athanor"
 
-    db_character = models.OneToOneField(PlayerCharacterDB, related_name='play_session', on_delete=models.PROTECT)
+    db_combo = models.OneToOneField(AccountIdentityCombo, related_name='play_session', on_delete=models.PROTECT)
 
     # This will store a record of 'when this PlaySession was last known to be active.' It is used only in the event
     # of a crash for playtime calculations during cleanup.
@@ -149,17 +161,20 @@ class ACLPermission(models.Model):
     name = models.CharField(max_length=50, null=False, unique=True, blank=False)
 
 
-class AbstractACLResource(models.Model):
-    #  resource = NOT NULL ForeignKey to SOMETHING... related_name='acl_entries'
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    object_id = models.PositiveIntegerField()
-    subject = GenericForeignKey('content_type', 'object_id')
+class ACLEntry(models.Model):
+    # This Generic Foreign Key is the object being 'accessed'.
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=False)
+    object_id = models.PositiveIntegerField(null=False)
+    resource = GenericForeignKey('content_type', 'object_id')
+
+    identity = models.ForeignKey(IdentityDB, related_name='acl_references', on_delete=models.CASCADE)
+    mode = models.CharField(max_length=30, null=False, blank=True, default='')
     deny = models.BooleanField(null=False, default=False)
-    permissions = models.ManyToManyField(ACLPermission, related_name='+')
+    permissions = models.ManyToManyField(ACLPermission, related_name='entries')
 
     class Meta:
-        abstract = True
-        unique_together = (('entity', 'content_type', 'object_id', 'deny'),)
+        unique_together = (('content_type', 'object_id', 'identity', 'mode', 'deny'),)
+        index_together = (('content_type', 'object_id', 'deny'),)
 
 
 class BBSBoardDB(TypedObject):
@@ -167,7 +182,7 @@ class BBSBoardDB(TypedObject):
     __defaultclasspath__ = "athanor.bbs_boards.bbs_boards.DefaultBBSBoard"
     __applabel__ = "athanor"
 
-    db_owner = models.ForeignKey(OrganizationDB, null=True, on_delete=models.CASCADE, related_name='boards')
+    db_owner = models.ForeignKey(IdentityDB, on_delete=models.CASCADE, related_name='owned_boards')
     db_ikey = models.CharField(max_length=255, blank=False, null=False)
     db_ckey = models.CharField(max_length=255, blank=False, null=False)
     db_order = models.PositiveIntegerField(default=0)
@@ -186,9 +201,7 @@ class BBSPostDB(TypedObject):
     __defaultclasspath__ = "athanor.bbs_posts.bbs_posts.DefaultBBSPost"
     __applabel__ = "athanor"
 
-    content_type = models.ForeignKey(ContentType, on_delete=models.PROTECT, null=True)
-    object_id = models.PositiveIntegerField(null=True)
-    db_poster = GenericForeignKey('content_type', 'object_id')
+    db_poster = models.ForeignKey(IdentityDB, related_name='owned_posts', on_delete=models.PROTECT)
     db_ckey = models.CharField(max_length=255, blank=False, null=False)
     db_date_created = models.DateTimeField(null=False)
     db_board = models.ForeignKey(BBSBoardDB, related_name='posts', on_delete=models.CASCADE)
@@ -257,14 +270,13 @@ class ChannelDB(TypedObject):
     __defaultclasspath__ = "athanor.channels.channels.DefaultChannel"
     __applabel__ = "athanor"
 
-    db_owner = models.ForeignKey(OrganizationDB, null=True, on_delete=models.CASCADE, related_name='channels')
+    db_owner = models.ForeignKey(IdentityDB, on_delete=models.CASCADE, related_name='owned_channels')
     db_ckey = models.CharField(max_length=255, blank=False, null=False)
-    db_ikey = models.CharField(max_length=255, blank=False, null=False)
 
 
 class ChannelSubscription(SharedMemoryModel):
     db_channel = models.ForeignKey(ChannelDB, related_name='subscriptions', on_delete=models.CASCADE)
-    db_subscriber = models.ForeignKey(PlayerCharacterDB, related_name='channel_subs', on_delete=models.CASCADE)
+    db_subscriber = models.ForeignKey(AccountIdentityCombo, related_name='channel_subs', on_delete=models.CASCADE)
     db_name = models.CharField(max_length=255, null=False, blank=False)
     db_iname = models.CharField(max_length=255, null=False, blank=False)
     db_namespace = models.CharField(max_length=255, null=False, blank=False)

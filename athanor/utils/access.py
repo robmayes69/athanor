@@ -1,9 +1,9 @@
 from collections import defaultdict, OrderedDict
 from django.conf import settings
-from evennia.utils.utils import class_from_module
+from evennia.utils.utils import class_from_module, make_iter
 import athanor
 from athanor.utils.controllers import AthanorController, AthanorControllerBackend
-from athanor.models import ACLPermission
+from athanor.models import ACLPermission, ACLEntry
 
 
 class AccessHandler:
@@ -12,30 +12,72 @@ class AccessHandler:
     and reimplement its methods to get something useful out of it.
     """
     permissions = OrderedDict()
-    subject_classes = {key: class_from_module(path) for key, path in settings.ACL_SUBJECT_CLASSES.items()}
+    identity_handlers = {key: class_from_module(path) for key, path in settings.ACL_IDENTITY_HANDLER_CLASSES.items()}
 
     def __init__(self, owner):
         self.owner = owner
-        self.allow_dict = defaultdict(list)
-        self.deny_dict = defaultdict(list)
-        self.load()
-
-    def load(self):
-        for key, prop in (('allow', 'allow_dict'), ('deny', 'deny_dict')):
-            attr = self.owner.attributes.get(key=key, category='acl', default=list())
-            acl_dict = defaultdict(list)
-            for entry in attr:
-                pass
-            setattr(self, prop, acl_dict)
 
     def render(self, looker):
         message = list()
-        controller = athanor.api().get('controller_manager').get('access')
-        message.extend(controller.display_permissions(self.owner, looker))
 
-    def check(self, accessor, operation):
-        return self.controller.check(accessor, operation)
+    def check(self, accessor, permission):
+        permission = permission.strip().lower()
 
+        def sort_acl(queryset):
+            return sorted(queryset, key=lambda x: getattr(x, 'acl_sort', 0))
+
+        def get_acl(deny=False):
+            acl_entries = sort_acl(ACLEntry.objects.filter(resource=self.owner, deny=deny))
+            gathered = set()
+            for entry in acl_entries:
+                if entry.identity.check_acl(accessor, entry.mode):
+                    gathered += {str(perm) for perm in entry.permissions.all()}
+                    if 'all' in gathered:
+                        return True
+                    if permission in gathered:
+                        return True
+            return False
+
+        # first we check to see if access should be DENIED. This takes priority over allows.
+        if get_acl(deny=True):
+            return False
+        return get_acl(deny=False)
+
+    def ready_entries(self, identities, mode, deny):
+        identities = make_iter(identities)
+        acl_entries = list()
+        for identity in identities:
+            acl_entry, created = ACLEntry.objects.get_or_create(resource=self.owner, deny=deny, mode=mode,
+                                                                identity=identity)
+            if created:
+                acl_entry.save()
+            acl_entries.append(acl_entry)
+        return acl_entries
+
+    def ready_perms(self, permissions):
+        permissions = make_iter(permissions)
+        perm_objects = list()
+        for perm in permissions:
+            perm_obj, pcreated = ACLPermission.objects.get_or_create(name=perm.strip().lower())
+            if pcreated:
+                perm_obj.save()
+            perm_objects.append(perm_obj)
+        return perm_objects
+
+    def add(self, identities, permissions, mode='', deny=False):
+        permissions = self.ready_perms(permissions)
+        acl_entries = self.ready_entries(identities, mode, deny)
+        for entry in acl_entries:
+            entry.permissions.add(permissions)
+
+    def remove(self, identities, permissions, mode='', deny=False):
+        permissions = self.ready_perms(permissions)
+        acl_entries = self.ready_entries(identities, mode, deny)
+        for entry in acl_entries:
+            entry.permissions.remove(permissions)
+            # No reason to keep an entry with no permissions around.
+            if not entry.permissions.count():
+                entry.delete()
 
 class ACLObjectSystem:
     """
