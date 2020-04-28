@@ -194,26 +194,23 @@ def init_settings(settings):
     settings.ACL_SUBJECT_SYSTEMS['account'] = 'athanor.accounts.access.AccountSubjectSystem'
 
     ######################################################################
-    # Identity Options (ScriptDB)
+    # Identity Options
     ######################################################################
     # The namespaces dict contains a set of namespaces that should exist in the database.
     # The key is the pluginspace it will exist in. This will be integrity
     # checked every reload.
     settings.NAMESPACES = defaultdict(set)
 
-    settings.NAMESPACES['athanor'].add('playercharacters')
+    settings.NAMESPACES['athanor'].add('player')
     settings.NAMESPACES['athanor'].add('playsessions')
 
-    ######################################################################
-    # Player Character DB
-    ######################################################################
-    settings.CONTROLLERS['playercharacter'] = {
-        'class': 'athanor.playercharacters.controller.AthanorPlayerCharacterController',
-        'backend': 'athanor.playercharacters.controller.AthanorPlayerCharacterControllerBackend'
+    settings.CONTROLLERS['identity'] = {
+        'class': 'athanor.identities.controller.AthanorIdentityController',
+        'backend': 'athanor.identities.controller.AthanorIdentityControllerBackend'
     }
 
-    settings.BASE_PLAYER_CHARACTER_TYPECLASS = "athanor.playercharacters.playercharacters.DefaultPlayerCharacter"
-    settings.CMDSET_PLAYER_CHARACTER = "athanor.playercharacters.cmdsets.AthanorPlayerCharacterCmdSet"
+    settings.BASE_IDENTITY_TYPECLASS = "athanor.identities.identities.DefaultIdentity"
+    #settings.CMDSET_PLAYER_CHARACTER = "athanor.playercharacters.cmdsets.AthanorPlayerCharacterCmdSet"
 
     # These restrict a player's ability to create/modify their own characters.
     # If True, only staff can perform these operations (if allowed by the privileges system)
@@ -221,7 +218,7 @@ def init_settings(settings):
     settings.RESTRICTED_CHARACTER_DELETION = False
     settings.RESTRICTED_CHARACTER_RENAME = False
 
-    settings.ACL_SUBJECT_SYSTEMS['player'] = 'athanor.playercharacters.access.CharacterSubjectSystem'
+    #settings.ACL_SUBJECT_SYSTEMS['player'] = 'athanor.playercharacters.access.CharacterSubjectSystem'
 
     ######################################################################
     # PlaySessionDB
@@ -247,6 +244,13 @@ def init_settings(settings):
     # Instead, they'll see something generic, and have to decide what to
     # call a person.
     settings.NAME_DUB_SYSTEM = False
+
+    ######################################################################
+    # BBS Settings
+    ######################################################################
+    settings.BASE_BBS_BOARD_TYPECLASS = 'athanor.bbs.boards.DefaultBoard'
+    settings.BASE_BBS_POST_TYPECLASS = 'athanor.bbs.posts.DefaultPost'
+
 
     ######################################################################
     # Grid / Building Settings

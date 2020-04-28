@@ -4,6 +4,7 @@ from evennia.utils.utils import class_from_module, make_iter
 import athanor
 from athanor.utils.controllers import AthanorController, AthanorControllerBackend
 from athanor.models import ACLPermission, ACLEntry
+from athanor.identities.identities import DefaultIdentity
 
 
 class AccessHandler:
@@ -43,10 +44,33 @@ class AccessHandler:
             return False
         return get_acl(deny=False)
 
-    def ready_entries(self, identities, mode, deny):
+    def find_identity(self, identity):
+        if isinstance(identity, DefaultIdentity):
+            return identity, ''
+        if ':' not in identity:
+            raise ValueError(f"Malformed Identity string: {identity}")
+        identity_type, target = identity.split(':', 1)
+        identity_type = identity_type.strip().lower()
+        if not (handler := self.identity_handlers.get(identity_type, None)):
+            raise ValueError(f"Unsupported Identity Type: {identity_type}. Supported: {self.identity_handlers.keys()}")
+        if not (found := handler.find(target)):
+            raise ValueError(f"Could not find Identity Type {identity_type}: {target}")
+        if ':' in target:
+            target, mode = target.split(':', 1)
+            mode = mode.lower().strip()
+        else:
+            mode = ''
+        target = target.strip()
+        return target, mode
+
+    def ready_entries(self, identities, deny):
         identities = make_iter(identities)
         acl_entries = list()
         for identity in identities:
+            if isinstance(identity, str):
+                identity, mode = self.find_identity(identity)
+            else:
+                identity, mode = identity[0], identity[1]
             acl_entry, created = ACLEntry.objects.get_or_create(resource=self.owner, deny=deny, mode=mode,
                                                                 identity=identity)
             if created:
@@ -64,34 +88,25 @@ class AccessHandler:
             perm_objects.append(perm_obj)
         return perm_objects
 
-    def add(self, identities, permissions, mode='', deny=False):
+    def add(self, identities, permissions, deny=False):
         permissions = self.ready_perms(permissions)
-        acl_entries = self.ready_entries(identities, mode, deny)
+        acl_entries = self.ready_entries(identities, deny)
         for entry in acl_entries:
             entry.permissions.add(permissions)
 
-    def remove(self, identities, permissions, mode='', deny=False):
+    def remove(self, identities, permissions, deny=False):
         permissions = self.ready_perms(permissions)
-        acl_entries = self.ready_entries(identities, mode, deny)
+        acl_entries = self.ready_entries(identities, deny)
         for entry in acl_entries:
             entry.permissions.remove(permissions)
             # No reason to keep an entry with no permissions around.
             if not entry.permissions.count():
                 entry.delete()
 
-class ACLObjectSystem:
-    """
-    This ACL subsystem exists for targeting 'kinds of objects.' Create sub-classes and register them in
-    settings so that things such as BBS Categories or Faction Treasures can be 'given' ACL's.
-    """
 
-    def find(self, enactor, object_string):
-        raise NotImplementedError()
-
-
-class ACLSubjectSystem:
+class ACLIdentityHandler:
     """
-    A specific ACL SubSystem exists for each major kind of object that can be granted permissions to things.
+    A specific ACL Identity Handler exists for each major kind of Identity that can be granted permissions to things.
 
     The basic SubjectSystem assumes that Subjects are Models and is responsible for creating ACL entries on
     the relevant Resource.
