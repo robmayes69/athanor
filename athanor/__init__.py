@@ -232,7 +232,26 @@ def init_settings(settings):
     settings.CMDSET_PLAYSESSION = "athanor.playsessions.cmdsets.AthanorPlaySessionCmdSet"
 
     ######################################################################
-    # Avatar Settings (ObjectDB)
+    # Grid Settings
+    ######################################################################
+    settings.BASE_DIMENSION_TYPECLASS = 'athanor.dimensions.dimensions.DefaultDimension'
+    settings.BASE_SECTOR_TYPECLASS = 'athanor.sectors.sectors.DefaultSector'
+    settings.BASE_ENTITY_TYPECLASS = 'athanor.entities.entities.DefaultEntity'
+    settings.BASE_ROOM_TYPECLASS = 'athanor.rooms.rooms.AthanorRoom'
+    settings.BASE_EXIT_TYPECLASS = 'athanor.exits.exits.AthanorExit'
+
+    ######################################################################
+    # Inventory Settings
+    ######################################################################
+    settings.BASE_INVENTORY_TYPECLASS = 'athanor.inventories.inventories.DefaultInventory'
+
+    ######################################################################
+    # Equip Settings
+    ######################################################################
+    settings.BASE_EQUIP_TYPECLASS = 'athanor.equips.equips.DefaultEquip'
+
+    ######################################################################
+    # Avatar Settings
     ######################################################################
 
     settings.CMDSET_AVATAR = "athanor.grid.cmdsets.AthanorAvatarCmdSet"

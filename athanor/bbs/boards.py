@@ -13,9 +13,11 @@ from evennia.typeclasses.managers import TypeclassManager
 import athanor
 from athanor.utils.online import puppets as online_puppets
 from athanor.utils.time import utcnow
+from athanor.utils.text import clean_and_ansi
 
 from athanor.models import BBSBoardDB, BBSPostDB, BBSPostRead
 from athanor.bbs import messages as fmsg
+from athanor.bbs.handlers import BoardAcccessHandler
 
 
 class DefaultBoard(BBSBoardDB, metaclass=TypeclassBase):
@@ -23,6 +25,10 @@ class DefaultBoard(BBSBoardDB, metaclass=TypeclassBase):
     objects = TypeclassManager()
 
     re_name = re.compile(r"(?i)^([A-Z]|[0-9]|\.|-|')+( ([A-Z]|[0-9]|\.|-|')+)*$")
+
+    @lazy_property
+    def acl(self):
+        return BoardAcccessHandler(self)
 
     def at_first_save(self):
         pass
@@ -38,13 +44,7 @@ class DefaultBoard(BBSBoardDB, metaclass=TypeclassBase):
 
     @classmethod
     def create(cls, identity, key, order, **kwargs):
-        key = key.strip()
-        if '|' in key and not key.endswith('|n'):
-            key += '|n'
-        key = ANSIString(key)
-        clean_key = str(key.clean())
-        if '|' in clean_key:
-            raise ValueError("Malformed ANSI in BBS Board Name.")
+        clean_key, key = clean_and_ansi(key, thing_name='BBS Board')
         if not cls.re_name.match(clean_key):
             raise ValueError("BBS Board Names must <qualifier>")
         if (conflict := identity.owned_boards.filter(Q(db_key__iexact=clean_key) | Q(db_order=order)).first()):

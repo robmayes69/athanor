@@ -23,7 +23,7 @@ class DefaultPost(BBSPostDB, metaclass=TypeclassBase):
         return self.db_key
 
     def post_alias(self):
-        return f"{self.board.prefix_order}/{self.order}"
+        return f"{self.db_board.prefix_order}/{self.db_order}"
 
     def edit_post(self, find=None, replace=None):
         if not find:
@@ -39,7 +39,7 @@ class DefaultPost(BBSPostDB, metaclass=TypeclassBase):
         acc_read.save()
 
     def fullname(self):
-        return f"BBS Post: ({self.board.prefix_order}/{self.order}): {self.name}"
+        return f"BBS Post: ({self.db_board.prefix_order}/{self.db_order}): {self.name}"
 
     def generate_substitutions(self, viewer):
         return {'name': self.name,

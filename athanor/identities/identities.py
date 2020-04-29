@@ -5,6 +5,7 @@ from evennia.typeclasses.managers import TypeclassManager
 from evennia.utils.utils import lazy_property
 from evennia.utils.ansi import ANSIString
 from athanor.models import IdentityDB, Namespace, Pluginspace
+from athanor.utils.text import clean_and_ansi
 
 
 class DefaultIdentity(IdentityDB, metaclass=TypeclassBase):
@@ -74,15 +75,9 @@ class DefaultIdentity(IdentityDB, metaclass=TypeclassBase):
         """
         if namespace is None:
             namespace = cls._get_namespace()
-        if not name:
-            raise ValueError(f"{cls._verbose_name_plural} must have a name!")
-        name = ANSIString(name.strip())
-        clean_name = str(name.clean())
-        if '|' in clean_name:
-            raise ValueError(f"Malformed ANSI in {cls._verbose_name} Name.")
+        clean_name, name = clean_and_ansi(name, thing_name=f"{cls._verbose_name} Name")
         if cls._re_name and not cls._re_name.match(clean_name):
             raise ValueError(f"{cls._verbose_name} Name does not meet standards. {cls._name_standards}")
-        namespace = cls.namespace(namespace)
         if (found := namespace.identities.filter(db_key__iexact=clean_name).first()):
             if exclude:
                 if found.db_script != exclude:

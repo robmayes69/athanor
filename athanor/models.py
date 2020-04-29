@@ -227,17 +227,13 @@ class BBSPostRead(models.Model):
         unique_together = (('account', 'post'),)
 
 
-class ChannelDB(TypedObject):
-    __settingsclasspath__ = settings.BASE_CHANNEL_TYPECLASS
-    __defaultclasspath__ = "athanor.channels.channels.DefaultChannel"
-    __applabel__ = "athanor"
-
+class ChannelOwner(SharedMemoryModel):
     db_owner = models.ForeignKey(IdentityDB, on_delete=models.CASCADE, related_name='owned_channels')
-    db_ckey = models.CharField(max_length=255, blank=False, null=False)
+    db_channel = models.OneToOneField('comms.ChannelDB', null=False, related_name='owner', on_delete=models.CASCADE)
 
 
 class ChannelSubscription(SharedMemoryModel):
-    db_channel = models.ForeignKey(ChannelDB, related_name='subscriptions', on_delete=models.CASCADE)
+    db_channel = models.ForeignKey('comms.ChannelDB', related_name='subscriptions', on_delete=models.CASCADE)
     db_subscriber = models.ForeignKey(AccountIdentityCombo, related_name='channel_subs', on_delete=models.CASCADE)
     db_name = models.CharField(max_length=255, null=False, blank=False)
     db_iname = models.CharField(max_length=255, null=False, blank=False)
@@ -256,6 +252,10 @@ class ChannelSubscription(SharedMemoryModel):
 
 
 class DimensionDB(TypedObject):
+    __settingsclasspath__ = settings.BASE_DIMENSION_TYPECLASS
+    __defaultclasspath__ = "athanor.dimensions.dimensions.DefaultDimension"
+    __applabel__ = "athanor"
+
     # Store the plain text version of a name in this field.
     db_name = models.CharField(max_length=255, null=False, blank=False)
     # Store the version with Evennia-style ANSI markup in here.
@@ -287,6 +287,9 @@ class DimensionFixture(SharedMemoryModel):
 
 
 class SectorDB(TypedObject):
+    __settingsclasspath__ = settings.BASE_SECTOR_TYPECLASS
+    __defaultclasspath__ = "athanor.sectors.sectors.DefaultSector"
+    __applabel__ = "athanor"
     db_dimension = models.ForeignKey(DimensionDB, related_name='sectors', on_delete=models.PROTECT)
     # Store the plain text version of a name in this field.
     db_name = models.CharField(max_length=255, null=False, blank=False)
@@ -323,8 +326,8 @@ class EntityDB(TypedObject):
     """
     This is Athanor's replacement to Evennia's ObjectDB.
     """
-    #__settingsclasspath__ = settings.BASE_ENTITY_TYPECLASS
-    #__defaultclasspath__ = "athanor.entities.entities.DefaultEntity"
+    __settingsclasspath__ = settings.BASE_ENTITY_TYPECLASS
+    __defaultclasspath__ = "athanor.entities.entities.DefaultEntity"
     __applabel__ = "athanor"
 
     # db_key is used as a multi-word collection of words this entity will respond to
@@ -344,7 +347,7 @@ class EntityDB(TypedObject):
     )
 
     inventories = GenericRelation('athanor.InventoryDB', related_name='entities')
-    equipsets = GenericRelation('athanor.EquippedDB', related_query_name='entities')
+    equipsets = GenericRelation('athanor.EquipDB', related_query_name='entities')
 
 
 class EntityFixture(SharedMemoryModel):
@@ -370,6 +373,10 @@ class SectorLocation(SharedMemoryModel):
 
 
 class RoomDB(TypedObject):
+    __settingsclasspath__ = settings.BASE_ROOM_TYPECLASS
+    __defaultclasspath__ = "athanor.rooms.rooms.DefaultRoom"
+    __applabel__ = "athanor"
+
     # db_key is used as a unique-key for identifying this Room within a particular Entity.
     # db_key is used for database exports and generating structures with consistent results.
     # If new rooms are created in play, be careful to ensure they have a prefix.
@@ -386,6 +393,10 @@ class RoomDB(TypedObject):
 
 
 class ExitDB(TypedObject):
+    __settingsclasspath__ = settings.BASE_EXIT_TYPECLASS
+    __defaultclasspath__ = "athanor.exits.exits.DefaultExit"
+    __applabel__ = "athanor"
+
     # db_key is used as a unique-key for identifying this Room within a particular Entity.
     # Store the plain text version of the room's display name in this field.
     db_name = models.CharField(max_length=255, null=False, blank=False)
@@ -417,6 +428,10 @@ class InventoryDB(TypedObject):
     different things. A Capital Ship might have a cargo bay and a fuel hangar. Given this, Inventories are
     TypedObjects.
     """
+    __settingsclasspath__ = settings.BASE_INVENTORY_TYPECLASS
+    __defaultclasspath__ = "athanor.inventories.inventories.DefaultInventory"
+    __applabel__ = "athanor"
+
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
     owner_object = GenericForeignKey('content_type', 'object_id')
@@ -438,13 +453,17 @@ class InventoryLocation(SharedMemoryModel):
         unique_together = (('db_inventory', 'db_entity'), )
 
 
-class EquippedDB(TypedObject):
+class EquipDB(TypedObject):
     """
     Like with Inventories, there may be many kinds of Equip sets. This might be anything from a paper-doll style
     inventory to a spaceship's part slots or maybe slotting gems into an sword to give it magical powers.
 
     This is powered by GenericForeignKey so that ANYTHING can equip Items.
     """
+    __settingsclasspath__ = settings.BASE_EQUIP_TYPECLASS
+    __defaultclasspath__ = "athanor.equips.equips.DefaultEquip"
+    __applabel__ = "athanor"
+
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
     owner_object = GenericForeignKey('content_type', 'object_id')
@@ -460,7 +479,7 @@ class EquipLocation(SharedMemoryModel):
     """
     Simple table for holding information on what's equipped where, with database enforcement.
     """
-    db_equip = models.ForeignKey(EquippedDB, related_name='equipped_things', on_delete=models.CASCADE)
+    db_equip = models.ForeignKey(EquipDB, related_name='equipped_things', on_delete=models.CASCADE)
     db_entity = models.ForeignKey(EntityDB, related_name='equipped_locations', on_delete=models.CASCADE)
 
     # The slot is the 'name' of the equipment slot this thing exists in. 'head' or 'socket' or 'about' or whatever.
