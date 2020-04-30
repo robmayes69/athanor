@@ -200,3 +200,8 @@ class AthanorAccount(HasAttributeGetCreate, EventEmitter, DefaultAccount):
         self.unpuppet_all()
         for sess in self.sessions.all():
             SESSION_HANDLER.disconnect(sess, reason=reason)
+
+    def link_identity(self, identity):
+        found, created = self.identity_stats.get_or_create(db_identity=identity)
+        if created:
+            created.save()

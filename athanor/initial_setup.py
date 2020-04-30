@@ -61,9 +61,10 @@ def create_objects():
 
     """
 
-    logger.log_info("Initial setup: Creating objects (Account #1 and Limbo room) ...")
+    logger.log_info("Initial setup: Sanitizing God Account...")
 
     # grab the Athanor API. We'll be using it a bit for setting things up.
+    # This will also create the grid defined via Fixtures.
     import athanor
     api = athanor.api()
 
@@ -129,6 +130,8 @@ def create_channels():
     Creates some sensible default channels.
 
     """
+
+    """
     logger.log_info("Initial setup: Creating default channels ...")
 
     goduser = get_god_account()
@@ -146,7 +149,8 @@ def create_channels():
     for channeldict in settings.DEFAULT_CHANNELS:
         channel = create.create_channel(**channeldict)
         channel.connect(goduser)
-
+    """
+    pass
 
 def at_initial_setup():
     """

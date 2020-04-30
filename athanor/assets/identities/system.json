@@ -1,0 +1,10 @@
+{
+  "system": {
+    "typeclass": "athanor.identities.system.SystemOwnerIdentity",
+    "id": 0
+  },
+  "everyone": {
+    "typeclass": "athanor.identities.system.EveryoneIdentity",
+    "id": 1
+  }
+}

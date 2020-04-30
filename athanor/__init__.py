@@ -108,6 +108,9 @@ def init_settings(settings):
     # Taking control of initial setup. No more screwy godcharacter nonsense.
     settings.INITIAL_SETUP_MODULE = "athanor.initial_setup"
 
+
+
+
     ######################################################################
     # Module List Options
     ######################################################################
@@ -137,13 +140,7 @@ def init_settings(settings):
     # Access Control List System
     ######################################################################
     # These two settings contain key-path combinations.
-    settings.ACL_SUBJECT_SYSTEMS = dict()
-    settings.ACL_OBJECT_SYSTEMS = dict()
-
-    settings.CONTROLLERS['access'] = {
-        'class': 'athanor.utils.access.AccessController',
-        'backend': 'athanor.utils.access.AccessControllerBackend'
-        }
+    settings.ACL_IDENTITY_HANDLER_CLASSES = dict()
 
     ######################################################################
     # Connection Options
@@ -191,25 +188,23 @@ def init_settings(settings):
 
     settings.EXAMINE_HOOKS['account'] = ['account', 'access', 'commands', 'tags', 'attributes', 'puppets']
 
-    settings.ACL_SUBJECT_SYSTEMS['account'] = 'athanor.accounts.access.AccountSubjectSystem'
-
     ######################################################################
     # Identity Options
     ######################################################################
-    # The namespaces dict contains a set of namespaces that should exist in the database.
-    # The key is the pluginspace it will exist in. This will be integrity
-    # checked every reload.
-    settings.NAMESPACES = defaultdict(set)
+    settings.NAMESPACES = [
+        "system",
+        "pc",
+        "npc",
 
-    settings.NAMESPACES['athanor'].add('player')
-    settings.NAMESPACES['athanor'].add('playsessions')
+    ]
 
-    settings.CONTROLLERS['identity'] = {
-        'class': 'athanor.identities.controller.AthanorIdentityController',
-        'backend': 'athanor.identities.controller.AthanorIdentityControllerBackend'
-    }
-
+    # This should basically never be used, but has to in order to satisfy the Typeclass system.
     settings.BASE_IDENTITY_TYPECLASS = "athanor.identities.identities.DefaultIdentity"
+
+    ######################################################################
+    # Player Character Options
+    ######################################################################
+    settings.BASE_PLAYER_CHARACTER_TYPECLASS = "athanor.playercharacters.playercharacters.DefaultPlayerCharacter"
     #settings.CMDSET_PLAYER_CHARACTER = "athanor.playercharacters.cmdsets.AthanorPlayerCharacterCmdSet"
 
     # These restrict a player's ability to create/modify their own characters.
@@ -218,7 +213,7 @@ def init_settings(settings):
     settings.RESTRICTED_CHARACTER_DELETION = False
     settings.RESTRICTED_CHARACTER_RENAME = False
 
-    #settings.ACL_SUBJECT_SYSTEMS['player'] = 'athanor.playercharacters.access.CharacterSubjectSystem'
+    settings.ACL_IDENTITY_HANDLER_CLASSES['player'] = 'athanor.identities.utils.PlayerACLIdentityHandler'
 
     ######################################################################
     # PlaySessionDB

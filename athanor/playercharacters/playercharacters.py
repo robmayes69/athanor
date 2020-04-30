@@ -2,26 +2,28 @@ from django.conf import settings
 from evennia.utils.utils import lazy_property
 from athanor.playercharacters.handlers import PlayerCharacterSessionHandler, PlayerCharacterCmdHandler
 from athanor.playercharacters.handlers import PlayerCharacterCmdSetHandler
-from athanor.models import PlayerCharacterDB
-from evennia.typeclasses.models import TypeclassBase
-from evennia.typeclasses.managers import TypeclassManager
+from athanor.identities.identities import DefaultIdentity
 
 
-class DefaultPlayerCharacter(PlayerCharacterDB, metaclass=TypeclassBase):
+class DefaultPlayerCharacter(DefaultIdentity):
     _namespace = "playercharacters"
     _verbose_name = 'Player Character'
     _verbose_name_plural = "Player Characters"
     _cmd_sort = 25
-    _cmdset_types = ['character']
+    _cmdset_types = ['player']
     _default_cmdset = settings.CMDSET_PLAYER_CHARACTER
-    acl_type = 'playercharacter'
-    objects = TypeclassManager()
 
     def cmd(self):
         return PlayerCharacterCmdHandler(self)
 
     def at_identity_creation(self, validated, **kwargs):
-        # Should probably do something here about creating ObjectDB's... player avatars. By default.
+        validated['account'].link_identity(self)
+        self.at_setup_player(validated, **kwargs)
+
+    def at_setup_player(self, validated, **kwargs):
+        """
+        This would be a good spot to create avatar Entities...
+        """
         pass
 
     @lazy_property
@@ -37,11 +39,13 @@ class DefaultPlayerCharacter(PlayerCharacterDB, metaclass=TypeclassBase):
         return PlayerCharacterSessionHandler(self)
 
     @classmethod
-    def create_playercharacter(cls, account, name, **kwargs):
-        kwargs['account'] = account
-        kwargs['autostart'] = False
-        kwargs['interval'] = 10
-        return cls.create_identity(name, **kwargs)
+    def _validate_identity(cls, name, clean_name, namespace, kwargs):
+        results = dict()
+        if not (account := kwargs.pop('account', None)):
+            raise ValueError("Player characters must be assigned to an Account!")
+        results['account'] = account
+        return results, kwargs
+
 
     def __repr__(self):
         return f"<PlayerCharacter({self.dbref}): {self.key}>"

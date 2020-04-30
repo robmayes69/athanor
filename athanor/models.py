@@ -7,29 +7,14 @@ from evennia.typeclasses.models import SharedMemoryModel, TypedObject
 from athanor.utils.time import utcnow
 
 
-class Pluginspace(SharedMemoryModel):
-    """
-    This model holds database references to all of the Athanor Plugins that have ever been
-    installed, in case data must be removed.
-    """
-    # The name is something like 'athanor' or 'mod_name'. It is an unchanging identifier which
-    # uniquely signifies this plugin across all of its versions. It must never change, once established,
-    # without a careful migration.
+class Namespace(SharedMemoryModel):
     db_name = models.CharField(max_length=255, null=False, blank=False, unique=True)
 
-
-class Namespace(SharedMemoryModel):
-    db_pluginspace = models.ForeignKey(Pluginspace, related_name='namespaces', on_delete=models.PROTECT)
-    db_name = models.CharField(max_length=255, null=False, blank=False)
-
     def __repr__(self):
-        return f"<Namespace({self.pk}): {self.db_pluginspace.db_name}-{self.db_name}>"
+        return f"<Namespace({self.pk}): {self.db_name}>"
 
     def __str__(self):
         return repr(self)
-
-    class Meta:
-        unique_together = (('db_pluginspace', 'db_name'),)
 
 
 class IdentityDB(TypedObject):
@@ -51,10 +36,6 @@ class IdentityDB(TypedObject):
 
     db_namespace = models.ForeignKey(Namespace, related_name='identities', on_delete=models.PROTECT)
 
-    # All Identities have an owner. Bereft of any other, Identities default to the Evennia Superuser.
-    db_account = models.ForeignKey('accounts.AccountDB', related_name='owned_identities', on_delete=models.SET_DEFAULT,
-                                   default=1)
-
     db_cmdset_storage = models.CharField(
         "cmdset",
         max_length=255,
@@ -64,7 +45,7 @@ class IdentityDB(TypedObject):
     )
 
     class Meta:
-        ordering = ['-db_namespace__db_pluginspace__db_name', '-db_namespace__db_name', 'db_account__username', 'db_key']
+        ordering = ['-db_namespace__db_name', 'db_key']
 
 
 class AccountIdentityCombo(SharedMemoryModel):
@@ -72,10 +53,11 @@ class AccountIdentityCombo(SharedMemoryModel):
     This table is used for creating a relationship between specifics accounts and specific Player Characters.
     This is especially useful for games where Player Characters may change hands.
     """
-    db_account = models.ForeignKey('accounts.AccountDB', related_name='player_stats', on_delete=models.CASCADE)
+    db_account = models.ForeignKey('accounts.AccountDB', related_name='identity_stats', on_delete=models.CASCADE)
     db_identity = models.ForeignKey(IdentityDB, related_name='account_stats', on_delete=models.CASCADE)
 
     # This tracks how much playtime this Account has accrued playing this character.
+    # Add all Account-Identity combos together for a Character to get their total playtime ever!
     db_total_playtime = models.DurationField(null=False, default=0)
 
     # For games that allow / desire you to list who your alts are, this allows you to show a variety of different
@@ -87,6 +69,7 @@ class AccountIdentityCombo(SharedMemoryModel):
     # account's character select screen.
     db_is_active = models.BooleanField(null=False, default=True)
 
+    # This will mark the first time that an Account 'touches' this Identity.
     db_date_created = models.DateTimeField(null=False, auto_now_add=True)
 
     class Meta:

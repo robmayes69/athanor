@@ -125,7 +125,7 @@ class DefaultIdentity(IdentityDB, metaclass=TypeclassBase):
         return Namespace.objects.filter(db_name=cls._namespace, db_pluginspace__db_name=cls._pluginspace).first()
 
     @classmethod
-    def create_identity(cls, name, **kwargs):
+    def create(cls, name, **kwargs):
         """
         Creates an Identity.
         Args:
@@ -138,7 +138,9 @@ class DefaultIdentity(IdentityDB, metaclass=TypeclassBase):
         """
         namespace = cls._get_namespace()
         name, clean_name = cls._validate_identity_name(name, namespace)
+        # Kwargs is passed without expansion, and returned after modification.
         validated, kwargs = cls._validate_identity(name, clean_name, namespace, kwargs)
+        # So it can be passed into this after being straightened out.
         identity = cls._create_identity(name, clean_name, validated, kwargs)
         return identity
 
