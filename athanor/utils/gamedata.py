@@ -1,34 +1,83 @@
+from os import path, scandir
+import yaml, json
+
 from django.conf import settings
 from collections import defaultdict
 
-from evennia.utils.logger import log_trace
 from evennia.utils.utils import class_from_module, make_iter
 
-from athanor.gamedb.objects import AthanorObject
-from athanor.controllers.base import AthanorController
-from athanor.datamodule import AthanorDataModule
-
-MIXINS = [class_from_module(mixin) for mixin in settings.CONTROLLER_MIXINS["GAMEDATA"]]
-MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
+from athanor.utils.controllers import AthanorControllerBackend, AthanorController
 
 
-class AthanorGameDataController(*MIXINS, AthanorController):
-    system_name = 'GAMEDATA'
+class AthanorDataModule:
+    """
+    This class is a wrapper around an imported module used for importing game data and caching it
+    for later processing.
+    """
 
-    def __init__(self, key, manager):
-        AthanorController.__init__(self, key, manager)
-        self.plugins = dict()
-        self.plugins_sorted = list()
-        self.plugin_class = None
+    def __init__(self, module):
+        """
+        Creates the DataModule.
 
-    def do_load(self):
-        try:
-            self.plugin_class = class_from_module(settings.GAMEDATA_MODULE_CLASS)
-        except Exception:
-            log_trace()
-            self.plugin_class = AthanorDataModule
+        Args:
+            module (module): A module imported via importlib.import_module(). In short, an Athanor plugin.
+        """
+        self.module = module
+        self.path = path.dirname(module.__file__)
+        self.key = getattr(self.module, "KEY", path.split(self.path)[1])
+        self.data_path = path.join(self.path, 'assets')
+        self.data = dict()
 
-        self.load_plugins()
+    def initialize(self):
+        """
+        Loads data from the DataModule's "data" directory and calls extra processors.
+
+        Returns:
+            None
+        """
+        if not path.exists(self.data_path):
+            return
+        self.data = self.load_data(self.data_path)
+
+    def load_data(self, data_path):
+        """
+        This recursively scans the "data" directory for directories and YAML/JSON files,
+        creating a dictionary from the results.
+
+        Args:
+            data_path (Path): The directory to begin scanning.
+
+        Returns:
+            final_data (dict): The obtained data.
+        """
+        if not path.exists(data_path):
+            return
+        final_data = dict()
+        for node in scandir(data_path):
+            if node.is_dir():
+                final_data[node.name.lower()] = self.load_data(node)
+            elif node.is_file():
+                node_name = node.name.lower()
+                data = dict()
+                with open(node, "r") as data_file:
+                    if node_name.endswith(".yaml"):
+                        for entry in yaml.safe_load_all(data_file):
+                            data.update(entry)
+                    elif node_name.endswith(".json"):
+                        data = json.load(data_file)
+                final_data[node_name.split('.', 1)[0]] = data
+        return final_data
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__}: {self.key}>"
+
+
+class AssetController(AthanorController):
+    system_name = 'ASSETS'
+
+    def __init__(self, key, manager, backend):
+        super().__init__(key, manager, backend)
+
 
     def load_plugins(self):
         for plugin_module in settings.ATHANOR_PLUGINS_LOADED:
@@ -167,3 +216,76 @@ class AthanorGameDataController(*MIXINS, AthanorController):
                 else:
                     found.update_data(data)
                 self.regions[key] = found
+
+
+class AssetControllerBackend(AthanorControllerBackend):
+
+    def __init__(self, frontend):
+        super().__init__(frontend)
+        self.load()
+
+    def do_load(self):
+        pass
+
+
+class AthanorDataModule:
+    """
+    This class is a wrapper around an imported module used for importing game data and caching it
+    for later processing.
+    """
+
+    def __init__(self, module):
+        """
+        Creates the DataModule.
+
+        Args:
+            module (module): A module imported via importlib.import_module(). In short, an Athanor plugin.
+        """
+        self.module = module
+        self.path = path.dirname(module.__file__)
+        self.key = getattr(self.module, "KEY", path.split(self.path)[1])
+        self.data_path = path.join(self.path, 'data')
+        self.data = dict()
+
+    def initialize(self):
+        """
+        Loads data from the DataModule's "data" directory and calls extra processors.
+
+        Returns:
+            None
+        """
+        if not path.exists(self.data_path):
+            return
+        self.data = self.load_data(self.data_path)
+
+    def load_data(self, data_path):
+        """
+        This recursively scans the "data" directory for directories and YAML/JSON files,
+        creating a dictionary from the results.
+
+        Args:
+            data_path (Path): The directory to begin scanning.
+
+        Returns:
+            final_data (dict): The obtained data.
+        """
+        if not path.exists(data_path):
+            return
+        final_data = dict()
+        for node in scandir(data_path):
+            if node.is_dir():
+                final_data[node.name.lower()] = self.load_data(node)
+            elif node.is_file():
+                node_name = node.name.lower()
+                data = dict()
+                with open(node, "r") as data_file:
+                    if node_name.endswith(".yaml"):
+                        for entry in yaml.safe_load_all(data_file):
+                            data.update(entry)
+                    elif node_name.endswith(".json"):
+                        data = json.load(data_file)
+                final_data[node_name.split('.', 1)[0]] = data
+        return final_data
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__}: {self.key}>"
