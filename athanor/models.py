@@ -7,6 +7,17 @@ from evennia.typeclasses.models import SharedMemoryModel, TypedObject
 from athanor.utils.time import utcnow
 
 
+class Pluginspace(SharedMemoryModel):
+    """
+    This model holds database references to all of the Athanor Plugins that have ever been
+    installed, in case data must be removed.
+    """
+    # The name is something like 'athanor' or 'mod_name'. It is an unchanging identifier which
+    # uniquely signifies this plugin across all of its versions. It must never change, once established,
+    # without a careful migration.
+    db_name = models.CharField(max_length=255, null=False, blank=False, unique=True)
+
+
 class Namespace(SharedMemoryModel):
     db_name = models.CharField(max_length=255, null=False, blank=False, unique=True)
 
@@ -44,8 +55,15 @@ class IdentityDB(TypedObject):
         help_text="optional python path to a cmdset class.",
     )
 
+
+class IdentityFixture(SharedMemoryModel):
+    db_identity = models.OneToOneField(IdentityDB, related_name='fixture_data', on_delete=models.PROTECT,
+                                       primary_key=True)
+    db_pluginspace = models.ForeignKey(Pluginspace, related_name='identity_fixtures', on_delete=models.PROTECT)
+    db_key = models.CharField(max_length=255, null=False, blank=False)
+
     class Meta:
-        ordering = ['-db_namespace__db_name', 'db_key']
+        unique_together = (('db_pluginspace', 'db_key'),)
 
 
 class AccountIdentityCombo(SharedMemoryModel):
@@ -266,7 +284,11 @@ class DimensionFixture(SharedMemoryModel):
     db_dimension = models.OneToOneField(DimensionDB, related_name='fixture_data', primary_key=True,
                                         on_delete=models.PROTECT)
     # Remember this index is case-sensitive.
-    db_key = models.CharField(max_length=255, null=False, blank=False, unique=True)
+    db_pluginspace = models.ForeignKey(Pluginspace, related_name='dimension_fixtures', on_delete=models.PROTECT)
+    db_key = models.CharField(max_length=255, null=False, blank=False)
+
+    class Meta:
+        unique_together = (('db_pluginspace', 'db_key'),)
 
 
 class SectorDB(TypedObject):
@@ -302,7 +324,11 @@ class SectorFixture(SharedMemoryModel):
     """
     db_sector = models.OneToOneField(SectorDB, related_name='fixture_data', primary_key=True, on_delete=models.PROTECT)
     # Remember this index is case-sensitive.
-    db_key = models.CharField(max_length=255, null=False, blank=False, unique=True)
+    db_pluginspace = models.ForeignKey(Pluginspace, related_name='sector_fixtures', on_delete=models.PROTECT)
+    db_key = models.CharField(max_length=255, null=False, blank=False)
+
+    class Meta:
+        unique_together = (('db_pluginspace', 'db_key'),)
 
 
 class EntityDB(TypedObject):
@@ -339,7 +365,11 @@ class EntityFixture(SharedMemoryModel):
     """
     db_entity = models.OneToOneField(EntityDB, related_name='fixture_data', primary_key=True, on_delete=models.PROTECT)
     # Remember this index is case-sensitive.
-    db_key = models.CharField(max_length=255, null=False, blank=False, unique=True)
+    db_pluginspace = models.ForeignKey(Pluginspace, related_name='entity_fixtures', on_delete=models.PROTECT)
+    db_key = models.CharField(max_length=255, null=False, blank=False)
+
+    class Meta:
+        unique_together = (('db_pluginspace', 'db_key'),)
 
 
 class SectorLocation(SharedMemoryModel):

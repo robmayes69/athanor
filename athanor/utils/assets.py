@@ -9,7 +9,7 @@ from evennia.utils.utils import class_from_module, make_iter
 from athanor.utils.controllers import AthanorControllerBackend, AthanorController
 
 
-class AthanorDataModule:
+class PluginAssetLoader:
     """
     This class is a wrapper around an imported module used for importing game data and caching it
     for later processing.
@@ -24,8 +24,8 @@ class AthanorDataModule:
         """
         self.module = module
         self.path = path.dirname(module.__file__)
-        self.key = getattr(self.module, "KEY", path.split(self.path)[1])
-        self.data_path = path.join(self.path, 'assets')
+        self.key = getattr(self.module, "PLUGIN_NAME")
+        self.asset_path = path.join(self.path, 'assets')
         self.data = dict()
 
     def initialize(self):
@@ -35,9 +35,10 @@ class AthanorDataModule:
         Returns:
             None
         """
-        if not path.exists(self.data_path):
+        if not path.exists(self.asset_path):
             return
-        self.data = self.load_data(self.data_path)
+        self.data = self.load_data(self.asset_path)
+        print(self.data)
 
     def load_data(self, data_path):
         """
@@ -57,6 +58,7 @@ class AthanorDataModule:
             if node.is_dir():
                 final_data[node.name.lower()] = self.load_data(node)
             elif node.is_file():
+                print(f"FILE: {node}")
                 node_name = node.name.lower()
                 data = dict()
                 with open(node, "r") as data_file:
@@ -64,7 +66,7 @@ class AthanorDataModule:
                         for entry in yaml.safe_load_all(data_file):
                             data.update(entry)
                     elif node_name.endswith(".json"):
-                        data = json.load(data_file)
+                        data = json.loads(data_file.read())
                 final_data[node_name.split('.', 1)[0]] = data
         return final_data
 
@@ -79,12 +81,24 @@ class AssetController(AthanorController):
         super().__init__(key, manager, backend)
 
 
+class AssetControllerBackend(AthanorControllerBackend):
+    typeclass_defs = [
+        ('asset_loader_class', 'ASSET_LOADER_CLASS', PluginAssetLoader),
+    ]
+
+    def __init__(self, frontend):
+        super().__init__(frontend)
+        self.asset_loader_class = None
+        self.plugins_sorted = list()
+        self.plugins = dict()
+        self.load()
+
+    def do_load(self):
+        self.load_plugins()
+
     def load_plugins(self):
-        for plugin_module in settings.ATHANOR_PLUGINS_LOADED:
-            use_class = self.plugin_class
-            if hasattr(plugin_module, "PLUGIN_CLASS"):
-                use_class = class_from_module(plugin_module.PLUGIN_CLASS)
-            loaded_plugin = use_class(plugin_module)
+        for plugin_module in settings.ATHANOR_PLUGINS_SORTED:
+            loaded_plugin = self.asset_loader_class(plugin_module)
             loaded_plugin.initialize()
             self.plugins[loaded_plugin.key] = loaded_plugin
             self.plugins_sorted.append(loaded_plugin)
@@ -216,16 +230,6 @@ class AssetController(AthanorController):
                 else:
                     found.update_data(data)
                 self.regions[key] = found
-
-
-class AssetControllerBackend(AthanorControllerBackend):
-
-    def __init__(self, frontend):
-        super().__init__(frontend)
-        self.load()
-
-    def do_load(self):
-        pass
 
 
 class AthanorDataModule:

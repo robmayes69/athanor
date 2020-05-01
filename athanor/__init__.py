@@ -39,20 +39,20 @@ def _init():
     for plugin in settings.ATHANOR_PLUGINS.keys():
         get_or_create_pspace(plugin)
 
-    for pspace_name, namespaces in settings.NAMESPACES.items():
-        pspace = get_or_create_pspace(pspace_name)
-        for name in namespaces:
-            nspace, created = Namespace.objects.get_or_create(db_pluginspace=pspace, db_name=name)
-            if created:
-                nspace.save()
+    for namespaces in settings.IDENTITY_NAMESPACES:
+        nspace, created = Namespace.objects.get_or_create(db_name=namespaces)
+        if created:
+            nspace.save()
 
     styler_class = class_from_module(settings.STYLER_CLASS)
     _API_STORAGE['styler'] = styler_class
     _API_STORAGE['styler'].load()
 
-    manager_class = class_from_module(settings.CONTROLLER_MANAGER_CLASS)
-    _API_STORAGE['controller_manager'] = manager_class()
-    _API_STORAGE['controller_manager'].load()
+    manager = class_from_module(settings.CONTROLLER_MANAGER_CLASS)()
+    _API_STORAGE['controller_manager'] = manager
+    manager.load()
+    for con_key in ('identity', 'dimension', 'sector', 'entity'):
+        manager.get(con_key).check_integrity()
 
     LOADED = True
 
@@ -137,6 +137,16 @@ def init_settings(settings):
     settings.CONTROLLERS = dict()
 
     ######################################################################
+    # Asset Loading
+    ######################################################################
+    settings.CONTROLLERS['asset'] = {
+        'class': 'athanor.utils.assets.AssetController',
+        'backend': 'athanor.utils.assets.AssetControllerBackend'
+    }
+    settings.ASSET_LOADER_CLASS = 'athanor.utils.assets.PluginAssetLoader'
+
+
+    ######################################################################
     # Access Control List System
     ######################################################################
     # These two settings contain key-path combinations.
@@ -191,7 +201,7 @@ def init_settings(settings):
     ######################################################################
     # Identity Options
     ######################################################################
-    settings.NAMESPACES = [
+    settings.IDENTITY_NAMESPACES = [
         "system",
         "pc",
         "npc",

@@ -1,0 +1,7 @@
+{
+  "limbo": {
+    "target": "athanor:_limbo_sector",
+    "dimension": "athanor:limbo",
+    "coordinates": [0,0,0]
+  }
+}
