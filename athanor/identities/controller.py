@@ -28,19 +28,22 @@ class IdentityControllerBackend(AthanorControllerBackend):
         self.identity_typeclass = None
         self.load()
 
+    def create_identity(self, key, name, namespace, data):
+        if (class_path := data.pop('typeclass', None)):
+            use_class = class_from_module(class_path)
+        else:
+            use_class = self.identity_typeclass
+        new_identity = use_class.create(key, name, namespace, **data)
+        return new_identity
+
     def check_integrity(self):
         asset_con = self.frontend.manager.get('asset')
         for plugin in asset_con.backend.plugins_sorted:
-            pspace = Pluginspace.objects.get(db_name=plugin.key)
-            identity_data = plugin.data.get('identities', dict())
+            identity_data = plugin.identities
             for namespace_key, identities in identity_data.items():
+                namespace = Namespace.objects.get(db_name=namespace_key)
                 for identity_key, data in identities.items():
-                    if (found := IdentityFixture.objects.filter(db_key=identity_key, db_pluginspace=pspace).first()):
+                    if (found := DefaultIdentity.objects.filter(db_key__iexact=identity_key, db_namespace=namespace).first()):
                         continue
-                    if (class_path := data.pop('typeclass', None)):
-                        use_class = class_from_module(class_path)
-                    else:
-                        use_class = self.identity_typeclass
-                    new_identity = use_class.create(identity_key, **data)
-                    IdentityFixture.objects.create(db_key=identity_key, db_pluginspace=pspace,
-                                                   db_identity=new_identity)
+                    identity_name = data.pop('name', identity_key)
+                    new_identity = self.create_identity(identity_key, identity_name, namespace)

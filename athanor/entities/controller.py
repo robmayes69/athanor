@@ -54,6 +54,6 @@ class EntityControllerBackend(AthanorControllerBackend):
                 new_entity = use_class.create(key, **ent_data)
                 EntityFixture.objects.create(db_key=fixture_key, db_pluginspace=pspace, db_entity=new_entity)
                 if sect:
-                    new_entity.set_sector_location(sect, coordinates, force=True)
+                    new_entity.location.set_sector(sect, coordinates, force=True)
                 if room:
-                    new_entity.set_room_location(room, force=True)
+                    new_entity.location.set_room(room, force=True)

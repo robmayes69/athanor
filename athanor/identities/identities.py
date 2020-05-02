@@ -4,7 +4,7 @@ from evennia.typeclasses.models import TypeclassBase
 from evennia.typeclasses.managers import TypeclassManager
 from evennia.utils.utils import lazy_property
 from evennia.utils.ansi import ANSIString
-from athanor.models import IdentityDB, Namespace, Pluginspace
+from athanor.models import IdentityDB, Namespace
 from athanor.utils.text import clean_and_ansi
 
 
@@ -26,11 +26,13 @@ class DefaultIdentity(IdentityDB, metaclass=TypeclassBase):
     # case-insensitive. _re_name is a regex used to validate names, and _name_standards is an error
     # to use when this regex fails.
     _namespace = None
-    _pluginspace = 'athanor'
     _name_standards = "Avoid double spaces and special characters."
     _re_name = re.compile(r"(?i)^([A-Z]|[0-9]|\.|-|')+( ([A-Z]|[0-9]|\.|-|')+)*$")
     _cmdset_types = []
     _default_cmdset = ""
+
+    def at_first_save(self):
+        pass
 
     def get_display_name(self, looker):
         return self.db_key
@@ -102,15 +104,14 @@ class DefaultIdentity(IdentityDB, metaclass=TypeclassBase):
         return dict(), kwargs
 
     @classmethod
-    def _create_identity(cls, name, clean_name, validated_data, kwargs):
+    def _create_identity(cls, name, clean_name, namespace, validated_data, kwargs):
         """
         Does the actual work of creating the identity.
         """
         identity = None
         try:
-            identity, errors = cls.create(clean_name, **kwargs)
-            if errors:
-                raise ValueError(errors)
+            identity = cls(db_key=clean_name, db_ckey=name, db_namespace=namespace)
+            identity.save()
             errors = identity.at_identity_creation(validated_data, **kwargs)
             if errors:
                 raise ValueError(errors)
@@ -122,7 +123,7 @@ class DefaultIdentity(IdentityDB, metaclass=TypeclassBase):
 
     @classmethod
     def _get_namespace(cls):
-        return Namespace.objects.filter(db_name=cls._namespace, db_pluginspace__db_name=cls._pluginspace).first()
+        return Namespace.objects.get(db_name=cls._namespace)
 
     @classmethod
     def create(cls, name, **kwargs):
@@ -141,7 +142,7 @@ class DefaultIdentity(IdentityDB, metaclass=TypeclassBase):
         # Kwargs is passed without expansion, and returned after modification.
         validated, kwargs = cls._validate_identity(name, clean_name, namespace, kwargs)
         # So it can be passed into this after being straightened out.
-        identity = cls._create_identity(name, clean_name, validated, kwargs)
+        identity = cls._create_identity(name, clean_name, namespace, validated, kwargs)
         return identity
 
     def at_identity_creation(self, validated, **kwargs):

@@ -40,10 +40,12 @@ class IdentityDB(TypedObject):
     __defaultclasspath__ = "athanor.identities.identities.DefaultIdentity"
     __applabel__ = "athanor"
 
-    # Store the plain text version of a name in db_key. We might as well use it.
+    # db_key is treated as case-insensitively unique per namespace. It's used for system purposes such as
+    # plugin-defined Identities remaining addressable by fixtures even if their display name changes.
 
-    # Store the version with Evennia-style ANSI markup in here.
-    db_ckey = models.CharField(max_length=255, null=False, blank=False)
+    # db_name is case-insensitively unique per namespace.
+    db_name = models.CharField(max_length=255, null=False, blank=False)
+    db_cname = models.CharField(max_length=255, null=False, blank=False)
 
     db_namespace = models.ForeignKey(Namespace, related_name='identities', on_delete=models.PROTECT)
 
@@ -253,48 +255,29 @@ class ChannelSubscription(SharedMemoryModel):
 
 
 class DimensionDB(TypedObject):
+    """
+    Unlike the others, Dimensions are ALWAYS Fixtures. A Dimension should never be created unless save for
+    by the Asset load process.
+    """
     __settingsclasspath__ = settings.BASE_DIMENSION_TYPECLASS
     __defaultclasspath__ = "athanor.dimensions.dimensions.DefaultDimension"
     __applabel__ = "athanor"
 
+    # db_key is treated as case-insensitively unique for this table.
     # Store the plain text version of a name in this field.
     db_name = models.CharField(max_length=255, null=False, blank=False)
     # Store the version with Evennia-style ANSI markup in here.
     db_cname = models.CharField(max_length=255, null=False, blank=False)
-    # Store lowercase here. SQLite3 can't case-insensitively collate without
-    # hoop-jumping so we do this instead.
-    # Not really sure if I should make this unique or not yet.
-    db_iname = models.CharField(max_length=255, null=False, blank=False)
-
-    # Should Dimensions provide CmdSets? My thought is: sure, why not?
-    db_cmdset_storage = models.CharField(
-        "cmdset",
-        max_length=255,
-        null=True,
-        blank=True,
-        help_text="optional python path to a cmdset class.",
-    )
-
-
-class DimensionFixture(SharedMemoryModel):
-    """
-    This table is for any Sectors which are considered 'fixtures', defined in external game assets, and must be
-    able to be referred to consistently no matter what happens.
-    """
-    db_dimension = models.OneToOneField(DimensionDB, related_name='fixture_data', primary_key=True,
-                                        on_delete=models.PROTECT)
-    # Remember this index is case-sensitive.
-    db_pluginspace = models.ForeignKey(Pluginspace, related_name='dimension_fixtures', on_delete=models.PROTECT)
-    db_key = models.CharField(max_length=255, null=False, blank=False)
-
-    class Meta:
-        unique_together = (('db_pluginspace', 'db_key'),)
 
 
 class SectorDB(TypedObject):
     __settingsclasspath__ = settings.BASE_SECTOR_TYPECLASS
     __defaultclasspath__ = "athanor.sectors.sectors.DefaultSector"
     __applabel__ = "athanor"
+
+    # db_key is treated as case-insensitively unique per-dimension for this table, per-dimension.
+    # Using a pre-fix for runtime-generated Sectors is advisable.
+
     db_dimension = models.ForeignKey(DimensionDB, related_name='sectors', on_delete=models.PROTECT)
     # Store the plain text version of a name in this field.
     db_name = models.CharField(max_length=255, null=False, blank=False)
@@ -303,32 +286,6 @@ class SectorDB(TypedObject):
 
     # Do I want to use a Vector2 or a Vector3 for the coordinates of a Sector in a dimension?
     # I suppose you could always ignore the Z...
-
-    # Should Sectors provide CmdSets? My thought is: sure, why not?
-    db_cmdset_storage = models.CharField(
-        "cmdset",
-        max_length=255,
-        null=True,
-        blank=True,
-        help_text="optional python path to a cmdset class.",
-    )
-
-    class Meta:
-        unique_together = (('db_dimension', 'db_key'), ('db_dimension', 'db_key'))
-
-
-class SectorFixture(SharedMemoryModel):
-    """
-    This table is for any Sectors which are considered 'fixtures', defined in external game assets, and must be
-    able to be referred to consistently no matter what happens.
-    """
-    db_sector = models.OneToOneField(SectorDB, related_name='fixture_data', primary_key=True, on_delete=models.PROTECT)
-    # Remember this index is case-sensitive.
-    db_pluginspace = models.ForeignKey(Pluginspace, related_name='sector_fixtures', on_delete=models.PROTECT)
-    db_key = models.CharField(max_length=255, null=False, blank=False)
-
-    class Meta:
-        unique_together = (('db_pluginspace', 'db_key'),)
 
 
 class EntityDB(TypedObject):
@@ -339,10 +296,8 @@ class EntityDB(TypedObject):
     __defaultclasspath__ = "athanor.entities.entities.DefaultEntity"
     __applabel__ = "athanor"
 
-    # db_key is used as a multi-word collection of words this entity will respond to
-    # for commands like 'get' or 'look.' such as 'female goblin'. It is not necessarily
-    # the Entity's proper name or their display name.
-    # Store the plain text version of a name in this field.
+    # db_key must be case-insensitively unique globally. This isn't a name, it's an identifier.
+    # Use a pre-fix for runtime-generated stuff.
     db_name = models.CharField(max_length=255, null=False, blank=False)
     # Store the version with Evennia-style ANSI markup in here.
     db_cname = models.CharField(max_length=255, null=False, blank=False)
@@ -357,19 +312,6 @@ class EntityDB(TypedObject):
 
     inventories = GenericRelation('athanor.InventoryDB', related_name='entities')
     equipsets = GenericRelation('athanor.EquipDB', related_query_name='entities')
-
-
-class EntityFixture(SharedMemoryModel):
-    """
-    This table is for any Entities which are considered 'fixtures'. It contains their unique system identifiers.
-    """
-    db_entity = models.OneToOneField(EntityDB, related_name='fixture_data', primary_key=True, on_delete=models.PROTECT)
-    # Remember this index is case-sensitive.
-    db_pluginspace = models.ForeignKey(Pluginspace, related_name='entity_fixtures', on_delete=models.PROTECT)
-    db_key = models.CharField(max_length=255, null=False, blank=False)
-
-    class Meta:
-        unique_together = (('db_pluginspace', 'db_key'),)
 
 
 class SectorLocation(SharedMemoryModel):

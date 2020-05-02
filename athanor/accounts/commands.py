@@ -266,7 +266,7 @@ class _ModAcl(_CmdAcl):
                                  help="The entity(ies) having permissions added/removed to/from. Addressed as TYPE:THINGNAME")
         self.parser.add_argument("-p", "--permissions", action='store', nargs='+', required=True,
                                  help="The permissions being added/removed to the Subjects. These are words like 'read' or 'write'.")
-        self.parser.add_argument("-d", "--deny", action="store_true", nargs=0, required=False,
+        self.parser.add_argument("-d", "--deny", action="store_true", required=False,
                                  help="Modify Deny entries. Deny entries override Allows.")
 
 

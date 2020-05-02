@@ -163,7 +163,7 @@ class AthanorAccount(HasAttributeGetCreate, EventEmitter, DefaultAccount):
         return self
 
     def characters(self):
-        return self.player_characters.all()
+        return self.identity_stats.filter(db_is_active=True)
 
     @lazy_property
     def styler(self):

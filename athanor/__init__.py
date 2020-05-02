@@ -201,6 +201,11 @@ def init_settings(settings):
     ######################################################################
     # Identity Options
     ######################################################################
+    settings.CONTROLLERS['identity'] = {
+        'class': 'athanor.identities.controller.IdentityController',
+        'backend': 'athanor.identities.controller.IdentityControllerBackend'
+    }
+
     settings.IDENTITY_NAMESPACES = [
         "system",
         "pc",
@@ -239,6 +244,21 @@ def init_settings(settings):
     ######################################################################
     # Grid Settings
     ######################################################################
+    settings.CONTROLLERS['dimension'] = {
+        'class': 'athanor.dimensions.controller.DimensionController',
+        'backend': 'athanor.dimensions.controller.DimensionControllerBackend'
+    }
+
+    settings.CONTROLLERS['sector'] = {
+        'class': 'athanor.sectors.controller.SectorController',
+        'backend': 'athanor.sectors.controller.SectorControllerBackend'
+    }
+
+    settings.CONTROLLERS['entity'] = {
+        'class': 'athanor.entities.controller.EntityController',
+        'backend': 'athanor.entities.controller.EntityControllerBackend'
+    }
+
     settings.BASE_DIMENSION_TYPECLASS = 'athanor.dimensions.dimensions.DefaultDimension'
     settings.BASE_SECTOR_TYPECLASS = 'athanor.sectors.sectors.DefaultSector'
     settings.BASE_ENTITY_TYPECLASS = 'athanor.entities.entities.DefaultEntity'

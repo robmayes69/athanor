@@ -27,6 +27,10 @@ class PluginAssetLoader:
         self.key = getattr(self.module, "PLUGIN_NAME")
         self.asset_path = path.join(self.path, 'assets')
         self.data = dict()
+        self.defs = dict()
+        self.fixtures = dict()
+        self.identities = dict()
+        self.layouts = dict()
 
     def initialize(self):
         """
@@ -38,7 +42,10 @@ class PluginAssetLoader:
         if not path.exists(self.asset_path):
             return
         self.data = self.load_data(self.asset_path)
-        print(self.data)
+        self.defs = self.data.pop('defs', dict())
+        self.fixtures = self.data.pop('fixtures', dict())
+        self.identities = self.data.pop('identities', dict())
+        self.layouts = self.data.pop('layouts', dict())
 
     def load_data(self, data_path):
         """
@@ -58,7 +65,6 @@ class PluginAssetLoader:
             if node.is_dir():
                 final_data[node.name.lower()] = self.load_data(node)
             elif node.is_file():
-                print(f"FILE: {node}")
                 node_name = node.name.lower()
                 data = dict()
                 with open(node, "r") as data_file:
@@ -66,19 +72,43 @@ class PluginAssetLoader:
                         for entry in yaml.safe_load_all(data_file):
                             data.update(entry)
                     elif node_name.endswith(".json"):
-                        data = json.loads(data_file.read())
+                        if (contents := data_file.read()):
+                            data.update(json.loads(contents))
                 final_data[node_name.split('.', 1)[0]] = data
         return final_data
 
     def __repr__(self):
         return f"<{self.__class__.__name__}: {self.key}>"
 
+    def get_dimension_def(self, key):
+        if not (data := self.defs.get('dimensions', dict()).get(key, None)):
+            raise ValueError(f"Could not find dimension definition: {key}")
+        return data
+
+    def get_sector_def(self, key):
+        if not (data := self.defs.get('secctors', dict()).get(key, None)):
+            raise ValueError(f"Could not find sector definition: {key}")
+        return data
+
+    def get_entity_def(self, key):
+        if not (data := self.defs.get('entities', dict()).get(key, None)):
+            raise ValueError(f"Could not find entity definition: {key}")
+        return data
 
 class AssetController(AthanorController):
     system_name = 'ASSETS'
 
     def __init__(self, key, manager, backend):
         super().__init__(key, manager, backend)
+
+    def get_dimension_def(self, path):
+        return self.backend.get_dimension_def(path)
+
+    def get_sector_def(self, path):
+        return self.backend.get_sector_def(path)
+
+    def get_entity_def(self, path):
+        return self.backend.get_entity_def(path)
 
 
 class AssetControllerBackend(AthanorControllerBackend):
@@ -95,6 +125,26 @@ class AssetControllerBackend(AthanorControllerBackend):
 
     def do_load(self):
         self.load_plugins()
+
+    def _clean_path(self, path):
+        if ':' not in path:
+            raise ValueError(f"Malformed path: {path}")
+        plugin, thing_key = path.split(':', 1)
+        if plugin not in self.plugins:
+            raise ValueError(f"Could not locate plugin {plugin} for {path}")
+        return self.plugins[plugin], thing_key
+
+    def get_dimension_def(self, path):
+        plugin, dimension_key = self._clean_path(path)
+        return plugin.get_dimension_def(dimension_key)
+
+    def get_sector_def(self, path):
+        plugin, sector_key = self._clean_path(path)
+        return plugin.get_sector_def(sector_key)
+
+    def get_entity_def(self, path):
+        plugin, entity_key = self._clean_path(path)
+        return plugin.get_entity_def(entity_key)
 
     def load_plugins(self):
         for plugin_module in settings.ATHANOR_PLUGINS_SORTED:
@@ -230,66 +280,3 @@ class AssetControllerBackend(AthanorControllerBackend):
                 else:
                     found.update_data(data)
                 self.regions[key] = found
-
-
-class AthanorDataModule:
-    """
-    This class is a wrapper around an imported module used for importing game data and caching it
-    for later processing.
-    """
-
-    def __init__(self, module):
-        """
-        Creates the DataModule.
-
-        Args:
-            module (module): A module imported via importlib.import_module(). In short, an Athanor plugin.
-        """
-        self.module = module
-        self.path = path.dirname(module.__file__)
-        self.key = getattr(self.module, "KEY", path.split(self.path)[1])
-        self.data_path = path.join(self.path, 'data')
-        self.data = dict()
-
-    def initialize(self):
-        """
-        Loads data from the DataModule's "data" directory and calls extra processors.
-
-        Returns:
-            None
-        """
-        if not path.exists(self.data_path):
-            return
-        self.data = self.load_data(self.data_path)
-
-    def load_data(self, data_path):
-        """
-        This recursively scans the "data" directory for directories and YAML/JSON files,
-        creating a dictionary from the results.
-
-        Args:
-            data_path (Path): The directory to begin scanning.
-
-        Returns:
-            final_data (dict): The obtained data.
-        """
-        if not path.exists(data_path):
-            return
-        final_data = dict()
-        for node in scandir(data_path):
-            if node.is_dir():
-                final_data[node.name.lower()] = self.load_data(node)
-            elif node.is_file():
-                node_name = node.name.lower()
-                data = dict()
-                with open(node, "r") as data_file:
-                    if node_name.endswith(".yaml"):
-                        for entry in yaml.safe_load_all(data_file):
-                            data.update(entry)
-                    elif node_name.endswith(".json"):
-                        data = json.load(data_file)
-                final_data[node_name.split('.', 1)[0]] = data
-        return final_data
-
-    def __repr__(self):
-        return f"<{self.__class__.__name__}: {self.key}>"
