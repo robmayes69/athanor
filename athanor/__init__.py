@@ -51,10 +51,14 @@ def _init():
     manager = class_from_module(settings.CONTROLLER_MANAGER_CLASS)()
     _API_STORAGE['controller_manager'] = manager
     manager.load()
-    for con_key in ('identity', 'dimension', 'sector', 'entity'):
-        manager.get(con_key).check_integrity()
 
+    # Setting this true so that integrity checks will not call _init() again.
     LOADED = True
+
+    entity_con = manager.get('entity')
+    entity_con.check_integrity()
+
+
 
 
 def api():
@@ -145,6 +149,28 @@ def init_settings(settings):
     }
     settings.ASSET_LOADER_CLASS = 'athanor.utils.assets.PluginAssetLoader'
 
+    settings.ENTITY_TYPECLASSES = {
+        'dimension': 'athanor.entities.entities.DefaultDimension',
+        'sector': 'athanor.entities.entities.DefaultSector',
+        'room': 'athanor.entities.entities.AthanorRoom',
+        'exit': 'athanor.entities.entities.AthanorExit',
+        'gateway': 'athanor.entities.entities.DefaultGateway',
+    }
+
+    settings.ENTITY_CREATION_MAP = {
+        'name': '_create_name',
+        'command': '_create_command',
+        'identity': '_create_identity',
+        'inventory': '_create_inventory',
+        'equip': '_create_equip',
+        'dimension': '_create_dimension',
+        'sector': '_create_sector',
+        'structure': '_create_structure',
+        'room': '_create_room',
+        'gateway': '_create_gateway',
+        'exit': '_create_exit',
+        'fixture': '_create_fixture'
+    }
 
     ######################################################################
     # Access Control List System

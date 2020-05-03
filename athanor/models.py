@@ -1,6 +1,6 @@
 from django.db import models
 from django.conf import settings
-from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
+from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 
 from evennia.typeclasses.models import SharedMemoryModel, TypedObject
@@ -28,26 +28,43 @@ class Namespace(SharedMemoryModel):
         return repr(self)
 
 
-class IdentityDB(TypedObject):
+class HostAddress(models.Model):
+    host_ip = models.GenericIPAddressField(null=False)
+    host_name = models.TextField(null=True)
+
+    def __str__(self):
+        return str(self.host_ip)
+
+
+class ProtocolName(models.Model):
+    name = models.CharField(max_length=100, null=False, blank=False, unique=True)
+
+    def __str__(self):
+        return str(self.name)
+
+
+class EntityDB(TypedObject):
     """
-    The IdentityDB is a new Evennia Typeclass which is used for keeping track of Player Characters, Non-Player
-    Characters, Nations, Factions, Parties, and any other such 'named things' for which Access Control Lists are
-    relevant. In General, Identities should be deleted with care; a Party might only last for a week, a Faction might
-    be entirely disbanded, but Player Characters may have BBS posts or other events attached to them which makes
-    deletion a bad idea.
+    This is Athanor's replacement to Evennia's ObjectDB. It is the core of an Entity-Component System-inspired approach.
     """
-    __settingsclasspath__ = settings.BASE_IDENTITY_TYPECLASS
-    __defaultclasspath__ = "athanor.identities.identities.DefaultIdentity"
+    __settingsclasspath__ = settings.BASE_ENTITY_TYPECLASS
+    __defaultclasspath__ = "athanor.entities.entities.DefaultEntity"
     __applabel__ = "athanor"
 
-    # db_key is treated as case-insensitively unique per namespace. It's used for system purposes such as
-    # plugin-defined Identities remaining addressable by fixtures even if their display name changes.
 
-    # db_name is case-insensitively unique per namespace.
+class NameComponent(SharedMemoryModel):
+    db_entity = models.OneToOneField(EntityDB, related_name='command_component', on_delete=models.CASCADE)
     db_name = models.CharField(max_length=255, null=False, blank=False)
+    # Store the version with Evennia-style ANSI markup in here.
     db_cname = models.CharField(max_length=255, null=False, blank=False)
 
-    db_namespace = models.ForeignKey(Namespace, related_name='identities', on_delete=models.PROTECT)
+
+class CommandComponent(SharedMemoryModel):
+    """
+    Some entities might need to have CmdSets. Some might not. The storage is handled here.
+    """
+    db_entity = models.OneToOneField(EntityDB, related_name='command_component', on_delete=models.CASCADE,
+                                     primary_key=True)
 
     db_cmdset_storage = models.CharField(
         "cmdset",
@@ -58,23 +75,183 @@ class IdentityDB(TypedObject):
     )
 
 
-class IdentityFixture(SharedMemoryModel):
-    db_identity = models.OneToOneField(IdentityDB, related_name='fixture_data', on_delete=models.PROTECT,
-                                       primary_key=True)
-    db_pluginspace = models.ForeignKey(Pluginspace, related_name='identity_fixtures', on_delete=models.PROTECT)
+class FixtureSpace(SharedMemoryModel):
+    db_name = models.CharField(max_length=255, null=False, blank=False, unique=True)
+
+
+class FixtureComponent(SharedMemoryModel):
+    """
+    Fixtures are Entities which must exist - they are created by the load process, and integrity checked on server
+    start. This table is used for indexing and checking for an Entity's existence.
+    """
+    db_entity = models.OneToOneField(EntityDB, related_name='fixture_component', on_delete=models.CASCADE,
+                                     primary_key=True)
+    db_fixturespace = models.ForeignKey(FixtureSpace, related_name='fixtures', on_delete=models.PROTECT)
+    db_key = models.CharField(max_length=255, null=False, blank=False, unique=True)
+
+
+class InventoryComponent(SharedMemoryModel):
+    """
+    Component for entities which ARE an Inventory. Inventories have an Owner, which could literally be 'anything.'
+    This allows Factions to have Inventories, or Accounts, etc.
+    """
+    db_entity = models.OneToOneField(EntityDB, related_name='inventory_component', on_delete=models.CASCADE,
+                                     primary_key=True)
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=False)
+    object_id = models.PositiveIntegerField(null=False)
+    db_owner = GenericForeignKey('content_type', 'object_id')
+    db_inventory_key = models.CharField(max_length=255, null=False, blank=False)
+
+    class Meta:
+        unique_together = (('content_type', 'object_id', 'db_inventory_key'),)
+
+
+class InventoryLocationComponent(SharedMemoryModel):
+    """
+    Component for Entities which are IN an Inventory.
+    """
+    db_entity = models.OneToOneField(EntityDB, related_name='inventory_location_component', on_delete=models.CASCADE,
+                                     primary_key=True)
+    db_inventory = models.ForeignKey(EntityDB, related_name='inventory_contents', on_delete=models.PROTECT)
+
+
+class EquipComponent(SharedMemoryModel):
+    """
+    Component for entities which ARE an EquipSet. EquipSets like Inventories have an Owner, which could be 'anything.'
+    """
+    db_entity = models.OneToOneField(EntityDB, related_name='equip_component', on_delete=models.CASCADE,
+                                     primary_key=True)
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=False)
+    object_id = models.PositiveIntegerField(null=False)
+    db_owner = GenericForeignKey('content_type', 'object_id')
     db_key = models.CharField(max_length=255, null=False, blank=False)
 
     class Meta:
-        unique_together = (('db_pluginspace', 'db_key'),)
+        unique_together = (('content_type', 'object_id', 'db_key'),)
 
 
-class AccountIdentityCombo(SharedMemoryModel):
+class EquipLocationComponent(SharedMemoryModel):
+    """
+    Component for Entities which are equipped by an EquipSet.
+    """
+    db_entity = models.OneToOneField(EntityDB, related_name='equip_location_component', on_delete=models.CASCADE,
+                                     primary_key=True)
+    db_equip = models.ForeignKey(EntityDB, related_name='equip_contents', on_delete=models.PROTECT)
+
+    # Should probably stick something in here about how the item is equipped. Slot? Layer?
+
+
+class DimensionComponent(SharedMemoryModel):
+    """
+    Component for Entities which ARE a Dimension.
+    """
+    db_entity = models.OneToOneField(EntityDB, related_name='dimension_component', on_delete=models.CASCADE,
+                                     primary_key=True)
+    db_dimension_key = models.CharField(max_length=255, null=False, blank=False, unique=True)
+
+
+class SectorComponent(SharedMemoryModel):
+    """
+    Component for Entities which ARE a Sector.
+    """
+    db_entity = models.OneToOneField(EntityDB, related_name='sector_component', on_delete=models.CASCADE,
+                                     primary_key=True)
+    db_dimension = models.ForeignKey(EntityDB, related_name='contained_sectors', on_delete=models.PROTECT)
+    db_sector_key = models.CharField(max_length=255, null=False, blank=False)
+    db_x = models.FloatField(default=0.0, null=False, blank=False)
+    db_y = models.FloatField(default=0.0, null=False, blank=False)
+    db_z = models.FloatField(default=0.0, null=False, blank=False)
+
+    class Meta:
+        unique_together = (('db_dimension', 'db_sector_key'),)
+
+
+class SectorLocationComponent(SharedMemoryModel):
+    """
+    Component for Entities that are located 'inside' another Entity in a 3-Dimensional Space.
+    """
+    db_entity = models.OneToOneField(EntityDB, related_name='sector_location_component', on_delete=models.CASCADE,
+                                     primary_key=True)
+    db_sector = models.ForeignKey(EntityDB, related_name='contained_entities', on_delete=models.PROTECT)
+    db_x = models.FloatField(default=0.0, null=False, blank=False)
+    db_y = models.FloatField(default=0.0, null=False, blank=False)
+    db_z = models.FloatField(default=0.0, null=False, blank=False)
+
+
+class RoomComponent(SharedMemoryModel):
+    """
+    Component for Entities which ARE a Room.
+    """
+    db_entity = models.OneToOneField(EntityDB, related_name='room_component', on_delete=models.CASCADE,
+                                     primary_key=True)
+    db_structure = models.ForeignKey(EntityDB, related_name='contained_rooms', on_delete=models.CASCADE)
+    # db_room_key ensures that rooms are uniquely indexed within their containing structure.
+    db_room_key = models.CharField(max_length=255, null=False, blank=False)
+    db_landing_site = models.BooleanField(null=False, default=False)
+
+    class Meta:
+        unique_together = (('db_location', 'db_room_key'),)
+
+
+class RoomLocationComponent(SharedMemoryModel):
+    """
+    Component that allows an Entity to exist 'inside' a room.
+    """
+    db_entity = models.OneToOneField(EntityDB, related_name='room_component', on_delete=models.CASCADE,
+                                     primary_key=True)
+    db_location = models.ForeignKey(EntityDB, related_name='room_contents', on_delete=models.CASCADE)
+
+
+class GatewayComponent(SharedMemoryModel):
+    """
+    Component for Exits which ARE a Gateway. (This allows multiple Exits to reference the same 'door' for instance.
+    """
+    db_entity = models.OneToOneField(EntityDB, related_name='room_component', on_delete=models.CASCADE,
+                                     primary_key=True)
+    db_structure = models.ForeignKey(EntityDB, related_name='contained_gateways', on_delete=models.CASCADE)
+    db_gateway_key = models.CharField(max_length=255, null=False, blank=False)
+
+    class Meta:
+        unique_together = (('db_structure', 'db_gateway_key'),)
+
+
+class ExitComponent(SharedMemoryModel):
+    """
+    Component for Entities that ARE an Exit.
+    """
+    db_entity = models.OneToOneField(EntityDB, related_name='exit_component', on_delete=models.CASCADE,
+                                     primary_key=True)
+    db_room = models.ForeignKey(EntityDB, related_name='room_contents_exits', on_delete=models.CASCADE)
+    db_destination = models.ForeignKey(EntityDB, related_name='exit_entrances', on_delete=models.SET_NULL, null=True)
+    db_gateway = models.ForeignKey(EntityDB, related_name='exits_linked', on_delete=models.PROTECT, null=True)
+    db_exit_key = models.CharField(max_length=255, null=False, blank=False)
+
+    class Meta:
+        unique_together = (('db_location', 'db_exit_key'),)
+
+
+class IdentityComponent(SharedMemoryModel):
+    """
+    The Identity component establishes a global set of 'namespaces' for Identities that must be uniquely named within
+    certain restrictions, and searchable for purposes of Access Control List usage. Examples include Player Characters,
+    Factions, Nations, and Non-Player Characters of importance.
+    """
+    db_entity = models.OneToOneField(EntityDB, related_name='identity_component', on_delete=models.CASCADE,
+                                     primary_key=True)
+    db_namespace = models.ForeignKey(Namespace, related_name='identities', on_delete=models.PROTECT)
+    # When an Entity has an IdentityComponent, its NameComponent's db_name is treated as case-insensitively unique
+    # per namespace. Be careful.
+
+
+class PlayerCharacterComponent(SharedMemoryModel):
     """
     This table is used for creating a relationship between specifics accounts and specific Player Characters.
     This is especially useful for games where Player Characters may change hands.
     """
-    db_account = models.ForeignKey('accounts.AccountDB', related_name='identity_stats', on_delete=models.CASCADE)
-    db_identity = models.ForeignKey(IdentityDB, related_name='account_stats', on_delete=models.CASCADE)
+    db_entity = models.OneToOneField(EntityDB, related_name='player_character_component', on_delete=models.CASCADE,
+                                     primary_key=True)
+    db_account = models.ForeignKey('accounts.AccountDB', related_name='player_character_components',
+                                   on_delete=models.PROTECT)
 
     # This tracks how much playtime this Account has accrued playing this character.
     # Add all Account-Identity combos together for a Character to get their total playtime ever!
@@ -89,11 +266,85 @@ class AccountIdentityCombo(SharedMemoryModel):
     # account's character select screen.
     db_is_active = models.BooleanField(null=False, default=True)
 
-    # This will mark the first time that an Account 'touches' this Identity.
+    # This will mark the first time that an Account 'touches' this Entity.
     db_date_created = models.DateTimeField(null=False, auto_now_add=True)
 
     class Meta:
-        unique_together = (('db_account', 'db_identity'),)
+        unique_together = (('db_account', 'db_entity'),)
+
+
+class BoardComponent(TypedObject):
+    """
+    Component for Entities which ARE a BBS  Board.
+    Beware, the NameComponent is considered case-insensitively unique per board Owner.
+    """
+    db_entity = models.OneToOneField(EntityDB, related_name='board_component', on_delete=models.CASCADE,
+                                     primary_key=True)
+    db_owner = models.ForeignKey(EntityDB, on_delete=models.CASCADE, related_name='owned_boards')
+    db_order = models.PositiveIntegerField(default=0)
+    db_next_post_number = models.PositiveIntegerField(default=0, null=False)
+
+    ignoring = models.ManyToManyField(EntityDB, related_name='ignored_boards')
+
+    def __str__(self):
+        return str(self.db_key)
+
+    class Meta:
+        unique_together = (('db_owner', 'db_order'), )
+
+
+class BBSPost(SharedMemoryModel):
+    db_poster = models.ForeignKey(EntityDB, related_name='+', on_delete=models.PROTECT)
+    db_name = models.CharField(max_length=255, blank=False, null=False)
+    db_came = models.CharField(max_length=255, blank=False, null=False)
+    db_date_created = models.DateTimeField(null=False)
+    db_board = models.ForeignKey(EntityDB, related_name='+', on_delete=models.CASCADE)
+    db_date_modified = models.DateTimeField(null=False)
+    db_order = models.PositiveIntegerField(null=False)
+    db_body = models.TextField(null=False, blank=False)
+
+    class Meta:
+        verbose_name = 'Post'
+        verbose_name_plural = 'Posts'
+        unique_together = (('db_board', 'db_order'), )
+
+
+class BBSPostRead(models.Model):
+    account = models.ForeignKey('accounts.AccountDB', related_name='bbs_read', on_delete=models.CASCADE)
+    post = models.ForeignKey(BBSPost, related_name='read', on_delete=models.CASCADE)
+    date_read = models.DateTimeField(null=True)
+
+    class Meta:
+        unique_together = (('account', 'post'),)
+
+
+class ChannelComponent(SharedMemoryModel):
+    """
+    Component for Entities which ARE Channels. These are a replacement for Evennia's Channels!
+    Beware, the NameComponent is considered case-insensitively unique per Channel Owner.
+    """
+    db_entity = models.OneToOneField(EntityDB, related_name='channel_component', on_delete=models.CASCADE,
+                                     primary_key=True)
+    db_owner = models.ForeignKey(EntityDB, on_delete=models.CASCADE, related_name='owned_channels')
+
+
+class ChannelSubscription(SharedMemoryModel):
+    db_channel = models.ForeignKey(EntityDB, related_name='channel_subscribers', on_delete=models.CASCADE)
+    db_subscriber = models.ForeignKey(EntityDB, related_name='channel_subscriptions', on_delete=models.CASCADE)
+    db_name = models.CharField(max_length=255, null=False, blank=False)
+    db_iname = models.CharField(max_length=255, null=False, blank=False)
+    db_namespace = models.CharField(max_length=255, null=False, blank=False)
+    db_codename = models.CharField(max_length=255, null=True, blank=False)
+    db_ccodename = models.CharField(max_length=255, null=True, blank=False)
+    db_icodename = models.CharField(max_length=255, null=True, blank=False)
+    db_title = models.CharField(max_length=255, null=True, blank=False)
+    db_altname = models.CharField(max_length=255, null=True, blank=False)
+    db_muted = models.BooleanField(default=False, null=False, blank=False)
+    db_enabled = models.BooleanField(default=True, null=False, blank=False)
+
+    class Meta:
+        unique_together = (('db_channel', 'db_subscriber'), ('db_subscriber', 'db_iname'),
+                           ('db_channel', 'db_icodename'))
 
 
 class PlaySessionDB(TypedObject):
@@ -101,7 +352,7 @@ class PlaySessionDB(TypedObject):
     __defaultclasspath__ = "athanor.playsessions.playsessions.DefaultPlaySession"
     __applabel__ = "athanor"
 
-    db_combo = models.OneToOneField(AccountIdentityCombo, related_name='play_session', on_delete=models.PROTECT)
+    db_entity = models.OneToOneField(EntityDB, related_name='play_session', on_delete=models.PROTECT)
 
     # This will store a record of 'when this PlaySession was last known to be active.' It is used only in the event
     # of a crash for playtime calculations during cleanup.
@@ -114,21 +365,6 @@ class PlaySessionDB(TypedObject):
         blank=True,
         help_text="optional python path to a cmdset class.",
     )
-
-
-class HostAddress(models.Model):
-    host_ip = models.GenericIPAddressField(null=False)
-    host_name = models.TextField(null=True)
-
-    def __str__(self):
-        return str(self.host_ip)
-
-
-class ProtocolName(models.Model):
-    name = models.CharField(max_length=100, null=False, blank=False, unique=True)
-
-    def __str__(self):
-        return str(self.name)
 
 
 class ServerSessionDB(TypedObject):
@@ -153,7 +389,6 @@ class ServerSessionDB(TypedObject):
     db_cmd_last = models.DateTimeField(null=True)
     db_cmd_last_visible = models.DateTimeField(null=True)
 
-
     db_account = models.ForeignKey('accounts.AccountDB', related_name='server_sessions', null=True,
                                    on_delete=models.SET_NULL)
 
@@ -171,7 +406,7 @@ class ACLEntry(models.Model):
     object_id = models.PositiveIntegerField(null=False)
     resource = GenericForeignKey('content_type', 'object_id')
 
-    identity = models.ForeignKey(IdentityDB, related_name='acl_references', on_delete=models.CASCADE)
+    entity = models.ForeignKey(EntityDB, related_name='acl_references', on_delete=models.CASCADE)
     mode = models.CharField(max_length=30, null=False, blank=True, default='')
     deny = models.BooleanField(null=False, default=False)
     permissions = models.ManyToManyField(ACLPermission, related_name='entries')
@@ -179,189 +414,3 @@ class ACLEntry(models.Model):
     class Meta:
         unique_together = (('content_type', 'object_id', 'identity', 'mode', 'deny'),)
         index_together = (('content_type', 'object_id', 'deny'),)
-
-
-class BBSBoardDB(TypedObject):
-    __settingsclasspath__ = settings.BASE_BBS_BOARD_TYPECLASS
-    __defaultclasspath__ = "athanor.bbs.boards.DefaultBoard"
-    __applabel__ = "athanor"
-
-    db_owner = models.ForeignKey(IdentityDB, on_delete=models.CASCADE, related_name='owned_boards')
-    db_ckey = models.CharField(max_length=255, blank=False, null=False)
-    db_order = models.PositiveIntegerField(default=0)
-    db_next_post_number = models.PositiveIntegerField(default=0, null=False)
-
-    ignoring = models.ManyToManyField(IdentityDB, related_name='ignored_boards')
-
-    def __str__(self):
-        return str(self.db_key)
-
-    class Meta:
-        verbose_name = 'BBS'
-        verbose_name_plural = 'BBSs'
-        unique_together = (('db_owner', 'db_order'), )
-
-
-class BBSPostDB(TypedObject):
-    __settingsclasspath__ = settings.BASE_BBS_POST_TYPECLASS
-    __defaultclasspath__ = "athanor.bbs.posts.DefaultPost"
-    __applabel__ = "athanor"
-
-    db_poster = models.ForeignKey(IdentityDB, related_name='owned_posts', on_delete=models.PROTECT)
-    db_ckey = models.CharField(max_length=255, blank=False, null=False)
-    db_date_created = models.DateTimeField(null=False)
-    db_board = models.ForeignKey(BBSBoardDB, related_name='posts', on_delete=models.CASCADE)
-    db_date_modified = models.DateTimeField(null=False)
-    db_order = models.PositiveIntegerField(null=False)
-    db_body = models.TextField(null=False, blank=False)
-
-    class Meta:
-        verbose_name = 'Post'
-        verbose_name_plural = 'Posts'
-        unique_together = (('db_board', 'db_order'), )
-
-
-class BBSPostRead(models.Model):
-    account = models.ForeignKey('accounts.AccountDB', related_name='bbs_read', on_delete=models.CASCADE)
-    post = models.ForeignKey(BBSPostDB, related_name='read', on_delete=models.CASCADE)
-    date_read = models.DateTimeField(null=True)
-
-    class Meta:
-        unique_together = (('account', 'post'),)
-
-
-class ChannelOwner(SharedMemoryModel):
-    db_owner = models.ForeignKey(IdentityDB, on_delete=models.CASCADE, related_name='owned_channels')
-    db_channel = models.OneToOneField('comms.ChannelDB', null=False, related_name='owner', on_delete=models.CASCADE)
-
-
-class ChannelSubscription(SharedMemoryModel):
-    db_channel = models.ForeignKey('comms.ChannelDB', related_name='subscriptions', on_delete=models.CASCADE)
-    db_subscriber = models.ForeignKey(AccountIdentityCombo, related_name='channel_subs', on_delete=models.CASCADE)
-    db_name = models.CharField(max_length=255, null=False, blank=False)
-    db_iname = models.CharField(max_length=255, null=False, blank=False)
-    db_namespace = models.CharField(max_length=255, null=False, blank=False)
-    db_codename = models.CharField(max_length=255, null=True, blank=False)
-    db_ccodename = models.CharField(max_length=255, null=True, blank=False)
-    db_icodename = models.CharField(max_length=255, null=True, blank=False)
-    db_title = models.CharField(max_length=255, null=True, blank=False)
-    db_altname = models.CharField(max_length=255, null=True, blank=False)
-    db_muted = models.BooleanField(default=False, null=False, blank=False)
-    db_enabled = models.BooleanField(default=True, null=False, blank=False)
-
-    class Meta:
-        unique_together = (('db_channel', 'db_subscriber'), ('db_subscriber', 'db_iname'),
-                           ('db_channel', 'db_icodename'))
-
-
-class EntityDB(TypedObject):
-    """
-    This is Athanor's replacement to Evennia's ObjectDB. It is the core of an Entity-Component System-inspired approach.
-    """
-    __settingsclasspath__ = settings.BASE_ENTITY_TYPECLASS
-    __defaultclasspath__ = "athanor.entities.entities.DefaultEntity"
-    __applabel__ = "athanor"
-
-
-class NameComponent(SharedMemoryModel):
-    db_entity = models.OneToOneField(EntityDB, related_name='command_component', on_delete=models.CASCADE)
-    db_name = models.CharField(max_length=255, null=False, blank=False)
-    # Store the version with Evennia-style ANSI markup in here.
-    db_cname = models.CharField(max_length=255, null=False, blank=False)
-
-
-class CommandComponent(SharedMemoryModel):
-    """
-    Some entities might need to have CmdSets. Some might not. The storage is handled here.
-    """
-    db_entity = models.OneToOneField(EntityDB, related_name='command_component', on_delete=models.CASCADE)
-
-    db_cmdset_storage = models.CharField(
-        "cmdset",
-        max_length=255,
-        null=True,
-        blank=True,
-        help_text="optional python path to a cmdset class.",
-    )
-
-
-class FixtureComponent(SharedMemoryModel):
-    """
-    Fixtures are Entities which must exist - they are created by the load process, and integrity checked on server
-    start. This table is used for indexing and checking for an Entity's existence.
-    """
-    db_entity = models.OneToOneField(EntityDB, related_name='fixture_component', on_delete=models.CASCADE)
-    db_namespace = models.ForeignKey(Namespace, related_name='entity_fixtures', on_delete=models.PROTECT)
-    db_key = models.CharField(max_length=255, null=False, blank=False, unique=True)
-
-
-class InventoryComponent(SharedMemoryModel):
-    """
-    Component for entities which ARE an Inventory. Inventories have an Owner, which could literally be 'anything.'
-    This allows Factions to have Inventories, or Accounts, etc.
-    """
-    db_entity = models.OneToOneField(EntityDB, related_name='inventory_component', on_delete=models.CASCADE)
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=False)
-    object_id = models.PositiveIntegerField(null=False)
-    db_owner = GenericForeignKey('content_type', 'object_id')
-    db_key = models.CharField(max_length=255, null=False, blank=False)
-
-    class Meta:
-        unique_together = (('content_type', 'object_id', 'db_key'),)
-
-
-class InventoryLocationComponent(SharedMemoryModel):
-    """
-    Component for Entities which are IN an Inventory.
-    """
-    db_entity = models.OneToOneField(EntityDB, related_name='inventory_location_component', on_delete=models.CASCADE)
-    db_inventory = models.ForeignKey(EntityDB, related_name='inventory_contents', on_delete=models.PROTECT)
-
-
-class EquipComponent(SharedMemoryModel):
-    """
-    Component for entities which ARE an EquipSet. EquipSets like Inventories have an Owner, which could be 'anything.'
-    """
-    db_entity = models.OneToOneField(EntityDB, related_name='equip_component', on_delete=models.CASCADE)
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=False)
-    object_id = models.PositiveIntegerField(null=False)
-    db_owner = GenericForeignKey('content_type', 'object_id')
-    db_key = models.CharField(max_length=255, null=False, blank=False)
-
-    class Meta:
-        unique_together = (('content_type', 'object_id', 'db_key'),)
-
-
-class EquipLocationComponent(SharedMemoryModel):
-    """
-    Component for Entities which are equipped by an EquipSet.
-    """
-    db_entity = models.OneToOneField(EntityDB, related_name='equip_location_component', on_delete=models.CASCADE)
-    db_equip = models.ForeignKey(EntityDB, related_name='equip_contents', on_delete=models.PROTECT)
-
-    # Should probably stick something in here about how the item is equipped. Slot? Layer?
-
-
-class DimensionComponent(SharedMemoryModel):
-    """
-    Component for Entities which ARE a Dimension.
-    """
-    db_entity = models.OneToOneField(EntityDB, related_name='dimension_component', on_delete=models.CASCADE)
-
-
-class Vector3LocationComponent(SharedMemoryModel):
-    """
-    Component for Entities that are located 'inside' another Entity in a 3-Dimensional Space.
-    """
-    db_entity = models.OneToOneField(EntityDB, related_name='vector3_location_component', on_delete=models.CASCADE)
-    db_location = models.ForeignKey(EntityDB, related_name='vector3_contents', on_delete=models.PROTECT)
-    db_x = models.FloatField(default=0.0, null=False, blank=False)
-    db_y = models.FloatField(default=0.0, null=False, blank=False)
-
-
-class SectorComponent(SharedMemoryModel):
-    """
-    Component for Entities which ARE a Sector.
-    """
-    db_entity = models.OneToOneField(EntityDB, related_name='sector_component', on_delete=models.CASCADE)
-

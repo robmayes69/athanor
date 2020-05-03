@@ -1,2 +1,0 @@
-class EquipHandler:
-    pass

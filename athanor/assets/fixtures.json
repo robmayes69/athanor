@@ -1,0 +1,35 @@
+{
+  "system:system": {
+    "identity": "system",
+    "name": "System",
+    "typeclass": "athanor.identities.system.SystemOwnerIdentity",
+    "fixture/order": -100
+  },
+  "system:everyone": {
+    "identity": "system",
+    "name": "Everyone",
+    "typeclass": "athanor.identities.system.EveryoneIdentity",
+    "fixture/order": -99
+  },
+  "limbo:dimension": {
+    "name": "Dimension of Limbo",
+    "type": "dimension",
+    "dimension/key": "limbo",
+    "fixture/order": -50
+  },
+  "limbo:sector": {
+    "name": "Sector of Limbo",
+    "type": "sector",
+    "fixture/order": -49,
+    "sector/key": "limbo",
+    "fixture/dimension": ["limbo:dimension", [0.0, 0.0, 0.0]]
+  },
+  "limbo:end_of_time": {
+    "name": "The End of Time",
+    "type": "structure",
+    "fixture/order": -48,
+    "fixture/sector_location": ["limbo:sector", [0.0, 0.0, 0.0]],
+    "structure/layout": "end_of_time",
+    "structure/starting_room": "lamppost_plaza"
+  }
+}
