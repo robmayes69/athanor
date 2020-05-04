@@ -2,13 +2,13 @@
   "system:system": {
     "identity": "system",
     "name": "System",
-    "typeclass": "athanor.identities.system.SystemOwnerIdentity",
+    "typeclass": "athanor.entities.entities.SystemOwnerIdentity",
     "fixture/order": -100
   },
   "system:everyone": {
     "identity": "system",
     "name": "Everyone",
-    "typeclass": "athanor.identities.system.EveryoneIdentity",
+    "typeclass": "athanor.entities.entities.EveryoneIdentity",
     "fixture/order": -99
   },
   "limbo:dimension": {
@@ -29,7 +29,7 @@
     "type": "structure",
     "fixture/order": -48,
     "fixture/sector_location": ["limbo:sector", [0.0, 0.0, 0.0]],
-    "structure/layout": "end_of_time",
+    "structure/layout": "athanor:end_of_time",
     "structure/starting_room": "lamppost_plaza"
   }
 }

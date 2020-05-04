@@ -1,7 +1,5 @@
 from athanor.utils.cmdhandler import CmdHandler
 from athanor.utils.cmdsethandler import CmdSetHandler
-from athanor.equips.utils import EquipHandler
-from athanor.inventories.utils import InventoryHandler
 
 
 class LocationHandler:
@@ -24,13 +22,13 @@ class EntityCmdHandler(CmdHandler):
     pass
 
 
-class EntityEquipHandler(EquipHandler):
+class EntityEquipHandler:
 
     def __init__(self, owner):
         self.owner = owner
 
 
-class EntityInventoryHandler(InventoryHandler):
+class EntityInventoryHandler:
 
     def __init__(self, owner):
         self.owner = owner

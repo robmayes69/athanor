@@ -3,6 +3,7 @@ from django.conf import settings
 from evennia.typeclasses.managers import TypeclassManager
 from evennia.typeclasses.models import TypeclassBase
 from evennia.utils.utils import lazy_property
+from evennia.utils import logger
 
 import athanor
 from athanor.models import EntityDB
@@ -10,9 +11,9 @@ from athanor.entities.handlers import LocationHandler, EntityCmdSetHandler, Enti
 from athanor.entities.handlers import EntityEquipHandler
 from athanor.utils.text import clean_and_ansi
 
-from athanor.models import Namespace, NameComponent, CommandComponent, InventoryComponent, EquipComponent
+from athanor.models import Namespace, NameComponent, InventoryComponent, EquipComponent
 from athanor.models import DimensionComponent, SectorComponent, RoomComponent, ExitComponent, GatewayComponent
-from athanor.models import FixtureSpace, FixtureComponent
+from athanor.models import FixtureComponent
 
 
 class DefaultEntity(EntityDB, metaclass=TypeclassBase):
@@ -42,23 +43,13 @@ class DefaultEntity(EntityDB, metaclass=TypeclassBase):
     def inventory(self):
         return EntityInventoryHandler(self)
 
-    def _create_command(self, data):
-        if not (command_data := data.pop('command', None)):
-            if 'command' in self.required:
-                raise ValueError("Missing a Cmdset for this Entity!")
-        CommandComponent.objects.create(db_entity=self, db_cmdset_storage=command_data)
-
     def _create_name(self, data):
-        if not (name_data := data.pop('name', None)):
-            if 'name' in self.required:
-                raise ValueError("Missing a Name for this Entity!")
-        clean_name, color_name = clean_and_ansi(name_data)
+        clean_name, color_name = clean_and_ansi(data.pop('name', None))
         NameComponent.objects.create(db_entity=self, db_name=clean_name, db_cname=color_name)
 
     def _create_identity(self, data):
         if not (identity_data := data.pop('identity', None)):
-            if 'identity' in self.required:
-                raise ValueError("Missing an Identity for this Entity!")
+            raise ValueError("Missing an Identity for this Entity!")
         if not (namecomp := NameComponent.objects.filter(db_entity=self).first()):
             raise ValueError("Identity requires a NameComponent!")
         name = namecomp.db_name
@@ -132,7 +123,7 @@ class DefaultEntity(EntityDB, metaclass=TypeclassBase):
         RoomComponent.objects.create(db_entity=self, db_room=room, db_destination=destination, db_gateway=gateway,
                                      db_exit_key=key)
 
-    def _format_layout(self, layout, starting_room):
+    def _format_layout(self, layout):
         rooms_layout = layout.get('rooms', dict())
         gateways_layout = layout.get('gateways', dict())
         exits_layout = layout.get('exits', dict())
@@ -147,6 +138,8 @@ class DefaultEntity(EntityDB, metaclass=TypeclassBase):
             room_data.update(room_base_data)
             room_data['room/key'] = room_key
             room_data['room/structure'] = self
+            if 'typeclass' not in room_data and 'type' not in room_data:
+                room_data['type'] = 'room'
 
             rooms[room_key] = entity_con.create_entity(room_data)
 
@@ -155,6 +148,8 @@ class DefaultEntity(EntityDB, metaclass=TypeclassBase):
             gateway_data.update(gateway_base_data)
             gateway_data['gateway/key'] = gateway_key
             gateway_data['gateway/structure'] = self
+            if 'typeclass' not in gateway_data and 'type' not in gateway_data:
+                gateway_data['type'] = 'gateway'
 
             gateways[gateway_key] = entity_con.create_entity(gateway_data)
 
@@ -164,10 +159,18 @@ class DefaultEntity(EntityDB, metaclass=TypeclassBase):
                 exit_data = dict()
                 destination = rooms[exit_base_data.get('destination')]
                 gateway = gateways.get(exit_base_data.get('gateway', None), None)
-                exit_data['exit/key'] = room_key
+                aliases = exit_data.pop('aliases', list())
+                if (exit_map := settings.EXIT_MAP.get(exit_key.lower(), None)):
+                    exit_key = exit_map[0]
+                    exit_aliases = exit_map[1]
+                    aliases.extend(exit_aliases)
+                    exit_data['aliases'] = aliases
+                exit_data['exit/key'] = exit_key
                 exit_data['exit/room'] = room
                 exit_data['exit/destination'] = destination
                 exit_data['exit/gateway'] = gateway
+                if 'typeclass' not in exit_data and 'type' not in exit_data:
+                    exit_data['type'] = 'exit'
 
                 entity_con.create_entity(exit_data)
 
@@ -179,7 +182,13 @@ class DefaultEntity(EntityDB, metaclass=TypeclassBase):
         asset_con = athanor.api().get('controller_manager').get('asset')
         if not (layout_data := asset_con.get_layout(layout)):
             raise ValueError(f"Layout data not found in assets for {layout}")
-        self._format_layout(layout_data, starting_room)
+        self._format_layout(layout_data)
+
+    def _create_sector_location(self, data):
+        pass
+
+    def _create_room_location(self, data):
+        pass
 
     def _create_fixture(self, data):
         """
@@ -197,7 +206,7 @@ class DefaultEntity(EntityDB, metaclass=TypeclassBase):
             data['sector/coordinates'] = coordinates
 
         if (struct_location := data.pop('fixture/sector_location', None)):
-            key, coordinates = struct_location[0], dimen_location[1]
+            key, coordinates = struct_location[0], struct_location[1]
             fkey, skey = key.split(':', 1)
             sector_fixture = FixtureComponent.objects.get(db_fixturespace__db_name=fkey, db_key=skey)
 
@@ -218,34 +227,41 @@ class DefaultEntity(EntityDB, metaclass=TypeclassBase):
         all_components.extend(list(self.create_components))
         to_run = set(all_components)
         self.extra_components = list()
+        print(f"ALL COMPONENTS for {self}: {all_components}")
         for comp_name in all_components:
             if comp_name not in to_run:
                 continue
             processor = getattr(self, settings.ENTITY_CREATION_MAP[comp_name], None)
             if processor:
+                print(f"Running {processor} for {self} {comp_name} - {data}")
                 processor(data)
                 to_run.remove(comp_name)
 
-        second_run = list(self.extra_components)
+        second_run = set(self.extra_components)
+        print(f"SECOND RUN: {second_run}")
         for comp_name in self.extra_components:
             if comp_name not in second_run:
                 continue
             processor = getattr(self, settings.ENTITY_CREATION_MAP[comp_name], None)
             if processor:
+                print(f"Second running {processor} for {self} {comp_name} - {data}")
                 processor(data)
                 second_run.remove(comp_name)
 
     @classmethod
     def create(cls, data):
+        print(f"CREATE {cls} ENTITY CALLED WITH: {data}")
         entity = None
         try:
             entity = cls(db_key='')
             entity.save()
-            entity.db_key = entity.dbref
+            entity.key = entity.dbref
+            entity.swap_typeclass(cls)
             entity.setup_entity(data)
         except Exception as e:
             if entity:
                 entity.delete()
+            logger.log_trace(e)
             raise e
         return entity
 
@@ -254,66 +270,43 @@ class DefaultEntity(EntityDB, metaclass=TypeclassBase):
 
 
 class DefaultInventory(DefaultEntity):
-    required = ('name', 'inventory')
-
-    def setup_entity(self, data):
-        super().setup_entity(data)
-        self._create_inventory(data)
+    create_components = ('name', 'inventory')
 
 
 class DefaultGateway(DefaultEntity):
-    required = ('name', 'gateway')
-
-    def setup_entity(self, data):
-        super().setup_entity(data)
-        self._create_gateway(data)
+    create_components = ('name', 'gateway')
 
 
 class AthanorExit(DefaultEntity):
-    required = ('name', 'exit')
-
-    def setup_entity(self, data):
-        super().setup_entity(data)
-        self._create_exit(data)
+    create_components = ('exit',)
 
 
 class DefaultEquip(DefaultEntity):
-    required = ('name', 'equip')
-
-    def setup_entity(self, data):
-        super().setup_entity(data)
-        self._create_equip(data)
+    create_components = ('name', 'equip')
 
 
 class DefaultDimension(DefaultEntity):
-    required = ('name', 'dimension')
-
-    def setup_entity(self, data):
-        super().setup_entity(data)
-        self._create_dimension(data)
+    create_components = ('name', 'dimension')
 
 
 class DefaultSector(DefaultEntity):
-    required = ('name', 'sector')
-
-    def setup_entity(self, data):
-        super().setup_entity(data)
-        self._create_sector(data)
+    create_components = ('name', 'sector')
 
 
 class AthanorRoom(DefaultEntity):
-    required = ('name', 'room')
+    create_components = ('name', 'room')
 
-    def setup_entity(self, data):
-        super().setup_entity(data)
-        self._create_room(data)
+
+class DefaultStructure(DefaultEntity):
+    create_components = ('name', 'structure')
 
 
 class SystemOwnerIdentity(DefaultEntity):
-    pass
+    create_components = ('name', 'identity')
 
 
 class EveryoneIdentity(DefaultEntity):
+    create_components = ('name', 'identity')
 
     def check_acl(self, accessor, mode=''):
         return True

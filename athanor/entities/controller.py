@@ -30,10 +30,11 @@ class EntityControllerBackend(AthanorControllerBackend):
         super().__init__(frontend)
         self.default_typeclass = None
         self.typeclasses = dict()
+        self.integrity_checked = False
         self.load()
 
     def do_load(self):
-        self.typeclasses = {key: class_from_module(path) for key, path in settings.ENTITY_TYPECLASSES}
+        self.typeclasses = {key: class_from_module(path) for key, path in settings.ENTITY_TYPECLASSES.items()}
 
     def create_entity(self, data, fixture=False):
         base_data = dict(data)
@@ -42,7 +43,7 @@ class EntityControllerBackend(AthanorControllerBackend):
         if (def_data := base_data.pop('definition', None)):
             definition_data = asset_con.get_definition(def_data)
             resolved_data.update(definition_data)
-            resolved_data.update(base_data)
+        resolved_data.update(base_data)
         if (class_path := resolved_data.pop('typeclass', None)):
             use_class = class_from_module(class_path)
         else:
@@ -60,6 +61,9 @@ class EntityControllerBackend(AthanorControllerBackend):
         return entity
 
     def check_integrity(self):
+        if self.integrity_checked:
+            return
+        self.integrity_checked = True
 
         fspaces = dict()
 
@@ -82,12 +86,10 @@ class EntityControllerBackend(AthanorControllerBackend):
         asset_con = self.frontend.manager.get('asset')
 
         for plugin in asset_con.backend.plugins_sorted:
-            pspace = Pluginspace.objects.get(db_name=plugin.key)
-            fixture_data = plugin.data.get('fixtures', dict())
+            fixture_data = plugin.fixtures
 
             for fixture_key, ent_data in sorted(fixture_data.items(), key=lambda x: x[1].get("fixture/order", 0)):
                 fspace, fix_key = clean_fkey(fixture_key)
-
                 if (found := FixtureComponent.objects.filter(db_fixturespace=fspace, db_key=fix_key).first()):
                     continue
 

@@ -42,9 +42,8 @@ class PluginAssetLoader:
         if not path.exists(self.asset_path):
             return
         self.data = self.load_data(self.asset_path)
-        self.defs = self.data.pop('defs', dict())
+        self.entities = self.data.pop('entities', dict())
         self.fixtures = self.data.pop('fixtures', dict())
-        self.identities = self.data.pop('identities', dict())
         self.layouts = self.data.pop('layouts', dict())
 
     def load_data(self, data_path):
@@ -80,20 +79,16 @@ class PluginAssetLoader:
     def __repr__(self):
         return f"<{self.__class__.__name__}: {self.key}>"
 
-    def get_dimension_def(self, key):
-        if not (data := self.defs.get('dimensions', dict()).get(key, None)):
-            raise ValueError(f"Could not find dimension definition: {key}")
+    def get_definition(self, category, key):
+        if not (data := self.entities.get(category, dict()).get(key, None)):
+            raise ValueError(f"Could not find {category} definition: {key}")
         return data
 
-    def get_sector_def(self, key):
-        if not (data := self.defs.get('secctors', dict()).get(key, None)):
-            raise ValueError(f"Could not find sector definition: {key}")
+    def get_layout(self, key):
+        if not (data := self.layouts.get(key, None)):
+            raise ValueError(f"Could not find layout: {key}")
         return data
 
-    def get_entity_def(self, key):
-        if not (data := self.defs.get('entities', dict()).get(key, None)):
-            raise ValueError(f"Could not find entity definition: {key}")
-        return data
 
 class AssetController(AthanorController):
     system_name = 'ASSETS'
@@ -101,14 +96,11 @@ class AssetController(AthanorController):
     def __init__(self, key, manager, backend):
         super().__init__(key, manager, backend)
 
-    def get_dimension_def(self, path):
-        return self.backend.get_dimension_def(path)
+    def get_definition(self, path):
+        return self.backend.get_definition(path)
 
-    def get_sector_def(self, path):
-        return self.backend.get_sector_def(path)
-
-    def get_entity_def(self, path):
-        return self.backend.get_entity_def(path)
+    def get_layout(self, path):
+        return self.backend.get_layout(path)
 
 
 class AssetControllerBackend(AthanorControllerBackend):
@@ -126,25 +118,31 @@ class AssetControllerBackend(AthanorControllerBackend):
     def do_load(self):
         self.load_plugins()
 
-    def _clean_path(self, path):
+    def _clean_two_path(self, path):
         if ':' not in path:
             raise ValueError(f"Malformed path: {path}")
         plugin, thing_key = path.split(':', 1)
+        plugin = plugin.strip()
         if plugin not in self.plugins:
             raise ValueError(f"Could not locate plugin {plugin} for {path}")
-        return self.plugins[plugin], thing_key
+        return self.plugins[plugin], thing_key.strip()
 
-    def get_dimension_def(self, path):
-        plugin, dimension_key = self._clean_path(path)
-        return plugin.get_dimension_def(dimension_key)
+    def _clean_three_path(self, path):
+        if ':' not in path:
+            raise ValueError(f"Malformed path: {path}")
+        plugin, category, thing_key = path.split(':', 2)
+        if plugin not in self.plugins:
+            raise ValueError(f"Could not locate plugin {plugin} for {path}")
+        return self.plugins[plugin], category.strip(), thing_key.strip()
 
-    def get_sector_def(self, path):
-        plugin, sector_key = self._clean_path(path)
-        return plugin.get_sector_def(sector_key)
+    def get_definition(self, path):
+        plugin, category, entity_key = self._clean_three_path(path)
+        return plugin.get_definition(category, entity_key)
 
-    def get_entity_def(self, path):
-        plugin, entity_key = self._clean_path(path)
-        return plugin.get_entity_def(entity_key)
+    def get_layout(self, path):
+        plugin, layout_key = self._clean_two_path(path)
+        return plugin.get_layout(layout_key)
+
 
     def load_plugins(self):
         for plugin_module in settings.ATHANOR_PLUGINS_SORTED:

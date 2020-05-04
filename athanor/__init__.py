@@ -16,6 +16,10 @@ LOADED = False
 
 
 def _init():
+    global LOADED, _API_STORAGE
+    if LOADED:
+        return
+    LOADED = True
 
     pspace_dict = dict()
     def get_or_create_pspace(pspace):
@@ -27,9 +31,7 @@ def _init():
         pspace_dict[pspace] = model
         return model
 
-    global LOADED, _API_STORAGE
-    if LOADED:
-        return
+
 
     from django.conf import settings
     from evennia.utils.utils import class_from_module
@@ -48,15 +50,18 @@ def _init():
     _API_STORAGE['styler'] = styler_class
     _API_STORAGE['styler'].load()
 
-    manager = class_from_module(settings.CONTROLLER_MANAGER_CLASS)()
-    _API_STORAGE['controller_manager'] = manager
-    manager.load()
+    try:
+        manager = class_from_module(settings.CONTROLLER_MANAGER_CLASS)()
+        _API_STORAGE['controller_manager'] = manager
+        manager.load()
 
-    # Setting this true so that integrity checks will not call _init() again.
-    LOADED = True
-
-    entity_con = manager.get('entity')
-    entity_con.check_integrity()
+        # Setting this true so that integrity checks will not call _init() again.
+        entity_con = manager.get('entity')
+        entity_con.check_integrity()
+    except Exception as e:
+        from evennia.utils import logger
+        logger.log_trace(e)
+        print(e)
 
 
 
@@ -149,12 +154,23 @@ def init_settings(settings):
     }
     settings.ASSET_LOADER_CLASS = 'athanor.utils.assets.PluginAssetLoader'
 
+    ######################################################################
+    # Entity Typeclass
+    ######################################################################
+    settings.CONTROLLERS['entity'] = {
+        'class': 'athanor.entities.controller.EntityController',
+        'backend': 'athanor.entities.controller.EntityControllerBackend'
+    }
+
+    settings.BASE_ENTITY_TYPECLASS = 'athanor.entities.entities.DefaultEntity'
+
     settings.ENTITY_TYPECLASSES = {
         'dimension': 'athanor.entities.entities.DefaultDimension',
         'sector': 'athanor.entities.entities.DefaultSector',
         'room': 'athanor.entities.entities.AthanorRoom',
         'exit': 'athanor.entities.entities.AthanorExit',
         'gateway': 'athanor.entities.entities.DefaultGateway',
+        'structure': 'athanor.entities.entities.DefaultStructure'
     }
 
     settings.ENTITY_CREATION_MAP = {
@@ -169,8 +185,35 @@ def init_settings(settings):
         'room': '_create_room',
         'gateway': '_create_gateway',
         'exit': '_create_exit',
-        'fixture': '_create_fixture'
+        'fixture': '_create_fixture',
+        'room_location': '_create_room_location',
+        'sector_location': '_create_sector_location'
     }
+
+    settings.IDENTITY_NAMESPACES = [
+        "system",
+        "pc",
+        "npc",
+
+    ]
+
+    # This is a mapping of 'shortcut' to (db_exit_key, [aliases]) for use with
+    # layouts.
+    settings.EXIT_MAP = {
+        'n': ('north', ['n']),
+        's': ('south', ['s']),
+        'e': ('east', ['e']),
+        'w': ('west', ['w']),
+        'i': ('in', ['i']),
+        'o': ('out', ['o']),
+        'u': ('up', ['u']),
+        'd': ('down', ['d']),
+        'nw': ('northwest', ['nw']),
+        'ne': ('northeast', ['ne']),
+        'sw': ('southwest', ['sw']),
+        'se': ('southeast', ['se'])
+    }
+
 
     ######################################################################
     # Access Control List System
@@ -225,24 +268,6 @@ def init_settings(settings):
     settings.EXAMINE_HOOKS['account'] = ['account', 'access', 'commands', 'tags', 'attributes', 'puppets']
 
     ######################################################################
-    # Identity Options
-    ######################################################################
-    settings.CONTROLLERS['identity'] = {
-        'class': 'athanor.identities.controller.IdentityController',
-        'backend': 'athanor.identities.controller.IdentityControllerBackend'
-    }
-
-    settings.IDENTITY_NAMESPACES = [
-        "system",
-        "pc",
-        "npc",
-
-    ]
-
-    # This should basically never be used, but has to in order to satisfy the Typeclass system.
-    settings.BASE_IDENTITY_TYPECLASS = "athanor.identities.identities.DefaultIdentity"
-
-    ######################################################################
     # Player Character Options
     ######################################################################
     settings.BASE_PLAYER_CHARACTER_TYPECLASS = "athanor.playercharacters.playercharacters.DefaultPlayerCharacter"
@@ -268,40 +293,6 @@ def init_settings(settings):
     settings.CMDSET_PLAYSESSION = "athanor.playsessions.cmdsets.AthanorPlaySessionCmdSet"
 
     ######################################################################
-    # Grid Settings
-    ######################################################################
-    settings.CONTROLLERS['dimension'] = {
-        'class': 'athanor.dimensions.controller.DimensionController',
-        'backend': 'athanor.dimensions.controller.DimensionControllerBackend'
-    }
-
-    settings.CONTROLLERS['sector'] = {
-        'class': 'athanor.sectors.controller.SectorController',
-        'backend': 'athanor.sectors.controller.SectorControllerBackend'
-    }
-
-    settings.CONTROLLERS['entity'] = {
-        'class': 'athanor.entities.controller.EntityController',
-        'backend': 'athanor.entities.controller.EntityControllerBackend'
-    }
-
-    settings.BASE_DIMENSION_TYPECLASS = 'athanor.dimensions.dimensions.DefaultDimension'
-    settings.BASE_SECTOR_TYPECLASS = 'athanor.sectors.sectors.DefaultSector'
-    settings.BASE_ENTITY_TYPECLASS = 'athanor.entities.entities.DefaultEntity'
-    settings.BASE_ROOM_TYPECLASS = 'athanor.rooms.rooms.AthanorRoom'
-    settings.BASE_EXIT_TYPECLASS = 'athanor.exits.exits.AthanorExit'
-
-    ######################################################################
-    # Inventory Settings
-    ######################################################################
-    settings.BASE_INVENTORY_TYPECLASS = 'athanor.inventories.inventories.DefaultInventory'
-
-    ######################################################################
-    # Equip Settings
-    ######################################################################
-    settings.BASE_EQUIP_TYPECLASS = 'athanor.equips.equips.DefaultEquip'
-
-    ######################################################################
     # Avatar Settings
     ######################################################################
 
@@ -314,21 +305,6 @@ def init_settings(settings):
     # Instead, they'll see something generic, and have to decide what to
     # call a person.
     settings.NAME_DUB_SYSTEM = False
-
-    ######################################################################
-    # BBS Settings
-    ######################################################################
-    settings.BASE_BBS_BOARD_TYPECLASS = 'athanor.bbs.boards.DefaultBoard'
-    settings.BASE_BBS_POST_TYPECLASS = 'athanor.bbs.posts.DefaultPost'
-
-
-    ######################################################################
-    # Grid / Building Settings
-    ######################################################################
-
-    #settings.BASE_ROOM_TYPECLASS = "athanor.grid.typeclasses.AthanorRoom"
-    #settings.BASE_EXIT_TYPECLASS = "athanor.grid.typeclasses.AthanorExit"
-    #settings.BASE_OBJECT_TYPECLASS = "athanor.grid.typeclasses.AthanorItem"
 
     ######################################################################
     # Permissions

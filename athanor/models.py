@@ -51,21 +51,6 @@ class EntityDB(TypedObject):
     __defaultclasspath__ = "athanor.entities.entities.DefaultEntity"
     __applabel__ = "athanor"
 
-
-class NameComponent(SharedMemoryModel):
-    db_entity = models.OneToOneField(EntityDB, related_name='command_component', on_delete=models.CASCADE)
-    db_name = models.CharField(max_length=255, null=False, blank=False)
-    # Store the version with Evennia-style ANSI markup in here.
-    db_cname = models.CharField(max_length=255, null=False, blank=False)
-
-
-class CommandComponent(SharedMemoryModel):
-    """
-    Some entities might need to have CmdSets. Some might not. The storage is handled here.
-    """
-    db_entity = models.OneToOneField(EntityDB, related_name='command_component', on_delete=models.CASCADE,
-                                     primary_key=True)
-
     db_cmdset_storage = models.CharField(
         "cmdset",
         max_length=255,
@@ -73,6 +58,13 @@ class CommandComponent(SharedMemoryModel):
         blank=True,
         help_text="optional python path to a cmdset class.",
     )
+
+
+class NameComponent(SharedMemoryModel):
+    db_entity = models.OneToOneField(EntityDB, related_name='name_component', on_delete=models.CASCADE)
+    db_name = models.CharField(max_length=255, null=False, blank=False)
+    # Store the version with Evennia-style ANSI markup in here.
+    db_cname = models.CharField(max_length=255, null=False, blank=False)
 
 
 class FixtureSpace(SharedMemoryModel):
@@ -190,14 +182,14 @@ class RoomComponent(SharedMemoryModel):
     db_landing_site = models.BooleanField(null=False, default=False)
 
     class Meta:
-        unique_together = (('db_location', 'db_room_key'),)
+        unique_together = (('db_structure', 'db_room_key'),)
 
 
 class RoomLocationComponent(SharedMemoryModel):
     """
     Component that allows an Entity to exist 'inside' a room.
     """
-    db_entity = models.OneToOneField(EntityDB, related_name='room_component', on_delete=models.CASCADE,
+    db_entity = models.OneToOneField(EntityDB, related_name='room_location_component', on_delete=models.CASCADE,
                                      primary_key=True)
     db_location = models.ForeignKey(EntityDB, related_name='room_contents', on_delete=models.CASCADE)
 
@@ -206,7 +198,7 @@ class GatewayComponent(SharedMemoryModel):
     """
     Component for Exits which ARE a Gateway. (This allows multiple Exits to reference the same 'door' for instance.
     """
-    db_entity = models.OneToOneField(EntityDB, related_name='room_component', on_delete=models.CASCADE,
+    db_entity = models.OneToOneField(EntityDB, related_name='gateway_component', on_delete=models.CASCADE,
                                      primary_key=True)
     db_structure = models.ForeignKey(EntityDB, related_name='contained_gateways', on_delete=models.CASCADE)
     db_gateway_key = models.CharField(max_length=255, null=False, blank=False)
@@ -224,10 +216,11 @@ class ExitComponent(SharedMemoryModel):
     db_room = models.ForeignKey(EntityDB, related_name='room_contents_exits', on_delete=models.CASCADE)
     db_destination = models.ForeignKey(EntityDB, related_name='exit_entrances', on_delete=models.SET_NULL, null=True)
     db_gateway = models.ForeignKey(EntityDB, related_name='exits_linked', on_delete=models.PROTECT, null=True)
+    # The exit key is basically it's 'direction.' something like 'north' or 'west'. Use aliases for more.
     db_exit_key = models.CharField(max_length=255, null=False, blank=False)
 
     class Meta:
-        unique_together = (('db_location', 'db_exit_key'),)
+        unique_together = (('db_room', 'db_exit_key'),)
 
 
 class IdentityComponent(SharedMemoryModel):
@@ -412,5 +405,5 @@ class ACLEntry(models.Model):
     permissions = models.ManyToManyField(ACLPermission, related_name='entries')
 
     class Meta:
-        unique_together = (('content_type', 'object_id', 'identity', 'mode', 'deny'),)
+        unique_together = (('content_type', 'object_id', 'entity', 'mode', 'deny'),)
         index_together = (('content_type', 'object_id', 'deny'),)
