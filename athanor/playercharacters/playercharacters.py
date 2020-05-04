@@ -2,29 +2,17 @@ from django.conf import settings
 from evennia.utils.utils import lazy_property
 from athanor.playercharacters.handlers import PlayerCharacterSessionHandler, PlayerCharacterCmdHandler
 from athanor.playercharacters.handlers import PlayerCharacterCmdSetHandler
-from athanor.identities.identities import DefaultIdentity
+from athanor.entities.entities import DefaultEntity
 
 
-class DefaultPlayerCharacter(DefaultIdentity):
-    _namespace = "playercharacters"
-    _verbose_name = 'Player Character'
-    _verbose_name_plural = "Player Characters"
+class DefaultPlayerCharacter(DefaultEntity):
+    create_components = ('name', 'identity', 'player')
     _cmd_sort = 25
     _cmdset_types = ['player']
     _default_cmdset = settings.CMDSET_PLAYER_CHARACTER
 
     def cmd(self):
         return PlayerCharacterCmdHandler(self)
-
-    def at_identity_creation(self, validated, **kwargs):
-        validated['account'].link_identity(self)
-        self.at_setup_player(validated, **kwargs)
-
-    def at_setup_player(self, validated, **kwargs):
-        """
-        This would be a good spot to create avatar Entities...
-        """
-        pass
 
     @lazy_property
     def cmd(self):
@@ -37,15 +25,6 @@ class DefaultPlayerCharacter(DefaultIdentity):
     @lazy_property
     def sessions(self):
         return PlayerCharacterSessionHandler(self)
-
-    @classmethod
-    def _validate_identity(cls, name, clean_name, namespace, kwargs):
-        results = dict()
-        if not (account := kwargs.pop('account', None)):
-            raise ValueError("Player characters must be assigned to an Account!")
-        results['account'] = account
-        return results, kwargs
-
 
     def __repr__(self):
         return f"<PlayerCharacter({self.dbref}): {self.key}>"

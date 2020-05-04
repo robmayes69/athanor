@@ -25,7 +25,7 @@ class AthanorAccount(HasAttributeGetCreate, EventEmitter, DefaultAccount):
     examine_type = "account"
     examine_caller_type = "account"
     dbtype = 'AccountDB'
-    _cmd_sort = -750
+    _cmd_sort = -1100
     acl_type = 'account'
 
     def __repr__(self):

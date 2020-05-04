@@ -1,4 +1,5 @@
 import re
+from django.conf import settings
 from evennia.utils.search import object_search
 
 from athanor.utils.controllers import AthanorController, AthanorControllerBackend
@@ -19,7 +20,7 @@ class AthanorPlayerCharacterController(AthanorController):
 
     find_user = find_character
 
-    def create_character(self, session, account, character_name, ignore_priv=False, typeclass=None, no_session=False):
+    def create_character(self, session, account, character_name, ignore_priv=False, no_session=False):
         if not session and not no_session:
             raise ValueError("Permission denied.")
         if session and not no_session:
@@ -28,7 +29,7 @@ class AthanorPlayerCharacterController(AthanorController):
         else:
             enactor = account
         account = self.manager.get('account').find_account(account)
-        new_character = self.backend.create_character(account, character_name, typeclass=typeclass)
+        new_character = self.backend.create_character(account, character_name)
         entities = {'enactor': enactor, 'character': new_character, 'account': account}
         cmsg.CreateMessage(entities).send()
         return new_character
@@ -107,24 +108,8 @@ class AthanorPlayerCharacterControllerBackend(AthanorControllerBackend):
     def __init__(self, frontend):
         super().__init__(frontend)
         self.player_character_typeclass = None
-        self.id_map = dict()
-        self.name_map = dict()
         self.online = set()
-        self.reg_names = None
         self.load()
-
-    def do_load(self):
-        self.update_cache()
-
-    def update_regex(self):
-        escape_names = [re.escape(name) for name in self.name_map.keys()]
-        self.reg_names = re.compile(r"(?i)\b(?P<found>%s)\b" % '|'.join(escape_names))
-
-    def update_cache(self):
-        chars = DefaultPlayerCharacter.objects.filter_family()
-        self.id_map = {char.pk: char for char in chars}
-        self.name_map = {char.key.upper(): char for char in chars}
-        self.online = set(chars.exclude(db_account=None))
 
     def all(self, account=None):
         if account is None:
@@ -155,10 +140,13 @@ class AthanorPlayerCharacterControllerBackend(AthanorControllerBackend):
     def search_archived(self, name, exact=False):
         return self.search_all(name, exact, candidates=self.archived())
 
-    def create_character(self, account, character_name, typeclass=None):
-        if not typeclass:
-            typeclass = self.player_character_typeclass
-        new_character = typeclass.create_playercharacter(account, character_name)
-        self.id_map[new_character.id] = new_character
-        self.name_map[new_character.key.lower()] = new_character
+    def create_character(self, account, character_name):
+        entity_con = self.frontend.manager.get('entity')
+        char_data = {
+            'account': account,
+            'name': character_name,
+            'type': 'player',
+            'definition': settings.PLAYER_CHARACTER_DEFINITION
+        }
+        new_character = entity_con.create_entity(char_data)
         return new_character

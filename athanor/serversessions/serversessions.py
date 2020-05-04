@@ -12,6 +12,7 @@ from athanor.models import ServerSessionDB, HostAddress, ProtocolName
 from athanor.serversessions.handlers import ServerSessionCmdHandler, ServerSessionCmdSetHandler
 from athanor.utils.time import utcnow
 
+
 class DefaultServerSession(ServerSessionDB, metaclass=TypeclassBase):
     # The Session is always the first thing to matter when parsing commands.
     _cmd_sort = -1000

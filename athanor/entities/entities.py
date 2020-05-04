@@ -13,7 +13,7 @@ from athanor.utils.text import clean_and_ansi
 
 from athanor.models import Namespace, NameComponent, InventoryComponent, EquipComponent
 from athanor.models import DimensionComponent, SectorComponent, RoomComponent, ExitComponent, GatewayComponent
-from athanor.models import FixtureComponent
+from athanor.models import FixtureComponent, PlayerCharacterComponent
 
 
 class DefaultEntity(EntityDB, metaclass=TypeclassBase):
@@ -221,6 +221,11 @@ class DefaultEntity(EntityDB, metaclass=TypeclassBase):
             room = RoomComponent.objects.get(db_entity=structure, db_room_key=rkey)
             data['room_location/room'] = room
             self.extra_components.append('room_location')
+
+    def _create_player(self, data):
+        if not (account := data.pop('account', None)):
+            raise ValueError("Player data is missing an Account!")
+        PlayerCharacterComponent.objects.create(db_entity=self, db_account=account)
 
     def setup_entity(self, data):
         all_components = data.pop('components', list())

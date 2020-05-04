@@ -22,6 +22,7 @@ def _init():
     LOADED = True
 
     pspace_dict = dict()
+
     def get_or_create_pspace(pspace):
         if pspace in pspace_dict:
             return pspace_dict[pspace]
@@ -30,8 +31,6 @@ def _init():
             model.save()
         pspace_dict[pspace] = model
         return model
-
-
 
     from django.conf import settings
     from evennia.utils.utils import class_from_module
@@ -62,8 +61,6 @@ def _init():
         from evennia.utils import logger
         logger.log_trace(e)
         print(e)
-
-
 
 
 def api():
@@ -117,9 +114,6 @@ def init_settings(settings):
     # Taking control of initial setup. No more screwy godcharacter nonsense.
     settings.INITIAL_SETUP_MODULE = "athanor.initial_setup"
 
-
-
-
     ######################################################################
     # Module List Options
     ######################################################################
@@ -170,7 +164,8 @@ def init_settings(settings):
         'room': 'athanor.entities.entities.AthanorRoom',
         'exit': 'athanor.entities.entities.AthanorExit',
         'gateway': 'athanor.entities.entities.DefaultGateway',
-        'structure': 'athanor.entities.entities.DefaultStructure'
+        'structure': 'athanor.entities.entities.DefaultStructure',
+        'player': 'athanor.playercharacters.playercharacters.DefaultPlayerCharacter'
     }
 
     settings.ENTITY_CREATION_MAP = {
@@ -187,7 +182,8 @@ def init_settings(settings):
         'exit': '_create_exit',
         'fixture': '_create_fixture',
         'room_location': '_create_room_location',
-        'sector_location': '_create_sector_location'
+        'sector_location': '_create_sector_location',
+        'player': '_create_player'
     }
 
     settings.IDENTITY_NAMESPACES = [
@@ -271,7 +267,9 @@ def init_settings(settings):
     # Player Character Options
     ######################################################################
     settings.BASE_PLAYER_CHARACTER_TYPECLASS = "athanor.playercharacters.playercharacters.DefaultPlayerCharacter"
-    #settings.CMDSET_PLAYER_CHARACTER = "athanor.playercharacters.cmdsets.AthanorPlayerCharacterCmdSet"
+    settings.CMDSET_PLAYER_CHARACTER = "athanor.playercharacters.cmdsets.PlayerCharacterCmdSet"
+
+    settings.PLAYER_CHARACTER_DEFINITION = "athanor:player:player"
 
     # These restrict a player's ability to create/modify their own characters.
     # If True, only staff can perform these operations (if allowed by the privileges system)
