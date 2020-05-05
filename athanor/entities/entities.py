@@ -120,7 +120,7 @@ class DefaultEntity(EntityDB, metaclass=TypeclassBase):
             raise ValueError(f"Another Exit already uses this key for {room}")
         gateway = data.pop('exit/gateway', None)
         destination = data.pop('exit/destination', None)
-        RoomComponent.objects.create(db_entity=self, db_room=room, db_destination=destination, db_gateway=gateway,
+        ExitComponent.objects.create(db_entity=self, db_room=room, db_destination=destination, db_gateway=gateway,
                                      db_exit_key=key)
 
     def _format_layout(self, layout):

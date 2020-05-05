@@ -13,11 +13,30 @@ from athanor.serversessions.handlers import ServerSessionCmdHandler, ServerSessi
 from athanor.utils.time import utcnow
 
 
+class FakeSessionHandler:
+    """
+    Duplicates the functionality of Evennia's SessionHandler so .py works.
+    """
+    def __init__(self, owner):
+        self.sess = list()
+        self.sess.append(owner)
+
+    def count(self):
+        return len(self.sess)
+
+    def all(self):
+        return self.sess
+
+
 class DefaultServerSession(ServerSessionDB, metaclass=TypeclassBase):
     # The Session is always the first thing to matter when parsing commands.
     _cmd_sort = -1000
     acl_type = 'serversession'
     objects = TypeclassManager()
+
+    @lazy_property
+    def sessions(self):
+        return FakeSessionHandler(self)
 
     @lazy_property
     def cmdset(self):
@@ -386,3 +405,6 @@ class DefaultServerSession(ServerSessionDB, metaclass=TypeclassBase):
         if not self.account:
             return None
         return self.account.pk
+
+    def get_account(self):
+        return self.db_account

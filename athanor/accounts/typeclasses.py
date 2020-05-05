@@ -205,3 +205,6 @@ class AthanorAccount(HasAttributeGetCreate, EventEmitter, DefaultAccount):
         found, created = self.identity_stats.get_or_create(db_identity=identity)
         if created:
             created.save()
+
+    def get_account(self):
+        return self

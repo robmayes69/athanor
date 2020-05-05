@@ -68,3 +68,6 @@ class DefaultPlaySession(PlaySessionDB, metaclass=TypeclassBase):
 
     def get_player_character(self):
         return self.db.character
+
+    def get_account(self):
+        return self.db_account

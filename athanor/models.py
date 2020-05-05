@@ -3,8 +3,13 @@ from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 
+from evennia.utils.utils import make_iter
 from evennia.typeclasses.models import SharedMemoryModel, TypedObject
 from athanor.utils.time import utcnow
+
+_GA = object.__getattribute__
+_SA = object.__setattr__
+_DA = object.__delattr__
 
 
 class Pluginspace(SharedMemoryModel):
@@ -58,6 +63,32 @@ class EntityDB(TypedObject):
         blank=True,
         help_text="optional python path to a cmdset class.",
     )
+
+    # @property
+    def __cmdset_storage_get(self):
+        """
+        Getter. Allows for value = self.name. Returns a list of cmdset_storage.
+        """
+        storage = self.db_cmdset_storage
+        # we need to check so storage is not None
+        return [path.strip() for path in storage.split(",")] if storage else []
+
+    # @cmdset_storage.setter
+    def __cmdset_storage_set(self, value):
+        """
+        Setter. Allows for self.name = value. Stores as a comma-separated
+        string.
+        """
+        _SA(self, "db_cmdset_storage", ",".join(str(val).strip() for val in make_iter(value)))
+        _GA(self, "save")()
+
+    # @cmdset_storage.deleter
+    def __cmdset_storage_del(self):
+        "Deleter. Allows for del self.name"
+        _SA(self, "db_cmdset_storage", None)
+        _GA(self, "save")()
+
+    cmdset_storage = property(__cmdset_storage_get, __cmdset_storage_set, __cmdset_storage_del)
 
 
 class NameComponent(SharedMemoryModel):
@@ -351,6 +382,9 @@ class PlaySessionDB(TypedObject):
     # of a crash for playtime calculations during cleanup.
     db_date_good = models.DateTimeField(null=False)
 
+    db_account = models.ForeignKey('accounts.AccountDB', related_name='play_sessions', null=True,
+                                   on_delete=models.SET_NULL)
+
     db_cmdset_storage = models.CharField(
         "cmdset",
         max_length=255,
@@ -358,6 +392,32 @@ class PlaySessionDB(TypedObject):
         blank=True,
         help_text="optional python path to a cmdset class.",
     )
+
+    # @property
+    def __cmdset_storage_get(self):
+        """
+        Getter. Allows for value = self.name. Returns a list of cmdset_storage.
+        """
+        storage = self.db_cmdset_storage
+        # we need to check so storage is not None
+        return [path.strip() for path in storage.split(",")] if storage else []
+
+    # @cmdset_storage.setter
+    def __cmdset_storage_set(self, value):
+        """
+        Setter. Allows for self.name = value. Stores as a comma-separated
+        string.
+        """
+        _SA(self, "db_cmdset_storage", ",".join(str(val).strip() for val in make_iter(value)))
+        _GA(self, "save")()
+
+    # @cmdset_storage.deleter
+    def __cmdset_storage_del(self):
+        "Deleter. Allows for del self.name"
+        _SA(self, "db_cmdset_storage", None)
+        _GA(self, "save")()
+
+    cmdset_storage = property(__cmdset_storage_get, __cmdset_storage_set, __cmdset_storage_del)
 
 
 class ServerSessionDB(TypedObject):
@@ -387,6 +447,32 @@ class ServerSessionDB(TypedObject):
 
     db_play_session = models.ForeignKey(PlaySessionDB, related_name='server_sessions', null=True,
                                         on_delete=models.SET_NULL)
+
+    # @property
+    def __cmdset_storage_get(self):
+        """
+        Getter. Allows for value = self.name. Returns a list of cmdset_storage.
+        """
+        storage = self.db_cmdset_storage
+        # we need to check so storage is not None
+        return [path.strip() for path in storage.split(",")] if storage else []
+
+    # @cmdset_storage.setter
+    def __cmdset_storage_set(self, value):
+        """
+        Setter. Allows for self.name = value. Stores as a comma-separated
+        string.
+        """
+        _SA(self, "db_cmdset_storage", ",".join(str(val).strip() for val in make_iter(value)))
+        _GA(self, "save")()
+
+    # @cmdset_storage.deleter
+    def __cmdset_storage_del(self):
+        "Deleter. Allows for del self.name"
+        _SA(self, "db_cmdset_storage", None)
+        _GA(self, "save")()
+
+    cmdset_storage = property(__cmdset_storage_get, __cmdset_storage_set, __cmdset_storage_del)
 
 
 class ACLPermission(models.Model):
