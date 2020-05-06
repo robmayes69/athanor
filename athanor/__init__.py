@@ -266,6 +266,11 @@ def init_settings(settings):
     ######################################################################
     # Player Character Options
     ######################################################################
+    settings.CONTROLLERS['playercharacter'] = {
+        'class': 'athanor.playercharacters.controller.PlayerCharacterController',
+        'backend': 'athanor.playercharacters.controller.PlayerCharacterControllerBackend'
+    }
+
     settings.BASE_PLAYER_CHARACTER_TYPECLASS = "athanor.playercharacters.playercharacters.DefaultPlayerCharacter"
     settings.CMDSET_PLAYER_CHARACTER = "athanor.playercharacters.cmdsets.PlayerCharacterCmdSet"
 

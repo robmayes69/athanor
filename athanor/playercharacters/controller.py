@@ -8,7 +8,7 @@ from athanor.playercharacters.playercharacters import DefaultPlayerCharacter
 from athanor.playercharacters import messages as cmsg
 
 
-class AthanorPlayerCharacterController(AthanorController):
+class PlayerCharacterController(AthanorController):
     system_name = 'CHARACTERS'
 
     def __init__(self, key, manager, backend):
@@ -20,10 +20,8 @@ class AthanorPlayerCharacterController(AthanorController):
 
     find_user = find_character
 
-    def create_character(self, session, account, character_name, ignore_priv=False, no_session=False):
-        if not session and not no_session:
-            raise ValueError("Permission denied.")
-        if session and not no_session:
+    def create_character(self, session, account, character_name, ignore_priv=False):
+        if session:
             if not (enactor := session.get_account()) or (not ignore_priv and not enactor.check_lock("oper(character_create)")):
                 raise ValueError("Permission denied.")
         else:
@@ -100,7 +98,7 @@ class AthanorPlayerCharacterController(AthanorController):
         return self.backend.all(account=account)
 
 
-class AthanorPlayerCharacterControllerBackend(AthanorControllerBackend):
+class PlayerCharacterControllerBackend(AthanorControllerBackend):
     typeclass_defs = [
         ('player_character_typeclass', 'BASE_PLAYER_CHARACTER_TYPECLASS', DefaultPlayerCharacter)
     ]
