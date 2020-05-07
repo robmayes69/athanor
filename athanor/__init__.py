@@ -229,11 +229,10 @@ def init_settings(settings):
     settings.CMDSET_ACTIVE = 'athanor.serversessions.cmdsets.ActiveCmdSet'
     settings.BASE_SERVER_SESSION_TYPECLASS = "athanor.serversessions.serversessions.DefaultServerSession"
     settings.SERVER_SESSION_HANDLER_CLASS = 'athanor.utils.serversessionhandler.AthanorServerSessionHandler'
-    settings.PORTAL_SESSION_HANDLER_CLASS = 'athanor.utils.portalsessionhandler.AthanorPortalSessionHandler'
+
     settings.EXAMINE_HOOKS['session'] = []
 
     settings.SESSION_SYNC_ATTRS = list(settings.SESSION_SYNC_ATTRS)
-    #settings.SESSION_SYNC_ATTRS.extend(["pcid", "pcname"])
 
     ######################################################################
     # Account Options

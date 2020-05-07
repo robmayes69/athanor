@@ -48,51 +48,8 @@ class ProtocolName(models.Model):
         return str(self.name)
 
 
-class EntityDB(TypedObject):
-    """
-    This is Athanor's replacement to Evennia's ObjectDB. It is the core of an Entity-Component System-inspired approach.
-    """
-    __settingsclasspath__ = settings.BASE_ENTITY_TYPECLASS
-    __defaultclasspath__ = "athanor.entities.entities.DefaultEntity"
-    __applabel__ = "athanor"
-
-    db_cmdset_storage = models.CharField(
-        "cmdset",
-        max_length=255,
-        null=True,
-        blank=True,
-        help_text="optional python path to a cmdset class.",
-    )
-
-    # @property
-    def __cmdset_storage_get(self):
-        """
-        Getter. Allows for value = self.name. Returns a list of cmdset_storage.
-        """
-        storage = self.db_cmdset_storage
-        # we need to check so storage is not None
-        return [path.strip() for path in storage.split(",")] if storage else []
-
-    # @cmdset_storage.setter
-    def __cmdset_storage_set(self, value):
-        """
-        Setter. Allows for self.name = value. Stores as a comma-separated
-        string.
-        """
-        _SA(self, "db_cmdset_storage", ",".join(str(val).strip() for val in make_iter(value)))
-        _GA(self, "save")()
-
-    # @cmdset_storage.deleter
-    def __cmdset_storage_del(self):
-        "Deleter. Allows for del self.name"
-        _SA(self, "db_cmdset_storage", None)
-        _GA(self, "save")()
-
-    cmdset_storage = property(__cmdset_storage_get, __cmdset_storage_set, __cmdset_storage_del)
-
-
 class NameComponent(SharedMemoryModel):
-    db_entity = models.OneToOneField(EntityDB, related_name='name_component', on_delete=models.CASCADE)
+    db_object = models.OneToOneField('objects.ObjectDB', related_name='name_component', on_delete=models.CASCADE)
     db_name = models.CharField(max_length=255, null=False, blank=False)
     # Store the version with Evennia-style ANSI markup in here.
     db_cname = models.CharField(max_length=255, null=False, blank=False)
@@ -107,7 +64,7 @@ class FixtureComponent(SharedMemoryModel):
     Fixtures are Entities which must exist - they are created by the load process, and integrity checked on server
     start. This table is used for indexing and checking for an Entity's existence.
     """
-    db_entity = models.OneToOneField(EntityDB, related_name='fixture_component', on_delete=models.CASCADE,
+    db_object = models.OneToOneField('objects.ObjectDB', related_name='fixture_component', on_delete=models.CASCADE,
                                      primary_key=True)
     db_fixturespace = models.ForeignKey(FixtureSpace, related_name='fixtures', on_delete=models.PROTECT)
     db_key = models.CharField(max_length=255, null=False, blank=False, unique=True)
@@ -118,7 +75,7 @@ class InventoryComponent(SharedMemoryModel):
     Component for entities which ARE an Inventory. Inventories have an Owner, which could literally be 'anything.'
     This allows Factions to have Inventories, or Accounts, etc.
     """
-    db_entity = models.OneToOneField(EntityDB, related_name='inventory_component', on_delete=models.CASCADE,
+    db_object = models.OneToOneField('objects.ObjectDB', related_name='inventory_component', on_delete=models.CASCADE,
                                      primary_key=True)
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=False)
     object_id = models.PositiveIntegerField(null=False)
@@ -133,16 +90,16 @@ class InventoryLocationComponent(SharedMemoryModel):
     """
     Component for Entities which are IN an Inventory.
     """
-    db_entity = models.OneToOneField(EntityDB, related_name='inventory_location_component', on_delete=models.CASCADE,
+    db_object = models.OneToOneField('objects.ObjectDB', related_name='inventory_location_component', on_delete=models.CASCADE,
                                      primary_key=True)
-    db_inventory = models.ForeignKey(EntityDB, related_name='inventory_contents', on_delete=models.PROTECT)
+    db_inventory = models.ForeignKey('objects.ObjectDB', related_name='inventory_contents', on_delete=models.PROTECT)
 
 
 class EquipComponent(SharedMemoryModel):
     """
     Component for entities which ARE an EquipSet. EquipSets like Inventories have an Owner, which could be 'anything.'
     """
-    db_entity = models.OneToOneField(EntityDB, related_name='equip_component', on_delete=models.CASCADE,
+    db_object = models.OneToOneField('objects.ObjectDB', related_name='equip_component', on_delete=models.CASCADE,
                                      primary_key=True)
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=False)
     object_id = models.PositiveIntegerField(null=False)
@@ -157,9 +114,9 @@ class EquipLocationComponent(SharedMemoryModel):
     """
     Component for Entities which are equipped by an EquipSet.
     """
-    db_entity = models.OneToOneField(EntityDB, related_name='equip_location_component', on_delete=models.CASCADE,
+    db_object = models.OneToOneField('objects.ObjectDB', related_name='equip_location_component', on_delete=models.CASCADE,
                                      primary_key=True)
-    db_equip = models.ForeignKey(EntityDB, related_name='equip_contents', on_delete=models.PROTECT)
+    db_equip = models.ForeignKey('objects.ObjectDB', related_name='equip_contents', on_delete=models.PROTECT)
 
     # Should probably stick something in here about how the item is equipped. Slot? Layer?
 
@@ -168,7 +125,7 @@ class DimensionComponent(SharedMemoryModel):
     """
     Component for Entities which ARE a Dimension.
     """
-    db_entity = models.OneToOneField(EntityDB, related_name='dimension_component', on_delete=models.CASCADE,
+    db_object = models.OneToOneField('objects.ObjectDB', related_name='dimension_component', on_delete=models.CASCADE,
                                      primary_key=True)
     db_dimension_key = models.CharField(max_length=255, null=False, blank=False, unique=True)
 
@@ -177,9 +134,9 @@ class SectorComponent(SharedMemoryModel):
     """
     Component for Entities which ARE a Sector.
     """
-    db_entity = models.OneToOneField(EntityDB, related_name='sector_component', on_delete=models.CASCADE,
+    db_object = models.OneToOneField('objects.ObjectDB', related_name='sector_component', on_delete=models.CASCADE,
                                      primary_key=True)
-    db_dimension = models.ForeignKey(EntityDB, related_name='contained_sectors', on_delete=models.PROTECT)
+    db_dimension = models.ForeignKey('objects.ObjectDB', related_name='contained_sectors', on_delete=models.PROTECT)
     db_sector_key = models.CharField(max_length=255, null=False, blank=False)
     db_x = models.FloatField(default=0.0, null=False, blank=False)
     db_y = models.FloatField(default=0.0, null=False, blank=False)
@@ -193,9 +150,9 @@ class SectorLocationComponent(SharedMemoryModel):
     """
     Component for Entities that are located 'inside' another Entity in a 3-Dimensional Space.
     """
-    db_entity = models.OneToOneField(EntityDB, related_name='sector_location_component', on_delete=models.CASCADE,
+    db_object = models.OneToOneField('objects.ObjectDB', related_name='sector_location_component', on_delete=models.CASCADE,
                                      primary_key=True)
-    db_sector = models.ForeignKey(EntityDB, related_name='contained_entities', on_delete=models.PROTECT)
+    db_sector = models.ForeignKey('objects.ObjectDB', related_name='contained_entities', on_delete=models.PROTECT)
     db_x = models.FloatField(default=0.0, null=False, blank=False)
     db_y = models.FloatField(default=0.0, null=False, blank=False)
     db_z = models.FloatField(default=0.0, null=False, blank=False)
@@ -205,9 +162,9 @@ class RoomComponent(SharedMemoryModel):
     """
     Component for Entities which ARE a Room.
     """
-    db_entity = models.OneToOneField(EntityDB, related_name='room_component', on_delete=models.CASCADE,
+    db_object = models.OneToOneField('objects.ObjectDB', related_name='room_component', on_delete=models.CASCADE,
                                      primary_key=True)
-    db_structure = models.ForeignKey(EntityDB, related_name='contained_rooms', on_delete=models.CASCADE)
+    db_structure = models.ForeignKey('objects.ObjectDB', related_name='contained_rooms', on_delete=models.CASCADE)
     # db_room_key ensures that rooms are uniquely indexed within their containing structure.
     db_room_key = models.CharField(max_length=255, null=False, blank=False)
     db_landing_site = models.BooleanField(null=False, default=False)
@@ -220,18 +177,18 @@ class RoomLocationComponent(SharedMemoryModel):
     """
     Component that allows an Entity to exist 'inside' a room.
     """
-    db_entity = models.OneToOneField(EntityDB, related_name='room_location_component', on_delete=models.CASCADE,
+    db_object = models.OneToOneField('objects.ObjectDB', related_name='room_location_component', on_delete=models.CASCADE,
                                      primary_key=True)
-    db_location = models.ForeignKey(EntityDB, related_name='room_contents', on_delete=models.CASCADE)
+    db_location = models.ForeignKey('objects.ObjectDB', related_name='room_contents', on_delete=models.CASCADE)
 
 
 class GatewayComponent(SharedMemoryModel):
     """
     Component for Exits which ARE a Gateway. (This allows multiple Exits to reference the same 'door' for instance.
     """
-    db_entity = models.OneToOneField(EntityDB, related_name='gateway_component', on_delete=models.CASCADE,
+    db_object = models.OneToOneField('objects.ObjectDB', related_name='gateway_component', on_delete=models.CASCADE,
                                      primary_key=True)
-    db_structure = models.ForeignKey(EntityDB, related_name='contained_gateways', on_delete=models.CASCADE)
+    db_structure = models.ForeignKey('objects.ObjectDB', related_name='contained_gateways', on_delete=models.CASCADE)
     db_gateway_key = models.CharField(max_length=255, null=False, blank=False)
 
     class Meta:
@@ -242,11 +199,11 @@ class ExitComponent(SharedMemoryModel):
     """
     Component for Entities that ARE an Exit.
     """
-    db_entity = models.OneToOneField(EntityDB, related_name='exit_component', on_delete=models.CASCADE,
+    db_object = models.OneToOneField('objects.ObjectDB', related_name='exit_component', on_delete=models.CASCADE,
                                      primary_key=True)
-    db_room = models.ForeignKey(EntityDB, related_name='room_contents_exits', on_delete=models.CASCADE)
-    db_destination = models.ForeignKey(EntityDB, related_name='exit_entrances', on_delete=models.SET_NULL, null=True)
-    db_gateway = models.ForeignKey(EntityDB, related_name='exits_linked', on_delete=models.PROTECT, null=True)
+    db_room = models.ForeignKey('objects.ObjectDB', related_name='room_contents_exits', on_delete=models.CASCADE)
+    db_destination = models.ForeignKey('objects.ObjectDB', related_name='exit_entrances', on_delete=models.SET_NULL, null=True)
+    db_gateway = models.ForeignKey('objects.ObjectDB', related_name='exits_linked', on_delete=models.PROTECT, null=True)
     # The exit key is basically it's 'direction.' something like 'north' or 'west'. Use aliases for more.
     db_exit_key = models.CharField(max_length=255, null=False, blank=False)
 
@@ -260,7 +217,7 @@ class IdentityComponent(SharedMemoryModel):
     certain restrictions, and searchable for purposes of Access Control List usage. Examples include Player Characters,
     Factions, Nations, and Non-Player Characters of importance.
     """
-    db_entity = models.OneToOneField(EntityDB, related_name='identity_component', on_delete=models.CASCADE,
+    db_object = models.OneToOneField('objects.ObjectDB', related_name='identity_component', on_delete=models.CASCADE,
                                      primary_key=True)
     db_namespace = models.ForeignKey(Namespace, related_name='identities', on_delete=models.PROTECT)
     # When an Entity has an IdentityComponent, its NameComponent's db_name is treated as case-insensitively unique
@@ -272,7 +229,7 @@ class PlayerCharacterComponent(SharedMemoryModel):
     This table is used for creating a relationship between specifics accounts and specific Player Characters.
     This is especially useful for games where Player Characters may change hands.
     """
-    db_entity = models.OneToOneField(EntityDB, related_name='player_character_component', on_delete=models.CASCADE,
+    db_object = models.OneToOneField('objects.ObjectDB', related_name='player_character_component', on_delete=models.CASCADE,
                                      primary_key=True)
     db_account = models.ForeignKey('accounts.AccountDB', related_name='player_character_components',
                                    on_delete=models.PROTECT)
@@ -294,35 +251,30 @@ class PlayerCharacterComponent(SharedMemoryModel):
     db_date_created = models.DateTimeField(null=False, auto_now_add=True)
 
     class Meta:
-        unique_together = (('db_account', 'db_entity'),)
+        unique_together = (('db_account', 'db_object'),)
 
 
-class BoardComponent(TypedObject):
+class BoardComponent(SharedMemoryModel):
     """
     Component for Entities which ARE a BBS  Board.
     Beware, the NameComponent is considered case-insensitively unique per board Owner.
     """
-    db_entity = models.OneToOneField(EntityDB, related_name='board_component', on_delete=models.CASCADE,
-                                     primary_key=True)
-    db_owner = models.ForeignKey(EntityDB, on_delete=models.CASCADE, related_name='owned_boards')
+    db_owner = models.ForeignKey('objects.ObjectDB', on_delete=models.CASCADE, related_name='owned_boards')
     db_order = models.PositiveIntegerField(default=0)
     db_next_post_number = models.PositiveIntegerField(default=0, null=False)
 
-    ignoring = models.ManyToManyField(EntityDB, related_name='ignored_boards')
-
-    def __str__(self):
-        return str(self.db_key)
+    ignoring = models.ManyToManyField('objects.ObjectDB', related_name='ignored_boards')
 
     class Meta:
         unique_together = (('db_owner', 'db_order'), )
 
 
 class BBSPost(SharedMemoryModel):
-    db_poster = models.ForeignKey(EntityDB, related_name='+', on_delete=models.PROTECT)
+    db_poster = models.ForeignKey('objects.ObjectDB', related_name='+', on_delete=models.PROTECT)
     db_name = models.CharField(max_length=255, blank=False, null=False)
     db_came = models.CharField(max_length=255, blank=False, null=False)
     db_date_created = models.DateTimeField(null=False)
-    db_board = models.ForeignKey(EntityDB, related_name='+', on_delete=models.CASCADE)
+    db_board = models.ForeignKey('objects.ObjectDB', related_name='+', on_delete=models.CASCADE)
     db_date_modified = models.DateTimeField(null=False)
     db_order = models.PositiveIntegerField(null=False)
     db_body = models.TextField(null=False, blank=False)
@@ -347,14 +299,14 @@ class ChannelComponent(SharedMemoryModel):
     Component for Entities which ARE Channels. These are a replacement for Evennia's Channels!
     Beware, the NameComponent is considered case-insensitively unique per Channel Owner.
     """
-    db_entity = models.OneToOneField(EntityDB, related_name='channel_component', on_delete=models.CASCADE,
+    db_channel = models.OneToOneField('comms.ChannelDB', related_name='channel_component', on_delete=models.CASCADE,
                                      primary_key=True)
-    db_owner = models.ForeignKey(EntityDB, on_delete=models.CASCADE, related_name='owned_channels')
+    db_owner = models.ForeignKey('objects.ObjectDB', on_delete=models.CASCADE, related_name='owned_channels')
 
 
 class ChannelSubscription(SharedMemoryModel):
-    db_channel = models.ForeignKey(EntityDB, related_name='channel_subscribers', on_delete=models.CASCADE)
-    db_subscriber = models.ForeignKey(EntityDB, related_name='channel_subscriptions', on_delete=models.CASCADE)
+    db_channel = models.ForeignKey('comms.ChannelDB', related_name='channel_subscribers', on_delete=models.CASCADE)
+    db_subscriber = models.ForeignKey('objects.ObjectDB', related_name='channel_subscriptions', on_delete=models.CASCADE)
     db_name = models.CharField(max_length=255, null=False, blank=False)
     db_iname = models.CharField(max_length=255, null=False, blank=False)
     db_namespace = models.CharField(max_length=255, null=False, blank=False)
@@ -371,110 +323,6 @@ class ChannelSubscription(SharedMemoryModel):
                            ('db_channel', 'db_icodename'))
 
 
-class PlaySessionDB(TypedObject):
-    __settingsclasspath__ = settings.BASE_PLAY_SESSION_TYPECLASS
-    __defaultclasspath__ = "athanor.playsessions.playsessions.DefaultPlaySession"
-    __applabel__ = "athanor"
-
-    db_entity = models.OneToOneField(EntityDB, related_name='play_session', on_delete=models.PROTECT)
-
-    # This will store a record of 'when this PlaySession was last known to be active.' It is used only in the event
-    # of a crash for playtime calculations during cleanup.
-    db_date_good = models.DateTimeField(null=False)
-
-    db_account = models.ForeignKey('accounts.AccountDB', related_name='play_sessions', null=True,
-                                   on_delete=models.SET_NULL)
-
-    db_cmdset_storage = models.CharField(
-        "cmdset",
-        max_length=255,
-        null=True,
-        blank=True,
-        help_text="optional python path to a cmdset class.",
-    )
-
-    # @property
-    def __cmdset_storage_get(self):
-        """
-        Getter. Allows for value = self.name. Returns a list of cmdset_storage.
-        """
-        storage = self.db_cmdset_storage
-        # we need to check so storage is not None
-        return [path.strip() for path in storage.split(",")] if storage else []
-
-    # @cmdset_storage.setter
-    def __cmdset_storage_set(self, value):
-        """
-        Setter. Allows for self.name = value. Stores as a comma-separated
-        string.
-        """
-        _SA(self, "db_cmdset_storage", ",".join(str(val).strip() for val in make_iter(value)))
-        _GA(self, "save")()
-
-    # @cmdset_storage.deleter
-    def __cmdset_storage_del(self):
-        "Deleter. Allows for del self.name"
-        _SA(self, "db_cmdset_storage", None)
-        _GA(self, "save")()
-
-    cmdset_storage = property(__cmdset_storage_get, __cmdset_storage_set, __cmdset_storage_del)
-
-
-class ServerSessionDB(TypedObject):
-    __settingsclasspath__ = settings.BASE_SERVER_SESSION_TYPECLASS
-    __defaultclasspath__ = "athanor.serversessions.serversessions.DefaultServerSession"
-    __applabel__ = "athanor"
-
-    sessid = models.UUIDField(null=False, unique=True)
-    django_session_key = models.CharField(max_length=40, null=True, blank=False, db_index=True)
-    db_host = models.ForeignKey(HostAddress, null=False, on_delete=models.PROTECT, related_name='sessions')
-    db_protocol = models.ForeignKey(ProtocolName, null=False, on_delete=models.PROTECT, related_name='sessions')
-
-    db_cmdset_storage = models.CharField(
-        "cmdset",
-        max_length=255,
-        null=True,
-        blank=True,
-        help_text="optional python path to a cmdset class.",
-    )
-    db_cmd_total = models.PositiveIntegerField(default=0, null=True)
-    db_is_active = models.BooleanField(default=True, null=False)
-    db_cmd_last = models.DateTimeField(null=True)
-    db_cmd_last_visible = models.DateTimeField(null=True)
-
-    db_account = models.ForeignKey('accounts.AccountDB', related_name='server_sessions', null=True,
-                                   on_delete=models.SET_NULL)
-
-    db_play_session = models.ForeignKey(PlaySessionDB, related_name='server_sessions', null=True,
-                                        on_delete=models.SET_NULL)
-
-    # @property
-    def __cmdset_storage_get(self):
-        """
-        Getter. Allows for value = self.name. Returns a list of cmdset_storage.
-        """
-        storage = self.db_cmdset_storage
-        # we need to check so storage is not None
-        return [path.strip() for path in storage.split(",")] if storage else []
-
-    # @cmdset_storage.setter
-    def __cmdset_storage_set(self, value):
-        """
-        Setter. Allows for self.name = value. Stores as a comma-separated
-        string.
-        """
-        _SA(self, "db_cmdset_storage", ",".join(str(val).strip() for val in make_iter(value)))
-        _GA(self, "save")()
-
-    # @cmdset_storage.deleter
-    def __cmdset_storage_del(self):
-        "Deleter. Allows for del self.name"
-        _SA(self, "db_cmdset_storage", None)
-        _GA(self, "save")()
-
-    cmdset_storage = property(__cmdset_storage_get, __cmdset_storage_set, __cmdset_storage_del)
-
-
 class ACLPermission(models.Model):
     name = models.CharField(max_length=50, null=False, unique=True, blank=False)
 
@@ -485,11 +333,11 @@ class ACLEntry(models.Model):
     object_id = models.PositiveIntegerField(null=False)
     resource = GenericForeignKey('content_type', 'object_id')
 
-    entity = models.ForeignKey(EntityDB, related_name='acl_references', on_delete=models.CASCADE)
+    identity = models.ForeignKey('objects.ObjectDB', related_name='acl_references', on_delete=models.CASCADE)
     mode = models.CharField(max_length=30, null=False, blank=True, default='')
     deny = models.BooleanField(null=False, default=False)
     permissions = models.ManyToManyField(ACLPermission, related_name='entries')
 
     class Meta:
-        unique_together = (('content_type', 'object_id', 'entity', 'mode', 'deny'),)
+        unique_together = (('content_type', 'object_id', 'identity', 'mode', 'deny'),)
         index_together = (('content_type', 'object_id', 'deny'),)
