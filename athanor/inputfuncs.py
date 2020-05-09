@@ -1,7 +1,9 @@
+""""""
 from evennia.server.inputfuncs import _IDLE_COMMAND
 
 
-def text(session, *args, **kwargs):
+# Renamed to text2 to 'disable' it for the moment.
+def text2(session, *args, **kwargs):
     """
     Main text input from the client. This will execute a command
     string on the server.
@@ -31,6 +33,5 @@ def text(session, *args, **kwargs):
 
     kwargs.pop("options", None)
     # This is the only change - call the session.cmd.execute() instead of cmdhandler(session...)
-    print("ARE WE GETTING TO CMD EXECUTE?")
     session.cmd.execute(txt, session=session, **kwargs)
     session.update_session_counters()

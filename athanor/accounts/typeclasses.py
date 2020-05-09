@@ -3,36 +3,20 @@ from evennia.accounts.accounts import DefaultAccount
 from evennia.utils.utils import time_format
 
 import athanor
-
-from athanor.utils.events import EventEmitter
-from athanor.utils.mixins import HasAttributeGetCreate
-from athanor.accounts.handlers import AccountSessionHandler, AccountCmdSetHandler
+from athanor.accounts.handlers import AccountCmdSetHandler
 from athanor.accounts.handlers import BanHandler, AccountCmdHandler, AccountAppearanceHandler
 
 
-class AthanorAccount(HasAttributeGetCreate, EventEmitter, DefaultAccount):
+class AthanorAccount(DefaultAccount):
     """
     AthanorAccount adds the EventEmitter to DefaultAccount and supports Mixins.
     Please read Evennia's documentation for its normal API.
-
-    Triggers Global Events:
-        account_connect (session): Fired whenever a Connection authenticates to this account.
-        account_disconnect (session): Triggered whenever a Connection disconnects from this account.
-        account_online (session): Fired whenever an account comes online from being completely offline.
-        account_offline (session): Triggered when an account's final session closes.
     """
     # class properties used by the RenderExamine mixin.
     examine_type = "account"
     examine_caller_type = "account"
     dbtype = 'AccountDB'
     _cmd_sort = -1100
-    acl_type = 'account'
-
-    def __repr__(self):
-        return f"<Account: {self.username}({self.dbref})>"
-
-    def __str__(self):
-        return repr(self)
 
     @lazy_property
     def cmdset(self):
@@ -41,10 +25,6 @@ class AthanorAccount(HasAttributeGetCreate, EventEmitter, DefaultAccount):
     @lazy_property
     def cmd(self):
         return AccountCmdHandler(self)
-
-    @lazy_property
-    def sessions(self):
-        return AccountSessionHandler(self)
 
     @lazy_property
     def ban(self):
@@ -135,18 +115,6 @@ class AthanorAccount(HasAttributeGetCreate, EventEmitter, DefaultAccount):
         else:
             raise ValueError(errors)
 
-    def at_post_disconnect(self, **kwargs):
-        super().at_post_disconnect(**kwargs)
-        self.emit_global("account_disconnect")
-        if not self.sessions.all():
-            self.emit_global("account_offline")
-
-    def at_post_login(self, session=None, **kwargs):
-        super().at_post_login(session, **kwargs)
-        self.emit_global("account_connect", session=session)
-        if len(self.sessions.all()) == 1:
-            self.emit_global("account_online", session=session)
-
     def rename(self, new_name):
         new_name = self.normalize_username(new_name)
         self.username = new_name
@@ -185,26 +153,6 @@ class AthanorAccount(HasAttributeGetCreate, EventEmitter, DefaultAccount):
 
     def check_lock(self, lock):
         return self.locks.check_lockstring(self, f"dummy:{lock}")
-
-    def force_disconnect(self, reason=""):
-        """
-        Forces a disconnect. This unpuppets all objects and disconnects all
-        relevant sessions.
-
-        Args:
-            reason (str): If provided, will show this message to the Account.
-
-        Returns:
-            None
-        """
-        self.unpuppet_all()
-        for sess in self.sessions.all():
-            SESSION_HANDLER.disconnect(sess, reason=reason)
-
-    def link_identity(self, identity):
-        found, created = self.identity_stats.get_or_create(db_identity=identity)
-        if created:
-            created.save()
 
     def get_account(self):
         return self
