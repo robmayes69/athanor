@@ -103,7 +103,6 @@ class CmdLoginConnect(AthanorCommand):
     arg_regex = r"\s.*?|$"
     controller_key = 'account'
 
-
     def func(self):
         """
         Uses the Django admin api. Note that unlogged-in commands
