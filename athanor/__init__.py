@@ -12,7 +12,52 @@ LOAD_PRIORITY = -100000000
 
 PLUGIN_NAME = 'athanor'
 
-LOADED = False
+class AthanorApi:
+
+    def __init__(self):
+        self.storage = dict()
+        pspace_dict = dict()
+
+        def get_or_create_pspace(pspace):
+            if pspace in pspace_dict:
+                return pspace_dict[pspace]
+            model, created = Pluginspace.objects.get_or_create(db_name=pspace)
+            if created:
+                model.save()
+            pspace_dict[pspace] = model
+            return model
+
+        from django.conf import settings
+        from evennia.utils.utils import class_from_module
+
+        from athanor.models import Pluginspace, Namespace
+
+        for plugin in settings.ATHANOR_PLUGINS.keys():
+            get_or_create_pspace(plugin)
+
+        for namespaces in settings.IDENTITY_NAMESPACES:
+            nspace, created = Namespace.objects.get_or_create(db_name=namespaces)
+            if created:
+                nspace.save()
+
+        styler_class = class_from_module(settings.STYLER_CLASS)
+        self.storage['styler'] = styler_class
+        styler_class.load()
+
+        try:
+            manager = class_from_module(settings.CONTROLLER_MANAGER_CLASS)(self)
+            self.storage['controller_manager'] = manager
+            manager.load()
+
+        except Exception as e:
+            from evennia.utils import logger
+            logger.log_trace(e)
+            print(e)
+
+
+@lazy_property
+def api():
+    return AthanorApi()
 
 
 def _init():
