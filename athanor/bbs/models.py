@@ -1,60 +1,29 @@
 from django.db import models
 from django.conf import settings
-from django.contrib.contenttypes.fields import GenericForeignKey
-from django.contrib.contenttypes.models import ContentType
-from evennia.typeclasses.models import TypedObject
 from athanor.utils.time import utcnow
+from evennia.typeclasses.models import SharedMemoryModel
 
 
-class BBSCategoryDB(TypedObject):
-    __settingsclasspath__ = settings.BASE_BBS_CATEGORY_TYPECLASS
-    __defaultclasspath__ = "athanor_bbs.bbs_categories.bbs_categories.DefaultBBSCategory"
-    __applabel__ = "athanor_bbs"
-
-    db_ikey = models.CharField(max_length=255, blank=False, null=False, unique=True)
-    db_ckey = models.CharField(max_length=255, blank=False, null=False)
-    db_abbr = models.CharField(max_length=5, blank=True, null=False)
-    db_iabbr = models.CharField(max_length=5, unique=True, blank=True, null=False)
-    db_cabbr = models.CharField(max_length=50, blank=False, null=False)
-
-    class Meta:
-        verbose_name = 'BBSCategory'
-        verbose_name_plural = 'BBSCategories'
-
-    def __str__(self):
-        return str(self.db_key)
-
-
-class BBSBoardDB(TypedObject):
-    __settingsclasspath__ = settings.BASE_BBS_BOARD_TYPECLASS
-    __defaultclasspath__ = "athanor_bbs.bbs_boards.bbs_boards.DefaultBBSBoard"
-    __applabel__ = "athanor_bbs"
-
-    db_category = models.ForeignKey(BBSCategoryDB, related_name='boards', null=False, on_delete=models.PROTECT)
-    db_ikey = models.CharField(max_length=255, blank=False, null=False)
-    db_ckey = models.CharField(max_length=255, blank=False, null=False)
+class BoardDB(SharedMemoryModel):
+    """
+    Component for Entities which ARE a BBS  Board.
+    Beware, the NameComponent is considered case-insensitively unique per board Owner.
+    """
+    db_identity = models.ForeignKey('identities.IdentityDB', related_name='boards', on_delete=models.PROTECT)
     db_order = models.PositiveIntegerField(default=0)
-
-    def __str__(self):
-        return str(self.db_key)
+    db_next_post_number = models.PositiveIntegerField(default=0, null=False)
+    ignoring = models.ManyToManyField('identities.IdentityDB', related_name='ignored_boards')
 
     class Meta:
-        verbose_name = 'BBS'
-        verbose_name_plural = 'BBSs'
-        unique_together = (('db_category', 'db_order'), ('db_category', 'db_ikey'))
+        unique_together = (('db_identity', 'db_order'), ('db_identity', 'db_key'))
 
 
-class BBSPostDB(TypedObject):
-    __settingsclasspath__ = settings.BASE_BBS_POST_TYPECLASS
-    __defaultclasspath__ = "athanor_bbs.bbs_posts.bbs_posts.DefaultBBSPost"
-    __applabel__ = "athanor_bbs"
-
-    content_type = models.ForeignKey(ContentType, on_delete=models.PROTECT, null=True)
-    object_id = models.PositiveIntegerField(null=True)
-    db_poster = GenericForeignKey('content_type', 'object_id')
-    db_ckey = models.CharField(max_length=255, blank=False, null=False)
+class BBSPost(SharedMemoryModel):
+    db_poster = models.ForeignKey('identities.IdentityDB', null=True, related_name='+', on_delete=models.PROTECT)
+    db_name = models.CharField(max_length=255, blank=False, null=False)
+    db_came = models.CharField(max_length=255, blank=False, null=False)
     db_date_created = models.DateTimeField(null=False)
-    db_board = models.ForeignKey(BBSBoardDB, related_name='posts', on_delete=models.CASCADE)
+    db_board = models.ForeignKey('bbs.BoardDB', related_name='+', on_delete=models.CASCADE)
     db_date_modified = models.DateTimeField(null=False)
     db_order = models.PositiveIntegerField(null=False)
     db_body = models.TextField(null=False, blank=False)
@@ -107,9 +76,9 @@ class BBSPostDB(TypedObject):
 
 
 class BBSPostRead(models.Model):
-    account = models.ForeignKey('accounts.AccountDB', related_name='bbs_read', on_delete=models.CASCADE)
-    post = models.ForeignKey(BBSPostDB, related_name='read', on_delete=models.CASCADE)
+    identity = models.ForeignKey('identities.IdentityDB', related_name='bbs_read', on_delete=models.CASCADE)
+    post = models.ForeignKey(BBSPost, related_name='read', on_delete=models.CASCADE)
     date_read = models.DateTimeField(null=True)
 
     class Meta:
-        unique_together = (('account', 'post'),)
+        unique_together = (('identity', 'post'),)

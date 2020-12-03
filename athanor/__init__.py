@@ -12,6 +12,7 @@ LOAD_PRIORITY = -100000000
 
 PLUGIN_NAME = 'athanor'
 
+
 class AthanorApi:
 
     def __init__(self):
