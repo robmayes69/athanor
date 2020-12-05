@@ -361,7 +361,7 @@ class AccessControllerBackend(AthanorControllerBackend):
             subjlist (list of str): A list of strings which look something like "account:username" or "basic:everyone"
 
         Returns:
-            subjects (list of objects), rejected (list of strings)
+            subjects (list of objdb), rejected (list of strings)
         """
         subjects = set()
         rejected = set()

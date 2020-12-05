@@ -1,6 +1,6 @@
 """
 This module handles initial database propagation, which is only run the first
-time the game starts. It will create some default channels, objects, and
+time the game starts. It will create some default channels, objdb, and
 other things.
 
 Everything starts at handle_setup()
@@ -101,7 +101,7 @@ def create_objects():
     # it to exist in Limbo.
 
     # Creating god character works differently from base Evennia. Characters are Scripts and act
-    # as the containers for objects.
+    # as the containers for objdb.
 
     # calling it with No Connection so we can setup using just Account.
     god_character = char_controller.create_character(session=None, account=god_account,
@@ -187,7 +187,7 @@ def reset_server():
     """
     We end the initialization by resetting the server. This makes sure
     the first login is the same as all the following ones,
-    particularly it cleans all caches for the special objects.  It
+    particularly it cleans all caches for the special objdb.  It
     also checks so the warm-reset mechanism works as it should.
 
     """

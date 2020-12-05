@@ -18,4 +18,7 @@ does what you expect it to.
 def at_initial_setup():
     # just ensure that Athanor has run properly.
     import athanor
-    athanor._init()
+    a = athanor.api
+    for p in a.plugins_sorted:
+        if hasattr(p, 'plugin_initial_setup'):
+            p.plugin_initial_setup(a)

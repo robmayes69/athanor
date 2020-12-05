@@ -2,6 +2,7 @@
 Core of the Athanor API. It is also styled as a plugin.
 
 """
+from evennia.utils.utils import lazy_property
 
 # This dictionary will be filled in with useful singletons as the system loads.
 
@@ -13,11 +14,17 @@ LOAD_PRIORITY = -100000000
 PLUGIN_NAME = 'athanor'
 
 
+def plugin_initial_setup(api):
+    pass
+
+
 class AthanorApi:
 
     def __init__(self):
         self.storage = dict()
         pspace_dict = dict()
+
+        from athanor.identities.models import Namespace
 
         def get_or_create_pspace(pspace):
             if pspace in pspace_dict:
@@ -31,7 +38,8 @@ class AthanorApi:
         from django.conf import settings
         from evennia.utils.utils import class_from_module
 
-        from athanor.models import Pluginspace, Namespace
+        self.plugins = settings.ATHANOR_PLUGINS
+        self.plugins_sorted = settings.ATHANOR_PLUGINS_SORTED
 
         for plugin in settings.ATHANOR_PLUGINS.keys():
             get_or_create_pspace(plugin)
@@ -42,13 +50,12 @@ class AthanorApi:
                 nspace.save()
 
         styler_class = class_from_module(settings.STYLER_CLASS)
-        self.storage['styler'] = styler_class
-        styler_class.load()
+        self.styler = styler_class
+        self.styler.load()
 
         try:
-            manager = class_from_module(settings.CONTROLLER_MANAGER_CLASS)(self)
-            self.storage['controller_manager'] = manager
-            manager.load()
+            self.controllers = class_from_module(settings.CONTROLLER_MANAGER_CLASS)(self)
+            self.controllers.load()
 
         except Exception as e:
             from evennia.utils import logger
@@ -57,7 +64,7 @@ class AthanorApi:
 
 
 @lazy_property
-def api():
+def api() -> AthanorApi:
     return AthanorApi()
 
 
@@ -152,7 +159,7 @@ def init_settings(settings):
                                         'contents']
 
     # the CMDSETS dict is used to control 'extra cmdsets' our special CmdHandler divvies out.
-    # the keys are the objects that it applies to, such as 'account' or 'avatar'. This is separate
+    # the keys are the objdb that it applies to, such as 'account' or 'avatar'. This is separate
     # from the 'main' cmdset. It is done this way so that plugins can easily add extra cmdsets to
     # different entities.
     settings.CMDSETS = defaultdict(list)
@@ -178,6 +185,18 @@ def init_settings(settings):
     settings.INSTALLED_APPS.append('athanor')
 
     ######################################################################
+    # Namespaces
+    ######################################################################
+
+    settings.IDENTITY_NAMESPACES = {
+        "Special": {"sort": 0, "prefix": "S"},
+        "Accounts": {"sort": 100, "prefix": "A"},
+        "Characters": {"sort": 200, "prefix": "C"},
+        "Factions": {"sort": 300, "prefix": "F"},
+        "Themes": {"sort": 400, "prefix": "T"}
+    }
+
+    ######################################################################
     # Controllers
     ######################################################################
 
@@ -185,60 +204,10 @@ def init_settings(settings):
     settings.BASE_CONTROLLER_CLASS = "athanor.utils.controllers.AthanorController"
     settings.CONTROLLERS = dict()
 
-    ######################################################################
-    # Asset Loading
-    ######################################################################
-    settings.CONTROLLERS['asset'] = {
-        'class': 'athanor.utils.assets.AssetController',
-        'backend': 'athanor.utils.assets.AssetControllerBackend'
-    }
-    settings.ASSET_LOADER_CLASS = 'athanor.utils.assets.PluginAssetLoader'
 
     ######################################################################
-    # Entity Typeclass
+    # Grid/Map/Rooms Options
     ######################################################################
-    settings.CONTROLLERS['entity'] = {
-        'class': 'athanor.entities.controller.EntityController',
-        'backend': 'athanor.entities.controller.EntityControllerBackend'
-    }
-
-    settings.BASE_ENTITY_TYPECLASS = 'athanor.entities.entities.DefaultEntity'
-
-    settings.ENTITY_TYPECLASSES = {
-        'dimension': 'athanor.entities.entities.DefaultDimension',
-        'sector': 'athanor.entities.entities.DefaultSector',
-        'room': 'athanor.entities.entities.AthanorRoom',
-        'exit': 'athanor.entities.entities.AthanorExit',
-        'gateway': 'athanor.entities.entities.DefaultGateway',
-        'structure': 'athanor.entities.entities.DefaultStructure',
-        'player': 'athanor.playercharacters.playercharacters.DefaultPlayerCharacter'
-    }
-
-    settings.ENTITY_CREATION_MAP = {
-        'name': '_create_name',
-        'command': '_create_command',
-        'identity': '_create_identity',
-        'inventory': '_create_inventory',
-        'equip': '_create_equip',
-        'dimension': '_create_dimension',
-        'sector': '_create_sector',
-        'structure': '_create_structure',
-        'room': '_create_room',
-        'gateway': '_create_gateway',
-        'exit': '_create_exit',
-        'fixture': '_create_fixture',
-        'room_location': '_create_room_location',
-        'sector_location': '_create_sector_location',
-        'player': '_create_player'
-    }
-
-    settings.IDENTITY_NAMESPACES = [
-        "system",
-        "pc",
-        "npc",
-
-    ]
-
     # This is a mapping of 'shortcut' to (db_exit_key, [aliases]) for use with
     # layouts.
     settings.EXIT_MAP = {
@@ -256,12 +225,6 @@ def init_settings(settings):
         'se': ('southeast', ['se'])
     }
 
-
-    ######################################################################
-    # Access Control List System
-    ######################################################################
-    # These two settings contain key-path combinations.
-    settings.ACL_IDENTITY_HANDLER_CLASSES = dict()
 
     ######################################################################
     # Connection Options
@@ -319,15 +282,12 @@ def init_settings(settings):
     settings.BASE_PLAYER_CHARACTER_TYPECLASS = "athanor.playercharacters.playercharacters.DefaultPlayerCharacter"
     settings.CMDSET_PLAYER_CHARACTER = "athanor.playercharacters.cmdsets.PlayerCharacterCmdSet"
 
-    settings.PLAYER_CHARACTER_DEFINITION = "athanor:player:player"
-
     # These restrict a player's ability to create/modify their own characters.
     # If True, only staff can perform these operations (if allowed by the privileges system)
     settings.RESTRICTED_CHARACTER_CREATION = False
     settings.RESTRICTED_CHARACTER_DELETION = False
     settings.RESTRICTED_CHARACTER_RENAME = False
 
-    settings.ACL_IDENTITY_HANDLER_CLASSES['player'] = 'athanor.identities.utils.PlayerACLIdentityHandler'
 
     ######################################################################
     # PlaySessionDB
@@ -341,13 +301,8 @@ def init_settings(settings):
     settings.CMDSET_PLAYSESSION = "athanor.playsessions.cmdsets.AthanorPlaySessionCmdSet"
 
     ######################################################################
-    # Avatar Settings
+    # Character Settings
     ######################################################################
-
-    settings.CMDSET_AVATAR = "athanor.grid.cmdsets.AthanorAvatarCmdSet"
-    settings.BASE_AVATAR_TYPECLASS = "athanor.grid.typeclasses.AthanorAvatar"
-
-    settings.EXAMINE_HOOKS['avatar'] = ['character', 'puppeteer', 'access', 'commands', 'scripts', 'tags', 'attributes', 'contents']
 
     # If this is enabled, characters will not see each other's true names.
     # Instead, they'll see something generic, and have to decide what to
@@ -381,7 +336,7 @@ def init_settings(settings):
     },
     "Builder": {
         "permission": ("Admin"),
-        "description": "Can edit and alter the grid, creating new rooms and areas."
+        "description": "Can edit and alter the grid, creating new Zones, Rooms, and Exits."
     },
     "Gamemaster": {
         "permission": ("Admin"),

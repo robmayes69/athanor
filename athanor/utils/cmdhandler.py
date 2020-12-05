@@ -10,7 +10,7 @@ command line. The processing of a command works as follows:
      for giving the channel name and have the following immediately
      sent to the channel. The sending is performed by the CMD_CHANNEL
      system command.
-   - object cmdsets: all objects at caller's location are scanned for non-empty
+   - object cmdsets: all objdb at caller's location are scanned for non-empty
      cmdsets. This includes cmdsets on exits.
    - caller: the caller is searched for its own currently active cmdset.
    - account: lastly the cmdsets defined on caller.account are added.
@@ -321,7 +321,7 @@ class CmdHandler:
                 when the user is not logged in, this will be a Connection, when being OOC
                 it will be an Account and when puppeting an object this will (often) be
                 a Character Object. In the end it depends on where the cmdset is stored.
-            ordered_objects (list): A list of objects that have a CmdSetHandler as .cmdset
+            ordered_objects (list): A list of objdb that have a CmdSetHandler as .cmdset
                 and implement the CmdSetHandler API. This will generally be [Connection, Account,
                 PuppetObject] as explained in caller. Order isn't generally important for
                 merging, but is preserved from CmdHandler.execute()
@@ -535,14 +535,14 @@ class CmdHandler:
                 command was called. which this was called from.  What this is
                 depends on the game state.
             cmdobjects (dict): The Keys are string-names of the 'object types' of all
-                the objects that should have their CmdSets retrieved. the Value is the objects
+                the objdb that should have their CmdSets retrieved. the Value is the objdb
                 themselves. example {'session': <obj>, 'account': <account>}
             raw_string (str): The command string as given on the command line.
             _testing (bool, optional): Used for debug purposes and decides if we
                 should actually execute the command or not. If True, the
                 command instance will be returned.
             session (Connection, optional): Relevant if callertype is "account" - the session will help
-                retrieve the correct cmdsets from puppeted objects.
+                retrieve the correct cmdsets from puppeted objdb.
             cmdobj (Command, optional): If given a command instance, this will be executed using
                 `called_by` as the caller, `raw_string` representing its arguments and (optionally)
                 `cmdobj_key` as its input command name. No cmdset lookup will be performed but

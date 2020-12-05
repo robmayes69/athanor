@@ -28,7 +28,7 @@ class IdentityDB(TypedObject):
 
     db_ikey = models.CharField(max_length=255)
     db_ckey = models.CharField(max_length=255)
-    db_namespace = models.ForeignKey('basedb.NameSpace', related_name='identities', on_delete=models.PROTECT)
+    db_namespace = models.ForeignKey('identities.Namespace', related_name='identities', on_delete=models.PROTECT)
     db_abbr_global = models.CharField(max_length=6, null=True, unique=True)
     db_abbr_local = models.CharField(max_length=8, null=True)
 
@@ -91,10 +91,6 @@ class Relationships(models.Model):
         unique_together = (('holder', 'member', 'relation_type'),)
 
 
-class ACLPermission(models.Model):
-    name = models.CharField(max_length=50, null=False, unique=True, blank=False)
-
-
 class ACLEntry(models.Model):
     # This Generic Foreign Key is the object being 'accessed'.
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=False)
@@ -103,9 +99,9 @@ class ACLEntry(models.Model):
 
     identity = models.ForeignKey('identities.IdentityDB', related_name='acl_references', on_delete=models.CASCADE)
     mode = models.CharField(max_length=30, null=False, blank=True, default='')
-    deny = models.BooleanField(null=False, default=False)
-    permissions = models.ManyToManyField(ACLPermission, related_name='entries')
+    allow_permissions = models.PositiveBigIntegerField(default=0, null=False)
+    deny_permissions = models.PositiveBigIntegerField(default=0, null=False)
 
     class Meta:
-        unique_together = (('content_type', 'object_id', 'identity', 'mode', 'deny'),)
-        index_together = (('content_type', 'object_id', 'deny'),)
+        unique_together = (('content_type', 'object_id', 'identity', 'mode'),)
+        index_together = (('content_type', 'object_id'),)

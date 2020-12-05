@@ -144,7 +144,7 @@ class AthanorCommand(MuxCommand):
         # a special property "character" for the puppeted object, if any. This
         # is convenient for commands defined on the Account only.
         if self.account_caller:
-            if inherits_from(self.caller, "evennia.objects.objects.DefaultObject"):
+            if inherits_from(self.caller, "evennia.objdb.objdb.DefaultObject"):
                 # caller is an Object/Character
                 self.character = self.caller
                 self.caller = self.caller.account

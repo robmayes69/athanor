@@ -119,7 +119,7 @@ def perm(accessing_obj, accessed_obj, *args, **kwargs):
 
 def perm_above(accessing_obj, accessed_obj, *args, **kwargs):
     """
-    Only allow objects with a permission *higher* in the permission
+    Only allow objdb with a permission *higher* in the permission
     hierarchy than the one given. If there is no such higher rank,
     it's assumed we refer to superuser. If no hierarchy is defined,
     this function has no meaning and returns False.
@@ -130,7 +130,7 @@ def perm_above(accessing_obj, accessed_obj, *args, **kwargs):
 
 def pperm(accessing_obj, accessed_obj, *args, **kwargs):
     """
-    The basic permission-checker only for Account objects. Ignores case.
+    The basic permission-checker only for Account objdb. Ignores case.
 
     Usage:
        pperm(<permission>)
@@ -145,7 +145,7 @@ def pperm(accessing_obj, accessed_obj, *args, **kwargs):
 
 def pperm_above(accessing_obj, accessed_obj, *args, **kwargs):
     """
-    Only allow Account objects with a permission *higher* in the permission
+    Only allow Account objdb with a permission *higher* in the permission
     hierarchy than the one given. If there is no such higher rank,
     it's assumed we refer to superuser. If no hierarchy is defined,
     this function has no meaning and returns False.
@@ -160,7 +160,7 @@ def dbref(accessing_obj, accessed_obj, *args, **kwargs):
 
     This lock type checks if the checking object
     has a particular dbref. Note that this only
-    works for checking objects that are stored
+    works for checking objdb that are stored
     in the database (e.g. not for commands)
     """
     if not args:

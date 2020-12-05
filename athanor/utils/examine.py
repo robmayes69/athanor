@@ -61,7 +61,7 @@ class ExamineHandler:
             if hasattr(self, "account") and self.obj.account:
                 all_cmdsets.extend([(cmdset.key, cmdset) for cmdset in self.obj.account.cmdset.all()])
                 if self.obj.sessions.count():
-                    # if there are more sessions than one on objects it's because of multisession mode 3.
+                    # if there are more sessions than one on objdb it's because of multisession mode 3.
                     # we only show the first session's cmdset here (it is -in principle- possible that
                     # different sessions have different cmdsets but for admins who want such madness
                     # it is better that they overload with their own CmdExamine to handle it).
@@ -73,7 +73,7 @@ class ExamineHandler:
                     )
             else:
                 try:
-                    # we have to protect this since many objects don't have sessions.
+                    # we have to protect this since many objdb don't have sessions.
                     all_cmdsets.extend(
                         [
                             (cmdset.key, cmdset)
