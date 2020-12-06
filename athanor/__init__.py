@@ -2,135 +2,53 @@
 Core of the Athanor API. It is also styled as a plugin.
 
 """
-from evennia.utils.utils import lazy_property
-
-# This dictionary will be filled in with useful singletons as the system loads.
-
-_API_STORAGE = dict()
-
 # The Core must always load first.
-LOAD_PRIORITY = -100000000
+PLUGIN_LOAD_PRIORITY = -100000000
 
 PLUGIN_NAME = 'athanor'
-
-
-def plugin_initial_setup(api):
-    pass
 
 
 class AthanorApi:
 
     def __init__(self):
         self.storage = dict()
-        pspace_dict = dict()
-
-        from athanor.identities.models import Namespace
-
-        def get_or_create_pspace(pspace):
-            if pspace in pspace_dict:
-                return pspace_dict[pspace]
-            model, created = Pluginspace.objects.get_or_create(db_name=pspace)
-            if created:
-                model.save()
-            pspace_dict[pspace] = model
-            return model
-
         from django.conf import settings
-        from evennia.utils.utils import class_from_module
+        self.settings = settings
 
-        self.plugins = settings.ATHANOR_PLUGINS
-        self.plugins_sorted = settings.ATHANOR_PLUGINS_SORTED
+        self.integrity_check_namespaces()
 
-        for plugin in settings.ATHANOR_PLUGINS.keys():
-            get_or_create_pspace(plugin)
+        self.styler = None
+        self.load_styler()
 
-        for namespaces in settings.IDENTITY_NAMESPACES:
-            nspace, created = Namespace.objects.get_or_create(db_name=namespaces)
+        self.controllers = None
+        self.load_controllers()
+
+    def integrity_check_namespaces(self):
+        from athanor.identities.models import Namespace
+        for k, v in self.settings.IDENTITY_NAMESPACES.items():
+            nspace, created = Namespace.objects.get_or_create(db_name=k, db_prefix=v["prefix"], db_priority=v["priority"])
             if created:
                 nspace.save()
 
-        styler_class = class_from_module(settings.STYLER_CLASS)
+    def load_styler(self):
+        from evennia.utils.utils import class_from_module
+        styler_class = class_from_module(self.settings.STYLER_CLASS)
         self.styler = styler_class
         self.styler.load()
 
-        try:
-            self.controllers = class_from_module(settings.CONTROLLER_MANAGER_CLASS)(self)
-            self.controllers.load()
-
-        except Exception as e:
-            from evennia.utils import logger
-            logger.log_trace(e)
-            print(e)
+    def load_controllers(self):
+        from evennia.utils.utils import class_from_module
+        self.controllers = class_from_module(self.settings.CONTROLLER_MANAGER_CLASS)(self)
+        self.controllers.load()
+        self.controllers.integrity_check()
 
 
-@lazy_property
-def api() -> AthanorApi:
-    return AthanorApi()
-
-
-def _init():
-    global LOADED, _API_STORAGE
-    if LOADED:
-        return
-    LOADED = True
-
-    pspace_dict = dict()
-
-    def get_or_create_pspace(pspace):
-        if pspace in pspace_dict:
-            return pspace_dict[pspace]
-        model, created = Pluginspace.objects.get_or_create(db_name=pspace)
-        if created:
-            model.save()
-        pspace_dict[pspace] = model
-        return model
-
-    from django.conf import settings
-    from evennia.utils.utils import class_from_module
-
-    from athanor.models import Pluginspace, Namespace
-
-    for plugin in settings.ATHANOR_PLUGINS.keys():
-        get_or_create_pspace(plugin)
-
-    for namespaces in settings.IDENTITY_NAMESPACES:
-        nspace, created = Namespace.objects.get_or_create(db_name=namespaces)
-        if created:
-            nspace.save()
-
-    styler_class = class_from_module(settings.STYLER_CLASS)
-    _API_STORAGE['styler'] = styler_class
-    _API_STORAGE['styler'].load()
-
-    try:
-        manager = class_from_module(settings.CONTROLLER_MANAGER_CLASS)()
-        _API_STORAGE['controller_manager'] = manager
-        manager.load()
-
-        # Setting this true so that integrity checks will not call _init() again.
-        entity_con = manager.get('entity')
-        entity_con.check_integrity()
-    except Exception as e:
-        from evennia.utils import logger
-        logger.log_trace(e)
-        print(e)
-
-
-def api():
-    global LOADED, _API_STORAGE
-    if not LOADED:
-        _init()
-    return _API_STORAGE
-
-
-def init_settings(settings):
+def at_init_settings(settings, plugins):
     from collections import defaultdict
 
     ######################################################################
     # Server Options
     ######################################################################
-
-    settings.SERVERNAME = "Athanor: Advent of Awesome"
 
     # Let's disable that annoying timeout by default!
     settings.IDLE_TIMEOUT = -1
@@ -143,8 +61,6 @@ def init_settings(settings):
     settings.WEBSOCKET_ENABLED = True
     settings.INLINEFUNC_ENABLED = True
 
-    settings.AT_INITIAL_SETUP_HOOK_MODULE = "athanor.at_initial_setup"
-    settings.AT_SERVER_STARTSTOP_MODULE = "athanor.at_server_startstop"
     settings.HELP_MORE = False
     settings.CONNECTION_SCREEN_MODULE = "athanor.connection_screens"
     settings.CMD_IGNORE_PREFIXES = ""
@@ -164,42 +80,43 @@ def init_settings(settings):
     # different entities.
     settings.CMDSETS = defaultdict(list)
 
-    # Taking control of initial setup. No more screwy godcharacter nonsense.
-    settings.INITIAL_SETUP_MODULE = "athanor.initial_setup"
 
     ######################################################################
     # Module List Options
     ######################################################################
     # Convert LOCK_FUNC_MODULES to a list so it can be appended to by plugins.
     settings.LOCK_FUNC_MODULES = list(settings.LOCK_FUNC_MODULES)
-    settings.LOCK_FUNC_MODULES.append("athanor.lockfuncs")
+    #settings.LOCK_FUNC_MODULES.append("athanor.lockfuncs")
 
-    settings.INPUT_FUNC_MODULES.append('athanor.inputfuncs')
+    #settings.INPUT_FUNC_MODULES.append('athanor.inputfuncs')
 
     ######################################################################
     # Database Options
     ######################################################################
     # convert INSTALLED_APPS to a list so that plugins may append to it.
     # At this point, we can only add things after Evennia's defaults.
+
     settings.INSTALLED_APPS = list(settings.INSTALLED_APPS)
-    settings.INSTALLED_APPS.append('athanor')
+    settings.INSTALLED_APPS += ['athanor.logins', 'athanor.identities',
+                                'athanor.sectors', 'athanor.zones']
 
     ######################################################################
-    # Namespaces
+    # Identity and Namespaces
     ######################################################################
 
     settings.IDENTITY_NAMESPACES = {
-        "Special": {"sort": 0, "prefix": "S"},
-        "Accounts": {"sort": 100, "prefix": "A"},
-        "Characters": {"sort": 200, "prefix": "C"}
+        "Special": {"priority": 0, "prefix": "S"},
+        "Accounts": {"priority": 100, "prefix": "A"},
+        "Characters": {"priority": 200, "prefix": "C"}
     }
+
+    settings.BASE_IDENTITY_TYPECLASS = "athanor.identities.identities.DefaultIdentity"
 
     ######################################################################
     # Controllers
     ######################################################################
 
     settings.CONTROLLER_MANAGER_CLASS = "athanor.utils.controllers.ControllerManager"
-    settings.BASE_CONTROLLER_CLASS = "athanor.utils.controllers.AthanorController"
     settings.CONTROLLERS = dict()
 
 
@@ -230,27 +147,27 @@ def init_settings(settings):
     # Connection Options
     ######################################################################
     # Command set used on the logged-in session
-    settings.CMDSET_SESSION = "athanor.serversessions.cmdsets.AthanorSessionCmdSet"
+    #settings.CMDSET_SESSION = "athanor.serversessions.cmdsets.AthanorSessionCmdSet"
 
     # Command set used on session before account has logged in
-    settings.CMDSET_LOGINSCREEN = "athanor.serversessions.cmdsets.LoginCmdSet"
-    settings.CMDSET_SELECTSCREEN = 'athanor.serversessions.cmdsets.CharacterSelectScreenCmdSet'
-    settings.CMDSET_ACTIVE = 'athanor.serversessions.cmdsets.ActiveCmdSet'
-    settings.BASE_SERVER_SESSION_TYPECLASS = "athanor.serversessions.serversessions.DefaultServerSession"
-    settings.SERVER_SESSION_HANDLER_CLASS = 'athanor.utils.serversessionhandler.AthanorServerSessionHandler'
+    #settings.CMDSET_LOGINSCREEN = "athanor.serversessions.cmdsets.LoginCmdSet"
+    #settings.CMDSET_SELECTSCREEN = 'athanor.serversessions.cmdsets.CharacterSelectScreenCmdSet'
+    #settings.CMDSET_ACTIVE = 'athanor.serversessions.cmdsets.ActiveCmdSet'
+    #settings.BASE_SERVER_SESSION_TYPECLASS = "athanor.serversessions.serversessions.DefaultServerSession"
+    #settings.SERVER_SESSION_HANDLER_CLASS = 'athanor.utils.serversessionhandler.AthanorServerSessionHandler'
 
-    settings.EXAMINE_HOOKS['session'] = []
+    #settings.EXAMINE_HOOKS['session'] = []
 
-    settings.SESSION_SYNC_ATTRS = list(settings.SESSION_SYNC_ATTRS)
+    #settings.SESSION_SYNC_ATTRS = list(settings.SESSION_SYNC_ATTRS)
 
     ######################################################################
     # Account Options
     ######################################################################
-    settings.BASE_ACCOUNT_TYPECLASS = "athanor.accounts.typeclasses.AthanorAccount"
-    settings.CONTROLLERS['account'] = 'athanor.accounts.controller.AthanorAccountController'
+    #settings.BASE_ACCOUNT_TYPECLASS = "athanor.accounts.typeclasses.AthanorAccount"
+    #settings.CONTROLLERS['account'] = 'athanor.accounts.controller.AthanorAccountController'
 
     # Command set for accounts with or without a character (ooc)
-    settings.CMDSET_ACCOUNT = "athanor.accounts.cmdsets.AccountCmdSet"
+    #settings.CMDSET_ACCOUNT = "athanor.accounts.cmdsets.AccountCmdSet"
 
     # Default options for display rules.
     settings.OPTIONS_ACCOUNT_DEFAULT['sys_msg_border'] = ('For -=<>=-', 'Color', 'm')
@@ -270,10 +187,10 @@ def init_settings(settings):
     ######################################################################
     # Character Options
     ######################################################################
-    settings.CONTROLLERS['character'] = 'athanor.characters.controller.CharacterController'
+    #settings.CONTROLLERS['character'] = 'athanor.characters.controller.CharacterController'
 
-    settings.BASE_CHARACTER_TYPECLASS = "athanor.characters.characters.DefaultCharacter"
-    settings.CMDSET_PLAYER_CHARACTER = "athanor.characters.cmdsets.CharacterCmdSet"
+    #settings.BASE_CHARACTER_TYPECLASS = "athanor.characters.characters.DefaultCharacter"
+    #settings.CMDSET_PLAYER_CHARACTER = "athanor.characters.cmdsets.CharacterCmdSet"
 
     # These restrict a player's ability to create/modify their own characters.
     # If True, only staff can perform these operations (if allowed by the privileges system)
@@ -285,18 +202,6 @@ def init_settings(settings):
     # Instead, they'll see something generic, and have to decide what to
     # call a person.
     settings.NAME_DUB_SYSTEM = False
-
-    ######################################################################
-    # PlaySessionDB
-    ######################################################################
-    settings.CONTROLLERS['playsession'] = {
-        'class': 'athanor.playsessions.controller.AthanorPlaySessionController',
-        'backend': 'athanor.playsessions.controller.AthanorPlaySessionControllerBackend'
-    }
-
-    settings.BASE_PLAY_SESSION_TYPECLASS = "athanor.playsessions.playsessions.DefaultPlaySession"
-    settings.CMDSET_PLAYSESSION = "athanor.playsessions.cmdsets.AthanorPlaySessionCmdSet"
-
     ######################################################################
     # Permissions
     ######################################################################
@@ -344,35 +249,5 @@ def init_settings(settings):
 }
 
 
-def load(settings, plugin_list):
-    ######################################################################
-    # Plugin Settings
-    ######################################################################
-
-    # This will hold a dictionary of plugins by their name, as reported by
-    # their __init__. Failing a name, their python path will be used. The
-    # values are the imported modules. The list contains them, sorted by
-    # load priority.
-    settings.ATHANOR_PLUGINS = dict()
-    settings.ATHANOR_PLUGINS_SORTED = list()
-
-    # convert plugin_list to a set() to eradicate duplicates. ensure that 'athanor' is included
-    # as it is the core.
-    plugin_set = set(plugin_list)
-    plugin_set.add('athanor')
-
-    # next, we'll import plugins.
-    from importlib import import_module
-    plugins_dict = dict()
-    for plugin_path in plugin_set:
-        found_plugin = import_module(plugin_path)
-        plugin_name = getattr(found_plugin, 'PLUGIN_NAME', plugin_path)
-        plugins_dict[plugin_name] = found_plugin
-
-    settings.ATHANOR_PLUGINS_SORTED = sorted(plugins_dict.values(), key=lambda x: getattr(x, "LOAD_PRIORITY", 0))
-
-    for plugin in settings.ATHANOR_PLUGINS_SORTED:
-        if hasattr(plugin, "init_settings"):
-            plugin.init_settings(settings)
-
-    settings.ATHANOR_PLUGINS = plugins_dict
+def generate_api():
+    return AthanorApi()

@@ -98,8 +98,8 @@ class ACLEntry(models.Model):
 
     identity = models.ForeignKey('identities.IdentityDB', related_name='acl_references', on_delete=models.CASCADE)
     mode = models.CharField(max_length=30, null=False, blank=True, default='')
-    allow_permissions = models.PositiveBigIntegerField(default=0, null=False)
-    deny_permissions = models.PositiveBigIntegerField(default=0, null=False)
+    allow_permissions = models.PositiveIntegerField(default=0, null=False)
+    deny_permissions = models.PositiveIntegerField(default=0, null=False)
 
     class Meta:
         unique_together = (('content_type', 'object_id', 'identity', 'mode'),)

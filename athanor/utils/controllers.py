@@ -7,15 +7,15 @@ from athanor.utils.online import admin_accounts
 
 class ControllerManager:
 
-    def __init__(self):
+    def __init__(self, api):
+        self.api = api
         self.loaded = False
         self.controllers = dict()
 
     def load(self):
         for controller_key, controller_def in settings.CONTROLLERS.items():
-            con_class = class_from_module(controller_def.get("class", settings.BASE_CONTROLLER_CLASS))
-            backend = class_from_module(controller_def.get('backend'))
-            self.controllers[controller_key] = con_class(controller_key, self, backend)
+            con_class = class_from_module(controller_def)
+            self.controllers[controller_key] = con_class(controller_key, self)
         self.loaded = True
 
     def get(self, con_key):
@@ -26,6 +26,10 @@ class ControllerManager:
         if not found.loaded:
             found.load()
         return found
+
+    def integrity_check(self):
+        for k, v in self.controllers.items():
+            v.integrity_check()
 
 
 class AthanorController:
@@ -60,6 +64,9 @@ class AthanorController:
         """
         Implements the actual logic of loading. Meant to be overloaded.
         """
+        pass
+
+    def integrity_check(self):
         pass
 
 
