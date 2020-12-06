@@ -36,7 +36,6 @@ class IdentityDB(TypedObject):
     object_id = models.PositiveIntegerField(null=False)
     wrapped = GenericForeignKey('content_type', 'object_id')
 
-
     @property
     def ikey(self):
         return self.db_ikey

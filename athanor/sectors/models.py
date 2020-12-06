@@ -6,7 +6,7 @@ from evennia.typeclasses.models import TypedObject, SharedMemoryModel
 
 class SectorDB(TypedObject):
     __settingsclasspath__ = settings.BASE_SECTOR_TYPECLASS
-    __defaultclasspath__ = "athanor.sectors.zones.DefaultSector"
+    __defaultclasspath__ = "athanor.sectors.sectors.DefaultSector"
     __applabel__ = "sectors"
 
     db_owner = models.ForeignKey('identities.IdentityDB', related_name='sectors', on_delete=models.PROTECT)
@@ -14,7 +14,7 @@ class SectorDB(TypedObject):
     db_ckey = models.CharField(max_length=255)
 
     class Meta:
-        unique_together = (('db_owner', 'db_ikey'),)
+        unique_together = (('db_owner', 'db_ikey'), )
 
 
 class SectorLink(SharedMemoryModel):
@@ -26,4 +26,4 @@ class SectorLink(SharedMemoryModel):
     db_z = models.FloatField(default=0.0, null=False)
 
     class Meta:
-        index_together = (('db_sector', 'db_object'),)
+        index_together = (('db_sector', 'db_object'), )

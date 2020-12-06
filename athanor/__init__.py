@@ -191,9 +191,7 @@ def init_settings(settings):
     settings.IDENTITY_NAMESPACES = {
         "Special": {"sort": 0, "prefix": "S"},
         "Accounts": {"sort": 100, "prefix": "A"},
-        "Characters": {"sort": 200, "prefix": "C"},
-        "Factions": {"sort": 300, "prefix": "F"},
-        "Themes": {"sort": 400, "prefix": "T"}
+        "Characters": {"sort": 200, "prefix": "C"}
     }
 
     ######################################################################
@@ -225,12 +223,14 @@ def init_settings(settings):
         'se': ('southeast', ['se'])
     }
 
+    settings.BASE_SECTOR_TYPECLASS = "athanor.sectors.sectors.DefaultSector"
+    settings.BASE_ZONE_TYPECLASS = "athanor.zones.zones.DefaultZone"
 
     ######################################################################
     # Connection Options
     ######################################################################
     # Command set used on the logged-in session
-    settings.CMDSET_SESSION = "athanor.cmdsets.session.AthanorSessionCmdSet"
+    settings.CMDSET_SESSION = "athanor.serversessions.cmdsets.AthanorSessionCmdSet"
 
     # Command set used on session before account has logged in
     settings.CMDSET_LOGINSCREEN = "athanor.serversessions.cmdsets.LoginCmdSet"
@@ -246,12 +246,8 @@ def init_settings(settings):
     ######################################################################
     # Account Options
     ######################################################################
-    settings.CONTROLLERS['account'] = {
-        'class': 'athanor.accounts.controller.AthanorAccountController',
-        'backend': 'athanor.accounts.controller.AthanorAccountControllerBackend'
-    }
-
     settings.BASE_ACCOUNT_TYPECLASS = "athanor.accounts.typeclasses.AthanorAccount"
+    settings.CONTROLLERS['account'] = 'athanor.accounts.controller.AthanorAccountController'
 
     # Command set for accounts with or without a character (ooc)
     settings.CMDSET_ACCOUNT = "athanor.accounts.cmdsets.AccountCmdSet"
@@ -272,15 +268,12 @@ def init_settings(settings):
     settings.EXAMINE_HOOKS['account'] = ['account', 'access', 'commands', 'tags', 'attributes', 'puppets']
 
     ######################################################################
-    # Player Character Options
+    # Character Options
     ######################################################################
-    settings.CONTROLLERS['playercharacter'] = {
-        'class': 'athanor.playercharacters.controller.PlayerCharacterController',
-        'backend': 'athanor.playercharacters.controller.PlayerCharacterControllerBackend'
-    }
+    settings.CONTROLLERS['character'] = 'athanor.characters.controller.CharacterController'
 
-    settings.BASE_PLAYER_CHARACTER_TYPECLASS = "athanor.playercharacters.playercharacters.DefaultPlayerCharacter"
-    settings.CMDSET_PLAYER_CHARACTER = "athanor.playercharacters.cmdsets.PlayerCharacterCmdSet"
+    settings.BASE_CHARACTER_TYPECLASS = "athanor.characters.characters.DefaultCharacter"
+    settings.CMDSET_PLAYER_CHARACTER = "athanor.characters.cmdsets.CharacterCmdSet"
 
     # These restrict a player's ability to create/modify their own characters.
     # If True, only staff can perform these operations (if allowed by the privileges system)
@@ -288,6 +281,10 @@ def init_settings(settings):
     settings.RESTRICTED_CHARACTER_DELETION = False
     settings.RESTRICTED_CHARACTER_RENAME = False
 
+    # If this is enabled, characters will not see each other's true names.
+    # Instead, they'll see something generic, and have to decide what to
+    # call a person.
+    settings.NAME_DUB_SYSTEM = False
 
     ######################################################################
     # PlaySessionDB
@@ -299,15 +296,6 @@ def init_settings(settings):
 
     settings.BASE_PLAY_SESSION_TYPECLASS = "athanor.playsessions.playsessions.DefaultPlaySession"
     settings.CMDSET_PLAYSESSION = "athanor.playsessions.cmdsets.AthanorPlaySessionCmdSet"
-
-    ######################################################################
-    # Character Settings
-    ######################################################################
-
-    # If this is enabled, characters will not see each other's true names.
-    # Instead, they'll see something generic, and have to decide what to
-    # call a person.
-    settings.NAME_DUB_SYSTEM = False
 
     ######################################################################
     # Permissions
