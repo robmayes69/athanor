@@ -1,3 +1,6 @@
+import time
+from django.utils import timezone
+
 from django.conf import settings
 
 from evennia.utils.utils import lazy_property
@@ -59,12 +62,30 @@ class AthanorServerSession(_BaseServerSession):
     def render_character_menu_line(self, cmd):
         return f"({self.sessid}) {self.protocol} from {self.host} via {self.protocol}"
 
+    def at_login(self, account):
+        """
+        Largely copied from its parent class, but with some edits.
+        """
+        self.account = account
+        self.uid = self.account.id
+        self.uname = self.account.username
+        self.logged_in = True
+        self.conn_time = time.time()
+        self.puid = None
+        self.puppet = None
+        self.cmdset_storage = settings.CMDSET_SESSION
+
+        # Update account's last login time.
+        self.account.last_login = timezone.now()
+        self.account.save()
+
+        # add the session-level cmdset
+        self.cmdset = ServerSessionCmdSetHandler(self, True)
+
     def at_sync(self):
         global _ObjectDB, _IdentityDB, _AccountDB
         if not _ObjectDB:
             from evennia.objects.models import ObjectDB as _ObjectDB
-        if not _AccountDB:
-            from evennia.accounts.models import AccountDB as _AccountDB
         if not _IdentityDB:
             from athanor.identities.models import IdentityDB as _IdentityDB
 

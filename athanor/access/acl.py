@@ -1,3 +1,6 @@
+from typing import Dict
+
+
 class ACLMixin:
     """
     This class must be added to a Model as a Mixin. No other class.
@@ -5,13 +8,13 @@ class ACLMixin:
     permissions_base = {"full": 1}
     permissions_custom = {}
 
-    def perm_dict(self):
+    def perm_dict(self) -> Dict[str, int]:
         d = dict()
         d.update(self.permissions_base)
         d.update(self.permissions_custom)
         return d
 
-    def is_owner(self, obj_to_check):
+    def is_owner(self, obj_to_check) -> bool:
         return False
 
     def check_access(self, accessor, perm: str, mode: str = "") -> bool:
