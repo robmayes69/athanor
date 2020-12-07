@@ -1,4 +1,4 @@
-import importlib
+
 
 
 def import_property(path):
@@ -11,6 +11,7 @@ def import_property(path):
     Returns:
         Hopefully, a function object or a variable or something of that sort.
     """
+    import importlib
     if '.' in path:
         module, thing = path.rsplit('.', 1)
         module = importlib.import_module(module)

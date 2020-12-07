@@ -1,6 +1,3 @@
-from athanor.identities.models import ACLEntry
-
-
 class ACLMixin:
     """
     This class must be added to a Model as a Mixin. No other class.
@@ -24,7 +21,7 @@ class ACLMixin:
         bit = self.perm_dict()[perm]
         entries = list()
 
-        for entry in ACLEntry.objects.filter(resource=self, mode=mode).order_by("identity__db_namespace__db_priority", "identity__db_key"):
+        for entry in self.acl_entries.filter(mode=mode).order_by("identity__db_namespace__db_priority", "identity__db_key"):
             if entry.identity.represents(accessor, mode):
                 # First, check for Denies.
                 if entry.deny_permissions & 1 or entry.deny_permissions & bit:

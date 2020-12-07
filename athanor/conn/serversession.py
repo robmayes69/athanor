@@ -1,19 +1,25 @@
 from django.conf import settings
 
 from evennia.utils.utils import lazy_property
-from evennia.server.serversession import ServerSession
+from evennia.server.serversession import ServerSession as _BaseServerSession
 
 import evennia
-from athanor.serversessions.handlers import ServerSessionCmdHandler, ServerSessionCmdSetHandler
+from athanor.conn.handlers import ServerSessionCmdHandler, ServerSessionCmdSetHandler
+
+_ObjectDB = None
+_AccountDB = None
+_IdentityDB = None
 
 
-class AthanorServerSession(ServerSession):
+class AthanorServerSession(_BaseServerSession):
     # The Session is always the first thing to matter when parsing commands.
     _cmd_sort = -1000
 
     def __init__(self):
-        super(ServerSession, self).__init__()
-        self.identity_id = None
+        self.puppet = None
+        self.account = None
+        self.cmdset_storage_string = ""
+        self.cmdset = ServerSessionCmdSetHandler(self, True)
 
     @lazy_property
     def cmd(self):
@@ -21,7 +27,7 @@ class AthanorServerSession(ServerSession):
 
     @lazy_property
     def temp_styler(self):
-        return evennia.PLUGIN_API["athanor"].styler(self)
+        return evennia.PLUGINS["athanor"].styler(self)
 
     @property
     def styler(self):
@@ -54,19 +60,20 @@ class AthanorServerSession(ServerSession):
         return f"({self.sessid}) {self.protocol} from {self.host} via {self.protocol}"
 
     def at_sync(self):
-        global _ObjectDB
+        global _ObjectDB, _IdentityDB, _AccountDB
         if not _ObjectDB:
             from evennia.objects.models import ObjectDB as _ObjectDB
+        if not _AccountDB:
+            from evennia.accounts.models import AccountDB as _AccountDB
+        if not _IdentityDB:
+            from athanor.identities.models import IdentityDB as _IdentityDB
 
-        super(ServerSession, self).at_sync()
+        super().at_sync()
         if not self.logged_in:
             # assign the unloggedin-command set.
             self.cmdset_storage = settings.CMDSET_UNLOGGEDIN
 
         self.cmdset.update(init_mode=True)
-
-        if self.identity_id:
-            pass
 
         if self.puid:
             # reconnect puppet (puid is only set if we are coming

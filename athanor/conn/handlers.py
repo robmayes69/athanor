@@ -15,15 +15,12 @@ class ServerSessionCmdHandler(CmdHandler):
         base = {
             'session': session
         }
-        if (psess := session.play_session):
-            base.update({
-                'playsession': psess,
-                'account': psess.get_account(),
-                'player_character': psess.get_player_character(),
-                'avatar': psess.get_avatar()
-            })
-            return base
-        base['account'] = session.account
+        if session.account:
+            base['account'] = session.account
+        if session.puppet:
+            base['puppet'] = session.puppet
+        if session.identity:
+            base['identity'] = session.identity
         return base
 
 

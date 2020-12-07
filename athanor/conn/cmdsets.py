@@ -1,5 +1,5 @@
 from evennia.commands.cmdset import CmdSet
-from athanor.serversessions import cmds_login, cmds_select, cmds_active
+from athanor.conn import cmds_login, cmds_select, cmds_active
 from evennia.commands.default import unloggedin
 
 

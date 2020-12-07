@@ -2,7 +2,7 @@
 Core of the Athanor API. It is also styled as a plugin.
 
 """
-from evennia.utils.plugin import EvPlugin
+from evennia.plugin import EvPlugin
 
 
 class Athanor(EvPlugin):
@@ -19,20 +19,23 @@ class Athanor(EvPlugin):
 
     def integrity_check_namespaces(self):
         from athanor.identities.models import Namespace
-        for k, v in self.settings.IDENTITY_NAMESPACES.items():
+        from django.conf import settings
+        for k, v in settings.IDENTITY_NAMESPACES.items():
             nspace, created = Namespace.objects.get_or_create(db_name=k, db_prefix=v["prefix"], db_priority=v["priority"])
             if created:
                 nspace.save()
 
     def load_styler(self):
         from evennia.utils.utils import class_from_module
-        styler_class = class_from_module(self.settings.STYLER_CLASS)
+        from django.conf import settings
+        styler_class = class_from_module(settings.STYLER_CLASS)
         self.styler = styler_class
         self.styler.load()
 
     def load_controllers(self):
+        from django.conf import settings
         from evennia.utils.utils import class_from_module
-        self.controllers = class_from_module(self.settings.CONTROLLER_MANAGER_CLASS)(self)
+        self.controllers = class_from_module(settings.CONTROLLER_MANAGER_CLASS)(self)
         self.controllers.load()
         self.controllers.integrity_check()
 
@@ -144,6 +147,11 @@ class Athanor(EvPlugin):
         ######################################################################
         # Connection Options
         ######################################################################
+        settings.BASE_SESSION_CLASS = "athanor.conn.session.AthanorSession"
+        settings.SESSION_SYNC_ATTRS = settings.SESSION_SYNC_ATTRS + ('identity_id', 'account_identity_id')
+
+        settings.SERVER_SESSION_HANDLER_CLASS = 'athanor.conn.sessionhandler.AthanorServerSessionHandler'
+
         # Command set used on the logged-in session
         #settings.CMDSET_SESSION = "athanor.serversessions.cmdsets.AthanorSessionCmdSet"
 
@@ -152,7 +160,7 @@ class Athanor(EvPlugin):
         #settings.CMDSET_SELECTSCREEN = 'athanor.serversessions.cmdsets.CharacterSelectScreenCmdSet'
         #settings.CMDSET_ACTIVE = 'athanor.serversessions.cmdsets.ActiveCmdSet'
         #settings.BASE_SERVER_SESSION_TYPECLASS = "athanor.serversessions.serversessions.DefaultServerSession"
-        #settings.SERVER_SESSION_HANDLER_CLASS = 'athanor.utils.serversessionhandler.AthanorServerSessionHandler'
+
 
         #settings.EXAMINE_HOOKS['session'] = []
 
