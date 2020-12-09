@@ -1,19 +1,21 @@
 """
-Core of the Athanor API. It is also styled as a plugin.
-
+Core of the Athanor API.
 """
-from evennia.plugin import EvPlugin
+from evennia.plugins import EvPlugin
 
 
 class Athanor(EvPlugin):
 
+    @property
     def name(self) -> str:
         return "athanor"
 
-    def load_priority(self) -> int:
-        return -100000000
+    @property
+    def version(self) -> str:
+        return "0.0.1"
 
-    def __init__(self):
+    def __init__(self, manager):
+        super().__init__(manager)
         self.styler = None
         self.controllers = None
 
@@ -44,7 +46,7 @@ class Athanor(EvPlugin):
         self.load_styler()
         self.load_controllers()
 
-    def init_settings(self, settings, plugins):
+    def at_init_settings(self, settings):
         from collections import defaultdict
 
         ######################################################################
@@ -98,7 +100,7 @@ class Athanor(EvPlugin):
         # At this point, we can only add things after Evennia's defaults.
 
         settings.INSTALLED_APPS = list(settings.INSTALLED_APPS)
-        settings.INSTALLED_APPS += ['athanor.logins', 'athanor.identities',
+        settings.INSTALLED_APPS += ['athanor.conn', 'athanor.identities',
                                     'athanor.sectors', 'athanor.zones']
 
         ######################################################################
