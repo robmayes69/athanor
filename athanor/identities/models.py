@@ -104,3 +104,5 @@ class ACLEntry(models.Model):
     class Meta:
         unique_together = (('content_type', 'object_id', 'identity', 'mode'),)
         index_together = (('content_type', 'object_id'),)
+
+
