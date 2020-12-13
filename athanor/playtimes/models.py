@@ -13,9 +13,12 @@ class PlaytimeDB(TypedObject):
     __defaultclasspath__ = "athanor.playtimes.playtimes.DefaultPlaytime"
     __applabel__ = "playtimes"
 
-    db_identity = models.OneToOneField('identities.IdentityDB', related_name="playtime", on_delete=models.PROTECT,
-                                       primary_key=True)
+    id = models.OneToOneField('identities.IdentityDB', related_name="playtime", on_delete=models.PROTECT,
+                              primary_key=True)
     db_account = models.ForeignKey('accounts.AccountDB', related_name='playtimes', on_delete=models.PROTECT)
+
+    # This field is used to track how many times Sessions have linked to this Playtime.
+    db_link_count = models.PositiveIntegerField(default=0)
 
     # the session id associated with this account, if any
     db_sessid = models.CharField(

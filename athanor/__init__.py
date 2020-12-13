@@ -41,7 +41,7 @@ class Athanor(EvPlugin):
         self.controllers.load()
         self.controllers.integrity_check()
 
-    def at_plugin_setup(self):
+    def at_plugin_load_init(self):
         self.integrity_check_namespaces()
         self.load_styler()
         self.load_controllers()
@@ -88,10 +88,9 @@ class Athanor(EvPlugin):
         # Module List Options
         ######################################################################
         # Convert LOCK_FUNC_MODULES to a list so it can be appended to by plugins.
-        settings.LOCK_FUNC_MODULES = list(settings.LOCK_FUNC_MODULES)
         #settings.LOCK_FUNC_MODULES.append("athanor.lockfuncs")
 
-        #settings.INPUT_FUNC_MODULES.append('athanor.inputfuncs')
+        settings.INPUT_FUNC_MODULES.append('athanor.inputfuncs')
 
         ######################################################################
         # Database Options
@@ -101,7 +100,9 @@ class Athanor(EvPlugin):
 
         settings.INSTALLED_APPS = list(settings.INSTALLED_APPS)
         settings.INSTALLED_APPS += ['athanor.conn', 'athanor.identities',
-                                    'athanor.sectors', 'athanor.zones']
+                                    'athanor.sectors', 'athanor.zones',
+                                    'athanor.playtimes', 'athanor.chans',
+                                    'athanor.entities']
 
         ######################################################################
         # Identity and Namespaces
@@ -114,6 +115,10 @@ class Athanor(EvPlugin):
         }
 
         settings.BASE_IDENTITY_TYPECLASS = "athanor.identities.identities.DefaultIdentity"
+        settings.BASE_PLAYTIME_TYPECLASS = 'athanor.playtimes.playtimes.DefaultPlaytime'
+
+        settings.BASE_ACCOUNT_IDENTITY_TYPECLASS = 'athanor.identities.identities.AccountIdentity'
+        settings.BASE_CHARACTER_IDENTITY_TYPECLASS = 'athanor.identities.identities.CharacterIdentity'
 
         ######################################################################
         # Controllers
@@ -149,10 +154,8 @@ class Athanor(EvPlugin):
         ######################################################################
         # Connection Options
         ######################################################################
-        settings.BASE_SESSION_CLASS = "athanor.conn.session.AthanorSession"
-        settings.SESSION_SYNC_ATTRS = settings.SESSION_SYNC_ATTRS + ('identity_id', 'account_identity_id')
-
         settings.SERVER_SESSION_HANDLER_CLASS = 'athanor.conn.sessionhandler.AthanorServerSessionHandler'
+        settings.SERVER_SESSION_CLASS = "athanor.conn.serversession.AthanorServerSession"
 
         # Command set used on the logged-in session
         #settings.CMDSET_SESSION = "athanor.serversessions.cmdsets.AthanorSessionCmdSet"
@@ -161,18 +164,17 @@ class Athanor(EvPlugin):
         #settings.CMDSET_LOGINSCREEN = "athanor.serversessions.cmdsets.LoginCmdSet"
         #settings.CMDSET_SELECTSCREEN = 'athanor.serversessions.cmdsets.CharacterSelectScreenCmdSet'
         #settings.CMDSET_ACTIVE = 'athanor.serversessions.cmdsets.ActiveCmdSet'
-        #settings.BASE_SERVER_SESSION_TYPECLASS = "athanor.serversessions.serversessions.DefaultServerSession"
-
 
         #settings.EXAMINE_HOOKS['session'] = []
-
-        #settings.SESSION_SYNC_ATTRS = list(settings.SESSION_SYNC_ATTRS)
 
         ######################################################################
         # Account Options
         ######################################################################
-        #settings.BASE_ACCOUNT_TYPECLASS = "athanor.accounts.typeclasses.AthanorAccount"
-        #settings.CONTROLLERS['account'] = 'athanor.accounts.controller.AthanorAccountController'
+        settings.BASE_ACCOUNT_TYPECLASS = "athanor.accounts.typeclasses.AthanorAccount"
+        settings.CONTROLLERS['account'] = {
+            'controller': 'athanor.accounts.controller.AthanorAccountController',
+            'backend': 'athanor.accounts.controller.AthanorAccountControllerBackend'
+        }
 
         # Command set for accounts with or without a character (ooc)
         #settings.CMDSET_ACCOUNT = "athanor.accounts.cmdsets.AccountCmdSet"
@@ -197,7 +199,7 @@ class Athanor(EvPlugin):
         ######################################################################
         #settings.CONTROLLERS['character'] = 'athanor.characters.controller.CharacterController'
 
-        #settings.BASE_CHARACTER_TYPECLASS = "athanor.characters.characters.DefaultCharacter"
+        settings.BASE_CHARACTER_TYPECLASS = "athanor.entities.characters.AthanorCharacter"
         #settings.CMDSET_PLAYER_CHARACTER = "athanor.characters.cmdsets.CharacterCmdSet"
 
         # These restrict a player's ability to create/modify their own characters.

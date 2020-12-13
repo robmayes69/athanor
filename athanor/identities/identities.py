@@ -13,6 +13,9 @@ class DefaultIdentity(IdentityDB, metaclass=TypeclassBase):
     _namespace_storage = None  # leave this as None
     _re_name = re.compile(r"(?i)^([A-Z]|[0-9]|\.|-|')+( ([A-Z]|[0-9]|\.|-|')+)*$")
 
+    def get_identity(self):
+        return self
+
     @classmethod
     def _namespace(cls) -> Namespace:
         if cls._namespace_storage:
@@ -51,34 +54,36 @@ class DefaultIdentity(IdentityDB, metaclass=TypeclassBase):
         pass
 
     @classmethod
-    def _create_identity(cls, name, clean_name, validated_data, **kwargs):
+    def _create_identity(cls, name, clean_name, validated_data, wrapped, **kwargs):
         """
         Does the actual work of creating the identity.
         """
         identity = None
         errors = None
         try:
-            identity = cls(db_key=clean_name, db_ikey=clean_name.lower(), db_ckey=name,
+            identity = cls(db_key=clean_name, db_ikey=clean_name.lower(), db_ckey=name, wrapped=wrapped,
                            db_namespace=cls._namespace(), typeclass=f"{cls.__module__}.{cls.__qualname__}")
         except ValueError as e:
             if identity:
                 identity.delete()
             raise e
+        identity.save()
         return identity
 
     @classmethod
-    def create(cls, name, **kwargs):
+    def create(cls, name, wrapped=None, **kwargs):
         """
         Creates an Identity.
         Args:
             name (str or ANSIString): The name of the character to be created.
+            wrapped (model): A genericforeignkey model to save.
             **kwargs: Will be passed through to cls._create_identity()
         Returns:
             DefaultIdentity (DefaultIdentity): The created identity.
         """
         name, clean_name = cls._validate_identity_name(name)
         validated = cls._validate_identity(name, clean_name, **kwargs)
-        identity = cls._create_identity(name, clean_name, validated, **kwargs)
+        identity = cls._create_identity(name, clean_name, validated, wrapped, **kwargs)
         identity.at_identity_creation(validated)
         return identity
 
@@ -115,3 +120,17 @@ class SpecialIdentitySystem(SpecialIdentity):
             if (acc := accessor.get_account()):
                 return acc.is_superuser
         return False
+
+
+class AccountIdentity(DefaultIdentity):
+    _verbose_name = 'Account'
+    _verbose_name_plural = "Accounts"
+    _name_standards = "Avoid double spaces and special characters."
+    _namespace_name = "Accounts"
+
+
+class CharacterIdentity(DefaultIdentity):
+    _verbose_name = 'Character'
+    _verbose_name_plural = "Characters"
+    _name_standards = "Avoid double spaces and special characters."
+    _namespace_name = "Characters"

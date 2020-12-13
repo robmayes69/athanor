@@ -34,7 +34,7 @@ class IdentityDB(TypedObject):
 
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True)
     object_id = models.PositiveIntegerField(null=False)
-    wrapped = GenericForeignKey('content_type', 'object_id')
+    wrapped = GenericForeignKey('content_type', 'object_id', for_concrete_model=True)
 
     @property
     def ikey(self):

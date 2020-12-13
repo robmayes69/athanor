@@ -14,8 +14,9 @@ class ControllerManager:
 
     def load(self):
         for controller_key, controller_def in settings.CONTROLLERS.items():
-            con_class = class_from_module(controller_def)
-            self.controllers[controller_key] = con_class(controller_key, self)
+            con_class = class_from_module(controller_def['controller'])
+            backend_class = class_from_module(controller_def['backend'])
+            self.controllers[controller_key] = con_class(controller_key, self, backend_class)
         self.loaded = True
 
     def get(self, con_key):

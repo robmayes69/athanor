@@ -6,7 +6,7 @@ command line. The processing of a command works as follows:
 
 1. The calling object (caller) is analyzed based on its callertype.
 2. Cmdsets are gathered from different sources:
-   - channels:  all available channel names are auto-created into a cmdset, to allow
+   - chans:  all available channel names are auto-created into a cmdset, to allow
      for giving the channel name and have the following immediately
      sent to the channel. The sending is performed by the CMD_CHANNEL
      system command.
@@ -266,7 +266,7 @@ class CmdHandler:
         """
         Helper-method; Get channel-cmdsets
         """
-        # Create cmdset for all account's available channels
+        # Create cmdset for all account's available chans
         try:
             channel_cmdset = yield CHANNELHANDLER.get_cmdset(account_or_obj)
             returnValue([channel_cmdset])
@@ -504,7 +504,7 @@ class CmdHandler:
             _COMMAND_NESTING[caller] -= 1
 
     def sort_cmdobjects(self, cmdobjects):
-        return sorted([val for key, val in cmdobjects.items() if val], key=lambda obj: obj._cmd_sort)
+        return sorted([val for key, val in cmdobjects.items() if val], key=lambda obj: getattr(obj, '_cmd_sort', 0))
 
     def error_cmdobjects(self, cmdobjects):
         """
@@ -583,7 +583,7 @@ class CmdHandler:
         # The caller is always the last in the link chain. Later code may change what's set on commands, but
         # command handler goes 'bottom up' to reach that point.
         caller = ordered_objects[-1]
-
+        print(f"EXECUTE: Caller is {caller} - {type(caller)}")
         try:  # catch bugs in cmdhandler itself
             try:  # catch special-type commands
                 if cmdclass:

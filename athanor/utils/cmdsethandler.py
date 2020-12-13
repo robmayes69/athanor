@@ -6,7 +6,7 @@ class AthanorCmdSetHandler(CmdSetHandler):
     def gather(self, caller, merged_current):
         """
         Called by CmdHandler when merging cmdsets. This must return the local cmdset_stack
-        as well as gather any 'extra cmdsets' such as from local objdb or channels.
+        as well as gather any 'extra cmdsets' such as from local objdb or chans.
 
         Args:
             caller (obj): The executor of the command. usually a ObjectDB, AccountDB, SEssion, etc.

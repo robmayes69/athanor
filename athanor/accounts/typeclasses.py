@@ -1,10 +1,11 @@
+import evennia
 from evennia.utils.utils import lazy_property
 from evennia.accounts.accounts import DefaultAccount
 from evennia.utils.utils import time_format
 
-import athanor
 from athanor.accounts.handlers import AccountCmdSetHandler
 from athanor.accounts.handlers import BanHandler, AccountCmdHandler, AccountAppearanceHandler
+from athanor.identities.models import IdentityDB
 
 
 class AthanorAccount(DefaultAccount):
@@ -16,7 +17,7 @@ class AthanorAccount(DefaultAccount):
     examine_type = "account"
     examine_caller_type = "account"
     dbtype = 'AccountDB'
-    _cmd_sort = -1100
+    _cmd_sort = -900
 
     @lazy_property
     def cmdset(self):
@@ -127,15 +128,19 @@ class AthanorAccount(DefaultAccount):
             "email": self.email
         }
 
+    @lazy_property
+    def identity(self):
+        return IdentityDB.objects.get(content_type=self.get_concrete_content_type(), object_id=self.id)
+
     def get_account(self):
         return self
 
     def characters(self):
-        return self.player_character_components.filter(db_is_active=True)
+        return self.identity.relations_from.filter(relation_type=0)
 
     @lazy_property
     def styler(self):
-        return athanor.api()['styler'](self)
+        return evennia.PLUGIN_MANAGER['athanor'].styler(self)
 
     @lazy_property
     def colorizer(self):

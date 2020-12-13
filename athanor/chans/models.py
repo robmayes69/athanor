@@ -7,7 +7,7 @@ class ChannelStub(SharedMemoryModel):
     An extension of the comms.ChannelDB table.
     """
     db_channel = models.OneToOneField('comms.ChannelDB', related_name='stub', primary_key=True, on_delete=models.CASCADE)
-    db_owner = models.ForeignKey('identities.IdentityDB', related_name='channels', on_delete=models.PROTECT)
+    db_owner = models.ForeignKey('identities.IdentityDB', related_name='chans', on_delete=models.PROTECT)
     db_ikey = models.CharField(max_length=255)
     db_ckey = models.CharField(max_length=255)
 

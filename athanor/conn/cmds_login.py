@@ -8,7 +8,7 @@ class CmdLoginCreateAccount(AthanorCommand):
     """
     Creates a new Account for this game.
 
-    Please note that your Username may be shown on communications channels. It's best to keep it
+    Please note that your Username may be shown on communications chans. It's best to keep it
     simple and presentable.
 
     Your Account Username is NOT connected to your playable characters, although they can both use

@@ -3,14 +3,19 @@ from collections import defaultdict
 
 from django.conf import settings
 
+from django.contrib.contenttypes.models import ContentType
+
 from evennia.utils.utils import make_iter, time_format
 from evennia.utils.search import search_account
+from evennia.accounts.models import AccountDB
 
 from athanor.utils.controllers import AthanorController, AthanorControllerBackend
 from athanor.accounts.typeclasses import AthanorAccount
 from athanor.accounts import messages as amsg
 from athanor.utils.text import partial_match, iter_to_string
 from athanor.utils.time import utcnow, duration_from_string
+from athanor.identities.identities import AccountIdentity
+from athanor.identities.models import IdentityDB
 
 
 class AthanorAccountController(AthanorController):
@@ -283,10 +288,14 @@ class AthanorAccountController(AthanorController):
     def count(self):
         return self.backend.count()
 
+    def integrity_check(self):
+        self.backend.integrity_check()
+
 
 class AthanorAccountControllerBackend(AthanorControllerBackend):
     typeclass_defs = [
-        ('account_typeclass', 'BASE_ACCOUNT_TYPECLASS', AthanorAccount)
+        ('account_typeclass', 'BASE_ACCOUNT_TYPECLASS', AthanorAccount),
+        ('account_identity', 'BASE_ACCOUNT_IDENTITY_TYPECLASS', AccountIdentity)
     ]
 
     def __init__(self, frontend):
@@ -296,14 +305,22 @@ class AthanorAccountControllerBackend(AthanorControllerBackend):
         self.roles = dict()
         self.reg_names = None
         self.account_typeclass = None
+        self.account_identity = None
         self.permissions = defaultdict(set)
         self.load()
 
+    def integrity_check(self):
+        c_type = self.account_typeclass.get_concrete_content_type()
+        for acc in self.all():
+            if not (found := IdentityDB.objects.filter(content_type=c_type, object_id=acc.id).first()):
+                # no Identity for this Account... so we'll create one.
+                identity = self.account_identity.create(acc.username, wrapped=acc)
+
     def all(self):
-        pass
+        return AccountDB.objects.all()
 
     def count(self):
-        pass
+        return AccountDB.objects.count()
 
     def create_account(self, username, email, password, typeclass=None):
         if typeclass is None:

@@ -12,14 +12,17 @@ from athanor.conn.handlers import ServerSessionCmdHandler, ServerSessionCmdSetHa
 _ObjectDB = None
 _AccountDB = None
 _IdentityDB = None
-
+_PlaytimeDB = None
 
 class AthanorServerSession(_BaseServerSession):
     # The Session is always the first thing to matter when parsing commands.
     _cmd_sort = -1000
 
     def __init__(self):
+        self.protocol = "testing"
+        self.host = "hostname"
         self.puppet = None
+        self.playtime = None
         self.account = None
         self.cmdset_storage_string = ""
         self.cmdset = ServerSessionCmdSetHandler(self, True)
@@ -30,7 +33,7 @@ class AthanorServerSession(_BaseServerSession):
 
     @lazy_property
     def temp_styler(self):
-        return evennia.PLUGINS["athanor"].styler(self)
+        return evennia.PLUGIN_MANAGER["athanor"].styler(self)
 
     @property
     def styler(self):
@@ -83,11 +86,11 @@ class AthanorServerSession(_BaseServerSession):
         self.cmdset = ServerSessionCmdSetHandler(self, True)
 
     def at_sync(self):
-        global _ObjectDB, _IdentityDB, _AccountDB
-        if not _ObjectDB:
-            from evennia.objects.models import ObjectDB as _ObjectDB
+        global _ObjectDB, _IdentityDB, _AccountDB, _PlaytimeDB
         if not _IdentityDB:
             from athanor.identities.models import IdentityDB as _IdentityDB
+        if not _PlaytimeDB:
+            from athanor.playtimes.models import PlaytimeDB as _PlaytimeDB
 
         super().at_sync()
         if not self.logged_in:
@@ -97,14 +100,63 @@ class AthanorServerSession(_BaseServerSession):
         self.cmdset.update(init_mode=True)
 
         if self.puid:
-            # reconnect puppet (puid is only set if we are coming
-            # back from a server reload). This does all the steps
-            # done in the default @ic command but without any
-            # hooks, echoes or access checks.
-            obj = _ObjectDB.objects.get(id=self.puid)
+            # Hijacks the Evennia re-puppeting to re-join a PlayTime instead.
+            obj = _IdentityDB.objects.get(id=self.puid)
+            self.create_or_join_playtime(obj, quiet=True)
             obj.sessions.add(self)
-            obj.account = self.account
             self.puid = obj.id
             self.puppet = obj
             # obj.scripts.validate()
             obj.locks.cache_lock_bypass(obj)
+
+    def create_or_join_playtime(self, identity, quiet=False):
+        """
+        Creates a new playtime and links this Session to it, or locates an existing one and links to that instead.
+
+        An Identity can only have one Playtime at a time.
+
+        Args:
+            identity (IdentityDB): The Identity to create a playtime for.
+                This should be an instance of CharacterIdentity.
+        """
+        global _IdentityDB, _PlaytimeDB
+        if not _IdentityDB:
+            from athanor.identities.models import IdentityDB as _IdentityDB
+        if not _PlaytimeDB:
+            from athanor.playtimes.models import PlaytimeDB as _PlaytimeDB
+
+        if not (playtime := _PlaytimeDB.objects.filter(id=identity).first()):
+            playtime = evennia.PLUGIN_MANAGER["athanor"].controllers["playtime"].create_playtime(self.account, identity)
+        self.link_to_playtime(playtime, quiet)
+
+    def link_to_playtime(self, playtime, quiet):
+        """
+        Does the hard work of actually linking a Session to a playtime.
+
+        Args:
+            playtime (PlaytimeDB): The playtime this Session is being linked to.
+            quiet (bool): Whether this should cause loud echoes and other messages.
+        """
+        self.puid = int(playtime.id)
+        self.puppet = playtime
+        playtime.sessions.add(self)
+        playtime.link_count = playtime.link_count + 1
+        if playtime.link_count == 1:
+            playtime.at_playtime_start(self, quiet)
+        playtime.at_session_link(self, quiet)
+
+    def unlink_from_playtime(self, quiet=False, graceful=True):
+        """
+        Unlinks a Session from its current Playtime.
+
+        Args:
+            quiet (bool): Whether to make a lot of echoes and noises from this process.
+            graceful (bool): This is true if it's a clean 'logout' process.
+        """
+        playtime = self.puppet
+        self.puppet = None
+        self.puid = None
+        playtime.sessions.remove(self)
+        playtime.at_session_unlink(self, quiet, graceful)
+        if not playtime.sessions.all():
+            playtime.at_playtime_end(self, quiet, graceful)

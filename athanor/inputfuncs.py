@@ -3,7 +3,7 @@ from evennia.server.inputfuncs import _IDLE_COMMAND
 
 
 # Renamed to text2 to 'disable' it for the moment.
-def text2(session, *args, **kwargs):
+def text(session, *args, **kwargs):
     """
     Main text input from the client. This will execute a command
     string on the server.
@@ -28,8 +28,8 @@ def text2(session, *args, **kwargs):
     if txt.strip() in _IDLE_COMMAND:
         session.update_session_counters(idle=True)
         return
-
-    txt = session.cmd_nick_replace(txt)
+    #TODO: fix this!
+    #txt = session.cmd_nick_replace(txt)
 
     kwargs.pop("options", None)
     # This is the only change - call the session.cmd.execute() instead of cmdhandler(session...)

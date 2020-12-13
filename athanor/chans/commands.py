@@ -68,7 +68,7 @@ Usage:
         Stop receiving messages until you /on. Clears on a logoff/login.
     
     {key}/codename <code name>
-        An alternate name you will appear as, on supported channels.
+        An alternate name you will appear as, on supported chans.
 
     Set /title, /altname, or /codename to None to clear them.
 """
@@ -131,7 +131,7 @@ Note: For below, <target> is either a <category> or a <category>/<channel>
 
 Usage:
     {key}
-        List all channels in the System by Category.
+        List all chans in the System by Category.
     
     {key}/create <target>[=<description>]
         Creates a Category or a Channel in a Category. Optionally gives it a
@@ -169,8 +169,8 @@ Positions:
     as lower tiers. IE: An Operator is a Moderator, a Speaker is 
     a Listener.
     
-    Listener: Listeners can join channels and hear messages.
-    Speaker: Speakers can send messages over channels.
+    Listener: Listeners can join chans and hear messages.
+    Speaker: Speakers can send messages over chans.
     Moderator: Moderators can use disciplinary commands on users.
     Operator: Operators can alter configurations and create/delete
         resources.
@@ -267,11 +267,11 @@ class AbstractChannelAdminCommand(HasDisplayList):
 
 
 _USE_COMMAND = """
-Command used to manage subscriptions to {system_key} channels.
+Command used to manage subscriptions to {system_key} chans.
 
 Usage:
     {key}
-        List all available channels.
+        List all available chans.
     
     {key}/join <category>/<channel>=<alias>
         Creates an alias to a channel. This creates a new 'command' for you.

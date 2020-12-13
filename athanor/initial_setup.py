@@ -1,6 +1,6 @@
 """
 This module handles initial database propagation, which is only run the first
-time the game starts. It will create some default channels, objdb, and
+time the game starts. It will create some default chans, objdb, and
 other things.
 
 Everything starts at handle_setup()
@@ -36,9 +36,9 @@ As Account #1 you can create a demo/tutorial area with |w@batchcommand tutorial_
 
 WARNING_POSTGRESQL_FIX = """
     PostgreSQL-psycopg2 compatibility fix:
-    The in-game channels {chan1}, {chan2} and {chan3} were created,
+    The in-game chans {chan1}, {chan2} and {chan3} were created,
     but the superuser was not yet connected to them. Please use in
-    game commands to connect Account #1 to those channels when first
+    game commands to connect Account #1 to those chans when first
     logging in.
     """
 
@@ -127,12 +127,12 @@ def create_objects():
 
 def create_channels():
     """
-    Creates some sensible default channels.
+    Creates some sensible default chans.
 
     """
 
     """
-    logger.log_info("Initial setup: Creating default channels ...")
+    logger.log_info("Initial setup: Creating default chans ...")
 
     goduser = get_god_account()
 

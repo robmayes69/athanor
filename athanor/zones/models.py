@@ -21,7 +21,3 @@ class ZoneLink(SharedMemoryModel):
     db_object = models.OneToOneField('objects.ObjectDB', related_name='zone', on_delete=models.CASCADE,
                                      primary_key=True)
     db_zone = models.ForeignKey('zones.ZoneDB', related_name='contents', on_delete=models.CASCADE)
-    db_is_exit = models.BooleanField(default=False)
-
-    class Meta:
-        index_together = (('db_zone', 'db_is_exit'),)

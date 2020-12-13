@@ -19,8 +19,8 @@ class ServerSessionCmdHandler(CmdHandler):
             base['account'] = session.account
         if session.puppet:
             base['puppet'] = session.puppet
-        if session.identity:
-            base['identity'] = session.identity
+        if session.playtime:
+            base['playtime'] = session.playtime
         return base
 
 
