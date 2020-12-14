@@ -31,6 +31,9 @@ class AccountCmdSet(CmdSet):
         self.add(system.CmdShutdown)
         self.add(system.CmdPy)
 
-        self.add(athcmds.CmdAddAcl)
-        self.add(athcmds.CmdGetAcl)
-        self.add(athcmds.CmdRemAcl)
+        self.add(athcmds.CmdAccess)
+        self.add(athcmds.CmdAccount)
+
+        #self.add(athcmds.CmdAddAcl)
+        #self.add(athcmds.CmdGetAcl)
+        #self.add(athcmds.CmdRemAcl)

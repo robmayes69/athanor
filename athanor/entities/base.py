@@ -1,8 +1,7 @@
-from evennia.utils.utils import lazy_property, make_iter, logger, to_str
-from evennia.objects.models import ObjectDB
+from evennia.utils.utils import lazy_property, make_iter, logger
 from athanor.access.acl import ACLMixin
-from athanor.playtimes.models import PlaytimeDB
 from athanor.identities.models import IdentityDB
+from athanor.entities.handlers import EntityCmdHandler, EntityCmdSetHandler
 
 
 class FakeSessionHandler:
@@ -28,6 +27,14 @@ FAKE_SESSION_HANDLER = FakeSessionHandler()
 
 class AthanorBaseObjectMixin(ACLMixin):
 
+    @lazy_property
+    def cmdset(self):
+        return EntityCmdSetHandler(self)
+
+    @lazy_property
+    def cmd(self):
+        return EntityCmdHandler(self)
+
     def get_playtime(self):
         return self.db._playtime
 
@@ -48,7 +55,7 @@ class AthanorBaseObjectMixin(ACLMixin):
 
     @property
     def is_connected(self):
-        return bool(self.get_playtime())
+        return bool(self.sessions.count())
 
     @property
     def is_superuser(self):

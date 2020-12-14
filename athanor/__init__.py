@@ -1,7 +1,7 @@
 """
 Core of the Athanor API.
 """
-from evennia.plugins import EvPlugin
+from evennia.server.plugins import EvPlugin
 
 
 class Athanor(EvPlugin):
@@ -78,7 +78,7 @@ class Athanor(EvPlugin):
                                             'contents']
 
         # the CMDSETS dict is used to control 'extra cmdsets' our special CmdHandler divvies out.
-        # the keys are the objdb that it applies to, such as 'account' or 'avatar'. This is separate
+        # the keys are the objdb that it applies to, such as 'account' or 'playtime'. This is separate
         # from the 'main' cmdset. It is done this way so that plugins can easily add extra cmdsets to
         # different entities.
         settings.CMDSETS = defaultdict(list)
@@ -150,6 +150,9 @@ class Athanor(EvPlugin):
 
         settings.BASE_SECTOR_TYPECLASS = "athanor.sectors.sectors.DefaultSector"
         settings.BASE_ZONE_TYPECLASS = "athanor.zones.zones.DefaultZone"
+        settings.BASE_ROOM_TYPECLASS = "athanor.entities.rooms.AthanorRoom"
+        settings.BASE_EXIT_TYPECLASS = "athanor.entities.exits.AthanorExit"
+        settings.BASE_OBJECT_TYPECLASS = "athanor.entities.items.AthanorItem"
 
         ######################################################################
         # Connection Options
@@ -157,13 +160,15 @@ class Athanor(EvPlugin):
         settings.SERVER_SESSION_HANDLER_CLASS = 'athanor.conn.sessionhandler.AthanorServerSessionHandler'
         settings.SERVER_SESSION_CLASS = "athanor.conn.serversession.AthanorServerSession"
 
-        # Command set used on the logged-in session
-        #settings.CMDSET_SESSION = "athanor.serversessions.cmdsets.AthanorSessionCmdSet"
+        # CmdSet constantly found on sessions, regardless of their state.
+        settings.CMDSET_SESSION = "athanor.conn.cmdsets.AthanorSessionCmdSet"
 
-        # Command set used on session before account has logged in
-        #settings.CMDSET_LOGINSCREEN = "athanor.serversessions.cmdsets.LoginCmdSet"
-        #settings.CMDSET_SELECTSCREEN = 'athanor.serversessions.cmdsets.CharacterSelectScreenCmdSet'
-        #settings.CMDSET_ACTIVE = 'athanor.serversessions.cmdsets.ActiveCmdSet'
+        # Command set used on session before account has logged in.
+        settings.CMDSET_SESSION_LOGINSCREEN = "athanor.conn.cmdsets.LoginCmdSet"
+        # CmdSet which replaces LOGINSCREEN upon logging in.
+        settings.CMDSET_SESSION_SELECTSCREEN = 'athanor.conn.cmdsets.CharacterSelectScreenCmdSet'
+        # CmdSet which replaces SELECTSCREEN upon the session linking to a playtime.
+        settings.CMDSET_SESSION_ACTIVEPLAY = 'athanor.conn.cmdsets.ActiveCmdSet'
 
         #settings.EXAMINE_HOOKS['session'] = []
 
@@ -177,7 +182,7 @@ class Athanor(EvPlugin):
         }
 
         # Command set for accounts with or without a character (ooc)
-        #settings.CMDSET_ACCOUNT = "athanor.accounts.cmdsets.AccountCmdSet"
+        settings.CMDSET_ACCOUNT = "athanor.accounts.cmdsets.AccountCmdSet"
 
         # Default options for display rules.
         settings.OPTIONS_ACCOUNT_DEFAULT['sys_msg_border'] = ('For -=<>=-', 'Color', 'm')

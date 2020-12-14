@@ -3,7 +3,7 @@ from django.utils import timezone
 
 from django.conf import settings
 
-from evennia.utils.utils import lazy_property
+from evennia.utils.utils import lazy_property, class_from_module
 from evennia.server.serversession import ServerSession as _BaseServerSession
 
 import evennia
@@ -13,6 +13,7 @@ _ObjectDB = None
 _AccountDB = None
 _IdentityDB = None
 _PlaytimeDB = None
+
 
 class AthanorServerSession(_BaseServerSession):
     # The Session is always the first thing to matter when parsing commands.
@@ -24,7 +25,7 @@ class AthanorServerSession(_BaseServerSession):
         self.puppet = None
         self.playtime = None
         self.account = None
-        self.cmdset_storage_string = ""
+        self.cmdset_storage = [settings.CMDSET_SESSION, settings.CMDSET_SESSION_LOGINSCREEN]
         self.cmdset = ServerSessionCmdSetHandler(self, True)
 
     @lazy_property
@@ -50,7 +51,8 @@ class AthanorServerSession(_BaseServerSession):
     def generate_substitutions(self, viewer):
         return {
             "name": str(self),
-            "address": self.db_host
+            "address": self.host,
+            "protocol": self.protocol
         }
 
     def system_msg(self, text=None, system_name=None, enactor=None):
@@ -62,7 +64,7 @@ class AthanorServerSession(_BaseServerSession):
     def receive_template_message(self, text, msgobj, target):
         self.system_msg(text=text, system_name=msgobj.system_name)
 
-    def render_character_menu_line(self, cmd):
+    def render_character_menu_line(self, looker, styling):
         return f"({self.sessid}) {self.protocol} from {self.host} via {self.protocol}"
 
     def at_login(self, account):
@@ -76,7 +78,7 @@ class AthanorServerSession(_BaseServerSession):
         self.conn_time = time.time()
         self.puid = None
         self.puppet = None
-        self.cmdset_storage = settings.CMDSET_SESSION
+        self.cmdset_storage = [settings.CMDSET_SESSION, settings.CMDSET_SESSION_SELECTSCREEN]
 
         # Update account's last login time.
         self.account.last_login = timezone.now()
@@ -92,22 +94,18 @@ class AthanorServerSession(_BaseServerSession):
         if not _PlaytimeDB:
             from athanor.playtimes.models import PlaytimeDB as _PlaytimeDB
 
-        super().at_sync()
+        super(_BaseServerSession, self).at_sync()
+
         if not self.logged_in:
             # assign the unloggedin-command set.
-            self.cmdset_storage = settings.CMDSET_UNLOGGEDIN
-
-        self.cmdset.update(init_mode=True)
-
-        if self.puid:
-            # Hijacks the Evennia re-puppeting to re-join a PlayTime instead.
-            obj = _IdentityDB.objects.get(id=self.puid)
-            self.create_or_join_playtime(obj, quiet=True)
-            obj.sessions.add(self)
-            self.puid = obj.id
-            self.puppet = obj
-            # obj.scripts.validate()
-            obj.locks.cache_lock_bypass(obj)
+            self.cmdset_storage = [settings.CMDSET_SESSION, settings.CMDSET_SESSION_LOGINSCREEN]
+            self.cmdset.update(init_mode=True)
+        else:
+            if self.puid:
+                self.create_or_join_playtime(_PlaytimeDB.objects.get(id=self.puid).db_identity, quiet=True)
+            else:
+                self.cmdset_storage = [settings.CMDSET_SESSION, settings.CMDSET_SESSION_SELECTSCREEN]
+                self.cmdset.update(init_mode=True)
 
     def create_or_join_playtime(self, identity, quiet=False):
         """
@@ -125,8 +123,9 @@ class AthanorServerSession(_BaseServerSession):
         if not _PlaytimeDB:
             from athanor.playtimes.models import PlaytimeDB as _PlaytimeDB
 
-        if not (playtime := _PlaytimeDB.objects.filter(id=identity).first()):
-            playtime = evennia.PLUGIN_MANAGER["athanor"].controllers["playtime"].create_playtime(self.account, identity)
+        if not (playtime := _PlaytimeDB.objects.filter(db_identity=identity).first()):
+            playtime_class = class_from_module(settings.BASE_PLAYTIME_TYPECLASS)
+            playtime = playtime_class.create(identity, account=self.account)
         self.link_to_playtime(playtime, quiet)
 
     def link_to_playtime(self, playtime, quiet):
@@ -137,8 +136,10 @@ class AthanorServerSession(_BaseServerSession):
             playtime (PlaytimeDB): The playtime this Session is being linked to.
             quiet (bool): Whether this should cause loud echoes and other messages.
         """
-        self.puid = int(playtime.id)
+        self.puid = playtime.dbid
         self.puppet = playtime
+        self.cmdset_storage = [settings.CMDSET_SESSION, settings.CMDSET_SESSION_ACTIVEPLAY]
+        self.cmdset.update(init_mode=True)
         playtime.sessions.add(self)
         playtime.link_count = playtime.link_count + 1
         if playtime.link_count == 1:

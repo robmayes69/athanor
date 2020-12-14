@@ -14,8 +14,9 @@ from athanor.accounts.typeclasses import AthanorAccount
 from athanor.accounts import messages as amsg
 from athanor.utils.text import partial_match, iter_to_string
 from athanor.utils.time import utcnow, duration_from_string
-from athanor.identities.identities import AccountIdentity
+from athanor.identities.identities import AccountIdentity, CharacterIdentity
 from athanor.identities.models import IdentityDB
+from athanor.entities.characters import AthanorCharacter
 
 
 class AthanorAccountController(AthanorController):
@@ -291,11 +292,28 @@ class AthanorAccountController(AthanorController):
     def integrity_check(self):
         self.backend.integrity_check()
 
+    def create_character(self, session, account, name, typeclass=None, select_screen=True, **kwargs):
+        enactor = None
+        if not select_screen:
+            if not (enactor := session.get_account()) or not enactor.check_lock("oper(character_create)"):
+                raise ValueError("Permission denied.")
+        if not name:
+            raise ValueError("A Character must have a name!")
+        new_character = self.backend.create_character(account, name, typeclass=typeclass, select_screen=select_screen, **kwargs)
+        entities = {'enactor': enactor if enactor else session, 'character': new_character}
+        if select_screen:
+            amsg.CreateMessage(entities).send()
+        else:
+            amsg.CreateMessageAdmin(entities).send()
+        return new_character
+
 
 class AthanorAccountControllerBackend(AthanorControllerBackend):
     typeclass_defs = [
         ('account_typeclass', 'BASE_ACCOUNT_TYPECLASS', AthanorAccount),
-        ('account_identity', 'BASE_ACCOUNT_IDENTITY_TYPECLASS', AccountIdentity)
+        ('account_identity', 'BASE_ACCOUNT_IDENTITY_TYPECLASS', AccountIdentity),
+        ('character_typeclass', 'BASE_CHARACTER_TYPECLASS', AthanorCharacter),
+        ('character_identity', 'BASE_CHARACTER_IDENTITY_TYPECLASS', CharacterIdentity)
     ]
 
     def __init__(self, frontend):
@@ -306,6 +324,8 @@ class AthanorAccountControllerBackend(AthanorControllerBackend):
         self.reg_names = None
         self.account_typeclass = None
         self.account_identity = None
+        self.character_typeclass = None
+        self.character_identity = None
         self.permissions = defaultdict(set)
         self.load()
 
@@ -375,3 +395,10 @@ class AthanorAccountControllerBackend(AthanorControllerBackend):
         if not found:
             raise ValueError(f"Cannot find a user named {search_text}!")
         raise ValueError(f"That matched multiple accounts: {found}")
+
+    def create_character(self, account, name, typeclass=None, login_screen=False, **kwargs):
+        if typeclass is None:
+            typeclass = self.character_typeclass
+        new_char = typeclass.create_character(name, account=account, login_screen=login_screen,
+                                              identity_typeclass=self.character_identity, **kwargs)
+        return new_char

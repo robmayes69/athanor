@@ -3,6 +3,10 @@ from athanor.conn import cmds_login, cmds_select, cmds_active
 from evennia.commands.default import unloggedin
 
 
+class AthanorSessionCmdSet(CmdSet):
+    key = "SessionCmdSet"
+
+
 class LoginCmdSet(CmdSet):
     key = "LoginCmdSet"
 

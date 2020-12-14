@@ -51,7 +51,7 @@ class DefaultIdentity(IdentityDB, metaclass=TypeclassBase):
         """
         Performs all other validation checks for creating the Identity.
         """
-        pass
+        return kwargs
 
     @classmethod
     def _create_identity(cls, name, clean_name, validated_data, wrapped, **kwargs):
@@ -61,12 +61,14 @@ class DefaultIdentity(IdentityDB, metaclass=TypeclassBase):
         identity = None
         errors = None
         try:
-            identity = cls(db_key=clean_name, db_ikey=clean_name.lower(), db_ckey=name, wrapped=wrapped,
+            identity = cls(db_key=clean_name, db_ikey=clean_name.lower(), db_ckey=name,
                            db_namespace=cls._namespace(), typeclass=f"{cls.__module__}.{cls.__qualname__}")
         except ValueError as e:
             if identity:
                 identity.delete()
             raise e
+        identity.save()
+        identity.wrapped = wrapped
         identity.save()
         return identity
 
@@ -95,6 +97,9 @@ class DefaultIdentity(IdentityDB, metaclass=TypeclassBase):
 
     def represents(self, accessor, resource, mode="") -> bool:
         return accessor == self
+
+    def __str__(self):
+        return self.db_key
 
 
 class SpecialIdentity(DefaultIdentity):
@@ -134,3 +139,14 @@ class CharacterIdentity(DefaultIdentity):
     _verbose_name_plural = "Characters"
     _name_standards = "Avoid double spaces and special characters."
     _namespace_name = "Characters"
+
+    def at_identity_creation(self, validated):
+        """
+        Bind the Character to the owning Account identity.
+        """
+        if (account := validated.get("account", None)):
+            acc_identity = account.get_identity()
+            self.relations_to.create(holder=acc_identity, relation_type=0)
+
+    def render_character_menu_line(self, looker, styling):
+        return self.db_ckey

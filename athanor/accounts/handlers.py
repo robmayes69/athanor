@@ -86,7 +86,7 @@ class AccountAppearanceHandler(AppearanceHandler):
         if (sessions := self.obj.sessions.all()):
             message.append(styling.styled_separator("Sessions"))
             for sess in sessions:
-                message.append(sess.render_character_menu_line(looker))
+                message.append(sess.render_character_menu_line(looker, styling))
         return message
 
     def characters(self, looker, styling, **kwargs):
@@ -94,7 +94,7 @@ class AccountAppearanceHandler(AppearanceHandler):
         if (characters := self.obj.characters()):
             message.append(styling.styled_separator("Characters"))
             for char in characters:
-                message.append(char.render_character_menu_line(looker))
+                message.append(char.render_character_menu_line(looker, styling))
         return message
 
     def commands(self, looker, styling, **kwargs):

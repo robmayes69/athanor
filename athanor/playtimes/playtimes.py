@@ -3,13 +3,24 @@ from evennia.objects.objects import ObjectSessionHandler
 from evennia.utils.utils import lazy_property, logger, make_iter, to_str
 
 from athanor.playtimes.models import PlaytimeDB
-from athanor.playtimes.handlers import PlaytimeCmdSetHandler
+from athanor.playtimes.handlers import PlaytimeCmdSetHandler, PlaytimeCmdHandler
 
 
 class DefaultPlaytime(PlaytimeDB, metaclass=TypeclassBase):
 
+    @classmethod
+    def create(cls, identity, account, alternate_puppet=None):
+        char_obj = identity.wrapped
+        if not char_obj:
+            raise Exception("SOMETHING DONE GOOFED!")
+        if not alternate_puppet:
+            alternate_puppet = char_obj
+        ptime = cls(db_identity=identity, db_account=account, db_primary_puppet=char_obj, db_current_puppet=alternate_puppet)
+        ptime.save()
+        return ptime
+
     def get_identity(self):
-        return self.id
+        return self.db_identity
 
     def get_playtime(self):
         return self
@@ -17,6 +28,10 @@ class DefaultPlaytime(PlaytimeDB, metaclass=TypeclassBase):
     @lazy_property
     def cmdset(self):
         return PlaytimeCmdSetHandler(self)
+
+    @lazy_property
+    def cmd(self):
+        return PlaytimeCmdHandler(self)
 
     @lazy_property
     def sessions(self):
@@ -32,6 +47,9 @@ class DefaultPlaytime(PlaytimeDB, metaclass=TypeclassBase):
         pass
 
     def at_cmdset_get(self, **kwargs):
+        pass
+
+    def at_session_link(self, session, quiet):
         pass
 
     def at_playtime_start(self, session, quiet):
@@ -141,3 +159,6 @@ class DefaultPlaytime(PlaytimeDB, metaclass=TypeclassBase):
                 and self.db_account.is_superuser
                 and not self.db_account.attributes.get("_quell")
         )
+
+    def __str__(self):
+        return f"Playtime: {str(self.db_identity)}"

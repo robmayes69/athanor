@@ -67,7 +67,6 @@ class CmdCharCreate(AdministrationCommand):
     """
     key = '@charcreate'
     locks = 'cmd:%s' % 'pperm(Admin)' if settings.RESTRICTED_CHARACTER_CREATION else 'all()'
-    controller_key = 'playercharacter'
 
     def switch_main(self):
         self.controller.create_character(self.session, self.caller, self.args, ignore_priv=True)
@@ -82,7 +81,6 @@ class CmdCharRename(AdministrationCommand):
     """
     key = "@charrename"
     locks = 'cmd:%s' % 'pperm(Admin)' if settings.RESTRICTED_CHARACTER_RENAME else 'all()'
-    controller_key = 'playercharacter'
 
     def switch_main(self):
         character = self.select_character(self.lhs)
@@ -98,7 +96,6 @@ class CmdCharDelete(AdministrationCommand):
     """
     key = '@chardelete'
     locks = 'cmd:%s' % 'pperm(Admin)' if settings.RESTRICTED_CHARACTER_DELETION else 'all()'
-    controller_key = 'playercharacter'
 
     def switch_main(self):
         character = self.select_character(self.lhs)
@@ -106,21 +103,17 @@ class CmdCharDelete(AdministrationCommand):
 
 
 class CmdCharSelect(AdministrationCommand):
-    help_category = "Play Session Commands"
-    key = "@select"
-    controller_key = 'playercharacter'
+    help_category = "Character Select Screen"
+    key = "@charselect"
 
     def switch_main(self):
         character = self.select_character(self.lhs)
-        psesscon = self.controllers.get('playsession')
-        psess = psesscon.get(character)
-        self.session.link_play_session(psess)
+        self.session.create_or_join_playtime(character)
 
 
 class CmdEndPlaySession(AdministrationCommand):
     help_category = "Play Session Commands"
     key = "@end"
-    controller_key = 'playercharacter'
 
     def switch_main(self):
         pass

@@ -1,9 +1,8 @@
 import re
+import evennia
 from evennia.commands.default.muxcommand import MuxCommand
 from evennia.utils.utils import inherits_from, lazy_property
-from evennia.utils.search import script_search
 
-import athanor
 from athanor.utils.text import partial_match
 
 
@@ -11,7 +10,7 @@ class AthanorCommand(MuxCommand):
     locks = 'cmd:all();admin:perm(Admin)'
     system_name = None
     arg_regex = r"(?:^(?:\s+|\/).*$)|^$"
-    re_command = re.compile(r"(?si)^(?P<prefix>[@+?$&%-]+)?(?P<cmd>\w+)(?P<switches>(\/\S+)+?)?(?:\s+(?P<args>(?P<lhs>[^=]+)(?:=(?P<rhs>.*))?)?)?")
+    re_command = re.compile(r"(?si)^(?P<prefix>[@+?$&%-]+)?(?P<cmd>\w+)(?P<switches>(\/\w+)+)?(?:\:(?P<mode>\S+)?)?(?:\s+(?P<args>(?P<lhs>[^=]+)(?:=(?P<rhs>.*))?)?)?")
     rhs_delim = ","
     lhs_delim = ","
     args_delim = " "
@@ -61,7 +60,7 @@ class AthanorCommand(MuxCommand):
 
     @property
     def controllers(self):
-        return athanor.api().get('controller_manager')
+        return evennia.PLUGIN_MANAGER["athanor"].controllers
 
     def switch_main(self):
         pass
@@ -116,6 +115,7 @@ class AthanorCommand(MuxCommand):
 
         # Regex magic!
         matched = self.re_command.match(self.raw_string)
+        print(matched)
         self.parsed = {key: value for key, value in matched.groupdict().items() if value is not None}
 
         # Get values from regex dict or set default values if not found.
@@ -170,7 +170,7 @@ class AthanorCommand(MuxCommand):
             raise ValueError("Must be logged in to use this feature!")
         if not char_name:
             raise ValueError("no character entered to search for!")
-        candidates = self.controllers.get('playercharacter').all(account=self.account)
+        candidates = self.account.characters()
 
         if not candidates:
             raise ValueError("No characters to select from!")

@@ -33,7 +33,7 @@ class IdentityDB(TypedObject):
     db_abbr_local = models.CharField(max_length=8, null=True)
 
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True)
-    object_id = models.PositiveIntegerField(null=False)
+    object_id = models.PositiveIntegerField(null=True)
     wrapped = GenericForeignKey('content_type', 'object_id', for_concrete_model=True)
 
     @property

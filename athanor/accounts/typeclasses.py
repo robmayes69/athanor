@@ -55,7 +55,7 @@ class AthanorAccount(DefaultAccount):
             return
 
         # Did all go well? Then proceed with login and display the select screen.
-        session.login(self)
+        session.at_login(self)
         session.msg(self.return_appearance(session))
 
     def set_email(self, new_email):
@@ -132,11 +132,14 @@ class AthanorAccount(DefaultAccount):
     def identity(self):
         return IdentityDB.objects.get(content_type=self.get_concrete_content_type(), object_id=self.id)
 
+    def get_identity(self):
+        return self.identity
+
     def get_account(self):
         return self
 
     def characters(self):
-        return self.identity.relations_from.filter(relation_type=0)
+        return [c.member for c in self.identity.relations_from.filter(relation_type=0)]
 
     @lazy_property
     def styler(self):
