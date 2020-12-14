@@ -3,6 +3,7 @@ I COULD use GenericForeignKey for ACL, but I think it'd be better to instead cre
 tables for much better indexing effiand full exploitation of Foreign Key cascading.
 """
 from django.db import models
+from typing import Dict
 
 
 class AbstractACLEntry(models.Model):
@@ -17,6 +18,15 @@ class AbstractACLEntry(models.Model):
     class Meta:
         #unique_together = (('resource', 'identity', 'mode'),)
         abstract = True
+
+    def base_string(self):
+        base = f"{self.identity.db_namespace.db_prefix}:{self.identity.db_key}"
+        if self.mode:
+            base += f':{self.mode}'
+        return base
+
+    def perm_string(self, bitfield: int, p_dict: Dict[str, int]):
+        perms = [k for k, v in p_dict.items() if v & bitfield]
 
 
 class ObjectACL(AbstractACLEntry):

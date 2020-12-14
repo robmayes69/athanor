@@ -3,9 +3,10 @@ import re
 from evennia.typeclasses.models import TypeclassBase
 from evennia.utils.ansi import ANSIString
 from athanor.sectors.models import SectorDB, SectorLink
+from athanor.access.acl import ACLMixin
 
 
-class DefaultSector(SectorDB, metaclass=TypeclassBase):
+class DefaultSector(ACLMixin, SectorDB, metaclass=TypeclassBase):
     _verbose_name = 'Sector'
     _verbose_name_plural = "Sectors"
     _name_standards = "Avoid double spaces and special characters."

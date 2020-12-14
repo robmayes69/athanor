@@ -99,10 +99,10 @@ class Athanor(EvPlugin):
         # At this point, we can only add things after Evennia's defaults.
 
         settings.INSTALLED_APPS = list(settings.INSTALLED_APPS)
-        settings.INSTALLED_APPS += ['athanor.conn', 'athanor.identities',
+        settings.INSTALLED_APPS.extend(['athanor.conn', 'athanor.identities',
                                     'athanor.sectors', 'athanor.zones',
                                     'athanor.playtimes', 'athanor.chans',
-                                    'athanor.entities']
+                                    'athanor.entities', 'athanor.access'])
 
         ######################################################################
         # Identity and Namespaces
