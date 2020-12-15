@@ -189,3 +189,9 @@ def id(accessing_obj, accessed_obj, *args, **kwargs):
 def pid(accessing_obj, accessed_obj, *args, **kwargs):
     "Alias to dbref, for Accounts"
     return dbref(_to_account(accessing_obj), accessed_obj, *args, **kwargs)
+
+
+def building(accessing_obj, accessed_obj, *args, **kwargs):
+    if hasattr(accessing_obj, 'is_building'):
+        return accessing_obj.is_building
+    return False

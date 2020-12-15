@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Dict, List
 from athanor.identities.models import IdentityDB
 
-RE_ACL = re.compile(r"^(?P<addremove>\+|-)(?P<deny>!)?(?P<prefix>\w+):(?P<name>.*?)(?::(?P<mode>.*?))(?P<perms>(\/\w+){1,})$")
+RE_ACL = re.compile(r"^(?P<addremove>\+|-)(?P<deny>!)?(?P<prefix>\w+):(?P<name>.*?)(?::(?P<mode>.*?))?(?P<perms>(\/\w+){1,})$")
 # +!A:Volund:friends/read/boogaloo
 
 
@@ -16,12 +16,34 @@ class ACLEntry:
     perms: List[str]
 
 
-class ACLMixin:
-    """
-    This class must be added to a Model as a Mixin. No other class.
-    """
+class ACLHandler:
     permissions_base = {"full": 1}
     permissions_custom = {}
+    permissions_init = "+S:OWNER/full"
+
+    def __init__(self, obj):
+        self.obj = obj
+
+    def integrity_check(self):
+        if not self.is_initialized():
+            self.initialize()
+
+    def is_initialized(self) -> bool:
+        return bool(self.obj.db._acl_init)
+
+    def initialize(self):
+        if self.do_initialize():
+            self.set_initialized()
+
+    def set_initialized(self):
+        self.obj.db._acl_init = True
+
+    def do_initialize(self) -> bool:
+        try:
+            self.apply_acl(self.parse_acl(self.permissions_init))
+        except Exception as e:
+            return False
+        return True
 
     def perm_dict(self) -> Dict[str, int]:
         d = dict()
@@ -36,10 +58,19 @@ class ACLMixin:
         return self.check_acl(accessor, perm, mode)
 
     def check_acl(self, accessor, perm: str, mode: str = "") -> bool:
+        self.integrity_check()
         bit = self.perm_dict()[perm]
         entries = list()
 
-        for entry in self.acl_entries.filter(mode=mode).order_by("identity__db_namespace__db_priority", "identity__db_key"):
+        # On the off-chance 're fed a non-identity, try and coerce it into one.
+        try:
+            accessor = accessor.get_identity()
+        except Exception as e:
+            return False
+        if not accessor:
+            return False
+
+        for entry in self.obj.acl_entries.filter(mode=mode).order_by("identity__db_namespace__db_priority", "identity__db_key"):
             if entry.identity.represents(accessor, mode):
                 # First, check for Denies.
                 if entry.deny_permissions & 1 or entry.deny_permissions & bit:
@@ -58,6 +89,7 @@ class ACLMixin:
 
         for s in entry.split(','):
             if not (match := RE_ACL.match(s)):
+                print(match)
                 raise ValueError(f"invalid ACL entry: {s}")
             gd = match.groupdict()
             deny = bool(gd.get('deny', False))
@@ -83,8 +115,9 @@ class ACLMixin:
     def apply_acl(self, entries: List[ACLEntry], report_to=None):
         p_dict = self.perm_dict()
         for entry in entries:
-            if not (row := self.acl_entries.filter(identity=entry.identity, mode=entry.mode).first()):
-                row = self.acl_entries.create(identity=entry.identity, mode=entry.mode)
+            mode = entry.mode if entry.mode else ''
+            if not (row := self.obj.acl_entries.filter(identity=entry.identity, mode=mode).first()):
+                row = self.obj.acl_entries.create(identity=entry.identity, mode=mode)
             bitfield = int(row.allow_permissions if not entry.deny else row.deny_permissions)
             if entry.remove:
                 for perm in entry.perms:
@@ -102,3 +135,6 @@ class ACLMixin:
             row.save()
             if row.allow_permissions == 0 and row.deny_permissions == 0:
                 row.delete()
+
+    def render_acl(self, looker=None):
+        self.integrity_check()

@@ -1,5 +1,6 @@
 from athanor.utils.cmdsethandler import AthanorCmdSetHandler
 from athanor.utils.cmdhandler import CmdHandler
+from athanor.access.acl import ACLHandler
 
 
 class EntityCmdHandler(CmdHandler):
@@ -13,4 +14,8 @@ class EntityCmdHandler(CmdHandler):
 
 
 class EntityCmdSetHandler(AthanorCmdSetHandler):
+    pass
+
+
+class EntityAclHandler(ACLHandler):
     pass

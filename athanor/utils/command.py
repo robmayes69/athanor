@@ -1,5 +1,6 @@
 import re
 import evennia
+from typing import List
 from evennia.commands.default.muxcommand import MuxCommand
 from evennia.utils.utils import inherits_from, lazy_property
 
@@ -14,18 +15,30 @@ class AthanorCommand(MuxCommand):
     rhs_delim = ","
     lhs_delim = ","
     args_delim = " "
-    switch_syntax = dict()
+    switch_defs = dict()
     controller_key = None
-    switch_options = []
+
+    class SyntaxException(Exception):
+
+        def __init__(self, cmd):
+            self.cmd = cmd
+
+        def __str__(self):
+            err_str = '<syntax not found, contact coder>'
+            if (switch_def := self.cmd.switch_defs.get(self.cmd.chosen_switch, None)):
+                syntax = switch_def.get('syntax', err_str)
+                if self.cmd.chosen_switch != 'main':
+                    return f"Usage: {self.cmd.key}/{self.cmd.chosen_switch} {syntax}"
+                else:
+                    return f"Usage: {self.cmd.key} {syntax}"
+            return f"Usage: {err_str}"
+
+    def available_switches(self) -> List[str]:
+        return [k for k, v in self.switch_defs.items() if k != 'main']
 
     @lazy_property
     def controller(self):
         return self.controllers.get(self.controller_key)
-
-    def syntax_error(self):
-        rules = self.switch_syntax.get(self.chosen_switch, '')
-        switch = '' if self.chosen_switch == 'main' else f"/{self.chosen_switch}"
-        raise ValueError(f"Usage: {self.key}{switch} {rules}")
 
     @lazy_property
     def styler(self):
@@ -71,7 +84,7 @@ class AthanorCommand(MuxCommand):
             if self.switches:
                 if len(self.switches) > 1:
                     raise ValueError(f"{self.key} does not support multiple simultaneous switches!")
-                if not (switch := partial_match(self.switches[0], self.switch_options)):
+                if not (switch := partial_match(self.switches[0], self.available_switches())):
                     raise ValueError(f"{self.key} does not support switch '{self.switches[0]}`")
                 if not (found := getattr(self, f"switch_{switch}", None)):
                     raise ValueError(f"Command does not support switch {switch}")
@@ -80,7 +93,10 @@ class AthanorCommand(MuxCommand):
             self.chosen_switch = 'main'
             return self.switch_main()
         except ValueError as err:
-            self.msg(f"ERROR: {str(err)}")
+            self.error(str(err))
+            return
+        except self.SyntaxException as err:
+            self.error(str(err))
             return
 
     def sys_msg(self, msg, target=None):

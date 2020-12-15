@@ -41,3 +41,6 @@ class PlaytimeDB(TypedObject):
                                              on_delete=models.PROTECT)
     db_current_puppet = models.OneToOneField('objects.ObjectDB', related_name='playtime',
                                              on_delete=models.PROTECT)
+
+    db_elevated = models.BooleanField(default=False)
+    db_building = models.BooleanField(default=False)

@@ -434,6 +434,10 @@ class CmdHandler:
             cmd.session = cmdobjects.get('session', None)
             cmd.account = cmdobjects.get('account', None)
             cmd.puppet = cmdobjects.get('puppet', None)
+            cmd.playtime = cmdobjects.get('playtime', None)
+            cmd.primary_puppet = cmd.playtime.db_primary_puppet if cmd.playtime else None
+            cmd.character_identity = cmd.playtime.db_identity if cmd.playtime else None
+            cmd.account_identity = cmd.account.get_identity() if cmd.account else None
             cmd.cmdobjects = cmdobjects
             cmd.raw_string = unformatted_raw_string
             # cmd.obj  # set via on-object cmdset handler for each command,
@@ -519,7 +523,7 @@ class CmdHandler:
         """
         return cmdobjects[-1]
 
-    def get_cmdobjects(self, session=None):
+    def get_cmdobjects(self, session=None) -> dict:
         if session is None:
             session = self.session
         return {'session': session}

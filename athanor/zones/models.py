@@ -12,6 +12,8 @@ class ZoneDB(TypedObject):
     db_ikey = models.CharField(max_length=255)
     db_ckey = models.CharField(max_length=255)
     db_core = models.OneToOneField('objects.ObjectDB', null=True, on_delete=models.PROTECT, related_name='zone_core')
+    db_room_typeclass = models.CharField(max_length=255, null=True)
+    db_exit_typeclass = models.CharField(max_length=255, null=True)
 
     class Meta:
         unique_together = (('db_owner', 'db_ikey'),)

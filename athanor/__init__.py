@@ -20,12 +20,22 @@ class Athanor(EvPlugin):
         self.controllers = None
 
     def integrity_check_namespaces(self):
-        from athanor.identities.models import Namespace
+        from athanor.identities.models import Namespace, IdentityDB
         from django.conf import settings
         for k, v in settings.IDENTITY_NAMESPACES.items():
-            nspace, created = Namespace.objects.get_or_create(db_name=k, db_prefix=v["prefix"], db_priority=v["priority"])
+            nspace, created = Namespace.objects.get_or_create(db_name=k, db_prefix=v["prefix"],
+                                                              db_priority=v["priority"], db_ic=v["ic"])
             if created:
                 nspace.save()
+        from evennia.utils.utils import class_from_module
+        special = Namespace.objects.get(db_name="Special")
+        for k, v in settings.SPECIAL_IDENTITIES.items():
+            right_type = class_from_module(v)
+            if (found := IdentityDB.objects.filter(db_namespace=special, db_key__iexact=k).first()):
+                if not found.is_typeclass(v, exact=True):
+                    found.swap_typeclass(right_type)
+            else:
+                new_sp = right_type.create(k)
 
     def load_styler(self):
         from evennia.utils.utils import class_from_module
@@ -109,9 +119,15 @@ class Athanor(EvPlugin):
         ######################################################################
 
         settings.IDENTITY_NAMESPACES = {
-            "Special": {"priority": 0, "prefix": "S"},
-            "Accounts": {"priority": 100, "prefix": "A"},
-            "Characters": {"priority": 200, "prefix": "C"}
+            "Special": {"priority": 0, "prefix": "S", "ic": False},
+            "Accounts": {"priority": 100, "prefix": "A", "ic": False},
+            "Characters": {"priority": 200, "prefix": "C", "ic": True}
+        }
+
+        settings.SPECIAL_IDENTITIES = {
+            "SYSTEM": "athanor.identities.identities.SpecialIdentitySystem",
+            "OWNER": "athanor.identities.identities.SpecialIdentityOwner",
+            "EVERYONE": "athanor.identities.identities.SpecialIdentityEveryone"
         }
 
         settings.BASE_IDENTITY_TYPECLASS = "athanor.identities.identities.DefaultIdentity"

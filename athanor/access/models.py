@@ -25,8 +25,22 @@ class AbstractACLEntry(models.Model):
             base += f':{self.mode}'
         return base
 
-    def perm_string(self, bitfield: int, p_dict: Dict[str, int]):
-        perms = [k for k, v in p_dict.items() if v & bitfield]
+    def perm_string(self, bitfield: int, p_dict: Dict[str, int] = None):
+        if p_dict is None:
+            p_dict = self.resource.acl.perm_dict()
+        return '/'.join([k for k, v in p_dict.items() if v & bitfield])
+
+    def render(self, deny: bool=False, p_dict: Dict[str, int] = None):
+        if p_dict is None:
+            p_dict = self.resource.acl.perm_dict()
+        if deny:
+            return f"!{self.base_string()}/{self.perm_string(int(self.deny_permissions), p_dict)}"
+        else:
+            return f"{self.base_string()}/{self.perm_string(int(self.allow_permissions), p_dict)}"
+
+    def __repr__(self):
+        p_dict = self.resource.acl.perm_dict()
+        return f"<{self.__class__.__name__}: {self.render(False, p_dict)} - {self.render(True, p_dict)}>"
 
 
 class ObjectACL(AbstractACLEntry):

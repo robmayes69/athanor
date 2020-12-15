@@ -1,7 +1,7 @@
 from evennia.utils.utils import lazy_property, make_iter, logger
-from athanor.access.acl import ACLMixin
 from athanor.identities.models import IdentityDB
-from athanor.entities.handlers import EntityCmdHandler, EntityCmdSetHandler
+from athanor.entities.handlers import EntityCmdHandler, EntityCmdSetHandler, EntityAclHandler
+from athanor.zones.models import ZoneLink
 
 
 class FakeSessionHandler:
@@ -18,14 +18,18 @@ class FakeSessionHandler:
     def clear(self):
         pass
 
-    def add(self):
+    def add(self, *args, **kwargs):
         pass
 
 
 FAKE_SESSION_HANDLER = FakeSessionHandler()
 
 
-class AthanorBaseObjectMixin(ACLMixin):
+class AthanorBaseObjectMixin:
+
+    @lazy_property
+    def acl(self):
+        return EntityAclHandler(self)
 
     @lazy_property
     def cmdset(self):
@@ -40,6 +44,16 @@ class AthanorBaseObjectMixin(ACLMixin):
 
     def get_identity(self):
         return IdentityDB.objects.filter(content_type=self.get_concrete_content_type(), object_id=self.id).first()
+
+    def get_zone(self):
+        if (result := ZoneLink.objects.filter(db_object=self).first()):
+            return result.db_zone
+        return None
+
+    def is_owner(self, to_check):
+        if (zone := self.get_zone()):
+            return zone.is_owner(to_check)
+        return False
 
     @property
     def sessions(self):
@@ -60,9 +74,21 @@ class AthanorBaseObjectMixin(ACLMixin):
     @property
     def is_superuser(self):
         if (playtime := self.get_playtime()):
-            return playtime.is_superuser
+            return playtime.is_superuser and playtime.db_elevated
         else:
             return False
+
+    @property
+    def is_elevated(self) -> bool:
+        if (playtime := self.get_playtime()):
+            return bool(playtime.db_elevated)
+        return False
+
+    @property
+    def is_building(self) -> bool:
+        if (playtime := self.get_playtime()):
+            return bool(playtime.db_building)
+        return False
 
     def msg(self, text=None, from_obj=None, session=None, options=None, **kwargs):
         """

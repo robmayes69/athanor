@@ -10,6 +10,7 @@ class Namespace(SharedMemoryModel):
     db_name = models.CharField(max_length=255, null=False, blank=False, unique=True)
     db_prefix = models.CharField(max_length=10, null=False, blank=False, unique=True)
     db_priority = models.PositiveIntegerField(default=0, db_index=True)
+    db_ic = models.BooleanField(default=False)
 
     def __repr__(self):
         return f"<Namespace({self.pk}): {self.db_name}>"

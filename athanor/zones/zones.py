@@ -3,10 +3,9 @@ import re
 from evennia.typeclasses.models import TypeclassBase
 from evennia.utils.ansi import ANSIString
 from athanor.zones.models import ZoneDB, ZoneLink
-from athanor.access.acl import ACLMixin
 
 
-class DefaultZone(ACLMixin, ZoneDB, metaclass=TypeclassBase):
+class DefaultZone(ZoneDB, metaclass=TypeclassBase):
     _verbose_name = 'Zone'
     _verbose_name_plural = "Zones"
     _name_standards = "Avoid double spaces and special characters."
@@ -80,3 +79,6 @@ class DefaultZone(ACLMixin, ZoneDB, metaclass=TypeclassBase):
 
     def at_zone_creation(self, validated):
         pass
+
+    def is_owner(self, to_check):
+        return self.db_owner == to_check.get_identity()
