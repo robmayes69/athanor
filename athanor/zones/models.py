@@ -17,6 +17,11 @@ class ZoneDB(TypedObject):
 
     class Meta:
         unique_together = (('db_owner', 'db_ikey'),)
+        ordering = ['db_owner__db_namespace__db_priority', 'db_owner__dbnamespace__db_name', 'db_owner__db_key',
+                    'db_key']
+
+    def __str__(self):
+        return self.db_key
 
 
 class ZoneLink(SharedMemoryModel):

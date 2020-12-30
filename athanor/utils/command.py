@@ -3,12 +3,12 @@ import evennia
 from typing import List
 from evennia.commands.default.muxcommand import MuxCommand
 from evennia.utils.utils import inherits_from, lazy_property
-
 from athanor.utils.text import partial_match
+from athanor.utils.error import AthanorException
 
 
 class AthanorCommand(MuxCommand):
-    locks = 'cmd:all();admin:perm(Admin)'
+    locks = 'cmd:all();admin:pperm(Admin)'
     system_name = None
     arg_regex = r"(?:^(?:\s+|\/).*$)|^$"
     re_command = re.compile(r"(?si)^(?P<prefix>[@+?$&%-]+)?(?P<cmd>\w+)(?P<switches>(\/\w+)+)?(?:\:(?P<mode>\S+)?)?(?:\s+(?P<args>(?P<lhs>[^=]+)(?:=(?P<rhs>.*))?)?)?")
@@ -17,21 +17,6 @@ class AthanorCommand(MuxCommand):
     args_delim = " "
     switch_defs = dict()
     controller_key = None
-
-    class SyntaxException(Exception):
-
-        def __init__(self, cmd):
-            self.cmd = cmd
-
-        def __str__(self):
-            err_str = '<syntax not found, contact coder>'
-            if (switch_def := self.cmd.switch_defs.get(self.cmd.chosen_switch, None)):
-                syntax = switch_def.get('syntax', err_str)
-                if self.cmd.chosen_switch != 'main':
-                    return f"Usage: {self.cmd.key}/{self.cmd.chosen_switch} {syntax}"
-                else:
-                    return f"Usage: {self.cmd.key} {syntax}"
-            return f"Usage: {err_str}"
 
     def available_switches(self) -> List[str]:
         return [k for k, v in self.switch_defs.items() if k != 'main']
@@ -92,17 +77,16 @@ class AthanorCommand(MuxCommand):
                 return found()
             self.chosen_switch = 'main'
             return self.switch_main()
-        except ValueError as err:
-            self.error(str(err))
-            return
-        except self.SyntaxException as err:
+        except AthanorException as err:
             self.error(str(err))
             return
 
-    def sys_msg(self, msg, target=None):
+    def sys_msg(self, msg, target=None, enactor=None):
         if not target:
             target = self.caller
-        target.system_msg(msg, system_name=self.system_name, enactor=self.caller)
+        if not enactor:
+            enactor = self.caller
+        target.system_msg(msg, system_name=self.system_name, enactor=enactor)
 
     def error(self, msg, target=None):
         self.sys_msg(f"ERROR: {msg}", target=target)
@@ -194,3 +178,4 @@ class AthanorCommand(MuxCommand):
         if not (found := partial_match(char_name, candidates)):
             raise ValueError(f"Cannot locate character named {char_name}!")
         return found
+

@@ -1,8 +1,12 @@
 import re
-
+from django.db.utils import IntegrityError
 from evennia.typeclasses.models import TypeclassBase
 from evennia.utils.ansi import ANSIString
+from evennia.utils.utils import lazy_property
 from athanor.identities.models import Namespace, IdentityDB
+from athanor.chans.handlers import AccountChannelHandler, CharacterChannelHandler
+from athanor.utils.text import clean_and_ansi
+from athanor.utils import error
 
 
 class DefaultIdentity(IdentityDB, metaclass=TypeclassBase):
@@ -29,21 +33,14 @@ class DefaultIdentity(IdentityDB, metaclass=TypeclassBase):
         Checks if an Identity name is both valid and not in use. Returns a tuple of (name, clean_name).
         """
         namespace = cls._namespace()
-        if not name:
-            raise ValueError(f"{cls._verbose_name_plural} must have a name!")
-        name = ANSIString(name)
-        clean_name = str(name.clean())
-        if '|' in clean_name:
-            raise ValueError(f"Malformed ANSI in {cls._verbose_name} Name.")
+        clean_name, name = clean_and_ansi(name, thing_name=f"{cls._verbose_name} Name")
         if not cls._re_name.match(clean_name):
-            raise ValueError(f"{cls._verbose_name} Name does not meet standards. {cls._name_standards}")
-        query = {
-            "db_namespace": namespace,
-            "db_ikey": clean_name.lower()
-        }
-        if (found := IdentityDB.objects.filter(**query).first()):
-            if exclude and found != exclude:
-                raise ValueError(f"Name conflicts with another {cls._verbose_name}")
+            raise error.BadNameException(f"{cls._verbose_name} Name does not meet standards. {cls._name_standards}")
+        query = namespace.identities.filter(db_ikey=clean_name.lower())
+        if exclude:
+            query = query.exclude(id=exclude.id)
+        if (found := query.first()):
+            raise error.BadNameException(f"Name conflicts with another {cls._verbose_name}")
         return (name, clean_name)
 
     @classmethod
@@ -63,10 +60,8 @@ class DefaultIdentity(IdentityDB, metaclass=TypeclassBase):
         try:
             identity = cls(db_key=clean_name, db_ikey=clean_name.lower(), db_ckey=name,
                            db_namespace=cls._namespace(), typeclass=f"{cls.__module__}.{cls.__qualname__}")
-        except ValueError as e:
-            if identity:
-                identity.delete()
-            raise e
+        except IntegrityError as e:
+            raise error.BadNameException("Could not create due to bad name!")
         identity.save()
         identity.wrapped = wrapped
         identity.save()
@@ -133,6 +128,10 @@ class AccountIdentity(DefaultIdentity):
     _name_standards = "Avoid double spaces and special characters."
     _namespace_name = "Accounts"
 
+    @lazy_property
+    def channels(self):
+        return AccountChannelHandler(self)
+
 
 class CharacterIdentity(DefaultIdentity):
     _verbose_name = 'Character'
@@ -150,3 +149,7 @@ class CharacterIdentity(DefaultIdentity):
 
     def render_character_menu_line(self, looker, styling):
         return self.db_ckey
+
+    @lazy_property
+    def channels(self):
+        return CharacterChannelHandler(self)

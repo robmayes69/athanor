@@ -1,3 +1,4 @@
+from django.conf import settings
 from evennia.typeclasses.models import TypeclassBase
 from evennia.objects.objects import ObjectSessionHandler
 from evennia.utils.utils import lazy_property, logger, make_iter, to_str
@@ -15,7 +16,8 @@ class DefaultPlaytime(PlaytimeDB, metaclass=TypeclassBase):
             raise Exception("SOMETHING DONE GOOFED!")
         if not alternate_puppet:
             alternate_puppet = char_obj
-        ptime = cls(db_identity=identity, db_account=account, db_primary_puppet=char_obj, db_current_puppet=alternate_puppet)
+        ptime = cls(db_identity=identity, db_account=account, db_primary_puppet=char_obj,
+                    db_current_puppet=alternate_puppet, db_cmdset_storage=settings.CMDSET_PLAYTIME)
         ptime.save()
         return ptime
 
@@ -27,7 +29,7 @@ class DefaultPlaytime(PlaytimeDB, metaclass=TypeclassBase):
 
     @lazy_property
     def cmdset(self):
-        return PlaytimeCmdSetHandler(self)
+        return PlaytimeCmdSetHandler(self, True)
 
     @lazy_property
     def cmd(self):

@@ -3,7 +3,7 @@ from django.db import models
 from django.core.validators import validate_comma_separated_integer_list
 
 from evennia.typeclasses.models import TypedObject, SharedMemoryModel
-
+from evennia.utils.utils import make_iter
 
 class PlaytimeDB(TypedObject):
     """
@@ -44,3 +44,21 @@ class PlaytimeDB(TypedObject):
 
     db_elevated = models.BooleanField(default=False)
     db_building = models.BooleanField(default=False)
+
+    # cmdset_storage property handling
+    def __cmdset_storage_get(self):
+        """getter"""
+        storage = self.db_cmdset_storage
+        return [path.strip() for path in storage.split(",")] if storage else []
+
+    def __cmdset_storage_set(self, value):
+        """setter"""
+        self.db_cmdset_storage = ",".join(str(val).strip() for val in make_iter(value))
+        self.save(update_fields=["db_cmdset_storage"])
+
+    def __cmdset_storage_del(self):
+        """deleter"""
+        self.db_cmdset_storage = None
+        self.save(update_fields=["db_cmdset_storage"])
+
+    cmdset_storage = property(__cmdset_storage_get, __cmdset_storage_set, __cmdset_storage_del)

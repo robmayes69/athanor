@@ -1,13 +1,32 @@
 from django.db.models import Q
+from django.conf import settings
 
 from evennia.utils.ansi import ANSIString
+from evennia.utils.utils import lazy_property, class_from_module
 
-from athanor.cmdsets.base import AthanorCmdSet
+from athanor.utils.cmdset import BaseAthCmdSet
 from athanor.utils.text import partial_match
-from athanor_channels.models import AbstractChannelSubscription
+from athanor.chans.models import ChannelSubscription, ChannelAlias
+from athanor.utils import error
+from athanor.access.acl import ACLHandler
 
 
-class AbstractChannelHandler(object):
+class ClassHolder:
+
+    @lazy_property
+    def classes(self):
+        return {family: class_from_module(path) for family, path in settings.CHANNEL_COMMAND_CLASSES.items()}
+
+
+CLASS_HOLDER = ClassHolder()
+
+
+class ChannelACLHandler(ACLHandler):
+    pass
+
+
+class AbstractChannelHandler:
+    family = None
 
     def __init__(self, owner):
         self.owner = owner
@@ -16,16 +35,15 @@ class AbstractChannelHandler(object):
         self.update_cache()
 
     def system_msg(self, message):
-        self.owner.msg(message, system_name=f"{self.namespace} Channels")
+        self.owner.system_msg(message, system_name=f"{self.family} Channels")
 
     def update_cache(self):
-        cmdset = AthanorCmdSet()
+        cmdset = BaseAthCmdSet()
         cmdset.key = "ChannelCmdSet"
         cmdset.priority = 101
         cmdset.duplicates = True
         for subscription in self.subscriptions.all():
-            system = subscription.db_channel.system
-            cmd = system.ndb.command_class(
+            cmd = CLASS_HOLDER.classes[self.family](
                 key=subscription.db_name,
                 locks="cmd:all();%s" % subscription.db_channel.locks,
                 subscription=subscription
@@ -43,29 +61,36 @@ class AbstractChannelHandler(object):
     def subscriptions(self):
         return self.owner.channel_subscriptions
 
+    @property
+    def aliases(self):
+        return self.owner.channel_subaliases
+
     def add(self, channel, alias):
-        if (found := self.subscriptions.filter(db_namespace=self.namespace, db_name=alias).first()):
-            raise ValueError(f"That conflicts with an existing alias to {found.db_channel}!")
-        self.subscriptions.create(db_namespace=self.namespace, db_channel=channel, db_name=alias)
+        if (found := self.subscriptions.filter(db_name=alias).first()):
+            raise error.BadNameException(f"That conflicts with an existing alias to {found.db_channel}!")
+        self.subscriptions.create(db_channel=channel, db_name=alias)
         self.update_cache()
 
     def find_alias(self, alias):
-        if isinstance(alias, AbstractChannelSubscription):
+        if isinstance(alias, ChannelSubscription):
             return alias
-        aliases = self.subscriptions.filter(db_namespace=self.namespace)
+        aliases = self.aliases.filter()
         if not (found := partial_match(alias, aliases)):
-            raise ValueError(f"Channel Alias not found: {alias}!")
+            raise error.TargetNotFoundException(f"Channel Alias not found: {alias}!")
         return found
 
     def leave(self, alias):
         found = self.find_alias(alias)
+        channel = found.db_channel
         found.delete()
+        if not self.aliases.filter(db_channel=channel).count():
+            self.subscriptions.filter(db_channel=channel).delete()
         self.update_cache()
 
     def codename(self, alias, codename):
         found = self.find_alias(alias)
         if not codename:
-            raise ValueError("Must include a codename!")
+            raise error.SyntaxException("Must include a codename!")
         if codename.lower() == 'none':
             found.db_ccodename = None
             found.db_codename = None
@@ -157,14 +182,14 @@ class AbstractChannelHandler(object):
 
 
 class AccountChannelHandler(AbstractChannelHandler):
-    namespace = 'account'
+    family = 'account'
 
 
 class CharacterChannelHandler(AbstractChannelHandler):
-    namespace = 'character'
+    family = 'character'
 
 
-class GlobalChannelHandler(object):
+class GlobalChannelHandler:
     """
     This actually replaces the Evennia CHANNEL_HANDLER_CLASS
     """

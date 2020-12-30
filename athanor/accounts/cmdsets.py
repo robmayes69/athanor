@@ -1,15 +1,17 @@
-from evennia.commands.cmdset import CmdSet
-
 from evennia.commands.default import help, comms, admin, system
 from evennia.commands.default import building, account, general
 from athanor.accounts import commands as athcmds
+from athanor.utils.cmdset import BaseAthCmdSet
 
 
-class AccountCmdSet(CmdSet):
+class AccountCmdSet(BaseAthCmdSet):
     key = "AccountCmdSet"
     priority = -10
+    family = "account"
 
     def at_cmdset_creation(self):
+        super().at_cmdset_creation()
+
         self.add(account.CmdWho)
         self.add(account.CmdOption)
         self.add(account.CmdColorTest)

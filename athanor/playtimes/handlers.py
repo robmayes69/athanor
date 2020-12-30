@@ -3,7 +3,17 @@ from athanor.utils.cmdhandler import CmdHandler
 
 
 class PlaytimeCmdSetHandler(AthanorCmdSetHandler):
-    pass
+
+    def get_channel_cmdsets(self, caller, merged_current):
+        if (identity := self.obj.get_identity()):
+            return [identity.channels.cmdset()]
+        return []
+
+    def gather_extra(self, caller, merged_current):
+        cmdsets = []
+        if not merged_current.no_channels:
+            cmdsets.extend(self.get_channel_cmdsets(caller, merged_current))
+        return cmdsets
 
 
 class PlaytimeCmdHandler(CmdHandler):

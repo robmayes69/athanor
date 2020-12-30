@@ -117,3 +117,12 @@ class AthanorBaseObjectMixin:
 
         # relay to playtime
         playtime.msg(text=text, from_obj=from_obj, puppet_obj=self, session=session, options=options, **kwargs)
+
+    def system_msg(self, text=None, system_name: str = "SYSTEM", target=None, enactor=None):
+        if not text:
+            return
+        if not target:
+            target = self
+        if not enactor:
+            enactor = self
+        target.msg(f"|w{system_name}:|n {text}", from_obj=enactor)

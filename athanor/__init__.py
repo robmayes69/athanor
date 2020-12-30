@@ -115,6 +115,13 @@ class Athanor(EvPlugin):
                                     'athanor.entities', 'athanor.access'])
 
         ######################################################################
+        # Controllers
+        ######################################################################
+
+        settings.CONTROLLER_MANAGER_CLASS = "athanor.utils.controllers.ControllerManager"
+        settings.CONTROLLERS = dict()
+
+        ######################################################################
         # Identity and Namespaces
         ######################################################################
 
@@ -131,43 +138,60 @@ class Athanor(EvPlugin):
         }
 
         settings.BASE_IDENTITY_TYPECLASS = "athanor.identities.identities.DefaultIdentity"
-        settings.BASE_PLAYTIME_TYPECLASS = 'athanor.playtimes.playtimes.DefaultPlaytime'
 
         settings.BASE_ACCOUNT_IDENTITY_TYPECLASS = 'athanor.identities.identities.AccountIdentity'
         settings.BASE_CHARACTER_IDENTITY_TYPECLASS = 'athanor.identities.identities.CharacterIdentity'
 
-        ######################################################################
-        # Controllers
-        ######################################################################
-
-        settings.CONTROLLER_MANAGER_CLASS = "athanor.utils.controllers.ControllerManager"
-        settings.CONTROLLERS = dict()
-
+        settings.CONTROLLERS["identity"] = {
+            "controller": "athanor.identities.controller.AthanorIdentityController",
+            "backend": "athanor.identities.controller.AthanorIdentityControllerBackend"
+        }
 
         ######################################################################
-        # Grid/Map/Rooms Options
+        # Playtime Options
         ######################################################################
-        # This is a mapping of 'shortcut' to (db_exit_key, [aliases]) for use with
+        settings.BASE_PLAYTIME_TYPECLASS = 'athanor.playtimes.playtimes.DefaultPlaytime'
+        settings.CMDSET_PLAYTIME = "athanor.playtimes.cmdsets.PlaytimeCmdSet"
+
+        ######################################################################
+        # Zone/Sector/Grid/Map/Rooms Options
+        ######################################################################
+        # This is a mapping of 'shortcut' to (db_exit_key, [aliases], opposite) for use with
         # layouts.
         settings.EXIT_MAP = {
-            'n': ('north', ['n']),
-            's': ('south', ['s']),
-            'e': ('east', ['e']),
-            'w': ('west', ['w']),
-            'i': ('in', ['i']),
-            'o': ('out', ['o']),
-            'u': ('up', ['u']),
-            'd': ('down', ['d']),
-            'nw': ('northwest', ['nw']),
-            'ne': ('northeast', ['ne']),
-            'sw': ('southwest', ['sw']),
-            'se': ('southeast', ['se'])
+            'n': ('north', ['n'], 's'),
+            's': ('south', ['s'], 'n'),
+            'e': ('east', ['e'], 'w'),
+            'w': ('west', ['w'], 'e'),
+            'i': ('in', ['i'], 'o'),
+            'o': ('out', ['o'], 'i'),
+            'u': ('up', ['u'], 'd'),
+            'd': ('down', ['d'], 'u'),
+            'nw': ('northwest', ['nw'], 'se'),
+            'ne': ('northeast', ['ne'], 'sw'),
+            'sw': ('southwest', ['sw'], 'ne'),
+            'se': ('southeast', ['se'], 'nw')
+        }
+
+        settings.BASE_ROOM_TYPECLASS = "athanor.entities.rooms.AthanorRoom"
+        settings.BASE_EXIT_TYPECLASS = "athanor.entities.exits.AthanorExit"
+        settings.CONTROLLERS["grid"] = {
+            'controller': 'athanor.entities.controller.AthanorGridController',
+            'backend': 'athanor.entities.controller.AthanorGridControllerBackend'
+        }
+
+        settings.BASE_ZONE_TYPECLASS = "athanor.zones.zones.DefaultZone"
+        settings.CONTROLLERS["zone"] = {
+            "controller": 'athanor.zones.controller.AthanorZoneController',
+            'backend': 'athanor.zones.controller.AthanorZoneControllerBackend'
         }
 
         settings.BASE_SECTOR_TYPECLASS = "athanor.sectors.sectors.DefaultSector"
-        settings.BASE_ZONE_TYPECLASS = "athanor.zones.zones.DefaultZone"
-        settings.BASE_ROOM_TYPECLASS = "athanor.entities.rooms.AthanorRoom"
-        settings.BASE_EXIT_TYPECLASS = "athanor.entities.exits.AthanorExit"
+        settings.CONTROLLERS["sector"] = {
+            "controller": "athanor.sectors.controller.AthanorSectorController",
+            "backend": "athanor.sectors.controller.AthanorSectorControllerBackend"
+        }
+
         settings.BASE_OBJECT_TYPECLASS = "athanor.entities.items.AthanorItem"
 
         ######################################################################
@@ -218,7 +242,6 @@ class Athanor(EvPlugin):
         ######################################################################
         # Character Options
         ######################################################################
-        #settings.CONTROLLERS['character'] = 'athanor.characters.controller.CharacterController'
 
         settings.BASE_CHARACTER_TYPECLASS = "athanor.entities.characters.AthanorCharacter"
         #settings.CMDSET_PLAYER_CHARACTER = "athanor.characters.cmdsets.CharacterCmdSet"
@@ -233,6 +256,7 @@ class Athanor(EvPlugin):
         # Instead, they'll see something generic, and have to decide what to
         # call a person.
         settings.NAME_DUB_SYSTEM = False
+
         ######################################################################
         # Permissions
         ######################################################################
@@ -254,27 +278,37 @@ class Athanor(EvPlugin):
         ]
 
         settings.PERMISSIONS = {
-        "Helper": {
-            "permission": ("Admin"),
-            "description": "Those appointed to help players."
-        },
-        "Builder": {
-            "permission": ("Admin"),
-            "description": "Can edit and alter the grid, creating new Zones, Rooms, and Exits."
-        },
-        "Gamemaster": {
-            "permission": ("Admin"),
-            "description": "Can alter game-related character traits like stats, spawn items, grant rewards, puppet mobiles, etc."
-        },
-        "Moderator": {
-            "permission": ("Admin"),
-            "description": "Has access to virtually all communications tools for keeping order and enforcing social rules."
-        },
-        "Admin": {
-            "permission": ("Developer"),
-            "description": "Can make wide-spread changes to the game, administrate accounts and characters directly."
-        },
-        "Developer": {
-            "description": "Has virtually unlimited power. Can use very dangerous commands."
+            "Helper": {
+                "permission": ("Admin"),
+                "description": "Those appointed to help players. May have minor communications privileges and niceties."
+            },
+            "Builder": {
+                "permission": ("Admin"),
+                "description": "Can edit and alter the grid, creating new Zones, Rooms, Exits, Quests, and other content."
+            },
+            "Gamemaster": {
+                "permission": ("Admin"),
+                "description": "Can alter game-related character traits like stats, spawn items, grant rewards, puppet mobiles, etc."
+            },
+            "Moderator": {
+                "permission": ("Admin"),
+                "description": "Has access to virtually all communications tools for keeping order and enforcing social rules."
+            },
+            "Admin": {
+                "permission": ("Developer"),
+                "description": "Can make wide-spread changes to the game, administrate accounts and characters directly."
+            },
+            "Developer": {
+                "description": "Has virtually unlimited, arbitrary access to all systems. For trusted coders only."
+            }
         }
-    }
+
+        ######################################################################
+        # Channel Options
+        ######################################################################
+        settings.CHANNEL_COMMAND_CLASSES = {
+            'character': "athanor.chans.commands.AthanorCharacterChannelCmd",
+            'account': "athanor.chans.commands.AthanorAccountChannelCmd"
+        }
+
+        settings.CHANNEL_HANDLER_CLASS = "athanor.chans.handlers.GlobalChannelHandler"

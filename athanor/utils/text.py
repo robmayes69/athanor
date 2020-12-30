@@ -4,18 +4,19 @@ from evennia.utils.ansi import ANSI_PARSER
 from evennia.utils.ansi import ANSIString
 
 import athanor
+from athanor.utils import error
 
 
-def clean_and_ansi(input_text, thing_name="Name"):
+def clean_and_ansi(input_text: str, thing_name: str = "Name") -> (str, ANSIString):
     if not input_text:
-        raise ValueError(f"{thing_name} must not be empty!")
+        raise error.SyntaxException(f"{thing_name} must not be empty!")
     input_text = input_text.strip()
     if '|' in input_text and not input_text.endswith('|n'):
         input_text += "|n"
     colored_text = ANSIString(input_text)
     clean_text = str(colored_text.clean())
     if '|' in clean_text:
-        raise ValueError(f"Malformed ANSI in {thing_name}.")
+        raise error.BadInputException(f"Malformed ANSI in {thing_name}.")
     return clean_text, colored_text
 
 

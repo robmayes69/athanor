@@ -12,14 +12,15 @@ class ACLEntry:
     remove: bool
     deny: bool
     identity: IdentityDB
-    mode: str
     perms: List[str]
+    mode: str = ""
 
 
 class ACLHandler:
     permissions_base = {"full": 1}
     permissions_custom = {}
     permissions_init = "+S:OWNER/full"
+    permissions_implicit = {}
 
     def __init__(self, obj):
         self.obj = obj
@@ -54,32 +55,36 @@ class ACLHandler:
     def is_owner(self, obj_to_check) -> bool:
         return False
 
-    def check_access(self, accessor, perm: str, mode: str = "") -> bool:
-        return self.check_acl(accessor, perm, mode)
+    def check_access(self, accessor, perm: str) -> bool:
+        return self.check_acl(accessor, perm)
 
-    def check_acl(self, accessor, perm: str, mode: str = "") -> bool:
+    def check_acl(self, accessor, perm: str) -> bool:
         self.integrity_check()
-        bit = self.perm_dict()[perm]
+        pdict = self.perm_dict()
         entries = list()
 
         # On the off-chance 're fed a non-identity, try and coerce it into one.
         try:
             accessor = accessor.get_identity()
-        except Exception as e:
+        except Exception:
             return False
         if not accessor:
             return False
 
-        for entry in self.obj.acl_entries.filter(mode=mode).order_by("identity__db_namespace__db_priority", "identity__db_key"):
-            if entry.identity.represents(accessor, mode):
+        bit = pdict[perm] + 1
+        for p in self.permissions_implicit.get(perm, []):
+            bit += pdict.get(p, 0)
+
+        for entry in self.obj.acl_entries.all():
+            if entry.identity.represents(accessor, entry.mode):
                 # First, check for Denies.
-                if entry.deny_permissions & 1 or entry.deny_permissions & bit:
+                if entry.deny_permissions | bit:
                     return False
                 entries.append(entry)
 
         for entry in entries:
             # Then check for Allows.
-            if entry.allow_permissions & 1 or entry.allow_permissions & bit:
+            if entry.allow_permissions | bit:
                 return True
 
         return False
@@ -107,7 +112,7 @@ class ACLHandler:
                 if perm not in p_dict:
                     raise ValueError(f"Permission not found: {perm}")
 
-            acl_e = ACLEntry(remove, deny, identity, mode, perms)
+            acl_e = ACLEntry(remove, deny, identity, perms, mode)
             entries.append(acl_e)
 
         return entries

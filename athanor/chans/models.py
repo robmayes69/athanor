@@ -40,3 +40,6 @@ class ChannelAlias(SharedMemoryModel):
 
     class Meta:
         unique_together = (('db_subscriber', 'db_iname'), ('db_channel', 'db_icodename'))
+
+    def __str__(self):
+        return str(self.db_name)

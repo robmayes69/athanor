@@ -18,6 +18,9 @@ class Namespace(SharedMemoryModel):
     def __str__(self):
         return repr(self)
 
+    class Meta:
+        ordering = ['db_priority', 'db_name']
+
 
 class IdentityDB(TypedObject):
     """
@@ -74,6 +77,7 @@ class IdentityDB(TypedObject):
     class Meta:
         unique_together = (('db_namespace', 'db_ikey'), ('db_namespace', 'db_abbr_local'),
                            ('content_type', 'object_id'))
+        ordering = ['db_namespace__db_priority', 'db_namespace__db_name', 'db_key']
 
 
 class Relationships(models.Model):
@@ -105,5 +109,5 @@ class ACLEntry(models.Model):
     class Meta:
         unique_together = (('content_type', 'object_id', 'identity', 'mode'),)
         index_together = (('content_type', 'object_id'),)
-
-
+        ordering = ['identity__db_namespace__db_priority', 'identity__db_namespace__db_name', 'identity__db_name',
+                    'mode']

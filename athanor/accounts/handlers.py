@@ -53,6 +53,8 @@ class BanHandler:
 class AccountCmdSetHandler(AthanorCmdSetHandler):
 
     def get_channel_cmdsets(self, caller, merged_current):
+        if (identity := self.obj.get_identity()):
+            return [identity.channels.cmdset()]
         return []
 
     def gather_extra(self, caller, merged_current):
